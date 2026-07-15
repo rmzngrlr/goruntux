@@ -990,7 +990,7 @@
                         }
                     } else {
                         const ssFirst = await new Promise(resolve => {
-                            chrome.runtime.sendMessage({ action: "captureTab" }, resolve);
+                            swSendReliable({ action: "captureTab" }, resolve);
                         });
 
                         if (!ssFirst || ssFirst.status !== "success" || !ssFirst.dataUrl) {
@@ -1027,7 +1027,7 @@
                                 totalScrolled += delta;
 
                                 const ssN = await new Promise(resolve => {
-                                    chrome.runtime.sendMessage({ action: "captureTab" }, resolve);
+                                    swSendReliable({ action: "captureTab" }, resolve);
                                 });
 
                                 if (!ssN || ssN.status !== "success" || !ssN.dataUrl) {
@@ -1173,6 +1173,44 @@
             }
 
     // Error rendering helper
+    // MV3 service worker bazen istegi islerken oldurulur/askiya alinir ve callback HIC gelmez;
+    // bu durumda tarama capture veya submit adiminda SONSUZA KADAR DONAR (kullanici ekranda
+    // "birlestiriliyor"da asili kalma olarak gorur). Bu yardimci, belirli surede yanit gelmezse
+    // mesaji YENIDEN yollayarak yeni worker'i uyandirir; tum denemeler basarisiz olursa cb(null)
+    // ile akisi kilitlemeden devam ettirir (donma yerine, o adimi atlayip ilerler).
+    // Not: submit tekrari sunucuda link normalizasyonuyla ELENIR, cift kayit olusmaz.
+    function swSendReliable(msg, cb, timeoutMs = 15000, retries = 2) {
+        let finished = false;
+        const finish = (resp) => { if (finished) return; finished = true; try { cb(resp); } catch (e) {} };
+        const attempt = (left) => {
+            let localDone = false;
+            const timer = setTimeout(() => {
+                if (localDone) return; localDone = true;
+                if (left > 0) {
+                    try { logToServer("[swSend] Yanit gecikti, yeniden deneniyor: " + (msg && msg.action)); } catch (e) {}
+                    attempt(left - 1);
+                } else {
+                    try { logToServer("[swSend] Yanit alinamadi, adim atlaniyor: " + (msg && msg.action)); } catch (e) {}
+                    finish(null);
+                }
+            }, timeoutMs);
+            try {
+                chrome.runtime.sendMessage(msg, (resp) => {
+                    if (localDone) return; localDone = true; clearTimeout(timer);
+                    if (chrome.runtime.lastError) {
+                        if (left > 0) { attempt(left - 1); return; }
+                        finish(null); return;
+                    }
+                    finish(resp);
+                });
+            } catch (e) {
+                clearTimeout(timer);
+                if (left > 0) { attempt(left - 1); } else { finish(null); }
+            }
+        };
+        attempt(retries);
+    }
+
     function showError(err) {
         console.error("X Rapor Hata:", err);
         logToServer(`HATA: ${err.message || err}`);
@@ -3698,14 +3736,14 @@
                     const progress = gorev.combinedData.length;
                     const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
                     
-                    chrome.runtime.sendMessage({
+                    swSendReliable({
                         action: "submitWordResult",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
                         results: [resItem],
                         final: false
                     }, (response) => {
-                        chrome.runtime.sendMessage({
+                        swSendReliable({
                             action: "updateWordProgress",
                             origin: gorev.server_origin || "http://localhost:3012",
                             job_id: gorev.job_id,
@@ -3722,14 +3760,14 @@
                     const progress = gorev.combinedData.length;
                     durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                     
-                    chrome.runtime.sendMessage({
+                    swSendReliable({
                         action: "submitWordResult",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
                         results: [resItem],
                         final: true
                     }, () => {
-                        chrome.runtime.sendMessage({
+                        swSendReliable({
                             action: "updateWordProgress",
                             origin: gorev.server_origin || "http://localhost:3012",
                             job_id: gorev.job_id,
@@ -3737,9 +3775,9 @@
                             total: progress
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
-                                chrome.runtime.sendMessage({ 
-                                    action: "completeJobAndFocusPanel", 
-                                    origin: gorev.server_origin 
+                                chrome.runtime.sendMessage({
+                                    action: "completeJobAndFocusPanel",
+                                    origin: gorev.server_origin
                                 });
                             });
                         });
@@ -4168,8 +4206,10 @@
                 const totalCount = (gorev.total_count) || (gorev.combinedData.length + gorev.kuyruk.length);
                 const progress = gorev.combinedData.length;
                 const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
-                
-                chrome.runtime.sendMessage({
+
+                durumText.innerHTML = `⏳ <b>Sonuç sunucuya gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+
+                swSendReliable({
                     action: "submitWordResult",
                     origin: gorev.server_origin || "http://localhost:3012",
                     job_id: gorev.job_id,
@@ -4182,7 +4222,7 @@
                         });
                         return;
                     }
-                    chrome.runtime.sendMessage({
+                    swSendReliable({
                         action: "updateWordProgress",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
@@ -4207,14 +4247,14 @@
                 
                 durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                 
-                chrome.runtime.sendMessage({
+                swSendReliable({
                     action: "submitWordResult",
                     origin: gorev.server_origin || "http://localhost:3012",
                     job_id: gorev.job_id,
                     results: [resItem],
                     final: true
                 }, () => {
-                    chrome.runtime.sendMessage({
+                    swSendReliable({
                         action: "updateWordProgress",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
@@ -4223,9 +4263,9 @@
                     }, () => {
                         chrome.storage.local.remove(storageKey, () => {
                             // Background worker'a bu sekmenin kapatılıp panelin odaklanması talimatını veriyoruz.
-                            chrome.runtime.sendMessage({ 
-                                action: "completeJobAndFocusPanel", 
-                                origin: gorev.server_origin 
+                            chrome.runtime.sendMessage({
+                                action: "completeJobAndFocusPanel",
+                                origin: gorev.server_origin
                             });
                         });
                     });
