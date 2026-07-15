@@ -1173,39 +1173,44 @@
             }
 
     // Error rendering helper
-    // MV3 service worker bazen istegi islerken oldurulur/askiya alinir ve callback HIC gelmez;
-    // bu durumda tarama capture veya submit adiminda SONSUZA KADAR DONAR (kullanici ekranda
-    // "birlestiriliyor"da asili kalma olarak gorur). Bu yardimci, belirli surede yanit gelmezse
-    // mesaji YENIDEN yollayarak yeni worker'i uyandirir; tum denemeler basarisiz olursa cb(null)
-    // ile akisi kilitlemeden devam ettirir (donma yerine, o adimi atlayip ilerler).
-    // Not: submit tekrari sunucuda link normalizasyonuyla ELENIR, cift kayit olusmaz.
-    function swSendReliable(msg, cb, timeoutMs = 15000, retries = 2) {
+    // MV3 service worker bazen istegi islerken oldurulur/askiya alinir. Iki basarisizlik bicimi var:
+    //  (1) callback HIC gelmez (worker olur) -> timeout ile yakalanir,
+    //  (2) worker'in sunucuya fetch'i "Failed to fetch" verir ve handler {status:"error"} DONER
+    //      -> bu gecerli bir yanit gibi gelir; eskiden yeniden denenmezdi, widget hatayi yutup
+    //         ilerlerdi ve SONUC SUNUCUYA ULASMAZDI (havuz bos kalirdi). Artik hata yanitinda da
+    //         mesaji YENIDEN yolluyoruz (yeni/taze worker'i uyandirir, fetch'i tekrar dener).
+    // Tum denemeler basarisizsa cb(null) ile akisi kilitlemeden devam ettiririz (donma olmaz).
+    // Not: 'cancelled' is-mantigi geregi gecerli bir sonuctur, ASLA yeniden denenmez.
+    //      submit tekrari sunucuda link normalizasyonuyla ELENIR, cift kayit olusmaz.
+    function swSendReliable(msg, cb, timeoutMs = 12000, retries = 3) {
         let finished = false;
         const finish = (resp) => { if (finished) return; finished = true; try { cb(resp); } catch (e) {} };
         const attempt = (left) => {
             let localDone = false;
-            const timer = setTimeout(() => {
-                if (localDone) return; localDone = true;
+            const retryOrGiveUp = (why) => {
                 if (left > 0) {
-                    try { logToServer("[swSend] Yanit gecikti, yeniden deneniyor: " + (msg && msg.action)); } catch (e) {}
-                    attempt(left - 1);
+                    try { logToServer("[swSend] " + why + ", yeniden deneniyor: " + (msg && msg.action)); } catch (e) {}
+                    setTimeout(() => attempt(left - 1), 600);
                 } else {
-                    try { logToServer("[swSend] Yanit alinamadi, adim atlaniyor: " + (msg && msg.action)); } catch (e) {}
+                    try { logToServer("[swSend] " + why + ", denemeler bitti: " + (msg && msg.action)); } catch (e) {}
                     finish(null);
                 }
+            };
+            const timer = setTimeout(() => {
+                if (localDone) return; localDone = true;
+                retryOrGiveUp("Yanit yok (timeout)");
             }, timeoutMs);
             try {
                 chrome.runtime.sendMessage(msg, (resp) => {
                     if (localDone) return; localDone = true; clearTimeout(timer);
-                    if (chrome.runtime.lastError) {
-                        if (left > 0) { attempt(left - 1); return; }
-                        finish(null); return;
-                    }
+                    if (chrome.runtime.lastError) { retryOrGiveUp("Kanal hatasi"); return; }
+                    // Fetch hatasi ( or. "Failed to fetch") -> {status:"error"} -> yeniden dene.
+                    if (resp && resp.status === "error") { retryOrGiveUp("Sunucu/fetch hatasi"); return; }
                     finish(resp);
                 });
             } catch (e) {
                 clearTimeout(timer);
-                if (left > 0) { attempt(left - 1); } else { finish(null); }
+                retryOrGiveUp("Gonderim istisnasi");
             }
         };
         attempt(retries);
