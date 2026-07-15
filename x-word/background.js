@@ -46,8 +46,28 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
     if (chrome.runtime.lastError) return;
     const panelTabId = allData.panel_tab_id;
     if (panelTabId && panelTabId === tabId) {
+      // KORUMA: panel_tab_id, x/twitter/instagram DISI herhangi bir sekme (yardimci/onizleme
+      // sekmesi, is-sekmesinin gecici host'u, vb.) tarafindan bayat sekilde uzerine yazilabiliyor.
+      // Boyle bayat bir sekme AKTIF bir tarama surerken kapaninca, asagidaki yikici teardown
+      // CALISAN is-sekmesini chrome.tabs.remove ile oldurup gorevi siliyor ve submit'ler sunucuya
+      // hic ulasmadan kayboluyordu (havuz bos + sayac takili). Aktif bir tarama varken ve kapanan
+      // sekme is-sekmesinin KENDISI degilse: taramayi OLDURME; sadece bayat panel_tab_id'yi temizle.
+      let hasActiveJob = false;
+      let closedTabIsWorker = false;
+      for (let k in allData) {
+        if (k.startsWith('x_profil_gorevi_') && allData[k] && allData[k].aktif) {
+          hasActiveJob = true;
+          if (k === `x_profil_gorevi_${tabId}`) closedTabIsWorker = true;
+        }
+      }
+      if (hasActiveJob && !closedTabIsWorker) {
+        logToServer(`[onRemoved] Aktif tarama surerken bayat panel_tab_id(${panelTabId}) eslesti ama kapanan sekme is-sekmesi degil -> teardown ATLANDI, panel_tab_id temizlendi.`);
+        chrome.storage.local.remove('panel_tab_id', () => {});
+        return;
+      }
+
       logToServer(`[onRemoved] Panel sekmesi kapatıldı. Otomasyon iptal ediliyor...`);
-      
+
       let keysToRemove = ['aktif_gorev', 'panel_tab_id'];
       let tabsToRemove = [];
       
@@ -720,7 +740,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then(r => r.json())
     .then(res => sendResponse(res))
     .catch(err => {
+      // TESHIS: submit fetch'i basarisiz olursa (or. "Failed to fetch") bunu SUNUCU loguna da yaz.
+      // Boylece "capture'lar oldu ama submit sunucuya ulasmadi" durumunda NEDENINI ve HANGI URL'e
+      // gidildigini goruruz (eskiden yalnizca console.log vardi, sunucu logunda gorunmuyordu).
       console.log("submitWordResult error:", err);
+      try { logToServer(`[submitWordResult] FETCH HATASI: ${err && (err.message || err)} URL=${url} final=${message.final}`); } catch (_) {}
       sendResponse({ status: "error", message: err.toString() });
     });
     return true; // Keep message channel open
@@ -796,7 +820,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       try {
         let urlObj = new URL(sender.tab.url);
         let origin = urlObj.origin;
-        if (!origin.includes("x.com") && !origin.includes("twitter.com")) {
+        let host = urlObj.hostname;
+        // Is-sekmesi host'larindan (x/twitter/instagram) GELEN setUserAuth server_origin'i
+        // KIRLETMESIN; yalnizca gercek panel gibi sayfalardan guncelle.
+        let isTargetSocial = host === "x.com" || host.endsWith(".x.com") ||
+                             host === "twitter.com" || host.endsWith(".twitter.com") ||
+                             host === "instagram.com" || host.endsWith(".instagram.com");
+        if (!isTargetSocial) {
           // Map to Flask API port 3012
           let apiOrigin = urlObj.protocol + "//" + urlObj.hostname + ":3012";
           chrome.storage.local.set({ server_origin: apiOrigin });

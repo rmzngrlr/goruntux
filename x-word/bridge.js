@@ -34,10 +34,15 @@ if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sen
     const currentOrigin = window.location.origin;
     const currentHost = window.location.hostname;
     // x.com veya twitter.com değilse ve geçerli bir http(s) sayfasıysa → bu panelin sunucusu olabilir
-    const isXOrTwitter = currentHost === 'x.com' || currentHost === 'twitter.com' ||
-                          currentHost.endsWith('.x.com') || currentHost.endsWith('.twitter.com');
+    // Is-sekmelerinin (x/twitter/instagram) panel gibi kaydolup server_origin ve panel_tab_id'yi
+    // KIRLETMESINI onle. Instagram eskiden bu listede yoktu; bir instagram is-sekmesi savePanelOrigin
+    // yollayip server_origin'i instagram.com'a, panel_tab_id'yi is-sekmesine yaziyordu -> sonraki
+    // taramanin submit'leri yanlis adrese gidiyor / onRemoved yanlis tetikleniyordu.
+    const isTargetSocial = currentHost === 'x.com' || currentHost === 'twitter.com' ||
+                          currentHost.endsWith('.x.com') || currentHost.endsWith('.twitter.com') ||
+                          currentHost === 'instagram.com' || currentHost.endsWith('.instagram.com');
     const isValid = currentOrigin.startsWith('http://') || currentOrigin.startsWith('https://');
-    if (!isXOrTwitter && isValid) {
+    if (!isTargetSocial && isValid) {
       chrome.runtime.sendMessage({
         action: "savePanelOrigin",
         origin: currentOrigin,
