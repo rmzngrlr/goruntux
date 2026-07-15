@@ -511,6 +511,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // activeJobFound koruması çift-başlatmayı engeller.
     const job = message.job;
     if (!job) { sendResponse({ status: "error", message: "job yok" }); return false; }
+    // MV3 TUZAĞI: storage.get async'tir. Eskiden burada sendResponse senkron çağrılıp
+    // return false yapılıyordu; boşta kalmış worker bu mesajla uyanıp cevabı verdiği an
+    // Chrome onu TEKRAR askıya alıyor, async callback (processServerJob) HİÇ çalışmıyordu.
+    // Sonuç: ikinci taramada "sayaç döndü ama tarama başlamadı" (F5 gerekiyordu).
+    // Çözüm: return true ile kanalı açık tut → worker, işi bitirene kadar askıya ALINMAZ;
+    // sendResponse'u async iş bitince çağır. Ayrıca yedek olarak yoklama döngüsünü yeniden
+    // kur (worker askıya alınınca setInterval ölüyor) — doğrudan yol kaçarsa görev yakalanır.
     chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
       let raw = res.server_origin || "http://localhost:3012";
       let origin = (raw.startsWith("http://") || raw.startsWith("https://")) ? raw : "http://localhost:3012";
@@ -519,9 +526,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       } catch (e) {
         try { logToServer("[startWordScan] hata: " + (e.message || e)); } catch (_) {}
       }
+      try { if (typeof startPolling === "function") startPolling(); } catch (_) {}
+      try { sendResponse({ status: "success" }); } catch (_) {}
     });
-    sendResponse({ status: "success" });
-    return false;
+    return true; // kanalı açık tut: worker processServerJob çalışana kadar canlı kalsın
   }
 
   if (message.action === "navigateTab") {
