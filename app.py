@@ -4214,6 +4214,7 @@ def update_progress():
     data = request.json or {}
     job_id = data.get("job_id")
     if job["status"] == "idle" or (job_id and job["job_id"] != job_id):
+        print(f"[update_progress] REDDEDILDI (cancelled): gelen_job_id={job_id}, sunucu_job_id={job.get('job_id')}, sunucu_status={job.get('status')}", flush=True)
         return jsonify({"status": "cancelled", "message": "Gorev iptal edildi."})
     job["results_count"] = data.get("current", 0)
     job["total_count"] = data.get("total", 0)
@@ -4227,8 +4228,9 @@ def submit_word_result():
     data = request.json or {}
     job_id = data.get("job_id")
     if job["status"] == "idle" or (job_id and job["job_id"] != job_id):
+        print(f"[submit_word_result] REDDEDILDI (cancelled): gelen_job_id={job_id}, sunucu_job_id={job.get('job_id')}, sunucu_status={job.get('status')}, final={data.get('final')}", flush=True)
         return jsonify({"status": "cancelled", "message": "Gorev iptal edildi."})
-        
+
     results = data.get("results", [])
     is_final = data.get("final", False)
     
