@@ -2775,7 +2775,7 @@ HTML_TEMPLATE = """
                 if (!byKey[key]) { byKey[key] = { key: key, group: it.group, items: [] }; blocks.push(byKey[key]); }
                 byKey[key].items.push(it);
             }
-            var html = '<div class="pool-hint">Hesap sırasını ▲▼ ile, bir hesabın görselleri arasını sürükleyerek değiştirin.</div>';
+            var html = '';
             for (var b = 0; b < blocks.length; b++) {
                 var blk = blocks[b];
                 var upDis = (b === 0) ? ' disabled' : '';
