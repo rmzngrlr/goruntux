@@ -1254,18 +1254,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 // Extension icon click action: focus existing tab or open in a new tab
-chrome.action.onClicked.addListener((tab) => {
-  chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
-    let panelUrl = res.server_origin.replace(':3012', ':3011') + '/';
-    chrome.tabs.query({}, (tabs) => {
-      let existingTab = tabs.find(t => t.url && t.url.includes(':3011'));
-      if (existingTab) {
-        chrome.tabs.update(existingTab.id, { active: true });
-        chrome.windows.update(existingTab.windowId, { focused: true });
-      } else {
-        chrome.tabs.create({ url: panelUrl });
-      }
+// #1: Panel ZATEN acikken yeni bir sekme panel URL'sine giderse, sayfa RENDER OLMADAN once
+// o sekmeyi kapatip mevcut paneli odakla. Bu, registerPanel'den (DOMContentLoaded) DAHA ERKEN
+// tetiklenir -> yeni panel hic "acilmadan" mevcut olana yonlendirilirsin (flas olmaz).
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  try {
+    const url = changeInfo.url || ((changeInfo.status === 'loading' && tab) ? tab.url : null);
+    if (!url) return;
+    let navHost = null, navPort = null;
+    try { const u = new URL(url); navHost = u.hostname; navPort = u.port; } catch (e) { return; }
+    if (navPort !== '3011') return; // yalnizca panel portu (worker sekmeleri x/instagram :443 -> etkilenmez)
+    chrome.storage.local.get(['server_origin', 'panel_tab_id'], (res) => {
+      const panelTabId = res.panel_tab_id;
+      if (!panelTabId || panelTabId === tabId) return; // acik panel yok ya da bu ZATEN panel (F5 vb.)
+      let panelHost = null;
+      try { panelHost = new URL(res.server_origin || '').hostname; } catch (e) {}
+      if (!panelHost || navHost !== panelHost) return; // farkli host -> dokunma
+      chrome.tabs.get(panelTabId, (existing) => {
+        if (chrome.runtime.lastError || !existing || !existing.url) return; // mevcut panel olu -> yeni sekme panel olsun
+        // SERTLESTIRME: panel_tab_id bayat/cakisan olabilir (restart sonrasi Chrome id'leri yeniden atar).
+        // Sadece "canli" degil, GERCEKTEN ayni-host :3011 paneli oldugunu dogrula; degilse yeni sekmeyi KAPATMA.
+        let exHost = null, exPort = null;
+        try { const eu = new URL(existing.url); exHost = eu.hostname; exPort = eu.port; } catch (e) { return; }
+        if (exHost !== navHost || exPort !== '3011') return; // bayat id, gercek panel degil
+        chrome.tabs.update(panelTabId, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+        if (existing.windowId != null) chrome.windows.update(existing.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+        chrome.tabs.remove(tabId, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+      });
     });
+  } catch (e) { /* ignore */ }
+});
+
+// Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
+chrome.action.onClicked.addListener((tab) => {
+  chrome.storage.local.get({ server_origin: "http://localhost:3012", panel_tab_id: null }, (res) => {
+    let panelUrl = (res.server_origin || "http://localhost:3012").replace(':3012', ':3011') + '/';
+    const focusTab = (t) => {
+      chrome.tabs.update(t.id, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+      if (t.windowId != null) chrome.windows.update(t.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+    };
+    const findOrOpen = () => {
+      chrome.tabs.query({}, (tabs) => {
+        let existingTab = tabs.find(t => t.url && t.url.includes(':3011'));
+        if (existingTab) focusTab(existingTab);
+        else chrome.tabs.create({ url: panelUrl });
+      });
+    };
+    // Once guvenilir panel_tab_id: canliysa dogrudan ona git.
+    if (res.panel_tab_id) {
+      chrome.tabs.get(res.panel_tab_id, (pt) => {
+        if (!chrome.runtime.lastError && pt) focusTab(pt);
+        else findOrOpen();
+      });
+    } else {
+      findOrOpen();
+    }
   });
 });
 
