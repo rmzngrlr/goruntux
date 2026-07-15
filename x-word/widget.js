@@ -269,6 +269,16 @@
             // Birden fazla ekran görüntüsünü dikey olarak birleştirir (herhangi bir sayıda parça)
             function stitchMultipleScreenshots(dataUrls, rect, vH, dpr) {
                 return new Promise((resolve) => {
+                    // Tek-çözüm koruması + zaman aşımı: bir görsel ne onload ne onerror tetiklemezse
+                    // (bozuk/boş dataURL) promise asla çözülmez ve tarama "birleştiriliyor"da DONAR.
+                    // 8 sn içinde bitmezse eldeki ilk görselle devam et (donma yerine kısmi sonuç).
+                    let settled = false;
+                    const done = (val) => { if (settled) return; settled = true; clearTimeout(stitchTimer); resolve(val); };
+                    const stitchTimer = setTimeout(() => {
+                        printLog("Birleştirme zaman aşımı, ilk görselle devam ediliyor.");
+                        done(dataUrls[0]);
+                    }, 8000);
+
                     const imgs = dataUrls.map(() => new Image());
                     let loaded = 0;
 
@@ -304,16 +314,16 @@
                                 canvasY += h;
                             }
 
-                            resolve(canvas.toDataURL('image/png'));
+                            done(canvas.toDataURL('image/png'));
                         } catch (e) {
                             printLog("Coklu stitch hatasi: " + e.message);
-                            resolve(dataUrls[0]);
+                            done(dataUrls[0]);
                         }
                     };
 
                     imgs.forEach((img, i) => {
                         img.onload  = onLoaded;
-                        img.onerror = () => resolve(dataUrls[0]);
+                        img.onerror = () => done(dataUrls[0]);
                         img.src     = dataUrls[i];
                     });
                 });
@@ -1780,7 +1790,7 @@
         
         if (!aktifTivit) {
             tivitBilgiKutusu.style.display = 'none';
-            chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+            chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                 const origin = gorev.server_origin || res.server_origin;
                 durumText.innerHTML = `🎉 <b>Tüm İşlemler Başarıyla Tamamlandı!</b><br>Analiz sonuçları sisteme kaydedildi. Raporları Kullanıcı Paneli -> Son 24 Saat Taramaları altından Excel olarak indirebilirsiniz.<br><a href="${origin}/user/history#v-pills-extension" target="_blank" style="color:#1d9bf0;text-decoration:underline;font-weight:bold;margin-top:8px;display:inline-block;">📋 Geçmiş Taramalarıma Git</a>`;
             });
@@ -2541,7 +2551,7 @@
                             });
                         });
                     } else {
-                        chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+                        chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                             const origin = gorev.server_origin || res.server_origin;
 
                             // Submit final detailed scan results to server
@@ -2745,7 +2755,7 @@
                 printLog("Arama taraması tamamlandı, sonuçlar sunucuya gönderiliyor...");
                 durumText.innerHTML = `🤖 <b>Sonuçlar Yükleniyor...</b><br>Lütfen bekleyin.`;
 
-                chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                     let origin = res.server_origin;
                     chrome.runtime.sendMessage({
                         action: "submitLocalResult",
@@ -3247,7 +3257,7 @@
             }
 
             // Submit profile scan results to server immediately so they register in user history
-            chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+            chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                 const origin = gorev.server_origin || res.server_origin;
                 try {
                     let localData = (gorev.geciciKuyruk || []).map(link => {
@@ -3384,7 +3394,7 @@
             buton.disabled = false;
             
             buton.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                     window.open(`${res.server_origin}/user/login`, "_blank");
                 });
             };
@@ -3543,7 +3553,7 @@
             buton.disabled = false;
             
             buton.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                     window.open(`${res.server_origin}/x-rapor-arti`, "_blank");
                 });
             };
@@ -4310,7 +4320,7 @@
     // Send raw views and likes counts to server immediately during crawl
     function izlenmeleriSunucuyaKaydet(stats, gorev, tweetUrl) {
         if (!stats || !tweetUrl) return;
-        chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+        chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
             const origin = (gorev && gorev.server_origin) || res.server_origin;
             const payload = {
                 action: "updateTweetViews",
@@ -4362,7 +4372,7 @@
                 }
             ];
             
-            chrome.storage.local.get({ server_origin: "http://72.62.112.180:5000" }, (res) => {
+            chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
                 const origin = res.server_origin;
                 const activeCategories = categories.filter(cat => cat.enabled);
                 if (activeCategories.length === 0) {
