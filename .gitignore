@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+node_modules/
+temp_uploads/
+*.docx
+.DS_Store

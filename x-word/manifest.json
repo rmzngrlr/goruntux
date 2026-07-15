@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "GörüntüX",
+  "version": "2.2",
+  "description": "GörüntüX - X (Twitter) ve Instagram gönderilerini ekran görüntüsü ile Word raporuna dönüştürür.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "tabs",
+    "storage",
+    "cookies",
+    "unlimitedStorage",
+    "tabCapture"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {},
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": ["bridge.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://*.x.com/*",
+        "https://twitter.com/*",
+        "https://*.twitter.com/*"
+      ],
+      "js": ["inject.js"],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.instagram.com/*",
+        "https://instagram.com/*"
+      ],
+      "js": ["html2canvas.min.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "browser_specific_settings": {
+
+    "gecko": {
+      "id": "x-rapor@rmzngrlr.com",
+      "strict_min_version": "109.0"
+    }
+  }
+}
