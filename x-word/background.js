@@ -40,78 +40,50 @@ chrome.runtime.onInstalled.addListener(() => {
   startPolling();
 });
 
-// Cancel active jobs when panel tab is closed
+// Sunucu gorevini GUVENILIR sekilde iptal et (status=idle). :3011 -> :3012 esler,
+// client_id'yi global fetch sarmalayicisi ekler, "Failed to fetch" olursa retry eder.
+// Boylece panel kapaninca gorev gercekten iptal olur ve panel yeniden acilinca DEVAM ETMEZ.
+function resetServerJobReliable(rawOrigin, attempt) {
+  attempt = attempt || 1;
+  let origin = rawOrigin || "http://localhost:3012";
+  if (origin.includes(":3011")) origin = origin.replace(":3011", ":3012");
+  const url = `${origin}/api/auto/reset`; // client_id'yi sarmalayici ekler
+  fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    .then(r => r.json())
+    .then(() => logToServer(`[onRemoved] Backend gorevi iptal edildi (status=idle).`))
+    .catch(e => {
+      logToServer(`[onRemoved] Reset denemesi ${attempt} basarisiz: ${e && (e.message || e)}`);
+      if (attempt < 4) setTimeout(() => resetServerJobReliable(rawOrigin, attempt + 1), 800);
+    });
+}
+
+// GERCEK panel sekmesi kapaninca aktif taramayi iptal et.
+// panel_tab_id artik yalnizca registerPanel (meta-isaretli gercek panel) tarafindan atandigi icin,
+// bu handler asla bir is-sekmesi ya da yardimci sekmeyle yanlis tetiklenmez (2. tarama guvende).
 chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   chrome.storage.local.get(null, (allData) => {
     if (chrome.runtime.lastError) return;
     const panelTabId = allData.panel_tab_id;
-    if (panelTabId && panelTabId === tabId) {
-      // KORUMA: panel_tab_id, x/twitter/instagram DISI herhangi bir sekme (yardimci/onizleme
-      // sekmesi, is-sekmesinin gecici host'u, vb.) tarafindan bayat sekilde uzerine yazilabiliyor.
-      // Boyle bayat bir sekme AKTIF bir tarama surerken kapaninca, asagidaki yikici teardown
-      // CALISAN is-sekmesini chrome.tabs.remove ile oldurup gorevi siliyor ve submit'ler sunucuya
-      // hic ulasmadan kayboluyordu (havuz bos + sayac takili). Aktif bir tarama varken ve kapanan
-      // sekme is-sekmesinin KENDISI degilse: taramayi OLDURME; sadece bayat panel_tab_id'yi temizle.
-      let hasActiveJob = false;
-      let closedTabIsWorker = false;
-      for (let k in allData) {
-        if (k.startsWith('x_profil_gorevi_') && allData[k] && allData[k].aktif) {
-          hasActiveJob = true;
-          if (k === `x_profil_gorevi_${tabId}`) closedTabIsWorker = true;
-        }
+    if (!panelTabId || panelTabId !== tabId) return; // sadece gercek panel kapanisi
+
+    logToServer(`[onRemoved] Panel sekmesi (${tabId}) kapatildi. Aktif tarama iptal ediliyor...`);
+
+    let keysToRemove = ['aktif_gorev', 'panel_tab_id'];
+    let tabsToRemove = [];
+    for (let key in allData) {
+      if (key.startsWith('x_profil_gorevi_') || key.startsWith('x_word_taramasi_')) {
+        let tId = parseInt(key.replace(/^x_(profil_gorevi|word_taramasi)_/, ''));
+        if (!isNaN(tId)) tabsToRemove.push(tId);
+        keysToRemove.push(key);
       }
-      if (hasActiveJob && !closedTabIsWorker) {
-        logToServer(`[onRemoved] Aktif tarama surerken bayat panel_tab_id(${panelTabId}) eslesti ama kapanan sekme is-sekmesi degil -> teardown ATLANDI, panel_tab_id temizlendi.`);
-        chrome.storage.local.remove('panel_tab_id', () => {});
-        return;
-      }
-
-      logToServer(`[onRemoved] Panel sekmesi kapatıldı. Otomasyon iptal ediliyor...`);
-
-      let keysToRemove = ['aktif_gorev', 'panel_tab_id'];
-      let tabsToRemove = [];
-      
-      for (let key in allData) {
-        if (key.startsWith('x_profil_gorevi_')) {
-          let tId = parseInt(key.replace('x_profil_gorevi_', ''));
-          if (!isNaN(tId)) {
-            tabsToRemove.push(tId);
-          }
-          keysToRemove.push(key);
-        }
-        if (key.startsWith('x_word_taramasi_')) {
-          let tId = parseInt(key.replace('x_word_taramasi_', ''));
-          if (!isNaN(tId)) {
-            tabsToRemove.push(tId);
-          }
-          keysToRemove.push(key);
-        }
-      }
-
-      tabsToRemove.forEach(tId => {
-        chrome.tabs.remove(tId, () => {
-          if (chrome.runtime.lastError) { /* ignore */ }
-        });
-      });
-
-      chrome.storage.local.remove(keysToRemove, () => {
-        logToServer(`[onRemoved] Eklenti görev verileri temizlendi.`);
-      });
-
-      const origin = allData.server_origin || "http://localhost:3012";
-      let resetUrl = `${origin}/api/auto/reset`;
-      if (origin.includes(":3011")) {
-        resetUrl = origin.replace(":3011", ":3012") + "/api/auto/reset";
-      }
-      fetch(resetUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      }).then(() => {
-        logToServer(`[onRemoved] Backend otomasyon durumu sıfırlandı.`);
-      }).catch(e => {
-        logToServer(`[onRemoved] Backend sıfırlama hatası: ${e.message}`);
-      });
     }
+    tabsToRemove.forEach(tId => {
+      chrome.tabs.remove(tId, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+    });
+    chrome.storage.local.remove(keysToRemove, () => {
+      logToServer(`[onRemoved] Eklenti gorev verileri temizlendi.`);
+    });
+    resetServerJobReliable(allData.server_origin);
   });
 });
 
@@ -827,10 +799,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                              host === "twitter.com" || host.endsWith(".twitter.com") ||
                              host === "instagram.com" || host.endsWith(".instagram.com");
         if (!isTargetSocial) {
-          // Map to Flask API port 3012
+          // Map to Flask API port 3012. YETKILI kaynak registerPanel'dir; setUserAuth yalnizca
+          // server_origin HENUZ BOSSA (bootstrap) yazar. Boylece rastgele bir http sekmesi
+          // dogru server_origin'i uzerine yazip KIRLETEMEZ.
           let apiOrigin = urlObj.protocol + "//" + urlObj.hostname + ":3012";
-          chrome.storage.local.set({ server_origin: apiOrigin });
-          console.log("[x-word] Dynamically updated server_origin to:", apiOrigin);
+          chrome.storage.local.get(['server_origin'], (r) => {
+            if (!r || !r.server_origin) {
+              chrome.storage.local.set({ server_origin: apiOrigin });
+              console.log("[x-word] server_origin bootstrap:", apiOrigin);
+            }
+          });
         }
       } catch(e){}
     }
@@ -887,6 +865,59 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     sendResponse({ status: "success" });
     return false;
+  }
+
+  if (message.action === "registerPanel") {
+    // SADECE gercek panel (meta-isaretli sayfa) buraya gelir. Iki is:
+    //  (1) TEK PANEL: zaten canli bir panel sekmesi acikken yeni sekme panele girerse ->
+    //      mevcut olani odakla, yeni sekmeyi KAPAT (kullanici acik panele yonlendirilir).
+    //  (2) Aksi halde: bu sekmeyi guvenilir panel_tab_id olarak kaydet + server_origin/client_id.
+    // Boylece panel_tab_id her zaman GERCEK paneli gosterir; onRemoved iptali ve tek-panel garantisi saglam olur.
+    const rawOrigin = message.origin || "";
+    const clientId = message.client_id || "";
+    const senderTabId = sender.tab ? sender.tab.id : null;
+    if (!rawOrigin || !senderTabId) { sendResponse({ status: "error", message: "origin/tab yok" }); return false; }
+    let apiOrigin = rawOrigin;
+    try { const u = new URL(rawOrigin); apiOrigin = u.protocol + "//" + u.hostname + ":3012"; } catch (e) {}
+
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const storedPanelTabId = res.panel_tab_id || null;
+      const finalizeAsPanel = () => {
+        let updateData = { server_origin: apiOrigin, panel_tab_id: senderTabId };
+        if (clientId) updateData.client_id = clientId;
+        chrome.storage.local.set(updateData, () => {
+          logToServer(`[registerPanel] Panel kaydedildi. TabID=${senderTabId}, Origin=${apiOrigin}`);
+        });
+        try { sendResponse({ status: "success", duplicate: false }); } catch (_) {}
+      };
+
+      if (storedPanelTabId && storedPanelTabId !== senderTabId) {
+        // Kayitli panel sekmesi hala canli ve gercekten ayni panel origin'inde mi?
+        chrome.tabs.get(storedPanelTabId, (existingTab) => {
+          const err = chrome.runtime.lastError;
+          let liveSameOriginPanel = false;
+          if (!err && existingTab && existingTab.url) {
+            try { liveSameOriginPanel = (new URL(existingTab.url).origin === rawOrigin); } catch (e) {}
+          }
+          if (liveSameOriginPanel) {
+            logToServer(`[registerPanel] Panel zaten acik (Tab ${storedPanelTabId}). Yeni sekme (${senderTabId}) kapatiliyor, mevcut odaklaniyor.`);
+            chrome.tabs.update(storedPanelTabId, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+            if (existingTab.windowId != null) {
+              chrome.windows.update(existingTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
+            }
+            try { sendResponse({ status: "success", duplicate: true }); } catch (_) {}
+            // Yeni (fazla) sekmeyi kisa gecikmeyle kapat.
+            setTimeout(() => { chrome.tabs.remove(senderTabId, () => { if (chrome.runtime.lastError) { /* ignore */ } }); }, 400);
+            return;
+          }
+          // Eski panel_tab_id olu/gecersiz -> bu sekmeyi panel yap.
+          finalizeAsPanel();
+        });
+      } else {
+        finalizeAsPanel();
+      }
+    });
+    return true; // async yanit (chrome.tabs.get / sendResponse)
   }
 
   if (message.action === "completeJobAndFocusPanel") {

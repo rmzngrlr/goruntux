@@ -298,6 +298,8 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Eklenti bu isareti gorup SADECE gercek paneli panel olarak kaydeder (guvenilir panel_tab_id) -->
+    <meta name="x-rapor-panel" content="1">
     <title>GörüntüX</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Mammoth.js library for docx to HTML conversion -->

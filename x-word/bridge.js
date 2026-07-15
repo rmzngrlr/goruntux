@@ -28,29 +28,42 @@ if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sen
   }
 }
 
-// 1.5. Panelin origin'ini background'a gönder (server_origin otomatik kayıt)
-if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sendMessage === "function") {
+// 1.5. Panel kaydi (server_origin + panel_tab_id) — SADECE GERCEK PANEL.
+// Panel HTML'inde <meta name="x-rapor-panel"> isareti var. Yalnizca bu isareti tasiyan sayfa
+// kendini panel olarak kaydeder. Boylece rastgele http sekmeleri ya da is-sekmeleri panel_tab_id'yi
+// ele geciremez; "panel kapaninca iptal" ve "tek panel/yonlendir" davranislari guvenilir olur.
+function xRaporRegisterPanel() {
   try {
     const currentOrigin = window.location.origin;
-    const currentHost = window.location.hostname;
-    // x.com veya twitter.com değilse ve geçerli bir http(s) sayfasıysa → bu panelin sunucusu olabilir
-    // Is-sekmelerinin (x/twitter/instagram) panel gibi kaydolup server_origin ve panel_tab_id'yi
-    // KIRLETMESINI onle. Instagram eskiden bu listede yoktu; bir instagram is-sekmesi savePanelOrigin
-    // yollayip server_origin'i instagram.com'a, panel_tab_id'yi is-sekmesine yaziyordu -> sonraki
-    // taramanin submit'leri yanlis adrese gidiyor / onRemoved yanlis tetikleniyordu.
-    const isTargetSocial = currentHost === 'x.com' || currentHost === 'twitter.com' ||
-                          currentHost.endsWith('.x.com') || currentHost.endsWith('.twitter.com') ||
-                          currentHost === 'instagram.com' || currentHost.endsWith('.instagram.com');
     const isValid = currentOrigin.startsWith('http://') || currentOrigin.startsWith('https://');
-    if (!isTargetSocial && isValid) {
-      chrome.runtime.sendMessage({
-        action: "savePanelOrigin",
-        origin: currentOrigin,
-        client_id: localStorage.getItem('x_client_id') || ""
-      }, () => {
-        if (chrome.runtime.lastError) { /* ignore */ }
-      });
+    if (!isValid) return;
+    const marker = document.querySelector('meta[name="x-rapor-panel"]');
+    if (!marker) return; // gercek GoruntuX paneli degil -> panel olarak kaydetme
+    chrome.runtime.sendMessage({
+      action: "registerPanel",
+      origin: currentOrigin,
+      client_id: localStorage.getItem('x_client_id') || ""
+    }, (resp) => {
+      if (chrome.runtime.lastError) { return; }
+      // Zaten baska bir sekmede panel aciksa eklenti onu odaklayip BU sekmeyi kapatir (resp.duplicate).
+      // Ekstra bir sey yapmaya gerek yok; ama kapanmadan once kisa bir bilgi gosterebiliriz.
+      if (resp && resp.duplicate) {
+        try { document.documentElement.innerHTML =
+          '<body style="background:#0d1117;color:#c9d1d9;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:18px;">Panel zaten baska bir sekmede acik, oraya yonlendiriliyorsunuz...</body>'; } catch (_) {}
+      }
+    });
+  } catch (e) { /* ignore */ }
+}
+
+if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sendMessage === "function") {
+  try {
+    // Panel kaydini DOM hazir olunca yap (meta isareti okunabilsin).
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', xRaporRegisterPanel);
+    } else {
+      xRaporRegisterPanel();
     }
+    // setUserAuth (kimlik durumu) — mevcut davranis korunuyor.
     chrome.runtime.sendMessage({
       action: "setUserAuth",
       loggedIn: true,
