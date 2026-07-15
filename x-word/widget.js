@@ -436,6 +436,12 @@
             // Client-side screenshot compressor (converts transparent/colored PNG to JPEG and scales down)
             function compressScreenshot(dataUrl, maxWidth = 900, quality = 0.85) {
                 return new Promise((resolve) => {
+                    // Tek-çözüm + zaman aşımı: görsel ne onload ne onerror verirse (bozuk dataURL)
+                    // burada da donabiliyordu ("birleştiriliyor" ekranında asılı kalma). 8 sn'de
+                    // bitmezse ham görselle devam et.
+                    let settled = false;
+                    const done = (v) => { if (settled) return; settled = true; clearTimeout(cmpTimer); resolve(v); };
+                    const cmpTimer = setTimeout(() => { printLog("Sıkıştırma zaman aşımı, ham görselle devam."); done(dataUrl); }, 8000);
                     const img = new Image();
                     img.onload = () => {
                         try {
@@ -462,13 +468,13 @@
                             ctx.drawImage(img, 0, 0, w, h);
                             
                             const compressed = canvas.toDataURL('image/jpeg', quality);
-                            resolve(compressed);
+                            done(compressed);
                         } catch (e) {
                             console.error("Görsel sıkıştırma hatası:", e);
-                            resolve(dataUrl);
+                            done(dataUrl);
                         }
                     };
-                    img.onerror = () => resolve(dataUrl);
+                    img.onerror = () => done(dataUrl);
                     img.src = dataUrl;
                 });
             }
