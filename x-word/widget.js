@@ -29,6 +29,13 @@
         return 'x';
     }
 
+    // Kullaniciya/loga gorunen platform adi. Log satirlari ve widget durum yazisi
+    // BUTUN platformlarda ayni kalibi kullansin diye tek kaynak.
+    function xPlatformAdi() {
+        var p = xPlatform();
+        return p === 'ig' ? 'Instagram' : (p === 'fb' ? 'Facebook' : 'X');
+    }
+
     // FB gonderi formundaki bir URL mi? (background.js xIsFbPostUrl ikizi)
     function fbGonderiFormuMu(href) {
         try {
@@ -1068,12 +1075,13 @@
                                 segs.push(segRes.dataUrl);
                                 y += sliceH;
                             }
-                            printLog(`[Instagram] Sade no-zoom: ${segs.length} parça (${Math.round(cropWidth)}x${fullH}).`);
+                            // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
+                            printLog(`Yakalama: ${segs.length} parça (${Math.round(cropWidth)}x${fullH}), yol=no-zoom`);
                             if (segs.length > 0) {
                                 const igRaw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
                                 return await compressScreenshot(igRaw);
                             }
-                            printLog("[Instagram] Sade no-zoom parça alınamadı, eski yola dönülüyor.");
+                            printLog("Yakalama BAŞARISIZ: parça alınamadı, genel yola dönülüyor.");
                         } catch (e) {
                             printLog("[Instagram] Sade no-zoom hata: " + (e.message || e));
                         }
@@ -1521,9 +1529,12 @@
                                 height: Math.min(vH, measuredRect.bottom) - Math.max(0, measuredRect.top)
                             };
                             rawResult = await cropScreenshot(ssFirst.dataUrl, crop);
+                            // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
+                            // (X'te sonuc logu HIC yoktu -> taramada ne oldugu logdan anlasilmiyordu.)
+                            printLog(`Yakalama: 1 parça (${Math.round(crop.width)}x${Math.round(crop.height)}), yol=tek-kare`);
                         } else {
                             // H. Uzun tweet: viewport yüksekliği kadar kaydırarak çoklu çekim yap
-                            printLog(`Uzun tivit algılandı, tam boy çekim yapılıyor...`);
+                            printLog(`Uzun gönderi algılandı, tam boy çekim yapılıyor...`);
                             let totalScrolled = 0;
 
                             while (totalScrolled + vH < measuredRect.height) {
@@ -1551,7 +1562,8 @@
                             }
 
                             // I. Tüm parçaları birleştir
-                            printLog(`Ekran görüntüleri birleştiriliyor...`);
+                            // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
+                            printLog(`Yakalama: ${snapshots.length} parça (${Math.round(measuredRect.width)}x${Math.round(measuredRect.height)}), yol=kaydir-birlestir`);
                             rawResult = await stitchMultipleScreenshots(snapshots, measuredRect, vH, dpr);
                         }
                     }
@@ -1665,8 +1677,17 @@
             // Live DOM logging helper
             function printLog(msg) {
                 console.log("X Rapor Log:", msg);
-                logToServer(msg);
-                
+                // TEKDUZE LOG: her satir "[X] / [Instagram] / [Facebook]" onekiyle sunucuya
+                // gider. Once X'te onek HIC yoktu, IG/FB kendi oneklerini elle yaziyordu.
+                // Zaten onekli olan mesajlara TEKRAR eklenmez (cift onek olmasin).
+                // Onek YALNIZCA sunucu loguna: widget'ta kullanici zaten hangi platformda
+                // oldugunu biliyor, orada gurultu olurdu (asagida cleanMsg onek almaz).
+                var _srvMsg = String(msg == null ? '' : msg);
+                if (!/^\[(X|Instagram|Facebook)\]/.test(_srvMsg)) {
+                    _srvMsg = '[' + xPlatformAdi() + '] ' + _srvMsg;
+                }
+                logToServer(_srvMsg);
+
                 // Hide technical/code statements and show simple, clean Turkish messages
                 let cleanMsg = msg;
                 if (msg.includes("cropScreenshot") || msg.includes("Stitch") || msg.includes("canvas") || msg.includes("stitch") || msg.includes("Coklu stitch") || msg.includes("prefetch")) {
@@ -4279,8 +4300,15 @@
 
                 await new Promise(r => setTimeout(r, 800));
                 
-                durumText.innerHTML = `🤖 <b>Görsel Alınıyor...</b><br>Kalan: <b>${gorev.kuyruk.length}</b>`;
-                
+                // TEKDUZE durum yazisi (butun platformlar ayni kalip):
+                //   🤖 Görsel alınıyor…    <Platform> · i/N
+                // Once X/IG "Kalan: N" diyordu, FB bambaska bir metin kullaniyordu.
+                {
+                    const _alinan = (gorev.combinedData ? gorev.combinedData.length : 0) + 1;
+                    const _toplam = (gorev.total_count) || ((gorev.combinedData ? gorev.combinedData.length : 0) + gorev.kuyruk.length);
+                    durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan}/${_toplam}</span>`;
+                }
+
                 let screenshotData = "";
                 try {
                     screenshotData = await captureArticle(primaryCol) || "";
@@ -4394,6 +4422,12 @@
                 let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [];
                 try {
                     const _t0 = Date.now();
+                    // TEKDUZE durum yazisi — X/IG ile AYNI kalip (bkz. :4303 civari).
+                    {
+                        const _alinan = (gorev.combinedData ? gorev.combinedData.length : 0) + 1;
+                        const _toplam = (gorev.total_count) || ((gorev.combinedData ? gorev.combinedData.length : 0) + gorev.kuyruk.length);
+                        durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan}/${_toplam}</span>`;
+                    }
                     // 1) Kart: FB gec hidrasyon yapiyor -> ~3sn poll (IG deseni).
                     let card = null;
                     for (let w = 0; w < 15; w++) {
@@ -4533,13 +4567,15 @@
                     const shot = await compressScreenshot(raw);
                     const a = fbAuthor();
                     const mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
+                    // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibiyle baslar;
+                    // platforma ozel ayrintilar arkasina eklenir.
                     printLog(
-                        `[Facebook] YAKALAMA (${mode}): ${segs.length} parca (${cropWidth}x${fullH})` +
-                        `, kaydirici=${scIc ? 'ic' : 'ata/yok'}, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
-                        `, bitis=${_bitis === null ? 'yok(reel/bulunamadi)' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
+                        `Yakalama: ${segs.length} parça (${cropWidth}x${fullH}), yol=${mode}/${scIc ? 'modal-kaydir' : 'tek-kare'}` +
+                        `, yazar="${a.ad}" (${a.kaynak})` +
+                        `, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
+                        `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
                         `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
                         (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
-                        `, yazar="${a.ad}" id=${a.id || '-'} slug=${a.slug || '-'} (${a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
                     );
 
@@ -4567,7 +4603,8 @@
                     gorev.kuyruk.shift();
                     const kaldi = gorev.kuyruk.length;
                     const toplam = (gorev.total_count) || (gorev.combinedData.length + kaldi);
-                    durumText.innerHTML = `✅ <b>Facebook gönderisi alındı</b><br><span style="font-size:11px;">${gorev.combinedData.length}/${toplam}</span>`;
+                    // TEKDUZE durum yazisi (butun platformlar ayni kalip)
+                    durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
                         origin: gorev.server_origin || "http://localhost:3012",
@@ -4606,10 +4643,11 @@
                     _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
                 }
                 // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
+                // TEKDUZE durum yazisi (butun platformlar ayni kalip)
                 durumText.innerHTML = `
                     <div style="text-align:center;">
-                        <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Facebook gönderisi atlandı</span><br>
-                        <span style="font-size:11px; color:var(--w-text-muted);">Ekran görüntüsü alınamadı; sonraki gönderiye geçiliyor.</span>
+                        <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Gönderi atlandı</span><br>
+                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü alınamadı, sonrakine geçiliyor.</span>
                     </div>`;
                 gorev.retry_count = 0;
                 gorev.kuyruk.shift();
@@ -5009,7 +5047,12 @@
             article.scrollIntoView({ block: 'start', behavior: 'instant' });
             await new Promise(r => setTimeout(r, 600));
 
-            durumText.innerHTML = `🤖 <b>Ekran Görüntüsü Alınıyor...</b><br>Kalan: <b>${gorev.kuyruk.length}</b>`;
+            // TEKDUZE durum yazisi (butun platformlar ayni kalip)
+            {
+                const _alinan2 = (gorev.combinedData ? gorev.combinedData.length : 0) + 1;
+                const _toplam2 = (gorev.total_count) || ((gorev.combinedData ? gorev.combinedData.length : 0) + gorev.kuyruk.length);
+                durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan2}/${_toplam2}</span>`;
+            }
 
             let screenshotData = "";
             try {
