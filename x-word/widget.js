@@ -1425,9 +1425,8 @@
     var xWidgetLocalImages = false;
     try { chrome.storage.local.get(['local_images'], function (r) { xWidgetLocalImages = !!(r && r.local_images); }); } catch (e) {}
 
-    // Faz IG-1: Instagram'i zoom'lamadan (X gibi kaydir+birlestir) yakalama bayragi.
-    var xWidgetIgNoZoom = false;
-    try { chrome.storage.local.get(['ig_no_zoom'], function (r) { xWidgetIgNoZoom = !!(r && r.ig_no_zoom); }); } catch (e) {}
+    // Instagram artık VARSAYILAN olarak zoom'suz (X gibi kaydır+birleştir) yakalanır (toggle kaldırıldı).
+    var xWidgetIgNoZoom = true;
 
     function xStripForServer(resItem, gorev) {
         try {

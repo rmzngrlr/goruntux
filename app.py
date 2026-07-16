@@ -1472,15 +1472,10 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>📸 Instagram Yakalama (deneysel)</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="ig_no_zoom_toggle" onchange="xSetIgNoZoom(this.checked)">
-                    <label for="ig_no_zoom_toggle">Instagram'ı küçültmeden yakala (X gibi kaydır + birleştir)</label>
-                </div>
+                <h3>📸 Instagram Yakalama</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    <b>Deneysel:</b> açıkken uzun Instagram gönderileri sayfaya <b>zoom yapılmadan</b>, kaydırılıp
-                    birleştirilerek tam çözünürlükte yakalanır. Kapalıyken (varsayılan) mevcut "sığdır (zoom)"
-                    yöntemi kullanılır. Instagram sayfa yapısı değişken olduğundan <b>gerçek gönderilerinle test et.</b>
+                    Instagram gönderileri sayfaya <b>zoom yapılmadan</b>, kaydırılıp birleştirilerek
+                    <b>tam çözünürlükte</b> yakalanır (medya + açıklama + etkileşim birlikte).
                 </div>
             </div>
             <div class="modal-footer">
