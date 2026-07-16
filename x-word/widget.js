@@ -362,13 +362,27 @@
             // 'main article' bazen yanlis/tam-genislik element donduruyordu; medyayi iceren article'i tercih et.
             function igFindPost() {
                 try {
-                    var arts = document.querySelectorAll('article');
-                    if (arts.length === 1) return arts[0];
-                    for (var i = 0; i < arts.length; i++) {
-                        var m = arts[i].querySelector('video') || arts[i].querySelector('img[srcset]') || arts[i].querySelector('img');
-                        if (m) { var mr = m.getBoundingClientRect(); if (mr.width > 200 && mr.height > 200) return arts[i]; }
+                    // 1) En büyük medyayı (video/img) bul.
+                    var media = null, best = 0;
+                    document.querySelectorAll('video, img').forEach(function (m) {
+                        var r = m.getBoundingClientRect(); var a = r.width * r.height;
+                        if (a > best && r.width > 250 && r.height > 250) { best = a; media = m; }
+                    });
+                    var firstArt = document.querySelector('article');
+                    if (!media) return firstArt;
+                    var mediaArt = media.closest('article');
+                    // 2) Post etkileşim/like butonu (her iki düzende de post kartının parçası).
+                    var eng = document.querySelector('svg[aria-label*="Beğen" i], svg[aria-label*="Like" i]')
+                           || document.querySelector('svg[aria-label*="Yorum" i], svg[aria-label*="Comment" i]');
+                    // 3) mediaArt etkileşimi de içeriyorsa (TEK sütun) -> article yeterli (medya+açıklama içinde).
+                    if (mediaArt && eng && mediaArt.contains(eng)) return mediaArt;
+                    // 4) Aksi halde (İKİ sütun: medya ile açıklama/etkileşim ayrı) media + eng ORTAK atası = post kartı (iki sütun).
+                    if (eng) {
+                        var chain = []; var n = media; while (n) { chain.push(n); n = n.parentElement; }
+                        var setM = new Set(chain);
+                        var c = eng; while (c) { if (setM.has(c)) return c; c = c.parentElement; }
                     }
-                    return arts[0] || null;
+                    return mediaArt || firstArt;
                 } catch (e) { return document.querySelector('article'); }
             }
 
