@@ -163,14 +163,23 @@ def normalize_link_key(link):
 
 def x_temizle_link(link):
     # X/Twitter linklerindeki sorgu (?s=20, ?t=...) ve hash'i atıp kanonik linke çevir.
-    # Instagram (?img_index vb. carousel için gerekli) ve diğerlerine DOKUNMAZ.
-    # Gorunumu/orijinal buyuk-kucuk harfi korur; yalnizca ?...#... kismini kirpar.
+    # Instagram: reel/reels/tv + izleme parametreleri (?igsh vb.) atılıp kanonik /p/CODE'e çevrilir
+    #   (reel tam-ekran oynatıcıda açılıp SS alınamıyordu; /p/ gönderi kartıyla açılır). Carousel
+    #   için ?img_index KORUNUR.
+    # Gorunumu/orijinal buyuk-kucuk harfi korur; yalnizca sorgu/hash'i kirpar (X icin).
     try:
         if not link:
             return link
         low = link.lower()
         if "instagram.com" in low:
-            return link
+            m = re.search(r"/(?:p|reel|reels|tv)/([^/?#]+)", link, re.I)
+            if not m:
+                return link.split("#")[0].split("?")[0]
+            out = "https://www.instagram.com/p/" + m.group(1)
+            im = re.search(r"[?&]img_index=([^&#]+)", link, re.I)
+            if im:
+                out += "?img_index=" + im.group(1)
+            return out
         if "x.com" in low or "twitter.com" in low:
             return link.split("#")[0].split("?")[0]
         return link
@@ -2670,13 +2679,32 @@ HTML_TEMPLATE = """
         }
 
         // X/Twitter linklerindeki sorgu (?s=20, ?t=...) ve hash'i atıp kanonik linke çevir.
-        // Instagram (?img_index vb. carousel için gerekli) ve diğerlerine DOKUNMAZ.
+        // Instagram: reel/reels/tv + izleme parametrelerini (?igsh vb.) atip kanonik /p/CODE'e cevir.
+        // (reel tam-ekran oynaticida acilip SS alinamiyordu; /p/ gonderi kartiyla acilir.)
+        // Carousel icin ?img_index KORUNUR.
+        function xIgCanonical(s) {
+            try {
+                var u = new URL(s);
+                var parts = u.pathname.split('/').filter(function (p) { return p; });
+                var kinds = ['p', 'reel', 'reels', 'tv'];
+                var code = '';
+                for (var i = 0; i < parts.length - 1; i++) {
+                    if (kinds.indexOf(parts[i].toLowerCase()) !== -1) { code = parts[i + 1]; break; }
+                }
+                if (!code) return s.split('#')[0].split('?')[0];
+                var out = 'https://www.instagram.com/p/' + code;
+                var idx = u.searchParams.get('img_index');
+                if (idx) out += '?img_index=' + encodeURIComponent(idx);
+                return out;
+            } catch (e) { return s; }
+        }
+        // X/Twitter: sorgu+hash at. Instagram: /p/CODE'e normalize et. Digerleri: DOKUNMA.
         function xCleanLink(link) {
             try {
                 var s = String(link).trim();
                 var host = '';
                 try { host = new URL(s).hostname.toLowerCase(); } catch (e) { return s; }
-                if (host.indexOf('instagram.com') !== -1) return s;
+                if (host.indexOf('instagram.com') !== -1) return xIgCanonical(s);
                 if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
                     return s.split('#')[0].split('?')[0];
                 }
@@ -2695,7 +2723,8 @@ HTML_TEMPLATE = """
             lines.forEach(function(line) {
                 var isStatus = line.includes('/status/');
                 var isProfile = isProfileUrl(line);
-                var isInstagram = line.includes('instagram.com/p/') || line.includes('instagram.com/reel/');
+                var lineLow = line.toLowerCase();
+                var isInstagram = lineLow.includes('instagram.com/p/') || lineLow.includes('instagram.com/reel/') || lineLow.includes('instagram.com/reels/') || lineLow.includes('instagram.com/tv/');
                 if (isStatus || isProfile || isInstagram) {
                     validLinks.push(line);
                 } else {
@@ -3957,7 +3986,7 @@ def manual_add():
     try:
         data = request.json or {}
         title = data.get("title", "").strip()
-        link = data.get("link", "").strip()
+        link = x_temizle_link(data.get("link", "").strip())
         image_data = data.get("image", "")
 
         if not image_data or not image_data.startswith("data:image/"):
