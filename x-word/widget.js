@@ -294,12 +294,23 @@
                 // listede sa/dk/sn vardi ama FB TR "3s" (saniye) kullaniyor.
                 // Bu yuzden IKI katman: (1) permalink'i YAPISAL olarak ele, (2) kalin
                 // (strong/h2/h3) yazilmis adi TERCIH et.
+                // SAHA HATASI 2 (2026-07-16): baslik "futbolgazetesi" (slug) cikti, "Futbol
+                // Gazetesi" olmaliydi -> DOM'dan ad HIC bulunamiyordu. Sebep: secici
+                // a[href^="/{slug}"] GORELI yol varsayiyordu ama FB linkleri MUTLAK geliyor
+                // (teshis: "https://www.facebook.com/haberduytr/posts/..."). Ayni sebeple
+                // teshisteki profileLike da BOS donmustu — ipucu oradaydi.
+                // Cozum: butun a[href]'leri gez, host'u SOY, YOL uzerinden esleştir.
                 var ad = '', adKalin = '';
-                var as = document.querySelectorAll('a[href^="/' + slug + '"], a[href*="/' + slug + '/"]');
+                var slugEsc = slug.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                var slugRe = new RegExp('^/' + slugEsc + '(/|$)', 'i');
+                var as = document.querySelectorAll('a[href]');
                 for (var i = 0; i < as.length; i++) {
-                    var href = (as[i].getAttribute('href') || '').split('?')[0];
+                    var href = (as[i].getAttribute('href') || '').split('?')[0].split('#')[0];
+                    if (!href) continue;
+                    var yol = href.replace(/^https?:\/\/[^/]+/i, '');   // MUTLAK -> yol
+                    if (!slugRe.test(yol)) continue;                    // bu sayfaya ait degil
                     // Gonderi/medya permalink'i -> metni zaman damgasidir, AD DEGIL.
-                    if (/\/(posts|videos|photos|reel|permalink)\//i.test(href)) continue;
+                    if (/\/(posts|videos|photos|reel|permalink)\//i.test(yol)) continue;
                     var t = (as[i].innerText || '').replace(/\s+/g, ' ').trim();
                     if (!t || t.length > 60) continue;
                     // Yedek: "3s", "5dk", "2sa", "4h", "1w" gibi zaman damgalari.
