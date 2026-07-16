@@ -78,18 +78,20 @@
     // Etkilesim satiri secicisi — TEK KAYNAK (fbFindPost, fbBitisY ve bekleme poll'u
     // AYNI seciciyi kullansin diye; fbFindPost'tan ONCE tanimli olmali).
     //
-    // TAM ESLESME kullaniyoruz. SAHA HATASI (2026-07-16): once *="Yorum" i gibi ICEREN
-    // eslesme vardi ve YORUM YAZMA KUTUSUNUN placeholder'i ("... adıyla yorum yap")
-    // ESLESIYORDU -> fbBitisY etkilesim satiri yerine YORUM KUTUSUNU "bitis" saniyor,
-    // kadraj tam da yorum kutusunu ICINE ALACAK sekilde kesiliyordu.
-    // Kanit (test): eski secici adaylari ["Beğen","Yorum bırak","Paylaş",
-    // "Ramazan Gürler adıyla yorum yap"] <- sonuncusu KUTU.
-    // Gercek etiketler teshis ciktisindan: "Beğen", "İfade bırak", "Yorum bırak"
-    // (/posts), "Yorum Yap", "Paylaş" (reel).
-    var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],' +
-                     '[aria-label="Yorum bırak"],[aria-label="Yorum Yap"],[aria-label="Yorum yap"],' +
-                     '[aria-label="Comment"],[aria-label="İfade bırak"],[aria-label="Leave a reaction"],' +
-                     '[aria-label="Paylaş"],[aria-label="Share"]';
+    // GEVSEK (iceren) eslesme — BILEREK. Kisa suren bir TAM-ESLESME denemesi (v3.32)
+    // REGRESYON yaratti: FB'nin gercek etiketi listedekinden azicik farkli olunca
+    // (bosluk/yazim/guncelleme) secici HICBIR SEY bulamiyor; ustelik fbFindPost da ayni
+    // seciciyi kullandigi icin KART bulma da bozuluyor -> onceden calisan gonderiler
+    // bozuldu. FB'nin etiketlerini tam olarak bilemeyiz, o yuzden GENIS tutuyoruz.
+    //
+    // Gevsek eslesmenin TEK gercek sorunu (saha 2026-07-16): YORUM YAZMA KUTUSUNUN
+    // placeholder'i "Ramazan Gürler adıyla yorum yap" da eslesiyordu -> fbBitisY onu
+    // "bitis" sanip kadraji tam da yorum kutusunu ICINE ALACAK sekilde kesiyordu.
+    // Bu YAPISAL olarak cozuldu (fbBitisY icinde textbox/contenteditable/form ATLANIR) —
+    // seciciyi daraltarak DEGIL. Cozum orada, burada degil.
+    var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],' +
+                     '[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],' +
+                     '[aria-label*="Share" i]';
 
     // Facebook gonderi KARTINI bul. SAHA VERISIYLE tasarlandi (2026-07-16):
     //
@@ -261,7 +263,11 @@
                 // ama buna BEL BAGLAMA: gizleme herhangi bir sebeple tutmazsa yorumlar kadraja
                 // girerdi. Yapisal filtre: kartin ICINDEKI bir [role="article"] (= yorum)
                 // altinda kalan etkilesim butonlarini say-ma.
-                var p = el.parentElement, yorumIcinde = false;
+                // DIKKAT: el'in KENDISI de kutu olabilir (placeholder'in kendisi
+                // role="textbox" tasiyor: "... adıyla yorum yap"). Once ATALARA bakip
+                // kendisini atliyordum -> savunma calismiyordu (test yakaladi: bitis=619,
+                // kutu 579'da basliyordu). Bu yuzden zincire EL'DEN basla.
+                var p = el, yorumIcinde = false;
                 while (p && p !== kart) {
                     if (p.getAttribute && p.getAttribute('role') === 'article') { yorumIcinde = true; break; }
                     // YORUM YAZMA KUTUSU icindeki hicbir dugme "etkilesim satiri" DEGILDIR
