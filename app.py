@@ -1394,6 +1394,42 @@ HTML_TEMPLATE = """
                 <span class="close-btn" onclick="toggleStyleModal()">&times;</span>
             </div>
             <div class="modal-body">
+                <h3>🏷️ Başlık 1 Stili (Platform Ayracı)</h3>
+                <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
+                    Yalnızca çıktıda <b>hem X hem Instagram</b> varsa görünür: gönderiler
+                    "X (Twitter)" ve "Instagram" başlıklarıyla ayrılır. Tek platform varsa kullanılmaz.
+                </div>
+                <div class="form-group">
+                    <label for="b1_font">Yazı Tipi (Font):</label>
+                    <select id="b1_font">
+                        {% for font in fonts %}
+                        <option value="{{ font }}" {% if font == 'Arial' %}selected{% endif %}>{{ font }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="b1_size">Yazı Boyutu (PT):</label>
+                    <input type="number" id="b1_size" value="18" min="12" max="36">
+                </div>
+                <div class="form-group">
+                    <label for="b1_color">Metin Rengi:</label>
+                    <input type="text" id="b1_color" value="#000000" placeholder="#000000">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="b1_bold" checked>
+                    <label for="b1_bold">Kalın (Bold)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="b1_italic">
+                    <label for="b1_italic">Eğik (Italic)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="b1_underline">
+                    <label for="b1_underline">Altı Çizili</label>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
                 <h3>🔤 Başlık 2 Stili</h3>
                 <div class="form-group">
                     <label for="b_font">Yazı Tipi (Font):</label>
@@ -2142,6 +2178,12 @@ HTML_TEMPLATE = """
         }
         function xBuildStyleOpts() {
             return {
+                b1_font: document.getElementById('b1_font').value,
+                b1_size: document.getElementById('b1_size').value,
+                b1_color: document.getElementById('b1_color').value,
+                b1_bold: document.getElementById('b1_bold').checked,
+                b1_italic: document.getElementById('b1_italic').checked,
+                b1_underline: document.getElementById('b1_underline').checked,
                 b_font: document.getElementById('b_font').value,
                 b_size: document.getElementById('b_size').value,
                 b_color: document.getElementById('b_color').value,
@@ -3292,7 +3334,14 @@ HTML_TEMPLATE = """
                         const b_bold = document.getElementById('b_bold').checked;
                         const b_italic = document.getElementById('b_italic').checked;
                         const b_underline = document.getElementById('b_underline').checked;
-                        
+
+                        const b1_font = document.getElementById('b1_font').value;
+                        const b1_size = document.getElementById('b1_size').value;
+                        const b1_color = document.getElementById('b1_color').value;
+                        const b1_bold = document.getElementById('b1_bold').checked;
+                        const b1_italic = document.getElementById('b1_italic').checked;
+                        const b1_underline = document.getElementById('b1_underline').checked;
+
                         const l_font = document.getElementById('l_font').value;
                         const l_size = document.getElementById('l_size').value;
                         const l_color = document.getElementById('l_color').value;
@@ -3323,6 +3372,16 @@ HTML_TEMPLATE = """
                                         max-width: 800px;
                                         background-color: #ffffff;
                                         word-wrap: break-word;
+                                    }
+                                    h1 {
+                                        font-family: '${b1_font}', sans-serif;
+                                        font-size: ${b1_size}pt;
+                                        color: ${b1_color};
+                                        font-weight: ${b1_bold ? 'bold' : 'normal'};
+                                        font-style: ${b1_italic ? 'italic' : 'normal'};
+                                        text-decoration: ${b1_underline ? 'underline' : 'none'};
+                                        margin-top: 26px;
+                                        margin-bottom: 10px;
                                     }
                                     h2 {
                                         font-family: '${b_font}', sans-serif;
@@ -3532,6 +3591,9 @@ LOCAL_DOCX_JS = r'''
     var lColor=(opts.l_color||'#1DA1F2').replace('#','');
     var bSz=(parseInt(opts.b_size,10)||14)*2;
     var lSz=(parseInt(opts.l_size,10)||10)*2;
+    var b1Color=(opts.b1_color||'#000000').replace('#','');
+    var b1Sz=(parseInt(opts.b1_size,10)||18)*2;
+    var b1Font=opts.b1_font||opts.b_font||'Arial';
 
     function headingXml(text){
       var rPr='<w:rFonts w:ascii="'+xmlEsc(opts.b_font)+'" w:hAnsi="'+xmlEsc(opts.b_font)+'"/>';
@@ -3540,6 +3602,14 @@ LOCAL_DOCX_JS = r'''
       if(opts.b_underline) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+bColor+'"/><w:sz w:val="'+bSz+'"/><w:szCs w:val="'+bSz+'"/>';
       return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+    }
+    function heading1Xml(text){
+      var rPr='<w:rFonts w:ascii="'+xmlEsc(b1Font)+'" w:hAnsi="'+xmlEsc(b1Font)+'"/>';
+      if(opts.b1_bold) rPr+='<w:b/>';
+      if(opts.b1_italic) rPr+='<w:i/>';
+      if(opts.b1_underline) rPr+='<w:u w:val="single"/>';
+      rPr+='<w:color w:val="'+b1Color+'"/><w:sz w:val="'+b1Sz+'"/><w:szCs w:val="'+b1Sz+'"/>';
+      return '<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     async function imageXml(item){
       var rid=addImage(item);
@@ -3577,9 +3647,24 @@ LOCAL_DOCX_JS = r'''
       return '<w:p><w:pPr>'+pPr+'</w:pPr>'+inner+'</w:p>';
     }
 
-    var body=[], headerIndex=0, oi;
-    for(oi=0; oi<order.length; oi++){
-      var type=order[oi][0], val=order[oi][1];
+    // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
+    function entryPlatform(entry){
+      var it = (entry[0]==='group') ? groups[entry[1]].items[0] : entry[1];
+      var lk = ((it && it.link)||'').toLowerCase();
+      if(lk.indexOf('instagram.com')!==-1) return 'ig';
+      return 'x'; // x.com / twitter.com veya bilinmeyen -> X
+    }
+    // Platformlarin ILK GORUNME sirasi (havuz sirasina gore).
+    var platSeen={}, platOrder=[], _pi;
+    for(_pi=0; _pi<order.length; _pi++){
+      var _p=entryPlatform(order[_pi]);
+      if(!platSeen[_p]){ platSeen[_p]=true; platOrder.push(_p); }
+    }
+    var bothPlatforms = platSeen['x'] && platSeen['ig'];
+
+    var body=[], headerIndex=0;
+    async function renderEntry(entry){
+      var type=entry[0], val=entry[1];
       if(type==='group'){
         var group=groups[val];
         var baslik='', gi;
@@ -3610,6 +3695,22 @@ LOCAL_DOCX_JS = r'''
       }
     }
 
+    if(bothPlatforms){
+      // Hem X hem Instagram var -> Baslik 1 ile ayir (ilk gorunen platform once).
+      var pj, oi;
+      for(pj=0; pj<platOrder.length; pj++){
+        var plat=platOrder[pj];
+        body.push(heading1Xml(plat==='ig' ? 'Instagram' : 'X (Twitter)'));
+        for(oi=0; oi<order.length; oi++){
+          if(entryPlatform(order[oi])===plat){ await renderEntry(order[oi]); }
+        }
+      }
+    } else {
+      // Tek platform -> Baslik 1 yok (mevcut davranis).
+      var oi2;
+      for(oi2=0; oi2<order.length; oi2++){ await renderEntry(order[oi2]); }
+    }
+
     var sectPr='<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
     var documentXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
@@ -3632,6 +3733,7 @@ LOCAL_DOCX_JS = r'''
       + '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
       + '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/><w:sz w:val="22"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults>'
       + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'
+      + '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="0"/></w:pPr></w:style>'
       + '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="1"/></w:pPr></w:style>'
       + '</w:styles>';
 
