@@ -666,6 +666,55 @@
                     const vW = window.innerWidth;
                     const dpr = window.devicePixelRatio || 1;
 
+                    // === Faz IG-1: SADE no-zoom Instagram yakalama (izolasyon/zoom YOK) ===
+                    // Tüm post kartını (article = header + medya + AÇIKLAMA + etkileşim) window-scroll ile
+                    // parça parça yakalayıp dikey birleştirir. Mesajlar balonu yukarıda gizlendi; widget'a
+                    // dokunulmaz (kırpma bölgesi zaten dışarıda bırakır). article'ın tamamı alındığından açıklama da girer.
+                    if (isInstagram && xWidgetIgNoZoom) {
+                        try {
+                            const post = document.querySelector('main article') || document.querySelector('article') || element;
+                            const pRect0 = post.getBoundingClientRect();
+                            spacer.style.height = (Math.ceil(pRect0.height) + vH + 400) + 'px';
+                            // article tepesini viewport tepesine getir
+                            const curY = window.scrollY || document.documentElement.scrollTop || 0;
+                            window.scrollTo(0, Math.max(0, curY + pRect0.top - 2));
+                            await new Promise(r => setTimeout(r, 300));
+                            let pr = post.getBoundingClientRect();
+                            const cropLeft = Math.max(0, Math.round(pr.left));
+                            const cropWidth = Math.round(Math.min(vW - cropLeft, pr.width));
+                            const fullH = Math.round(pr.height);
+                            const segs = [];
+                            let captured = 0, guard = 0;
+                            while (captured < fullH && guard < 30) {
+                                guard++;
+                                const cur = post.getBoundingClientRect();
+                                const topInView = Math.max(0, Math.round(cur.top));
+                                const sliceH = Math.round(Math.min(vH - topInView, fullH - captured));
+                                if (sliceH <= 2) break;
+                                const segRes = await new Promise(resolve => {
+                                    swSendReliable({ action: "captureAndCrop", rect: { top: topInView, left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
+                                });
+                                if (!segRes || segRes.status !== "success" || !segRes.dataUrl) break;
+                                segs.push(segRes.dataUrl);
+                                captured += sliceH;
+                                if (captured >= fullH) break;
+                                const beforeScroll = window.scrollY || document.documentElement.scrollTop || 0;
+                                window.scrollBy({ top: sliceH, left: 0, behavior: 'instant' });
+                                await new Promise(r => setTimeout(r, 200));
+                                const afterScroll = window.scrollY || document.documentElement.scrollTop || 0;
+                                if (afterScroll - beforeScroll < 5) break; // kaydırma durdu (son)
+                            }
+                            printLog(`[Instagram] Sade no-zoom: ${segs.length} parça (${Math.round(cropWidth)}x${fullH}).`);
+                            if (segs.length > 0) {
+                                const igRaw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
+                                return await compressScreenshot(igRaw);
+                            }
+                            printLog("[Instagram] Sade no-zoom parça alınamadı, eski yola dönülüyor.");
+                        } catch (e) {
+                            printLog("[Instagram] Sade no-zoom hata: " + (e.message || e));
+                        }
+                    }
+
                     // E. Tweeti viewport tepesine hizala (spacer sayesinde bu işlem her zaman başarılı olur)
                     element.scrollIntoView({ block: 'start', behavior: 'instant' });
                     
