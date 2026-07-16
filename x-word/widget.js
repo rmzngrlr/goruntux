@@ -4256,20 +4256,31 @@
                 // Bu link (header'daki zaman damgası dahil) daima YAZARIN adını içerir ve postCode benzersizdir;
                 // article seçimi (iki-sütunda yalnız medya sütunu olabilir) ne olursa olsun sayfada bulunur,
                 // böylece sol menü/yorum kutusundaki GİRİŞ YAPAN kullanıcının linki asla yazar sanılmaz.
+                // NOT: repost/öneri gönderilerinde bu link DOM'a GEÇ gelebiliyor; hazır olana kadar kısa süre bekle
+                // (yoksa erken çalışıp yanlış yedeğe -> giriş yapan kullanıcıya düşüyordu).
                 if (!username) {
                     const postCode = (activeUrl.match(/\/(?:p|reel|tv)\/([^/?#]+)/) || [])[1] || "";
                     if (postCode) {
                         const codeEsc = postCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                         const permRe = new RegExp('/([a-z0-9._]{1,30})/(?:p|reel|tv)/' + codeEsc, 'i');
-                        const anchors = document.querySelectorAll('a[href]');
-                        for (let a of anchors) {
-                            const m = (a.getAttribute('href') || "").match(permRe);
-                            if (m && m[1] && !IG_RESERVED.includes(m[1].toLowerCase())) {
-                                username = m[1].toLowerCase();
-                                accountName = username;
-                                break;
+                        const findInAnchors = () => {
+                            for (let a of document.querySelectorAll('a[href]')) {
+                                const m = (a.getAttribute('href') || "").match(permRe);
+                                if (m && m[1] && !IG_RESERVED.includes(m[1].toLowerCase())) return m[1].toLowerCase();
                             }
+                            return "";
+                        };
+                        let found = findInAnchors();
+                        for (let w = 0; w < 15 && !found; w++) {   // en fazla ~3sn bekle
+                            await new Promise(r => setTimeout(r, 200));
+                            found = findInAnchors();
                         }
+                        // Anchorlarda hâlâ yoksa ham HTML/JSON içinde de ara (permalink script verisinde olabilir).
+                        if (!found) {
+                            const hm = (document.documentElement.innerHTML || "").match(permRe);
+                            if (hm && hm[1] && !IG_RESERVED.includes(hm[1].toLowerCase())) found = hm[1].toLowerCase();
+                        }
+                        if (found) { username = found; accountName = found; }
                     }
                 }
 
