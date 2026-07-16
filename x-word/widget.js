@@ -587,8 +587,14 @@
                             cbWidgetEl.style.display = 'none';
                         }
                     } else if (isInstagram && xWidgetIgNoZoom) {
-                        // Faz IG-1 (sade no-zoom): widget'a DOKUNMA (kırpma bölgesi zaten dışarıda bırakır).
-                        // SADECE Instagram "Mesajlar" (DM) balonunu gizle (sağ-altta sabit, içeriğe binebilir).
+                        // Faz IG-1 (sade no-zoom): iki-sütun kırpması widget'ın üzerine binebildiğinden, widget'ı
+                        // YOK ETMEDEN görünmez yap (visibility:hidden -> reflow/flaş yok), yakalama sonrası geri aç.
+                        try {
+                            [widgetEl, cbWidgetEl].forEach(function (w) {
+                                if (w) { igMsgHidden.push({ el: w, v: w.style.visibility }); w.style.setProperty('visibility', 'hidden', 'important'); }
+                            });
+                        } catch (e) {}
+                        // Instagram "Mesajlar" (DM) balonunu gizle (sağ-altta sabit, içeriğe binebilir).
                         try {
                             let anchor = document.querySelector('svg[aria-label="Mesajlar"], svg[aria-label="Messages"], svg[aria-label*="Mesaj" i], svg[aria-label*="Message" i]');
                             if (!anchor) {
