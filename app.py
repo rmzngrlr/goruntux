@@ -1441,14 +1441,9 @@ HTML_TEMPLATE = """
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
                 <h3>⚡ Word Üretim Yeri</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="local_gen_toggle" checked>
-                    <label for="local_gen_toggle">Word'ü tarayıcıda üret (varsayılan — sunucuya yük bindirmez)</label>
-                </div>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    Açık (varsayılan): .docx bu bilgisayarda, tarayıcıda üretilir; çok PC'li kullanımda merkezî
-                    yoğunluğu azaltır. Yerel üretim başarısız olursa <b>otomatik olarak sunucuya düşülür</b>.
-                    Kapatırsan rapor her zaman sunucuda üretilir.
+                    Word raporu <b>bu bilgisayarda, tarayıcıda</b> üretilir; çok PC'li kullanımda merkezî
+                    yoğunluğu azaltır. Nadir bir hata olursa otomatik olarak sunucuda üretime düşülür (güvenlik ağı).
                 </div>
             </div>
             <div class="modal-footer">
@@ -2088,8 +2083,10 @@ HTML_TEMPLATE = """
         // Generate manual word / Preview
         // --- İstemci-taraflı (tarayıcıda) Word üretimi (deneysel anahtar; varsayılan KAPALI) ---
         function xLocalGenEnabled() {
-            var el = document.getElementById('local_gen_toggle');
-            return !!(el && el.checked);
+            // Faz 4 (guvenli emeklilik): Word HER ZAMAN tarayicida uretilir; kullaniciya secim sunulmaz.
+            // Sunucu uretimi yalnizca xGenerateLocal hata verirse otomatik, gorunmez guvenlik agi
+            // olarak devreye girer (server-fallback + /api/*/generate uclari korunur, geri-alinabilir).
+            return true;
         }
         function xBuildStyleOpts() {
             return {
