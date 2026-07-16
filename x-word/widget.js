@@ -4020,6 +4020,51 @@
 
             // CASE 2: Tweet Article Capture Task
             const isInstagram = window.location.hostname.includes('instagram.com');
+
+            // --- Faz FB-1 GUVENLIK KAPISI: Facebook YAKALAMA HENUZ YOK (Faz 2'de gelecek) ---
+            // Faz 1'de FB linkleri kuyruga girebiliyor (havuz/gruplama/Baslik 1 icin calisir),
+            // ama widget'ta FB yolu olmadigindan asagidaki dongu X seciciyi
+            // (article[data-testid="tweet"]) arar, FB'de ASLA bulamaz -> "Tweet yuklenemedi"
+            // -> 120sn'de bir location.reload() ile SONSUZ dongu (retry_count'un ust siniri YOK).
+            // FB'de tekrarlanan sayfa yenileme dogrudan otomasyon imzasidir (checkpoint /
+            // hesap kisitlama riski). Bu yuzden FB gonderisi retry dongusune HIC sokulmadan
+            // TEMIZ atlanir. Faz 2 geldiginde bu kapi yerini gercek FB yakalama yoluna birakacak.
+            const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
+            if (isFacebook) {
+                printLog("[Facebook] Yakalama henuz eklenmedi (Faz 2) — gonderi atlaniyor: " + activeUrl);
+                durumText.innerHTML = `
+                    <div style="text-align:center;">
+                        <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Facebook gönderisi atlandı</span><br>
+                        <span style="font-size:11px; color:var(--w-text-muted);">Facebook ekran görüntüsü henüz desteklenmiyor.<br>Link havuza eklenebilir, yakalama sonraki aşamada gelecek.</span>
+                    </div>`;
+                gorev.retry_count = 0;
+                gorev.kuyruk.shift();
+                let fbUpd = {}; fbUpd[storageKey] = gorev;
+                chrome.storage.local.set(fbUpd, () => {
+                    if (gorev.kuyruk.length > 0) {
+                        const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                        setTimeout(() => { window.location.href = nextUrl; }, 600);
+                    } else {
+                        // Kuyruk bitti -> taramayi DUZGUN kapat (reload dongusu YOK).
+                        swSendReliable({
+                            action: "submitWordResult",
+                            origin: gorev.server_origin || "http://localhost:3012",
+                            job_id: gorev.job_id,
+                            results: [],
+                            final: true
+                        }, () => {
+                            chrome.storage.local.remove(storageKey, () => {
+                                chrome.runtime.sendMessage({
+                                    action: "completeJobAndFocusPanel",
+                                    origin: gorev.server_origin
+                                });
+                            });
+                        });
+                    }
+                });
+                return;
+            }
+
             let articleLoaded = false;
             for (let i = 0; i < 60; i++) {
                 if (isInstagram) {
