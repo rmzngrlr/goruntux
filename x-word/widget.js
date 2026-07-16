@@ -4751,6 +4751,31 @@
                     const shot = await compressScreenshot(raw);
                     const a = fbAuthor();
                     const mode = _mode;
+
+                    // KULLANICI KARARI (2026-07-17): Word'de PAYLASIM linki degil, FB'nin
+                    // YONLENDIRDIGI GERCEK sayfa gorunsun.
+                    //   kuyruk : facebook.com/share/p/1DTEaEbLsJ   (kullanicinin yapistirdigi)
+                    //   gercek : facebook.com/futbolgazetesi/posts/pfbid...  (FB buraya goturdu)
+                    // Yan fayda (asil kazanc): GRUPLAMA da duzeliyor — paylasim linkinde sayfa
+                    // adi YOK, o yuzden pool_group_key basliga dusuyordu ("fb:futbol gazetesi",
+                    // kirilgan); gercek linkte ad VAR -> "fb:futbolgazetesi" (kararli) ve ayni
+                    // sayfanin share'li + dogrudan linkleri AYNI Baslik 2 altinda birlesir.
+                    //
+                    // Ham href yeterli: sunucu x_temizle_link ile kanoniklestiriyor (?rdid,
+                    // ?share_url atilir) ve normalize_link_key FB'de fb_canonical_link'e
+                    // delege ettigi icin IDEMPOTENT -> goruntu anahtari ile havuz linkinin
+                    // anahtari AYNI kalir. Havuz tarama basinda temizlendigi icin
+                    // (/api/auto/start -> pool.clear()) eski /share/p ogesiyle cakisma olmaz.
+                    //
+                    // DIKKAT: asagidaki printLog bu degiskeni KULLANIYOR -> tanim LOGDAN ONCE
+                    // olmali. (Saha hatasi 2026-07-17: log satirinda kullanip asagida let ile
+                    // tanimlamistim -> "Cannot access '_kayitLink' before initialization" ->
+                    // HER FB yakalamasi patliyordu. Sozdizimi gecerliydi, TDZ calisma-ani hatasi.)
+                    let _kayitLink = activeUrl;
+                    try {
+                        const _href = window.location.href;
+                        if (/(^|\.)facebook\.com$/i.test(new URL(_href).hostname)) _kayitLink = _href;
+                    } catch (e) {}
                     // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibiyle baslar;
                     // platforma ozel ayrintilar arkasina eklenir.
                     printLog(
@@ -4793,11 +4818,6 @@
                     // (xNormLink(resItem.link)) ile havuz linkinin anahtari AYNI kalir.
                     // Havuz tarama basinda temizlendigi icin (/api/auto/start -> pool.clear())
                     // eski /share/p ogesiyle cakisma olmaz.
-                    let _kayitLink = activeUrl;
-                    try {
-                        const _href = window.location.href;
-                        if (/(^|\.)facebook\.com$/i.test(new URL(_href).hostname)) _kayitLink = _href;
-                    } catch (e) {}
                     const resItem = {
                         link: _kayitLink,
                         account_name: a.ad || '',
