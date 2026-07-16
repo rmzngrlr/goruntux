@@ -29,6 +29,45 @@
         return 'x';
     }
 
+    // FB gonderi formundaki bir URL mi? (background.js xIsFbPostUrl ikizi)
+    function fbGonderiFormuMu(href) {
+        try {
+            var u = new URL(href);
+            if (!/(^|\.)facebook\.com$/i.test(u.hostname)) return false;
+            var p = String(u.pathname || '').replace(/\/+$/, '');
+            var low = p.toLowerCase();
+            if (/^\/groups\/[^/]+\/(?:posts|permalink)\/[^/]+$/i.test(p)) return true;
+            if (/^\/[^/]+\/posts\/[^/]+$/i.test(p)) return true;
+            if (/^\/reel\/[^/]+$/i.test(p)) return true;
+            if ((low === '/watch' || low === '/video.php') && u.searchParams.get('v')) return true;
+            if ((low === '/photo.php' || low === '/photo') && u.searchParams.get('fbid')) return true;
+            if ((low === '/permalink.php' || low === '/story.php') && u.searchParams.get('story_fbid')) return true;
+            return false;
+        } catch (e) { return false; }
+    }
+
+    // FB'de hedefe ULASTIK MI? URL string esitligi YETMEZ.
+    // SAHA (2026-07-16): kullanici /share/v/14jeAjQz7ZP ekledi; FB bunu
+    //   /reel/2052772415581354/?rdid=...&share_url=https%3A%2F%2F...%2Fshare%2Fv%2F14jeAjQz7ZP
+    // adresine YONLENDIRDI. Duz karsilastirma "eslesmedi" der; widget da activeUrl'e
+    // geri gitmeye calisir, FB tekrar yonlendirir -> SONSUZ DONGU.
+    // FB neyse ki orijinal linki ?share_url= parametresinde TASIYOR -> onu kullan.
+    function fbHedefeUlastikMi(gercekHref, hedefUrl) {
+        try {
+            if (normalizeUrl(gercekHref) === normalizeUrl(hedefUrl)) return true;
+            // 1) FB'nin kendi verdigi kanit: share_url == bizim hedefimiz.
+            //    share_url VARSA BELIRLEYICIDIR: eslesmiyorsa BASKA bir gonderidesin ->
+            //    asagidaki yedege DUSME (yoksa yanlis gonderiyi "ulastik" sayip YANLIS
+            //    gorseli dogru link altinda rapora koyariz — sessiz ariza).
+            var su = new URL(gercekHref).searchParams.get('share_url');
+            if (su) return normalizeUrl(su) === normalizeUrl(hedefUrl);
+            // 2) share_url YOKSA: hedef /share/... idi ve simdi bir FB GONDERI
+            //    sayfasindayiz -> FB yonlendirmis kabul et.
+            if (/\/share\/[pvr]\//i.test(String(hedefUrl).toLowerCase()) && fbGonderiFormuMu(gercekHref)) return true;
+            return false;
+        } catch (e) { return false; }
+    }
+
     // Facebook gonderi KARTINI bul. SAHA VERISIYLE tasarlandi (2026-07-16):
     //
     // /posts -> gonderi MODAL icinde acilir (adres cubugundan acilsa bile) ve ARKA PLANDA
@@ -3976,11 +4015,52 @@
             let activeUrl = activeTask.url || activeTask;
             let isProfileTask = activeTask && activeTask.type === "profile_header" && !activeUrl.includes('/p/') && !activeUrl.includes('/reel/');
             
-            if (normalizeUrl(hamUrl) !== normalizeUrl(activeUrl)) {
+            // Faz FB-2: FB /share/{p|v|r}/{kod} linklerini GERCEK gonderiye yonlendirir.
+            // Duz string esitligi kullanirsak "yanlis sayfadayim" deyip activeUrl'e geri
+            // doneriz, FB tekrar yonlendirir -> SONSUZ DONGU. fbHedefeUlastikMi bunu cozer.
+            // hamUrl sorgusuz oldugu icin share_url kaybolur -> TAM href ile kontrol et.
+            const _fbUlasti = (xPlatform() === 'fb') && fbHedefeUlastikMi(window.location.href, activeUrl);
+            if (!_fbUlasti && normalizeUrl(hamUrl) !== normalizeUrl(activeUrl)) {
+                // DONGU KIRICI (platformdan bagimsiz guvenlik): ayni ogede 2'den fazla
+                // yonlendirme denemesi olduysa oge atlanir. Yoksa bir yonlendirme zinciri
+                // sekmeyi sonsuza kadar mesgul eder (FB'de bu ayrica otomasyon imzasidir).
+                gorev.redirect_attempts = (gorev.redirect_attempts || 0) + 1;
+                if (gorev.redirect_attempts > 2) {
+                    printLog(`[Yonlendirme] ${gorev.redirect_attempts}. denemede hedefe ulasilamadi, oge ATLANIYOR. hedef=${activeUrl} gercek=${window.location.href}`);
+                    gorev.redirect_attempts = 0;
+                    gorev.kuyruk.shift();
+                    let _ru = {}; _ru[storageKey] = gorev;
+                    chrome.storage.local.set(_ru, () => {
+                        if (gorev.kuyruk.length > 0) {
+                            const _n = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                            setTimeout(() => { window.location.href = _n; }, 400);
+                        } else {
+                            swSendReliable({
+                                action: "submitWordResult",
+                                origin: gorev.server_origin || "http://localhost:3012",
+                                job_id: gorev.job_id, results: [], final: true
+                            }, () => {
+                                chrome.storage.local.remove(storageKey, () => {
+                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                });
+                            });
+                        }
+                    });
+                    return;
+                }
                 durumText.innerHTML = `🔄 Yönlendiriliyorsunuz...`;
-                // Instagram dahil tüm gönderiler doğrudan (embed olmadan) normal sayfada açılır.
-                setTimeout(() => { window.location.href = activeUrl; }, 100);
+                let _ru2 = {}; _ru2[storageKey] = gorev;
+                chrome.storage.local.set(_ru2, () => {
+                    // Instagram dahil tüm gönderiler doğrudan (embed olmadan) normal sayfada açılır.
+                    setTimeout(() => { window.location.href = activeUrl; }, 100);
+                });
                 return;
+            }
+            // Hedefe ulastik -> sayaci sifirla (bir sonraki oge temiz baslasin).
+            if (gorev.redirect_attempts) {
+                gorev.redirect_attempts = 0;
+                let _rz = {}; _rz[storageKey] = gorev;
+                chrome.storage.local.set(_rz, () => {});
             }
             
             buton.innerText = "🛑 Taramayı Durdur";

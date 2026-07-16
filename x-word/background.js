@@ -284,6 +284,35 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
               let normHedef = normalizeUrl(hedefUrl);
               if (normTemiz === normHedef || normTemiz.startsWith(normHedef)) {
                 eslesiyor = true;
+              } else if (xPlatformOf(tab.url) === 'fb') {
+                // Faz FB-2: FB /share/{p|v|r}/{kod} linklerini GERCEK gonderiye YONLENDIRIR.
+                // SAHA (2026-07-16): kuyrukta /share/v/14jeAjQz7ZP vardi, FB
+                //   /reel/2052772415581354/?rdid=...&share_url=https%3A%2F%2F...%2Fshare%2Fv%2F14jeAjQz7ZP
+                // adresine goturdu -> duz karsilastirma "eslesmedi" dedi, widget HIC firlatilmadi.
+                // FB neyse ki orijinal linki ?share_url= parametresinde TASIYOR.
+                // DIKKAT: temizUrl sorgusuz (FB kanonigi) -> share_url icin TAM tab.url gerekli.
+                let _suVar = false;
+                try {
+                  const _su = new URL(tab.url).searchParams.get('share_url');
+                  if (_su) {
+                    // share_url VARSA BELIRLEYICIDIR: eslesmiyorsa BASKA bir gonderidesin ->
+                    // asagidaki yedege DUSME (yoksa yanlis gonderiyi "ulastik" sayip YANLIS
+                    // gorseli dogru link altinda rapora koyariz — sessiz ariza).
+                    _suVar = true;
+                    if (normalizeUrl(_su) === normHedef) {
+                      eslesiyor = true;
+                      logToServer(`[onUpdated] FB yonlendirmesi share_url ile DOGRULANDI. hedef=${normHedef} -> gercek=${normTemiz}`);
+                    } else {
+                      logToServer(`[onUpdated] FB share_url BASKA gonderiyi isaret ediyor, eslesme YOK. share_url=${_su} hedef=${normHedef}`);
+                    }
+                  }
+                } catch (e) {}
+                // share_url YOKSA: hedef /share/... idi ve simdi bir FB GONDERI sayfasindayiz
+                // -> FB yonlendirmis kabul et.
+                if (!eslesiyor && !_suVar && /\/share\/[pvr]\//i.test(normHedef) && xIsFbPostUrl(temizUrl)) {
+                  eslesiyor = true;
+                  logToServer(`[onUpdated] FB /share/ yonlendirmesi kabul edildi (share_url yok). hedef=${normHedef} -> gercek=${normTemiz}`);
+                }
               }
             } else if (gorev.asama === "arama_taramasi") {
               if (path.toLowerCase() === "/search") {
