@@ -100,7 +100,18 @@
 
             // 3) Etkilesim butonu (kapsam icinde). FB aria-label'i div[role=button]'a koyuyor,
             //    IG'deki gibi svg'ye DEGIL.
-            var eng = scope.querySelector('[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i]');
+            //    DIKKAT: querySelector DOM'daki ILK'i alir. Reel bir KART KARUSELI ve her
+            //    kartin kendi "Begen"i var -> ilk buton GORUNMEYEN bir karta ait olabilir,
+            //    o zaman ortak ata iki karti birden kapsayip kart cok GENIS cikar
+            //    (saha: kart=1156 genislik, viewport 895). Bu yuzden GORUNUR olani sec.
+            var engSel = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i]';
+            var eng = null;
+            var engList = scope.querySelectorAll(engSel);
+            for (var ei = 0; ei < engList.length; ei++) {
+                var er = engList[ei].getBoundingClientRect();
+                if (er.width > 0 && er.height > 0 && er.bottom > 0 && er.top < window.innerHeight) { eng = engList[ei]; break; }
+            }
+            if (!eng && engList.length) eng = engList[0];   // hicbiri gorunur degilse eskisi gibi
 
             // 4) medya + etkilesim ORTAK ATASI = gonderi karti (IG'deki mantik, kapsam sinirli)
             if (media && eng) {
@@ -114,6 +125,68 @@
             if (media) return media.closest('[role="article"]') || media.parentElement;
             return document.querySelector('[role="main"]');
         } catch (e) { return null; }
+    }
+
+    // Yorumlari GIZLE (kullanici karari: yorumlar rapora girmeyecek).
+    // Iki fayda: (1) rapor gonderi kartiyla sinirli kalir, (2) yorumlar TEMBEL yuklendigi
+    // icin kart yuksekligi yakalama sirasinda BUYUR; gizlemek onu yapisal olarak STABIL yapar
+    // (saha: /posts kart=1688 yukseklik, modal ise 634 -> aradaki fark buyuk olcude yorumlar).
+    // visibility:hidden DEGIL display:none: yerleşimi de daraltmasi gerekiyor.
+    // Geri alma sorumlulugu cagirana ait (finally'de restore edilir).
+    function fbYorumlariGizle(kart) {
+        var gizlenen = [];
+        try {
+            if (!kart) return gizlenen;
+            // FB'de yorumlar da [role="article"]; gonderi kartinin ICINDEKI article'lar = yorumlar.
+            kart.querySelectorAll('[role="article"]').forEach(function (a) {
+                if (a === kart) return;
+                gizlenen.push([a, a.style.display]);
+                a.style.display = 'none';
+            });
+            // "N yanıtı gör" / "Daha fazla yorum göster" gibi yorum kontrolleri
+            kart.querySelectorAll('div[role="button"],span[role="button"]').forEach(function (b) {
+                var t = (b.innerText || '').replace(/\s+/g, ' ').trim();
+                if (t && t.length < 40 && /yanıtı gör|yanit gor|daha fazla yorum|önceki yorumlar|view .* replies|more comments/i.test(t)) {
+                    gizlenen.push([b, b.style.display]);
+                    b.style.display = 'none';
+                }
+            });
+        } catch (e) {}
+        return gizlenen;
+    }
+
+    // "Daha fazlasını gör" — FB uzun metinleri VARSAYILAN olarak kisaltiyor; tiklanmazsa
+    // rapor KESIK metinle cikar. SAHA: gercek metin "Daha fazlasını gör" ("göster" DEGIL).
+    // YALNIZCA gonderi karti kapsaminda ve YORUM yanitlarina DOKUNMADAN
+    // (saha: ayni listede "23 yanıtı gör" / "12 yanıtı gör" de vardi — onlar TIKLANMAMALI).
+    async function fbMetniAc(kart) {
+        var n = 0;
+        try {
+            if (!kart) return 0;
+            // AYNI elemana tekrar tiklama: buton tiklamadan sonra kaybolmazsa dongude
+            // tekrar secilir. Zararsiz ama gereksiz; ayrica ileride toggle'a donerse
+            // ("Daha azını gör") actigimizi KAPATMA riski dogar.
+            var clicked = new Set();
+            for (var pass = 0; pass < 3; pass++) {
+                var hit = null;
+                var els = kart.querySelectorAll('div[role="button"],span[role="button"]');
+                for (var i = 0; i < els.length; i++) {
+                    if (clicked.has(els[i])) continue;
+                    var t = (els[i].innerText || '').replace(/\s+/g, ' ').trim();
+                    // TAM esleşme: "23 yanıtı gör" gibi YORUM kontrolleri KACMASIN.
+                    // "Daha azını gör" de eslesmez -> actigimizi kapatmayiz.
+                    if (/^(daha fazlasını gör|daha fazla göster|see more|devamını gör)$/i.test(t)) {
+                        var r = els[i].getBoundingClientRect();
+                        if (r.width > 0 && r.height > 0) { hit = els[i]; break; }
+                    }
+                }
+                if (!hit) break;
+                clicked.add(hit);
+                hit.click(); n++;
+                await new Promise(r => setTimeout(r, 350));
+            }
+        } catch (e) {}
+        return n;
     }
 
     // Karti gercekten kaydiran elemani bul. FB'de window scroll YOK (saha: sh==ch==698);
@@ -4239,6 +4312,11 @@
                         if (_card && _card.getBoundingClientRect().height > 100) break;
                         await new Promise(r => setTimeout(r, 200));
                     }
+                    const _r0 = _card ? _card.getBoundingClientRect() : null;
+                    // Yorumlari gizle + metni ac -> kart sinirinin GERCEK yakalama boyutunu olc.
+                    const _hidden = fbYorumlariGizle(_card);
+                    const _smN = await fbMetniAc(_card);
+                    await new Promise(r => setTimeout(r, 250));   // reflow
                     const _r = _card ? _card.getBoundingClientRect() : null;
                     const _sc = _card ? fbScroller(_card) : null;
                     const _dlg = document.querySelectorAll('[role="dialog"],[aria-modal="true"]').length;
@@ -4246,14 +4324,19 @@
                     const _a = fbAuthor();
                     const _mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
                     printLog(
-                        `[Facebook] KURU-CALISMA (${_mode}): dialog=${_dlg}` +
-                        `, kart=${_r ? Math.round(_r.width) + 'x' + Math.round(_r.height) : 'YOK'}` +
-                        `, kartTop=${_r ? Math.round(_r.top) : '-'}` +
+                        `[Facebook] KURU-CALISMA (${_mode}): vp=${window.innerWidth}x${window.innerHeight}` +
+                        `, dialog=${_dlg}` +
+                        `, kartOnce=${_r0 ? Math.round(_r0.width) + 'x' + Math.round(_r0.height) : 'YOK'}` +
+                        `, kartSonra=${_r ? Math.round(_r.width) + 'x' + Math.round(_r.height) : 'YOK'}` +
+                        `, kartTop=${_r ? Math.round(_r.top) : '-'}, kartLeft=${_r ? Math.round(_r.left) : '-'}` +
+                        `, yorumGizli=${_hidden.length}, seeMore=${_smN}` +
                         `, kaydirici=${_sc ? _sc.tagName + ' sh=' + _sc.scrollHeight + '/ch=' + _sc.clientHeight : 'YOK'}` +
                         `, winScroll=${_win.scrollHeight}/${_win.clientHeight}` +
                         `, yazar="${_a.ad}" id=${_a.id || '-'} slug=${_a.slug || '-'} (${_a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
                     );
+                    // KURU calisma: sayfayi ELLEDIK, geri al (yakalama yok, iz birakma).
+                    _hidden.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
                 } catch (e) {
                     printLog("[Facebook] KURU-CALISMA hata: " + (e.message || e));
                 }
