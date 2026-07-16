@@ -114,7 +114,10 @@
     //     modal IMG 367x641 = 235023  <- gercek gonderi
     //   Bu yuzden ONCE KAP (en icteki dialog) bulunur, arama YALNIZCA onun icinde yapilir.
     // /reel -> dialog YOK, [role="article"] de YOK; kapsam belge geneli olur.
-    function fbFindPost() {
+    // outEng verilirse GORUNUR etkilesim butonlari outEng.list'e yazilir — kadraj
+    // hesabi bunlari da kapsayabilsin diye (reel'de stats sutunu position:absolute
+    // oldugu icin kartin rect'ini GENISLETMIYOR; ata dogru olsa bile kadraj kesiyor).
+    function fbFindPost(outEng) {
         try {
             // 1) KAP: en icteki dialog (varsa) — /posts. Yoksa belge geneli — /reel.
             var D = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
@@ -145,15 +148,42 @@
             //    Secici TEK KAYNAK (FB_ENG_SEL) — burada da TAM ESLESME sart: gevsek
             //    *="Yorum" YORUM YAZMA KUTUSUNU ("... adıyla yorum yap") yakaliyordu ve
             //    ortak ata hesabini bozuyordu (fbBitisY'de ayni tuzak sahada patladi).
-            var eng = null;
+            //    TEK degil, GORUNUR OLANLARIN HEPSI toplanir (asagida hepsini kapsayan ata
+            //    aranacak). SAHA HATASI (2026-07-16): tek dugmeyle ortak ata hesaplaniyordu;
+            //    reel'de dugmeler SAGDA DIKEY duruyor ve hangisinin secildigine gore ata
+            //    degisiyor -> sutunun tamami kapsanmiyor. Secici listesini degistirdigimde
+            //    ("İfade bırak" cikip "Paylaş" girdi) secilen dugme de degisti ve kart
+            //    1156x610 -> 1120x630 DARALDI, sagdaki begen/yorum/paylas sutunu kadraj
+            //    disinda kaldi. Cozum: hepsini kapsa.
+            var eng = null, engGorunur = [];
             var engList = scope.querySelectorAll(FB_ENG_SEL);
             for (var ei = 0; ei < engList.length; ei++) {
                 var er = engList[ei].getBoundingClientRect();
-                if (er.width > 0 && er.height > 0 && er.bottom > 0 && er.top < window.innerHeight) { eng = engList[ei]; break; }
+                if (er.width > 0 && er.height > 0 && er.bottom > 0 && er.top < window.innerHeight) {
+                    engGorunur.push(engList[ei]);
+                    if (!eng) eng = engList[ei];
+                }
             }
             if (!eng && engList.length) eng = engList[0];   // hicbiri gorunur degilse eskisi gibi
+            if (outEng) outEng.list = engGorunur;
 
             // 4) medya + etkilesim ORTAK ATASI = gonderi karti (IG'deki mantik, kapsam sinirli)
+            //    HEPSINI kapsayan ata: medyadan yukari cikip GORUNUR etkilesim dugmelerinin
+            //    TAMAMINI iceren ilk atayi al. Tek dugmeyle hesaplarsak reel'de sagdaki
+            //    dikey sutun disarida kalabiliyor (saha: kart 1120 genislik, stats yok).
+            if (media && engGorunur.length) {
+                var n2 = media;
+                while (n2 && n2 !== document.body) {
+                    var hepsiIcinde = true;
+                    for (var gi = 0; gi < engGorunur.length; gi++) {
+                        if (!n2.contains(engGorunur[gi])) { hepsiIcinde = false; break; }
+                    }
+                    if (hepsiIcinde) return n2;
+                    n2 = n2.parentElement;
+                }
+            }
+            //    Yedek: hepsini kapsayan ata bulunamadi (or. baska kartin dugmesi de
+            //    gorunuyor) -> TEK dugmeyle eski davranis.
             if (media && eng) {
                 var chain = new Set(); var n = media;
                 while (n) { chain.add(n); n = n.parentElement; }
@@ -4528,8 +4558,9 @@
                     //      Futbol Gazetesi sure=3449ms  bitis=700+8  <- bekledi, buldu
                     //    Bu yuzden KART + ETKILESIM ikisini birden bekle.
                     let card = null, _engBekledi = 0;
+                    const _engOut = {};
                     for (let w = 0; w < 15; w++) {
-                        card = fbFindPost();
+                        card = fbFindPost(_engOut);
                         const _kartHazir = card && card.getBoundingClientRect().height > 100;
                         if (_kartHazir) {
                             // reel'de kirpma yok -> etkilesimi beklemeye gerek yok.
@@ -4600,6 +4631,32 @@
                     }
 
                     let kr = kadrajEl.getBoundingClientRect();
+                    // REEL: stats sutunu (👍/💬/↗) position:absolute -> kartin rect'ini
+                    // GENISLETMIYOR. Ata dogru bulunsa bile kadraj sutunu KESIYOR
+                    // (saha: kart 1120 genislik, stats yok). Kadraji GORUNUR etkilesim
+                    // butonlarini kapsayacak sekilde genislet.
+                    // Yalnizca scIc DEGILKEN (kadraj=kart): modal ici kaydiricida kadraj
+                    // zaten kaydirilan bolge, genisletmek yanlis olurdu.
+                    let _genisletildi = 0;
+                    if (!scIc && _engOut.list && _engOut.list.length) {
+                        let L = kr.left, T = kr.top, R = kr.right, B = kr.bottom;
+                        _engOut.list.forEach(function (e) {
+                            const r = e.getBoundingClientRect();
+                            if (r.width <= 0 || r.height <= 0) return;
+                            // Yalnizca KART sinirlarina makul yakinlikta olanlar (baska
+                            // kartin/karuselin butonlari kadraji sismesin).
+                            if (r.left < kr.left - 300 || r.right > kr.right + 400) return;
+                            if (r.bottom < kr.top - 200 || r.top > kr.bottom + 200) return;
+                            // +8px pay: butonun kendi rect'i kapsayicisinin ic boslugunu/
+                            // golgesini icermez; paysiz kadraj sutunu KIL PAYI kesiyor.
+                            L = Math.min(L, r.left - 8); T = Math.min(T, r.top - 8);
+                            R = Math.max(R, r.right + 8); B = Math.max(B, r.bottom + 8);
+                        });
+                        if (R > kr.right || B > kr.bottom || L < kr.left || T < kr.top) {
+                            _genisletildi = Math.round((R - L) - kr.width);
+                            kr = { left: L, top: T, right: R, bottom: B, width: R - L, height: B - T };
+                        }
+                    }
                     const cropLeft = Math.max(0, Math.round(kr.left));
                     // NOT: cubuk yukarida STIL ile gizlendi -> genisligi kadrajdan DUSMUYORUZ.
                     // (Eski yedek "kr.width - sbW" idi ve GORSELI KIRPIYORDU — kullanici
@@ -4700,6 +4757,7 @@
                         `Yakalama: ${segs.length} parça (${cropWidth}x${fullH}), yol=${mode}/${scIc ? 'modal-kaydir' : 'tek-kare'}` +
                         `, yazar="${a.ad}" (${a.kaynak})` +
                         `, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
+                        (_genisletildi ? `, kadrajGenisletildi=+${_genisletildi}px(stats)` : '') +
                         `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}${_bitisTani.el ? ' <- ' + _bitisTani.el : ''}, kesilen=${_kesildi}px` +
                         `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
                         (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
