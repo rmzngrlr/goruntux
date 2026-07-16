@@ -75,6 +75,22 @@
         } catch (e) { return false; }
     }
 
+    // Etkilesim satiri secicisi — TEK KAYNAK (fbFindPost, fbBitisY ve bekleme poll'u
+    // AYNI seciciyi kullansin diye; fbFindPost'tan ONCE tanimli olmali).
+    //
+    // TAM ESLESME kullaniyoruz. SAHA HATASI (2026-07-16): once *="Yorum" i gibi ICEREN
+    // eslesme vardi ve YORUM YAZMA KUTUSUNUN placeholder'i ("... adıyla yorum yap")
+    // ESLESIYORDU -> fbBitisY etkilesim satiri yerine YORUM KUTUSUNU "bitis" saniyor,
+    // kadraj tam da yorum kutusunu ICINE ALACAK sekilde kesiliyordu.
+    // Kanit (test): eski secici adaylari ["Beğen","Yorum bırak","Paylaş",
+    // "Ramazan Gürler adıyla yorum yap"] <- sonuncusu KUTU.
+    // Gercek etiketler teshis ciktisindan: "Beğen", "İfade bırak", "Yorum bırak"
+    // (/posts), "Yorum Yap", "Paylaş" (reel).
+    var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],' +
+                     '[aria-label="Yorum bırak"],[aria-label="Yorum Yap"],[aria-label="Yorum yap"],' +
+                     '[aria-label="Comment"],[aria-label="İfade bırak"],[aria-label="Leave a reaction"],' +
+                     '[aria-label="Paylaş"],[aria-label="Share"]';
+
     // Facebook gonderi KARTINI bul. SAHA VERISIYLE tasarlandi (2026-07-16):
     //
     // /posts -> gonderi MODAL icinde acilir (adres cubugundan acilsa bile) ve ARKA PLANDA
@@ -111,9 +127,11 @@
             //    kartin kendi "Begen"i var -> ilk buton GORUNMEYEN bir karta ait olabilir,
             //    o zaman ortak ata iki karti birden kapsayip kart cok GENIS cikar
             //    (saha: kart=1156 genislik, viewport 895). Bu yuzden GORUNUR olani sec.
-            var engSel = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i]';
+            //    Secici TEK KAYNAK (FB_ENG_SEL) — burada da TAM ESLESME sart: gevsek
+            //    *="Yorum" YORUM YAZMA KUTUSUNU ("... adıyla yorum yap") yakaliyordu ve
+            //    ortak ata hesabini bozuyordu (fbBitisY'de ayni tuzak sahada patladi).
             var eng = null;
-            var engList = scope.querySelectorAll(engSel);
+            var engList = scope.querySelectorAll(FB_ENG_SEL);
             for (var ei = 0; ei < engList.length; ei++) {
                 var er = engList[ei].getBoundingClientRect();
                 if (er.width > 0 && er.height > 0 && er.bottom > 0 && er.top < window.innerHeight) { eng = engList[ei]; break; }
@@ -203,8 +221,15 @@
     // Etkilesim satirinin ALT kenarini icerik koordinatinda (kaydirici scrollTop dahil)
     // dondurur; bulunamazsa null -> cagiran eski davranisa (tam kart) duser.
     // Etkilesim satiri secicisi — TEK KAYNAK (hem bekleme hem bitis hesabi kullanir).
-    var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],[aria-label*="Share" i]';
-
+    //
+    // TAM ESLESME kullaniyoruz. SAHA HATASI (2026-07-16): once *="Yorum" i gibi ICEREN
+    // eslesme vardi ve YORUM YAZMA KUTUSUNUN placeholder'i ("... adıyla yorum yap")
+    // ESLESIYORDU -> fbBitisY etkilesim satiri yerine YORUM KUTUSUNU "bitis" saniyor,
+    // kadraj tam da yorum kutusunu ICINE ALACAK sekilde kesiliyordu.
+    // Kanit: log bitis=581 diyordu; kullanicinin duzeninde etkilesim ~650'de olmali,
+    // 581 ise gorselin bittigi yer = yorum kutusunun basi.
+    // Gercek etiketler teshis ciktisindan: "Beğen", "İfade bırak", "Yorum bırak"
+    // (/posts), "Yorum Yap", "Paylaş" (reel).
     function fbBitisY(kart, sc, scIc, taniOut) {
         try {
             if (!kart) return null;
@@ -239,6 +264,13 @@
                 var p = el.parentElement, yorumIcinde = false;
                 while (p && p !== kart) {
                     if (p.getAttribute && p.getAttribute('role') === 'article') { yorumIcinde = true; break; }
+                    // YORUM YAZMA KUTUSU icindeki hicbir dugme "etkilesim satiri" DEGILDIR
+                    // (Emoji/GIF/Etiket ve "... adıyla yorum yap"). Secici tam-eslesme'ye
+                    // cekildi ama buna BEL BAGLAMA: ileride gevserse kadraj yine yorum
+                    // kutusunu icine alirdi (saha hatasi tam olarak buydu).
+                    if (p.getAttribute && (p.getAttribute('role') === 'textbox' ||
+                        p.getAttribute('contenteditable') === 'true' ||
+                        p.tagName === 'FORM')) { yorumIcinde = true; break; }
                     p = p.parentElement;
                 }
                 if (yorumIcinde) continue;
