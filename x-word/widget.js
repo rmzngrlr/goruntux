@@ -196,13 +196,32 @@
     // goruntuyu ust uste yapistirir ve sonuc BOS OLMADIGI icin bos-yakalama korumasi FARK ETMEZ.
     function fbScroller(el) {
         try {
+            if (!el) return null;
+            // 1) ATALARDA ara (reel: kart bir kaydiricinin icinde — saha sh=1926/ch=642)
             var n = el;
             while (n && n !== document.body && n !== document.documentElement) {
                 var cs = getComputedStyle(n);
                 if (/(auto|scroll)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 20) return n;
                 n = n.parentElement;
             }
-            return null;   // null => window (FB'de beklenmiyor)
+            // 2) ICERIDE ara. /posts'ta kart MODAL'in kendisi olur (FB gonderi modali IKI
+            //    SUTUNLU: gorsel bir yanda, metin/etkilesim diger yanda -> ortak ata = modal)
+            //    ve modal overflow:hidden; GERCEK kaydirici modalin ICINDE (saha sh=2278/ch=507).
+            //    Bu dal olmadan kaydirici=YOK cikiyor ve yakalama modalin yalnizca GORUNEN
+            //    634px'ini alip altini SESSIZCE kaciriyordu.
+            var best = null, bestAlan = 0;
+            el.querySelectorAll('*').forEach(function (e) {
+                try {
+                    var cs2 = getComputedStyle(e);
+                    if (!/(auto|scroll)/.test(cs2.overflowY)) return;
+                    if (e.scrollHeight <= e.clientHeight + 20) return;
+                    var r = e.getBoundingClientRect();
+                    if (r.width < 200 || r.height < 200) return;
+                    var a = r.width * r.height;
+                    if (a > bestAlan) { bestAlan = a; best = e; }
+                } catch (x) {}
+            });
+            return best;   // null => kaydirma gerekmiyor / window
         } catch (e) { return null; }
     }
 
@@ -4323,6 +4342,15 @@
                     const _win = document.scrollingElement || document.documentElement;
                     const _a = fbAuthor();
                     const _mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
+                    // Kaydirici NEREDE? reel'de kartin ATASI, /posts'ta modal oldugu icin ICINDE.
+                    // Yakalama modeli buna gore degisir -> logla.
+                    const _scNerede = !_sc ? '-' : (_sc.contains(_card) ? 'ata' : (_card && _card.contains(_sc) ? 'ic' : 'baska'));
+                    // Yakalama plani: kac dilim gerekecek?
+                    const _kartH = _r ? Math.round(_r.height) : 0;
+                    const _sigar = _kartH > 0 && _kartH <= window.innerHeight;
+                    const _fullH = (_scNerede === 'ic' && _sc) ? _sc.scrollHeight : _kartH;
+                    const _pencere = (_scNerede === 'ic' && _sc) ? _sc.clientHeight : window.innerHeight;
+                    const _dilim = _sigar && _scNerede !== 'ic' ? 1 : (_pencere > 0 ? Math.ceil(_fullH / _pencere) : 0);
                     printLog(
                         `[Facebook] KURU-CALISMA (${_mode}): vp=${window.innerWidth}x${window.innerHeight}` +
                         `, dialog=${_dlg}` +
@@ -4330,7 +4358,8 @@
                         `, kartSonra=${_r ? Math.round(_r.width) + 'x' + Math.round(_r.height) : 'YOK'}` +
                         `, kartTop=${_r ? Math.round(_r.top) : '-'}, kartLeft=${_r ? Math.round(_r.left) : '-'}` +
                         `, yorumGizli=${_hidden.length}, seeMore=${_smN}` +
-                        `, kaydirici=${_sc ? _sc.tagName + ' sh=' + _sc.scrollHeight + '/ch=' + _sc.clientHeight : 'YOK'}` +
+                        `, kaydirici=${_sc ? _sc.tagName + '(' + _scNerede + ') sh=' + _sc.scrollHeight + '/ch=' + _sc.clientHeight : 'YOK'}` +
+                        `, PLAN: ${_dilim} dilim (fullH=${_fullH}, pencere=${_pencere}, kartSigar=${_sigar})` +
                         `, winScroll=${_win.scrollHeight}/${_win.clientHeight}` +
                         `, yazar="${_a.ad}" id=${_a.id || '-'} slug=${_a.slug || '-'} (${_a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
