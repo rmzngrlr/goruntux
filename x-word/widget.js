@@ -4531,14 +4531,17 @@
                         `, sure=${Date.now() - _t0}ms`
                     );
 
-                    // 5) Sonuc: account_name = gorunen ad, username = "@slug" (varsa).
-                    //    app.py submit_word_result X mantigi bunu dogru isliyor:
-                    //      username && account && username not in account -> "Ad (@slug)"  [kullanici karari]
-                    //      aksi halde -> "Ad"  (slug yoksa duz ad; reel/profile.php boyle)
+                    // 5) Sonuc: baslik = DUZ GORUNEN AD ("Futbol Gazetesi", "ESRA EROL").
+                    //    KULLANICI KARARI DEGISTI (2026-07-16): once "Ad (@slug)" istenmisti
+                    //    (X ile tutarli olsun diye), sahada gorunce "(@futbolgazetesi) gerek yok"
+                    //    dendi -> username BOS gonderiyoruz; app.py submit_word_result'in
+                    //    else dali title = account_name yapiyor (app.py degisikligi GEREKMIYOR).
+                    //    Gruplama ETKILENMEZ: pool_group_key slug'i LINK'ten turetiyor, bu
+                    //    alandan degil. a.ad hicbir zaman bos kalmaz (fbAuthor slug'a duser).
                     const resItem = {
                         link: activeUrl,
                         account_name: a.ad || '',
-                        username: a.slug ? ('@' + a.slug) : '',
+                        username: '',
                         screenshot: shot,
                         is_profile: false
                     };
