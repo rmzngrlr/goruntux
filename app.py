@@ -1390,7 +1390,7 @@ HTML_TEMPLATE = """
                 <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
                 <button class="settings-toggle-btn" onclick="toggleStyleModal()">⚙️ Stil Ayarları</button>
                 <h1><span class="emoji">📝</span><span class="title-text">GörüntüX</span></h1>
-                <p>Tweet tarama, Word çıktısı üretme ve rapor biçimlendirme arayüzü</p>
+                <p>Gönderi tarama, Word çıktısı üretme ve rapor biçimlendirme arayüzü</p>
             </div>
 
             <!-- Tab Buttons -->
@@ -1454,7 +1454,7 @@ HTML_TEMPLATE = """
                     </div>
                     
                     <div class="form-group">
-                        <label for="m_link">2. Tweet / Web Linki (Opsiyonel):</label>
+                        <label for="m_link">2. Gönderi / Web Linki (Opsiyonel):</label>
                         <input type="text" id="m_link" placeholder="x.com/... · instagram.com/p/... · facebook.com/.../posts/...">
                     </div>
 
@@ -1511,7 +1511,7 @@ HTML_TEMPLATE = """
                     <!-- Canlı Link Önizleme ve Silme Alanı -->
                     <div id="links-preview-area" style="display: none; margin-bottom: 20px; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 14px; background: rgba(29, 155, 240, 0.05);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h5 style="margin: 0; font-size: 14px; font-weight: 600; color: #e7e9ea;">📋 Taranacak Tweetler</h5>
+                            <h5 style="margin: 0; font-size: 14px; font-weight: 600; color: #e7e9ea;">📋 Taranacak Gönderiler</h5>
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <button type="button" onclick="clearInputLinks()" style="background: rgba(224, 36, 94, 0.1); border: 1px solid rgba(224, 36, 94, 0.2); color: var(--danger-color, #e0245e); font-size: 11px; padding: 2px 8px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">Temizle</button>
                                 <span id="links-preview-count" style="font-size: 12px; font-weight: bold; background: var(--accent-color, #1d9bf0); color: white; padding: 2px 8px; border-radius: 10px;">0 adet</span>
@@ -1645,7 +1645,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔗 Tweet Linki Stili</h3>
+                <h3>🔗 Gönderi Linki Stili</h3>
                 <div class="form-group">
                     <label for="l_font">Yazı Tipi (Font):</label>
                     <select id="l_font">
