@@ -2871,27 +2871,33 @@ HTML_TEMPLATE = """
 
         window.accumulatedLinks = window.accumulatedLinks || [];
 
-        // Faz FB-1: FB linki icin onizlemede gosterilecek kisa etiket.
-        function fbShortLabel(url) {
+        // Faz FB-1: FB linkinin GONDERI KODU (onizleme etiketi icin).
+        // Kullanici istegi 2026-07-17: butun FB formlari TEK TIP -> "Facebook Gönderi Kodu: <kod>",
+        // yani Instagram'daki "Instagram Gönderi Kodu: <kod>" ile ayni bicim.
+        // Once form basina AYRI metin uretiliyordu ve ayni listede yan yana boyle gorunuyordu:
+        //     Facebook: ntvspor · Gönderi pfbid028EJ4…      <- /posts formu
+        //     Facebook: Paylaşım kodu 14jeAjQz7ZP           <- /share formu
+        // Sayfa adi (ntvspor) YALNIZCA /posts formunda var; /share linklerinde URL'de ad
+        // bulunmuyor -> ad yazmak tek tiplestirmeyi yapisal olarak imkansiz kiliyordu.
+        // Bu yuzden ad, grup adi ve "Sayfa <id>" eki atildi; her formdan yalnizca kod alinir.
+        // NOT: bu SADECE ekran etiketi. Kimlik/eslestirme XPlat.fbCanonical + xNormLink ile
+        // yapiliyor -> etiketin sadelesmesi anahtarlari etkilemez.
+        function fbPostCode(url) {
             try {
                 var u = new URL(XPlat.fbCanonical(url));
                 var p = String(u.pathname || '').replace(/\\/+$/, '');
-                var m = p.match(/^\\/groups\\/([^/]+)\\/posts\\/([^/]+)$/i);
-                if (m) return 'Grup ' + m[1] + ' · Gönderi ' + m[2];
-                m = p.match(/^\\/([^/]+)\\/posts\\/([^/]+)$/i);
-                if (m) return m[1] + ' · Gönderi ' + m[2];
-                m = p.match(/^\\/share\\/[pvr]\\/([^/]+)$/i);
-                if (m) return 'Paylaşım kodu ' + m[1];
-                m = p.match(/^\\/reel\\/([^/]+)$/i);
-                if (m) return 'Reel ' + m[1];
-                var v = u.searchParams.get('v');
-                if (v) return 'Video ' + v;
-                var fbid = u.searchParams.get('fbid');
-                if (fbid) return 'Fotoğraf ' + fbid;
-                var sf = u.searchParams.get('story_fbid');
-                if (sf) return 'Gönderi ' + sf + (u.searchParams.get('id') ? (' · Sayfa ' + u.searchParams.get('id')) : '');
-                return p || 'gönderi';
-            } catch (e) { return 'gönderi'; }
+                // Kimligi YOLDA olan formlar. /groups/{g}/posts/{kod} once denenir; zaten
+                // /{ad}/posts/{kod} kalibi 4 parcali yola uymaz, cakismazlar.
+                var m = p.match(/^\\/groups\\/[^/]+\\/posts\\/([^/]+)$/i)
+                     || p.match(/^\\/[^/]+\\/posts\\/([^/]+)$/i)
+                     || p.match(/^\\/share\\/[pvr]\\/([^/]+)$/i)
+                     || p.match(/^\\/reel\\/([^/]+)$/i);
+                if (m) return m[1];
+                // Kimligi SORGUDA olan formlar: permalink.php/story.php (story_fbid),
+                // photo.php + /photo/ (fbid), /watch/ (v).
+                return u.searchParams.get('story_fbid') || u.searchParams.get('fbid')
+                    || u.searchParams.get('v') || p.replace(/^\\//, '') || '';
+            } catch (e) { return ''; }
         }
         // Faz FB-1: Facebook GONDERI linki mi? (sayfa/profil linkleri KAPSAM DISI —
         // FB'de profil karti yakalama yok, yalnizca gonderi tipleri destekleniyor.)
@@ -3122,7 +3128,9 @@ HTML_TEMPLATE = """
                             var code = parts.split('/')[1] || parts.split('/')[0] || "gönderi";
                             label = "&#128279; Instagram Gönderi Kodu: " + code.split('?')[0].split('#')[0];
                         } else if (isFbLink) {
-                            label = "&#128279; Facebook: " + fbShortLabel(tweetUrl);
+                            // Instagram dalindaki bicimin ayni: "<Platform> Gönderi Kodu: <kod>"
+                            var fbKod = fbPostCode(tweetUrl);
+                            label = "&#128279; Facebook Gönderi Kodu: " + (fbKod || 'bilinmiyor');
                         } else if (tweetUrl.indexOf('/status/') !== -1) {
                             var tweetId = tweetUrl.split('/status/')[1].split('?')[0].split('#')[0];
                             label = "&#128279; Tweet ID'si: " + tweetId;
