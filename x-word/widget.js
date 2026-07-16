@@ -673,36 +673,31 @@
                     if (isInstagram && xWidgetIgNoZoom) {
                         try {
                             const post = document.querySelector('main article') || document.querySelector('article') || element;
+                            // Tepeye çık ve article'ın MUTLAK sayfa konumunu al (video/yerleşme payı için kısa bekle).
+                            window.scrollTo(0, 0);
+                            await new Promise(r => setTimeout(r, 250));
                             const pRect0 = post.getBoundingClientRect();
-                            spacer.style.height = (Math.ceil(pRect0.height) + vH + 400) + 'px';
-                            // article tepesini viewport tepesine getir
-                            const curY = window.scrollY || document.documentElement.scrollTop || 0;
-                            window.scrollTo(0, Math.max(0, curY + pRect0.top - 2));
-                            await new Promise(r => setTimeout(r, 300));
-                            let pr = post.getBoundingClientRect();
-                            const cropLeft = Math.max(0, Math.round(pr.left));
-                            const cropWidth = Math.round(Math.min(vW - cropLeft, pr.width));
-                            const fullH = Math.round(pr.height);
+                            const startY = (window.scrollY || document.documentElement.scrollTop || 0) + pRect0.top;
+                            const cropLeft = Math.max(0, Math.round(pRect0.left));
+                            const cropWidth = Math.round(Math.min(vW - cropLeft, pRect0.width));
+                            const fullH = Math.round(pRect0.height);
+                            // Kaydırmanın article SONUNA (açıklamaya) ulaşabilmesi için bol spacer.
+                            spacer.style.height = (Math.ceil(fullH) + vH * 2 + 400) + 'px';
                             const segs = [];
-                            let captured = 0, guard = 0;
-                            while (captured < fullH && guard < 30) {
+                            let y = 0, guard = 0;
+                            while (y < fullH && guard < 40) {
                                 guard++;
-                                const cur = post.getBoundingClientRect();
-                                const topInView = Math.max(0, Math.round(cur.top));
-                                const sliceH = Math.round(Math.min(vH - topInView, fullH - captured));
+                                // article'ın [y .. y+vH] dilimini MUTLAK konumla viewport tepesine getir (delta-break YOK).
+                                window.scrollTo(0, Math.max(0, Math.round(startY + y)));
+                                await new Promise(r => setTimeout(r, 200));
+                                const sliceH = Math.round(Math.min(vH, fullH - y));
                                 if (sliceH <= 2) break;
                                 const segRes = await new Promise(resolve => {
-                                    swSendReliable({ action: "captureAndCrop", rect: { top: topInView, left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
+                                    swSendReliable({ action: "captureAndCrop", rect: { top: 0, left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
                                 });
                                 if (!segRes || segRes.status !== "success" || !segRes.dataUrl) break;
                                 segs.push(segRes.dataUrl);
-                                captured += sliceH;
-                                if (captured >= fullH) break;
-                                const beforeScroll = window.scrollY || document.documentElement.scrollTop || 0;
-                                window.scrollBy({ top: sliceH, left: 0, behavior: 'instant' });
-                                await new Promise(r => setTimeout(r, 200));
-                                const afterScroll = window.scrollY || document.documentElement.scrollTop || 0;
-                                if (afterScroll - beforeScroll < 5) break; // kaydırma durdu (son)
+                                y += sliceH;
                             }
                             printLog(`[Instagram] Sade no-zoom: ${segs.length} parça (${Math.round(cropWidth)}x${fullH}).`);
                             if (segs.length > 0) {
