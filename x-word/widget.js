@@ -90,8 +90,21 @@
     // Bu YAPISAL olarak cozuldu (fbBitisY icinde textbox/contenteditable/form ATLANIR) —
     // seciciyi daraltarak DEGIL. Cozum orada, burada degil.
     var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],' +
-                     '[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],' +
-                     '[aria-label*="Share" i]';
+                     '[aria-label*="Comment" i],[aria-label*="Paylaş" i],[aria-label*="Share" i]';
+
+    // BITIS icin AYRI ve DAR secici — "kart sinirini bul"dan farkli bir is.
+    // SAHA (2026-07-16, log kaniti):
+    //   Futbol Gazetesi: bitis=700+8 <- İfade bırak[button/DIV]  -> DOGRU (gonderi reaksiyonu)
+    //   NTV Spor       : bitis=601+8 <- İfade bırak[button/DIV]  -> YANLIS (YORUM KUTUSUNDAKI
+    //                    emoji dugmesi; kesilen=25px = kadraj kutunun ortasinda kesiyor)
+    // Yani FB "İfade bırak" etiketini IKI AYRI yerde kullaniyor ve ayirt edilemiyor.
+    // Yorum-kutusu savunmasi da tutmuyor: emoji dugmesi [role=textbox]'in ICINDE degil,
+    // YANINDA. Bu yuzden bitis hesabinda "İfade bırak" KULLANILMAZ; "Beğen"/"Yorum"
+    // gonderiye ozel ve ikisi de etkilesim satirinda (teshis ciktisi: "Beğen",
+    // "İfade bırak", "Yorum bırak" — ucu de mevcut).
+    // NOT: FB_ENG_SEL (kart bulma + bekleme) GENIS kalir; yalnizca BITIS dar.
+    var FB_BITIS_SEL = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],' +
+                       '[aria-label*="Comment" i]';
 
     // Facebook gonderi KARTINI bul. SAHA VERISIYLE tasarlandi (2026-07-16):
     //
@@ -235,7 +248,7 @@
     function fbBitisY(kart, sc, scIc, taniOut) {
         try {
             if (!kart) return null;
-            var sel = FB_ENG_SEL;
+            var sel = FB_BITIS_SEL;   // DAR secici — "İfade bırak" HARIC (bkz. yukaridaki not)
             var list = kart.querySelectorAll(sel);
             if (!list.length) {
                 // TANI: seciciyle bulunamadi -> karttaki GERCEK aria-label'lari disari ver.
