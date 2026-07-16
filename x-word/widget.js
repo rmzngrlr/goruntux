@@ -279,17 +279,28 @@
             var m = location.pathname.match(/^\/([^/]+)\/posts\//);
             if (m && m[1] && m[1].toLowerCase() !== 'profile.php') {
                 var slug = m[1];
-                var ad = '';
-                // Ayni slug'a giden profil linkinin METNI = gorunen ad ("Futbol Gazetesi").
-                // Slug'a kilitli oldugu icin BASKA birinin adini almayiz.
+                // Ayni slug'a giden IKI link vardir:
+                //   profil   : /{slug}/            -> metni GORUNEN AD ("Futbol Gazetesi")
+                //   permalink: /{slug}/posts/{id}  -> metni ZAMAN DAMGASI ("3s")
+                // SAHA HATASI (2026-07-16): ilk bulunani aliyorduk ve permalink once gelince
+                // baslik "3s (@futbolgazetesi)" cikti. Zaman damgasi regex'i de kacirmisti:
+                // listede sa/dk/sn vardi ama FB TR "3s" (saniye) kullaniyor.
+                // Bu yuzden IKI katman: (1) permalink'i YAPISAL olarak ele, (2) kalin
+                // (strong/h2/h3) yazilmis adi TERCIH et.
+                var ad = '', adKalin = '';
                 var as = document.querySelectorAll('a[href^="/' + slug + '"], a[href*="/' + slug + '/"]');
                 for (var i = 0; i < as.length; i++) {
+                    var href = (as[i].getAttribute('href') || '').split('?')[0];
+                    // Gonderi/medya permalink'i -> metni zaman damgasidir, AD DEGIL.
+                    if (/\/(posts|videos|photos|reel|permalink)\//i.test(href)) continue;
                     var t = (as[i].innerText || '').replace(/\s+/g, ' ').trim();
-                    // zaman damgasi ("4h", "2 sa") ve bos/uzun metinleri ele
                     if (!t || t.length > 60) continue;
-                    if (/^\d+\s*(sa|dk|sn|g|h|m|d|w|y)$/i.test(t)) continue;
-                    ad = t; break;
+                    // Yedek: "3s", "5dk", "2sa", "4h", "1w" gibi zaman damgalari.
+                    if (/^\d+\s*[a-zçğıöşü]{1,3}$/i.test(t)) continue;
+                    if (!adKalin && as[i].querySelector('strong,h2,h3,h4,span[dir]')) adKalin = t;
+                    if (!ad) ad = t;
                 }
+                ad = adKalin || ad;
                 return { ad: ad || slug, id: '', slug: slug, kaynak: ad ? 'url+dom' : 'url' };
             }
             // 1) reel: a[aria-label="Sahibin Profilini Gör"] -> SPESIFIK olarak gonderi sahibi.
