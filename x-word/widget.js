@@ -358,6 +358,20 @@
                 });
             }
 
+            // Faz IG-1: Instagram gonderi kartini (media iceren article) guvenilir sec.
+            // 'main article' bazen yanlis/tam-genislik element donduruyordu; medyayi iceren article'i tercih et.
+            function igFindPost() {
+                try {
+                    var arts = document.querySelectorAll('article');
+                    if (arts.length === 1) return arts[0];
+                    for (var i = 0; i < arts.length; i++) {
+                        var m = arts[i].querySelector('video') || arts[i].querySelector('img[srcset]') || arts[i].querySelector('img');
+                        if (m) { var mr = m.getBoundingClientRect(); if (mr.width > 200 && mr.height > 200) return arts[i]; }
+                    }
+                    return arts[0] || null;
+                } catch (e) { return document.querySelector('article'); }
+            }
+
             // Görselleri data: URL formatına çevir (Blob'ları yerel, haricileri background ile okur, CSS background-image'leri de kapsar)
             async function prefetchImages(element) {
                 const imgs = Array.from(element.querySelectorAll('img'));
@@ -543,7 +557,7 @@
                 // kullanıcı adı/açıklama/hashtag/yorum/etkileşim sütunu. Böylece açıklama da görüntüye girer.
                 // (Sadece medya elementini ölçünce sağ sütun/açıklama kırpma dışında kalıyordu.)
                 if (isInstagram && xWidgetIgNoZoom) {
-                    const igPost = document.querySelector('main article') || document.querySelector('article');
+                    const igPost = igFindPost();
                     if (igPost) element = igPost;
                 }
 
@@ -582,6 +596,27 @@
                                 igMsgHidden.push({ el: target, v: target.style.visibility });
                                 target.style.setProperty('visibility', 'hidden', 'important');
                                 printLog("[Instagram] Mesajlar balonu gizlendi.");
+                            }
+                        } catch (e) {}
+                        // Giriş-yapmış hesabın profil resmini (post altındaki "Yorum ekle..." kutusu avatarı) gizle.
+                        // Yalnızca yorum-yazma satırındaki KÜÇÜK avatarı hedefler; post sahibinin/yorumcuların avatarına dokunmaz.
+                        try {
+                            const igp = igFindPost();
+                            const form = igp ? igp.querySelector('form') : null;
+                            if (form) {
+                                let row = form.parentElement;
+                                for (let i = 0; i < 4 && row && row !== igp; i++) {
+                                    if (row.getBoundingClientRect().height < 120) break;
+                                    row = row.parentElement;
+                                }
+                                (row || form).querySelectorAll('img, canvas').forEach(function (el) {
+                                    const rr = el.getBoundingClientRect();
+                                    if (rr.width > 0 && rr.width < 60 && rr.height < 60) {
+                                        igMsgHidden.push({ el: el, v: el.style.visibility });
+                                        el.style.setProperty('visibility', 'hidden', 'important');
+                                        printLog("[Instagram] Yorum kutusu avatarı gizlendi.");
+                                    }
+                                });
                             }
                         } catch (e) {}
                     }
@@ -672,7 +707,7 @@
                     // dokunulmaz (kırpma bölgesi zaten dışarıda bırakır). article'ın tamamı alındığından açıklama da girer.
                     if (isInstagram && xWidgetIgNoZoom) {
                         try {
-                            const post = document.querySelector('main article') || document.querySelector('article') || element;
+                            const post = igFindPost() || element;
                             // Tepeye çık ve article'ın MUTLAK sayfa konumunu al (video/yerleşme payı için kısa bekle).
                             window.scrollTo(0, 0);
                             await new Promise(r => setTimeout(r, 250));
