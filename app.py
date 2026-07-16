@@ -3140,6 +3140,12 @@ HTML_TEMPLATE = """
             s.id = 'pool-dnd-style';
             s.textContent =
                 '.pool-hint{font-size:11px;color:var(--text-secondary);margin-bottom:14px;}' +
+                // Platform bolumu = Word'deki BASLIK 1. Bloklar kendi bolumunde durur;
+                // boylece siralama platform sinirini ASAMAZ (kullanici istegi 2026-07-17).
+                '.pool-section{border:1px dashed var(--border-color);border-radius:12px;padding:10px;margin-bottom:20px;}' +
+                '.pool-section-head{display:flex;align-items:center;gap:8px;padding:4px 6px 12px;font-weight:700;font-size:15px;color:var(--text-primary);}' +
+                '.pool-section-count{margin-left:auto;font-size:11px;color:var(--text-secondary);font-weight:500;}' +
+                '.pool-section .pool-block:last-child{margin-bottom:0;}' +
                 '.pool-block{border:1px solid var(--border-color);border-radius:10px;margin-bottom:18px;background:rgba(255,255,255,0.02);}' +
                 '.pool-block-head{display:flex;align-items:center;gap:8px;padding:13px 16px;border-bottom:1px solid var(--border-color);font-weight:600;font-size:14px;color:var(--accent-color);}' +
                 '.pool-block-count{margin-left:auto;font-size:11px;color:var(--text-secondary);font-weight:500;}' +
@@ -3170,11 +3176,44 @@ HTML_TEMPLATE = """
                 if (!byKey[key]) { byKey[key] = { key: key, group: it.group, items: [] }; blocks.push(byKey[key]); }
                 byKey[key].items.push(it);
             }
+            // --- PLATFORM BOLUMLERI (= Word'deki Baslik 1) ---
+            // Kullanici istegi (2026-07-17): siralama Baslik 1 ICINDE kalsin — X'ler kendi
+            // arasinda, IG'ler kendi arasinda, FB'ler kendi arasinda. Bloklari bolumlere
+            // koyunca movePoolBlock (parentNode icinde calisiyor) platform sinirini
+            // KENDILIGINDEN asamaz; savePoolOrderFromDom da DOM sirasini okudugu icin
+            // bolum sirasi dogrudan havuz sirasina, oradan da Word'deki Baslik 1 sirasina
+            // yansir. Bolum sirasi: havuzda ILK gorunen platform once (Word ile AYNI kural).
+            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook' };
+            var sections = [], bySec = {};
+            for (var si = 0; si < blocks.length; si++) {
+                var sPlat = poolPlatformOf(blocks[si].items[0]);
+                if (!bySec[sPlat]) { bySec[sPlat] = { plat: sPlat, blocks: [] }; sections.push(bySec[sPlat]); }
+                bySec[sPlat].blocks.push(blocks[si]);
+            }
+
             var html = '';
-            for (var b = 0; b < blocks.length; b++) {
-                var blk = blocks[b];
+            for (var s = 0; s < sections.length; s++) {
+              var sec = sections[s];
+              var secUpDis = (s === 0) ? ' disabled' : '';
+              var secDownDis = (s === sections.length - 1) ? ' disabled' : '';
+              html += '<div class="pool-section" data-plat="' + poolEscapeHtml(sec.plat) + '">';
+              // Bolum basligi YALNIZCA birden fazla platform varsa: tek platformda Word'de
+              // Baslik 1 BASILMIYOR, havuzda gostermek yaniltici olurdu.
+              if (sections.length > 1) {
+                var toplamOge = 0;
+                for (var ci = 0; ci < sec.blocks.length; ci++) toplamOge += sec.blocks[ci].items.length;
+                html += '<div class="pool-section-head">' +
+                        '<span>' + poolEscapeHtml(PLAT_ETIKET[sec.plat] || sec.plat) + '</span>' +
+                        '<span class="pool-section-count">' + toplamOge + ' öğe</span>' +
+                        '<span class="pool-block-moves">' +
+                        '<button type="button" class="pool-move-btn" title="Bölümü yukarı taşı"' + secUpDis + ' onclick="movePoolSection(this,\\\'up\\\')">&#9650;</button>' +
+                        '<button type="button" class="pool-move-btn" title="Bölümü aşağı taşı"' + secDownDis + ' onclick="movePoolSection(this,\\\'down\\\')">&#9660;</button>' +
+                        '</span></div>';
+              }
+              for (var b = 0; b < sec.blocks.length; b++) {
+                var blk = sec.blocks[b];
                 var upDis = (b === 0) ? ' disabled' : '';
-                var downDis = (b === blocks.length - 1) ? ' disabled' : '';
+                var downDis = (b === sec.blocks.length - 1) ? ' disabled' : '';
                 html += '<div class="pool-block" data-blockkey="' + poolEscapeHtml(blk.key) + '">';
                 html += '<div class="pool-block-head">' +
                         '<span class="pool-block-title">' + poolEscapeHtml(poolBlockLabel(blk.items, blk.group)) + '</span>' +
@@ -3205,11 +3244,41 @@ HTML_TEMPLATE = """
                             '</div>';
                 }
                 html += '</div></div>';
+              }
+              html += '</div>';   // .pool-section
             }
             container.innerHTML = html;
             attachItemDnd(container);
         }
-        // Hesap bloğunu ▲▼ ile yukarı/aşağı taşır (hesaplar arası sıra).
+        // Bir havuz ogesinin platformu ('x' | 'ig' | 'fb') — bolumleme icin.
+        // XPlat yoksa 'x'e duser (eski davranis: tek bolum, gorunum bozulmaz).
+        function poolPlatformOf(item) {
+            try {
+                if (window.XPlat && item && item.link) return XPlat.platform(item.link);
+            } catch (e) {}
+            return 'x';
+        }
+        // Platform BOLUMUNU ▲▼ ile taşır = Word'deki Baslik 1 sirasi.
+        // savePoolOrderFromDom DOM sirasini okudugu icin bolum tasimasi dogrudan havuz
+        // sirasina, oradan da Baslik 1 sirasina yansir.
+        function movePoolSection(btn, dir) {
+            var container = document.getElementById('manual-items-container');
+            var sec = btn.closest('.pool-section');
+            if (!container || !sec) return;
+            window.poolDragging = true;
+            if (dir === 'up') {
+                var prevS = sec.previousElementSibling;
+                while (prevS && !prevS.classList.contains('pool-section')) prevS = prevS.previousElementSibling;
+                if (prevS) sec.parentNode.insertBefore(sec, prevS);
+            } else {
+                var nextS = sec.nextElementSibling;
+                while (nextS && !nextS.classList.contains('pool-section')) nextS = nextS.nextElementSibling;
+                if (nextS) sec.parentNode.insertBefore(nextS, sec);
+            }
+            savePoolOrderFromDom(container);
+        }
+        // Hesap bloğunu ▲▼ ile yukarı/aşağı taşır (AYNI BOLUM icinde: parentNode artik
+        // .pool-section, yani platform sinirini KENDILIGINDEN asamaz).
         function movePoolBlock(btn, dir) {
             var container = document.getElementById('manual-items-container');
             var block = btn.closest('.pool-block');
