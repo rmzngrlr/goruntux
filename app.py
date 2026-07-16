@@ -432,6 +432,29 @@ def link_ekle_hyperlink(paragraf, url, metin, font_name, size_pt, color_hex, und
     hyperlink.append(new_run)
     paragraf._p.append(hyperlink)
 
+# --- .docx gorsel olculeri (kullanici karari 2026-07-17) ---
+# JS IKIZI: LOCAL_DOCX_JS icindeki imageXml (app.py ~4200). IKISI BIRLIKTE DEGISMELI.
+# Ayrisirlarsa ayni havuzdan iki farkli boyutta rapor cikar: Word normalde TARAYICIDA
+# uretilir (imageXml), ama /api/upload/format ("Format Docx" sekmesi), /api/manual/generate
+# (istemci uretimi hata verirse devreye giren gorunmez yedek) ve
+# /api/extension/generate_single bu Python yolunu kullanir.
+#
+# KURAL: GENISLIK-ONCE. Genislik hedefe sabitlenir, yukseklik en-boy oranindan turer
+# -> en-boy orani korunur, goruntu esnetilmez, piksel verisi hic islenmez (yalnizca
+# Word'un cizim kutusu degisir).
+# ONCEKI KURAL YUKSEKLIK-ONCE idi (yukseklik 3.8" herkese sabit, genislik oranla
+# degisir): ayni sayfadaki gorsellerin genislikleri 3.8 kata kadar ayrisiyordu
+# (olculdu: 524x1180 gonderi karti -> 1.69", 598x250 kisa metin -> 6.50").
+#
+# TAVAN NEDEN SART: sayfa Letter (12240x15840 twip) + kenar bosluklari (720/1080)
+# -> 7.0" x 10.0" kullanilabilir alan. Orani 0.44 olan bir gonderi karti 5" genislikte
+# 11.3" yuksek olur, hicbir sayfaya sigmaz. Tavana takilan gorselin genisligi hedeften
+# sapar; istek bu yuzden "esit" degil "esit derecesinde yakin".
+# 9.0" = 10.0" metin yuksekligi - ~1.0" baslik+link+aralik payi (baslik puntosu
+# kullanici tarafindan ayarlanabildigi icin pay genis tutuldu).
+HEDEF_GORSEL_GENISLIK_INCH = 5.0
+GORSEL_TAVAN_YUKSEKLIK_INCH = 9.0
+
 def gorsel_ekle_ve_boyutlandir(doc_obj, gorsel_data):
     if not gorsel_data:
         return
@@ -447,11 +470,12 @@ def gorsel_ekle_ve_boyutlandir(doc_obj, gorsel_data):
             
         width, height = img.size
         aspect_ratio = width / height
-        hedef_yukseklik_inch = 3.8
-        hedef_genislik_inch = hedef_yukseklik_inch * aspect_ratio
-        if hedef_genislik_inch > 6.5:
-            hedef_genislik_inch = 6.5
-            hedef_yukseklik_inch = hedef_genislik_inch / aspect_ratio
+        # GENISLIK-ONCE (bkz. yukaridaki sabitler; JS ikizi imageXml ile ayni kural).
+        hedef_genislik_inch = HEDEF_GORSEL_GENISLIK_INCH
+        hedef_yukseklik_inch = hedef_genislik_inch / aspect_ratio
+        if hedef_yukseklik_inch > GORSEL_TAVAN_YUKSEKLIK_INCH:
+            hedef_yukseklik_inch = GORSEL_TAVAN_YUKSEKLIK_INCH
+            hedef_genislik_inch = hedef_yukseklik_inch * aspect_ratio
         p_img = doc_obj.add_paragraph()
         p_img.alignment = WD_ALIGN_PARAGRAPH.LEFT
         p_img.paragraph_format.space_after = Pt(6)
@@ -463,10 +487,13 @@ def gorsel_ekle_ve_boyutlandir(doc_obj, gorsel_data):
             p_img.alignment = WD_ALIGN_PARAGRAPH.LEFT
             p_img.paragraph_format.space_after = Pt(6)
             if isinstance(gorsel_data, str) and os.path.exists(gorsel_data):
-                p_img.add_run().add_picture(gorsel_data, width=Inches(4.5))
+                # Yalnizca genislik verilir -> python-docx yuksekligi orandan hesaplar
+                # (zaten genislik-once). Hedef genislige cekildi; tavan yok cunku bu
+                # yol sadece olcu okunamadiginda calisan hata yedegi.
+                p_img.add_run().add_picture(gorsel_data, width=Inches(HEDEF_GORSEL_GENISLIK_INCH))
             else:
                 gorsel_stream = io.BytesIO(gorsel_data)
-                p_img.add_run().add_picture(gorsel_stream, width=Inches(4.5))
+                p_img.add_run().add_picture(gorsel_stream, width=Inches(HEDEF_GORSEL_GENISLIK_INCH))
         except Exception as inner_e:
             print(f"[gorsel_ekle_ve_boyutlandir] Fallback hatası: {inner_e}", flush=True)
 
@@ -4183,9 +4210,22 @@ LOCAL_DOCX_JS = r'''
       var mime=item.image_mime||'image/jpeg';
       var dataUrl='data:'+mime+';base64,'+item.image_b64;
       var sz=await loadImageSize(dataUrl);
-      var hIn=3.8, wIn;
-      if(sz.w>0 && sz.h>0){ var ar=sz.w/sz.h; wIn=hIn*ar; if(wIn>6.5){ wIn=6.5; hIn=wIn/ar; } }
-      else { wIn=4.5; hIn=3.8; }
+      // PYTHON IKIZI: gorsel_ekle_ve_boyutlandir (app.py ~435). IKISI BIRLIKTE DEGISMELI
+      // -> gerekce ve sayilarin tam aciklamasi orada. Ozet: GENISLIK-ONCE; genislik
+      // hedefe sabit, yukseklik en-boy oranindan turer (goruntu esnetilmez); tavan
+      // sayfaya sigma zorunlulugu (7.0"x10.0" kullanilabilir alan).
+      var HEDEF_W=5.0, TAVAN_H=9.0;
+      var wIn, hIn;
+      if(sz.w>0 && sz.h>0){
+        var ar=sz.w/sz.h;
+        wIn=HEDEF_W; hIn=wIn/ar;
+        if(hIn>TAVAN_H){ hIn=TAVAN_H; wIn=hIn*ar; }
+      } else {
+        // Olcu okunamadi (bozuk veri): oran bilinmiyor. wp:extent hem cx hem cy ister,
+        // biri tahmin edilmek zorunda. Eski yedek bicimin orani (4.5/3.8) korunup
+        // genislik hedefe cekildi.
+        wIn=HEDEF_W; hIn=HEDEF_W/(4.5/3.8);
+      }
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       return '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
