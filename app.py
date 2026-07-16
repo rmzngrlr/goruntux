@@ -1453,30 +1453,6 @@ HTML_TEMPLATE = """
                     <input type="checkbox" id="l_underline" checked>
                     <label for="l_underline">Altı Çizili</label>
                 </div>
-
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
-
-                <h3>⚡ Word Üretim Yeri</h3>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    Word raporu <b>bu bilgisayarda, tarayıcıda</b> üretilir; çok PC'li kullanımda merkezî
-                    yoğunluğu azaltır. Nadir bir hata olursa otomatik olarak sunucuda üretime düşülür (güvenlik ağı).
-                </div>
-
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
-
-                <h3>🖼️ Ekran Görüntüsü Yeri</h3>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    Ekran görüntüleri <b>bu tarayıcıda</b> (IndexedDB) tutulur; sunucuya <b>hiç gönderilmez.</b>
-                    Sunucu yalnızca başlık/link/sıra tutar; çok PC'li kullanımda merkezî yoğunluğu azaltır.
-                </div>
-
-                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
-
-                <h3>📸 Instagram Yakalama</h3>
-                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    Instagram gönderileri sayfaya <b>zoom yapılmadan</b>, kaydırılıp birleştirilerek
-                    <b>tam çözünürlükte</b> yakalanır (medya + açıklama + etkileşim birlikte).
-                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="toggleStyleModal()">Uygula ve Kapat</button>
