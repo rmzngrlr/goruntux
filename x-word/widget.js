@@ -202,12 +202,29 @@
     // gizlemeye de takilmiyorlar ([role="article"] degiller).
     // Etkilesim satirinin ALT kenarini icerik koordinatinda (kaydirici scrollTop dahil)
     // dondurur; bulunamazsa null -> cagiran eski davranisa (tam kart) duser.
-    function fbBitisY(kart, sc, scIc) {
+    // Etkilesim satiri secicisi — TEK KAYNAK (hem bekleme hem bitis hesabi kullanir).
+    var FB_ENG_SEL = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],[aria-label*="Share" i]';
+
+    function fbBitisY(kart, sc, scIc, taniOut) {
         try {
             if (!kart) return null;
-            var sel = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],[aria-label*="Share" i]';
+            var sel = FB_ENG_SEL;
             var list = kart.querySelectorAll(sel);
-            if (!list.length) return null;
+            if (!list.length) {
+                // TANI: seciciyle bulunamadi -> karttaki GERCEK aria-label'lari disari ver.
+                // (Saha: gonderide "35 begeni 1 yorum" VARDI ama secici bulamadi. Bir daha
+                //  tahmin yurutmeyelim diye label'lari loglayacagiz.)
+                if (taniOut) {
+                    var labs = [];
+                    kart.querySelectorAll('[aria-label]').forEach(function (e) {
+                        var l = e.getAttribute('aria-label');
+                        if (l && l.length < 40 && labs.indexOf(l) === -1) labs.push(l);
+                    });
+                    taniOut.labels = labs.slice(0, 25);
+                    taniOut.sebep = 'secici-eslesmedi';
+                }
+                return null;
+            }
             // Etkilesim satirindaki EN ALT kenar (Begen/Yorum/Paylas ayni satirda).
             var enAlt = -1;
             for (var i = 0; i < list.length; i++) {
@@ -227,7 +244,11 @@
                 if (yorumIcinde) continue;
                 if (r.bottom > enAlt) enAlt = r.bottom;
             }
-            if (enAlt < 0) return null;
+            if (enAlt < 0) {
+                // Secici esleşti ama HICBIRI gorunur degil (hepsi rect=0 / yorum icinde).
+                if (taniOut) { taniOut.sebep = 'eslesti-ama-gorunmez(' + list.length + ' aday)'; }
+                return null;
+            }
             // Viewport koordinatindan ICERIK koordinatina cevir.
             if (scIc && sc) {
                 var scr = sc.getBoundingClientRect();
@@ -4440,10 +4461,23 @@
                         durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan}/${_toplam}</span>`;
                     }
                     // 1) Kart: FB gec hidrasyon yapiyor -> ~3sn poll (IG deseni).
-                    let card = null;
+                    //    SAHA HATASI (2026-07-16): yalnizca KARTI bekliyordum; etkilesim satiri
+                    //    (Beğen/Yorum/Paylaş) FB tarafindan SONRADAN geliyor. Kart erken bulununca
+                    //    poll bitiyor, etkilesim henuz yok -> fbBitisY null -> kirpma atlaniyor ->
+                    //    yorum kutusu kadraja giriyor. Kanit (saha logu, ayni gonderi turu):
+                    //      NTV Spor        sure=1537ms  bitis=-      <- erken cikti
+                    //      Futbol Gazetesi sure=3449ms  bitis=700+8  <- bekledi, buldu
+                    //    Bu yuzden KART + ETKILESIM ikisini birden bekle.
+                    let card = null, _engBekledi = 0;
                     for (let w = 0; w < 15; w++) {
                         card = fbFindPost();
-                        if (card && card.getBoundingClientRect().height > 100) break;
+                        const _kartHazir = card && card.getBoundingClientRect().height > 100;
+                        if (_kartHazir) {
+                            // reel'de kirpma yok -> etkilesimi beklemeye gerek yok.
+                            if (location.pathname.indexOf('/reel/') === 0) break;
+                            if (card.querySelector(FB_ENG_SEL)) break;
+                            _engBekledi++;
+                        }
                         await new Promise(r => setTimeout(r, 200));
                     }
                     if (!card) throw new Error("gonderi karti bulunamadi");
@@ -4530,7 +4564,8 @@
                     // kirpma ATLANIYORDU ve yorum kutusu ("... adıyla yorum yap") kadraja
                     // giriyordu. Saha logu: NTV Spor "yol=posts/tek-kare, bitis=-, kesilen=0px"
                     // (kaydiricili gonderilerde ise calisiyordu: "posts/modal-kaydir, bitis=700+8").
-                    const _bitis = (_mode !== 'reel') ? fbBitisY(card, sc, scIc) : null;
+                    const _bitisTani = {};
+                    const _bitis = (_mode !== 'reel') ? fbBitisY(card, sc, scIc, _bitisTani) : null;
                     const _bitisPay = 8;   // butonlarin hemen ALTI (kesik gorunmesin)
                     let _kesildi = 0;
                     if (_bitis && _bitis + _bitisPay < fullH) {
@@ -4609,8 +4644,14 @@
                         `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
                         `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
                         (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
+                        `, engBekle=${_engBekledi}` +
                         `, sure=${Date.now() - _t0}ms`
                     );
+                    // Kirpma yapilamadiysa SEBEBINI yaz (yorum kutusu kadraja girer -> onemli).
+                    if (_mode !== 'reel' && _bitis === null) {
+                        printLog(`[TANI] Kirpma YAPILAMADI (sebep=${_bitisTani.sebep || 'bilinmiyor'})` +
+                                 (_bitisTani.labels ? `, karttaki aria-label'lar: ${_bitisTani.labels.join(' | ')}` : ''));
+                    }
 
                     // 5) Sonuc: baslik = DUZ GORUNEN AD ("Futbol Gazetesi", "ESRA EROL").
                     //    KULLANICI KARARI DEGISTI (2026-07-16): once "Ad (@slug)" istenmisti
