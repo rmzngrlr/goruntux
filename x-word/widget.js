@@ -539,6 +539,14 @@
                 let dateTimeRow = null;
                 const isInstagram = window.location.hostname.includes('instagram.com');
 
+                // Faz IG-1 (sade no-zoom): kırpma hedefi = TÜM post kartı (article) — solda medya + sağda
+                // kullanıcı adı/açıklama/hashtag/yorum/etkileşim sütunu. Böylece açıklama da görüntüye girer.
+                // (Sadece medya elementini ölçünce sağ sütun/açıklama kırpma dışında kalıyordu.)
+                if (isInstagram && xWidgetIgNoZoom) {
+                    const igPost = document.querySelector('main article') || document.querySelector('article');
+                    if (igPost) element = igPost;
+                }
+
                 try {
                     if (isInstagram && !xWidgetIgNoZoom) {
                         // zoom-to-fit modunda widget gizlenir (article tam ekrana alındığından üzerine binebilir).
