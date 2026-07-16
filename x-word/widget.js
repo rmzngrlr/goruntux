@@ -4252,30 +4252,35 @@
                     return seg;
                 };
 
-                // 0. EN GÜVENİLİR: Gönderi zaman damgasının (header'daki <time>) linki daima
-                // /{yazar}/(p|reel)/{kod}/ biçimindedir. article seçimi ne olursa olsun header'da bulunur;
+                // 0a. EN GÜVENİLİR: Belge genelinde gönderi KALICI-LİNKİNİ ara: /{yazar}/(p|reel|tv)/{kod}/.
+                // Bu link (header'daki zaman damgası dahil) daima YAZARIN adını içerir ve postCode benzersizdir;
+                // article seçimi (iki-sütunda yalnız medya sütunu olabilir) ne olursa olsun sayfada bulunur,
                 // böylece sol menü/yorum kutusundaki GİRİŞ YAPAN kullanıcının linki asla yazar sanılmaz.
                 if (!username) {
                     const postCode = (activeUrl.match(/\/(?:p|reel|tv)\/([^/?#]+)/) || [])[1] || "";
-                    const timeEls = (article || document).querySelectorAll('time');
-                    let picked = "";
-                    // Önce gönderi koduyla eşleşen zaman linkini dene (yorumların zamanlarına karışmamak için).
-                    for (let t of timeEls) {
-                        const a = t.closest('a'); if (!a) continue;
-                        const href = a.getAttribute('href') || "";
-                        if (postCode && href.indexOf(postCode) === -1) continue;
-                        const u = usernameFromFirstSeg(href);
-                        if (u) { picked = u; break; }
-                    }
-                    // Kod eşleşmesi bulunamazsa ilk profilli zaman linkini kullan.
-                    if (!picked) {
-                        for (let t of timeEls) {
-                            const a = t.closest('a'); if (!a) continue;
-                            const u = usernameFromFirstSeg(a.getAttribute('href') || "");
-                            if (u) { picked = u; break; }
+                    if (postCode) {
+                        const codeEsc = postCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        const permRe = new RegExp('/([a-z0-9._]{1,30})/(?:p|reel|tv)/' + codeEsc, 'i');
+                        const anchors = document.querySelectorAll('a[href]');
+                        for (let a of anchors) {
+                            const m = (a.getAttribute('href') || "").match(permRe);
+                            if (m && m[1] && !IG_RESERVED.includes(m[1].toLowerCase())) {
+                                username = m[1].toLowerCase();
+                                accountName = username;
+                                break;
+                            }
                         }
                     }
-                    if (picked) { username = picked; accountName = picked; }
+                }
+
+                // 0b. Yedek: gönderi zaman damgasının (<time>) linkinden ilk segment (kod eşleşmese bile).
+                if (!username) {
+                    const timeEls = document.querySelectorAll('time');
+                    for (let t of timeEls) {
+                        const a = t.closest('a'); if (!a) continue;
+                        const u = usernameFromFirstSeg(a.getAttribute('href') || "");
+                        if (u) { username = u; accountName = u; break; }
+                    }
                 }
 
                 // 1. Gönderi kartı KAPSAMINDA yazarın profil linki (embed dahil, header <time> yoksa yedek).
