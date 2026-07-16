@@ -1465,14 +1465,9 @@ HTML_TEMPLATE = """
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
                 <h3>🖼️ Ekran Görüntüsü Yeri</h3>
-                <div class="checkbox-group">
-                    <input type="checkbox" id="local_images_toggle" onchange="xSetLocalImages(this.checked)">
-                    <label for="local_images_toggle">Ekran görüntülerini sunucuya gönderme; tarayıcıda tut (varsayılan)</label>
-                </div>
                 <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
-                    <b>Varsayılan açık:</b> görseller sunucuya <b>hiç gönderilmez</b>; eklenti doğrudan panele iletir ve
-                    bu tarayıcıda (IndexedDB) tutulur. Sunucu yalnızca başlık/link/sıra tutar; çok PC'li kullanımda
-                    yoğunluğu azaltır. Kapatırsan görseller (eskisi gibi) sunucuya gönderilir.
+                    Ekran görüntüleri <b>bu tarayıcıda</b> (IndexedDB) tutulur; sunucuya <b>hiç gönderilmez.</b>
+                    Sunucu yalnızca başlık/link/sıra tutar; çok PC'li kullanımda merkezî yoğunluğu azaltır.
                 </div>
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
@@ -2136,7 +2131,8 @@ HTML_TEMPLATE = """
 
         // --- Faz #1-A: Yerel ekran goruntusu bayragi ---
         function xLocalImagesEnabled() {
-            try { return !!(window.XLocalImages && window.XLocalImages.isEnabled()); } catch (e) { return false; }
+            // Faz #1-D (tam kaldırma): ekran görüntüleri HER ZAMAN yerelde; sunucuya asla gitmez.
+            return true;
         }
         function xSetLocalImages(on) {
             try { if (window.XLocalImages) window.XLocalImages.setEnabled(on); } catch (e) {}
@@ -2210,10 +2206,9 @@ HTML_TEMPLATE = """
                         .catch(function() { resetAutomationUIAndBackend(); });
                 })
                 .catch(function(err) {
-                    // Yerel üretim başarısız → otomatik olarak sunucu üretimine düş (güvenlik ağı).
-                    console.warn('Yerel Word üretimi başarısız, sunucuya düşülüyor:', err);
-                    showToast('Yerel üretim başarısız oldu, sunucuda üretiliyor...', 'warning');
-                    if (mode === 'auto') { generateAutoWord(true); } else { generateManualWord(previewMode, true); }
+                    // Faz 4 (tam kaldırma): sunucu-fallback YOK. Hata olursa net mesaj göster.
+                    console.error('Word üretimi başarısız:', err);
+                    showToast('Word oluşturulamadı: ' + (err && err.message ? err.message : err), 'danger');
                 });
         }
 
@@ -3760,8 +3755,8 @@ LOCAL_IMAGES_JS = r'''
       try{ var tx=_db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear(); tx.oncomplete=function(){resolve();}; tx.onerror=function(){resolve();}; }catch(e){ resolve(); }
     });
   }
-  // Faz #1-C: yerel goruntu VARSAYILAN. Ayarlanmamis (null) -> ACIK; sadece acikca '0' yapan kapali kalir.
-  function isEnabled(){ try{ var v=localStorage.getItem('x_local_images'); return v===null ? true : (v==='1'); }catch(e){ return true; } }
+  // Faz #1-D (tam kaldirma): gorseller HER ZAMAN yerel; sunucuya asla gitmez.
+  function isEnabled(){ return true; }
   function setEnabled(v){ try{ localStorage.setItem('x_local_images', v?'1':'0'); }catch(e){} }
   function mimeFromDataUrl(u){ var m=/^data:([^;,]+)/.exec(u||''); return (m&&m[1])?m[1]:'image/jpeg'; }
   function base64FromDataUrl(u){ var i=(u||'').indexOf(','); return i>=0?u.slice(i+1):''; }
@@ -3994,6 +3989,10 @@ def manual_clear():
 
 @app.route('/api/manual/generate', methods=['POST'])
 def manual_generate():
+    # Faz 4 (tam kaldırma): sunucu-taraflı Word üretimi EMEKLİYE ayrıldı; rapor artık YALNIZCA
+    # tarayıcıda (client-side XLocalDocx) üretilir. Aşağıdaki eski gövde ölü koddur (git geçmişi +
+    # backup/server-fallbacks-pre-hard-removal dalında korunuyor). "Word Düzenle" (upload_format) ayrıdır, çalışır.
+    return jsonify({"status": "error", "message": "Sunucu Word üretimi emekliye ayrıldı; rapor tarayıcıda üretilir."}), 410
     try:
         b_font = request.form.get("b_font", "Arial")
         b_size = int(request.form.get("b_size", 14))
@@ -4537,6 +4536,8 @@ def submit_word_result():
 
 @app.route('/api/extension/generate_single', methods=['POST'])
 def generate_single():
+    # Faz 4 (tam kaldırma): sunucu-taraflı tekil Word üretimi de emekliye ayrıldı.
+    return jsonify({"status": "error", "message": "Sunucu Word üretimi emekliye ayrıldı."}), 410
     data = request.json or {}
     tweet_url = data.get("tweet_url", "")
     account_name = data.get("account_name", "")

@@ -1432,26 +1432,12 @@
     function xStripForServer(resItem, gorev) {
         try {
             if (xWidgetLocalImages && resItem && resItem.screenshot && resItem.link) {
-                var fullItem = resItem; // teslim basarisiz olursa sunucuya bununla kurtarma yapariz
-                // Goruntuyu panele ilet (sunucuya gitmez). swSendReliable retry eder.
-                swSendReliable({ action: "deliverLocalImage", link: resItem.link, dataUrl: resItem.screenshot }, function (resp) {
-                    if (!(resp && resp.status === "success")) {
-                        // Teslim edilemedi (panel kapali/bayat) -> VERI KAYBI OLMASIN: sunucuya GORSELLI
-                        // kurtarma submit'i. Server link'e gore mevcut ogeyi bulup BOS gorseli doldurur (final'e dokunmaz).
-                        try {
-                            swSendReliable({
-                                action: "submitWordResult",
-                                origin: (gorev && gorev.server_origin) || "http://localhost:3012",
-                                job_id: gorev && gorev.job_id,
-                                results: [fullItem],
-                                final: false
-                            }, function () {});
-                            logToServer("[localImage] Panele teslim basarisiz -> sunucuya gorselli kurtarma gonderildi: " + fullItem.link);
-                        } catch (e) {}
-                    }
-                });
+                // Faz #1-D (tam kaldırma): görüntü SADECE panele iletilir, sunucuya ASLA gitmez; kurtarma-fallback YOK.
+                // swSendReliable teslimi retry eder; aktif tarama boyunca panel açık olduğundan (panel kapanınca
+                // tarama iptal) teslim güvenilir.
+                swSendReliable({ action: "deliverLocalImage", link: resItem.link, dataUrl: resItem.screenshot }, function () {});
                 var copy = {}; for (var k in resItem) copy[k] = resItem[k];
-                copy.screenshot = ''; // ana submit sunucuya GORSELSIZ gider
+                copy.screenshot = ''; // sunucuya GÖRSELSİZ
                 return copy;
             }
         } catch (e) {}
