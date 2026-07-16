@@ -982,9 +982,12 @@ HTML_TEMPLATE = """
             display: flex;
             flex-direction: column;
             gap: 12px;
-            max-height: 250px;
-            overflow-y: auto;
-            padding-right: 6px;
+            /* Havuz ICERIK KADAR uzar (kullanici istegi 2026-07-17). Once max-height:250px
+               + overflow-y:auto vardi: kutu 250px'te kesiliyor, fazlasi KUTUNUN ICINDE
+               kayiyordu. Platform bolumleri/bloklari tasirken surekli kutu ici kaydirma
+               gerekiyordu. Artik kutu icerik kadar uzuyor, gerekirse SAYFA kayiyor.
+               padding-right:6px de ayni commit'te kaydirma cubugu olugu olarak gelmisti;
+               cubuk kalkinca islevsiz kalip sagda 6px asimetri birakiyordu -> kaldirildi. */
         }
 
         .item-card {
