@@ -353,7 +353,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                 // Sunucu görevlerinde çerez eksikliği, yönlendirmeler veya sayfa geçişleri nedeniyle
                 // görevin kazayla iptal edilmesini önlüyoruz.
                 if (gorev.is_server_job) {
-                  logToServer(`[onUpdated] URL eşleşmedi ama sunucu görevi olduğu için iptal edilmedi. URL: ${tab.url}`);
+                  // Faz FB-2 TANI: "eslesmedi" tek basina sebebi soylemiyor. Asama ve
+                  // karsilastirilan iki degeri de yaz ki tahmin yurutmeyelim.
+                  let _dbg = "";
+                  try {
+                    if (gorev.asama === "word_taramasi") {
+                      const _h = (gorev.kuyruk && gorev.kuyruk.length > 0)
+                        ? (gorev.kuyruk[0].url || gorev.kuyruk[0]) : (gorev.aktifTivitUrl || "");
+                      _dbg = ` | TANI asama=${gorev.asama}`
+                           + ` kuyrukLen=${gorev.kuyruk ? gorev.kuyruk.length : 0}`
+                           + ` kuyruk0tip=${(gorev.kuyruk && gorev.kuyruk[0]) ? (gorev.kuyruk[0].type || 'string') : '-'}`
+                           + ` normTemiz="${normalizeUrl(temizUrl)}"`
+                           + ` normHedef="${normalizeUrl(_h)}"`
+                           + ` hamHedef="${_h}"`
+                           + ` temizUrl="${temizUrl}"`;
+                    } else {
+                      _dbg = ` | TANI asama=${gorev.asama} (word_taramasi DEGIL!)`
+                           + ` profilAdi=${gorev.profilAdi || '-'}`;
+                    }
+                  } catch (e) { _dbg = " | TANI-hata: " + (e.message || e); }
+                  logToServer(`[onUpdated] URL eşleşmedi ama sunucu görevi olduğu için iptal edilmedi. URL: ${tab.url}${_dbg}`);
                 } else {
                   logToServer(`[onUpdated] Kullanıcı başka sayfaya gittiği için görev iptal edildi. URL: ${tab.url}`);
                   chrome.storage.local.remove(storageKey);
