@@ -19,6 +19,122 @@
         return clean;
     }
 
+    // ----------------- PLATFORM (Faz FB-2) -----------------
+    // 'x' | 'ig' | 'fb'. isInstagram BUGUNKU degerini AYNEN korur (3 yerde ayri ayri
+    // tanimli: :568/:3878/:4022) — bu helper yalnizca yaninda isFacebook tanimlamak icin.
+    function xPlatform() {
+        var h = window.location.hostname;
+        if (h.indexOf('instagram.com') !== -1) return 'ig';
+        if (/(^|\.)facebook\.com$/i.test(h)) return 'fb';
+        return 'x';
+    }
+
+    // Facebook gonderi KARTINI bul. SAHA VERISIYLE tasarlandi (2026-07-16):
+    //
+    // /posts -> gonderi MODAL icinde acilir (adres cubugundan acilsa bile) ve ARKA PLANDA
+    //   ana sayfa feed'i durur. Feed'in gorseli modaldakinden BUYUK olabilir:
+    //     feed  IMG 500x500 = 250000  <- global "en buyuk medya" BUNU secer (YANLIS)
+    //     modal IMG 367x641 = 235023  <- gercek gonderi
+    //   Bu yuzden ONCE KAP (en icteki dialog) bulunur, arama YALNIZCA onun icinde yapilir.
+    // /reel -> dialog YOK, [role="article"] de YOK; kapsam belge geneli olur.
+    function fbFindPost() {
+        try {
+            // 1) KAP: en icteki dialog (varsa) — /posts. Yoksa belge geneli — /reel.
+            var D = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+            var kap = null;
+            if (D.length) {
+                var inner = D.filter(function (d) { return !D.some(function (x) { return x !== d && d.contains(x); }); });
+                kap = inner[0] || D[D.length - 1];
+            }
+            var scope = kap || document.body;
+
+            // 2) Kapsam icinde GORUNUR en buyuk medya (viewport disindakiler baska kart olabilir:
+            //    reel'de kart karuseli var, feed'de sonraki gonderiler).
+            var media = null, best = 0;
+            scope.querySelectorAll('video, img').forEach(function (m) {
+                var r = m.getBoundingClientRect();
+                if (r.width > 150 && r.height > 150 && r.bottom > 0 && r.top < window.innerHeight) {
+                    var a = r.width * r.height;
+                    if (a > best) { best = a; media = m; }
+                }
+            });
+
+            // 3) Etkilesim butonu (kapsam icinde). FB aria-label'i div[role=button]'a koyuyor,
+            //    IG'deki gibi svg'ye DEGIL.
+            var eng = scope.querySelector('[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i]');
+
+            // 4) medya + etkilesim ORTAK ATASI = gonderi karti (IG'deki mantik, kapsam sinirli)
+            if (media && eng) {
+                var chain = new Set(); var n = media;
+                while (n) { chain.add(n); n = n.parentElement; }
+                var c = eng;
+                while (c) { if (chain.has(c)) return c; c = c.parentElement; }
+            }
+            // 5) Yedekler
+            if (kap) return kap;
+            if (media) return media.closest('[role="article"]') || media.parentElement;
+            return document.querySelector('[role="main"]');
+        } catch (e) { return null; }
+    }
+
+    // Karti gercekten kaydiran elemani bul. FB'de window scroll YOK (saha: sh==ch==698);
+    // icerik bir kapsayici icinde kayiyor. YANLIS kaydiriciyi secmek SESSIZ ariza:
+    // /posts'ta arka plan feed kaydiricisi (sh:1851) ile modal kaydiricisi (sh:2278) YAN YANA;
+    // feed'inkini kaydirirsak gonderi KIMILDAMAZ, her dilim ayni cikar, birlestirici ayni
+    // goruntuyu ust uste yapistirir ve sonuc BOS OLMADIGI icin bos-yakalama korumasi FARK ETMEZ.
+    function fbScroller(el) {
+        try {
+            var n = el;
+            while (n && n !== document.body && n !== document.documentElement) {
+                var cs = getComputedStyle(n);
+                if (/(auto|scroll)/.test(cs.overflowY) && n.scrollHeight > n.clientHeight + 20) return n;
+                n = n.parentElement;
+            }
+            return null;   // null => window (FB'de beklenmiyor)
+        } catch (e) { return null; }
+    }
+
+    // Yazar tespiti — KIRLENMEYE BAGISIK katmanlar ONCE.
+    // IG'yi yakan tuzak: belge-geneli anchor taramasi GIRIS YAPAN kullanicinin profilini
+    // donduruyordu. FB'de kirlenme yuzeyi cok daha genis (ust nav, sol menu, kisayollar,
+    // "Sen ve 42 kisi", grup uyeleri) -> belge-geneli tarama HIC YAPILMIYOR.
+    function fbAuthor() {
+        try {
+            // 0) /{ad}/posts/{id} -> yazar URL'DE. Kirlenme IMKANSIZ.
+            var m = location.pathname.match(/^\/([^/]+)\/posts\//);
+            if (m && m[1] && m[1].toLowerCase() !== 'profile.php') {
+                return { ad: m[1], id: '', slug: m[1], kaynak: 'url' };
+            }
+            // 1) reel: a[aria-label="Sahibin Profilini Gör"] -> SPESIFIK olarak gonderi sahibi.
+            //    Saha: iki anchor ayni href'le gelir; biri avatar (bos metin), biri ADLI.
+            //    href: /profile.php?id=100044386777681&sk=reels_tab&__cft__[0]=...
+            var owns = document.querySelectorAll('a[aria-label*="Sahibin" i], a[aria-label*="owner profile" i]');
+            if (owns.length) {
+                var ad = '', href = '';
+                for (var i = 0; i < owns.length; i++) {
+                    var t = (owns[i].innerText || '').replace(/\s+/g, ' ').trim();
+                    if (!href) href = owns[i].getAttribute('href') || '';
+                    if (t && !ad) ad = t;              // ADLI anchor'i tercih et
+                }
+                var idm = href.match(/[?&]id=(\d+)/);
+                var slugm = href.match(/^\/([a-zA-Z0-9._-]{3,40})\/?(?:\?|$)/);
+                if (ad || idm) {
+                    return { ad: ad || '', id: idm ? idm[1] : '',
+                             slug: (slugm && slugm[1] !== 'profile.php') ? slugm[1] : '',
+                             kaynak: 'sahibin-profili' };
+                }
+            }
+            // 2) "X'i takip et" -> aria-label icinde gorunen ad
+            var fol = document.querySelector('[aria-label*="takip et" i], [aria-label*="follow" i]');
+            if (fol) {
+                var al = fol.getAttribute('aria-label') || '';
+                var nm = al.replace(/['’]?[iı]?\s*takip et$/i, '').replace(/^follow\s+/i, '').trim();
+                if (nm) return { ad: nm, id: '', slug: '', kaynak: 'takip-et' };
+            }
+            return { ad: '', id: '', slug: '', kaynak: 'BULUNAMADI' };
+        } catch (e) { return { ad: '', id: '', slug: '', kaynak: 'HATA' }; }
+    }
+
     function logToServer(message) {
         chrome.runtime.sendMessage({ action: "logToServer", message: `[WIDGET] ${message}` }).catch(err => {});
     }
@@ -4031,6 +4147,36 @@
             // TEMIZ atlanir. Faz 2 geldiginde bu kapi yerini gercek FB yakalama yoluna birakacak.
             const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
             if (isFacebook) {
+                // --- Faz FB-2 Adim 1: KURU CALISMA (yakalama YOK, sadece olcum) ---
+                // Hedeflemeyi piksel harcamadan dogrula: dogru karti mi buluyoruz, dogru
+                // kaydiriciyi mi seciyoruz, yazar dogru mu geliyor. Sonuc sunucu loguna gider.
+                try {
+                    const _t0 = Date.now();
+                    // FB gec hidrasyon yapiyor -> kart gelene kadar ~3sn bekle (IG poll deseni).
+                    let _card = null;
+                    for (let _w = 0; _w < 15; _w++) {
+                        _card = fbFindPost();
+                        if (_card && _card.getBoundingClientRect().height > 100) break;
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                    const _r = _card ? _card.getBoundingClientRect() : null;
+                    const _sc = _card ? fbScroller(_card) : null;
+                    const _dlg = document.querySelectorAll('[role="dialog"],[aria-modal="true"]').length;
+                    const _win = document.scrollingElement || document.documentElement;
+                    const _a = fbAuthor();
+                    const _mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
+                    printLog(
+                        `[Facebook] KURU-CALISMA (${_mode}): dialog=${_dlg}` +
+                        `, kart=${_r ? Math.round(_r.width) + 'x' + Math.round(_r.height) : 'YOK'}` +
+                        `, kartTop=${_r ? Math.round(_r.top) : '-'}` +
+                        `, kaydirici=${_sc ? _sc.tagName + ' sh=' + _sc.scrollHeight + '/ch=' + _sc.clientHeight : 'YOK'}` +
+                        `, winScroll=${_win.scrollHeight}/${_win.clientHeight}` +
+                        `, yazar="${_a.ad}" id=${_a.id || '-'} slug=${_a.slug || '-'} (${_a.kaynak})` +
+                        `, sure=${Date.now() - _t0}ms`
+                    );
+                } catch (e) {
+                    printLog("[Facebook] KURU-CALISMA hata: " + (e.message || e));
+                }
                 printLog("[Facebook] Yakalama henuz eklenmedi (Faz 2) — gonderi atlaniyor: " + activeUrl);
                 durumText.innerHTML = `
                     <div style="text-align:center;">
