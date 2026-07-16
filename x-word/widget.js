@@ -189,6 +189,48 @@
         return n;
     }
 
+    // Yakalama NEREDE BITMELI? Kullanici karari: goruntu BEGENI/YORUM/PAYLAS satirinin
+    // HEMEN ALTINDA bitsin. Altta kalanlar ("En alakalı" siralama menusu, "bazı yorumlar
+    // filtrelenmiş olabilir" uyarisi, yorum yazma kutusu) gonderiye ait DEGIL ve yorum
+    // gizlemeye de takilmiyorlar ([role="article"] degiller).
+    // Etkilesim satirinin ALT kenarini icerik koordinatinda (kaydirici scrollTop dahil)
+    // dondurur; bulunamazsa null -> cagiran eski davranisa (tam kart) duser.
+    function fbBitisY(kart, sc, scIc) {
+        try {
+            if (!kart) return null;
+            var sel = '[aria-label="Beğen"],[aria-label="Like"],[aria-label*="Yorum" i],[aria-label*="Comment" i],[aria-label*="İfade" i],[aria-label*="Paylaş" i],[aria-label*="Share" i]';
+            var list = kart.querySelectorAll(sel);
+            if (!list.length) return null;
+            // Etkilesim satirindaki EN ALT kenar (Begen/Yorum/Paylas ayni satirda).
+            var enAlt = -1;
+            for (var i = 0; i < list.length; i++) {
+                var el = list[i];
+                var r = el.getBoundingClientRect();
+                if (r.height <= 0 || r.width <= 0) continue;   // gizlenmis/gorunmez -> atla
+                // Yorumlarin ICINDEKI "Beğen" linkleri bitisi ASAGI CEKMESIN.
+                // fbYorumlariGizle onlari zaten display:none yapiyor (rect 0 -> yukarida elenir),
+                // ama buna BEL BAGLAMA: gizleme herhangi bir sebeple tutmazsa yorumlar kadraja
+                // girerdi. Yapisal filtre: kartin ICINDEKI bir [role="article"] (= yorum)
+                // altinda kalan etkilesim butonlarini say-ma.
+                var p = el.parentElement, yorumIcinde = false;
+                while (p && p !== kart) {
+                    if (p.getAttribute && p.getAttribute('role') === 'article') { yorumIcinde = true; break; }
+                    p = p.parentElement;
+                }
+                if (yorumIcinde) continue;
+                if (r.bottom > enAlt) enAlt = r.bottom;
+            }
+            if (enAlt < 0) return null;
+            // Viewport koordinatindan ICERIK koordinatina cevir.
+            if (scIc && sc) {
+                var scr = sc.getBoundingClientRect();
+                return Math.round(enAlt - scr.top + sc.scrollTop);
+            }
+            var kr = kart.getBoundingClientRect();
+            return Math.round(enAlt - kr.top);
+        } catch (e) { return null; }
+    }
+
     // Karti gercekten kaydiran elemani bul. FB'de window scroll YOK (saha: sh==ch==698);
     // icerik bir kapsayici icinde kayiyor. YANLIS kaydiriciyi secmek SESSIZ ariza:
     // /posts'ta arka plan feed kaydiricisi (sh:1851) ile modal kaydiricisi (sh:2278) YAN YANA;
@@ -4370,14 +4412,25 @@
                     let kr = kadrajEl.getBoundingClientRect();
                     const cropLeft = Math.max(0, Math.round(kr.left));
                     const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width));
-                    const fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
+                    let fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
                     const pencere = scIc ? sc.clientHeight : Math.round(kr.height);
+                    // Kullanici karari: goruntu BEGENI/YORUM/PAYLAS satirinin HEMEN ALTINDA bitsin.
+                    // Altta kalanlar ("En alakalı" menusu, "bazı yorumlar filtrelenmiş olabilir",
+                    // yorum kutusu) gonderiye ait degil ve [role="article"] olmadiklari icin yorum
+                    // gizlemeye TAKILMIYORLAR -> yuksekligi burada kesiyoruz.
+                    const _bitis = fbBitisY(card, sc, scIc);
+                    const _bitisPay = 8;   // butonlarin hemen ALTI (kesik gorunmesin)
+                    let _kesildi = 0;
+                    if (_bitis && _bitis + _bitisPay < fullH) {
+                        _kesildi = fullH - (_bitis + _bitisPay);
+                        fullH = _bitis + _bitisPay;
+                    }
                     const segs = [];
 
                     if (!scIc) {
-                        // --- reel: tek kare ---
+                        // --- reel: tek kare --- (fullH, etkilesim satirinda kesilmis olabilir)
                         const top = Math.max(0, Math.round(kr.top));
-                        const h = Math.round(Math.min(window.innerHeight - top, kr.height));
+                        const h = Math.round(Math.min(window.innerHeight - top, fullH));
                         const res = await new Promise(resolve => {
                             swSendReliable({ action: "captureAndCrop", rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve);
                         });
@@ -4434,6 +4487,7 @@
                     printLog(
                         `[Facebook] YAKALAMA (${mode}): ${segs.length} parca (${cropWidth}x${fullH})` +
                         `, kaydirici=${scIc ? 'ic' : 'ata/yok'}, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
+                        `, bitis=${_bitis === null ? 'BULUNAMADI(tam kart)' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
                         `, yazar="${a.ad}" id=${a.id || '-'} slug=${a.slug || '-'} (${a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
                     );
