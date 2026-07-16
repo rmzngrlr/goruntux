@@ -521,6 +521,10 @@ HTML_TEMPLATE = """
             --font-family: 'Outfit', sans-serif;
             --scrollbar-thumb: rgba(255, 255, 255, 0.15);
             --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+            /* .main-content dolgusu. .pool-actions sticky bari bu degere BAGLI
+               (bottom: calc(-1 * bu)) -> iki yerde ayri yazilirsa biri degistiginde
+               bar ya ekran disina kacar ya da altinda havuz ogeleri sizar. Tek kaynak. */
+            --content-pad: 40px;
         }
 
         body.light-theme {
@@ -666,7 +670,7 @@ HTML_TEMPLATE = """
         /* Main Content Area */
         .main-content {
             flex: 1;
-            padding: 40px;
+            padding: var(--content-pad);
             box-sizing: border-box;
             overflow-y: auto;
             height: 100vh;
@@ -988,6 +992,40 @@ HTML_TEMPLATE = """
                gerekiyordu. Artik kutu icerik kadar uzuyor, gerekirse SAYFA kayiyor.
                padding-right:6px de ayni commit'te kaydirma cubugu olugu olarak gelmisti;
                cubuk kalkinca islevsiz kalip sagda 6px asimetri birakiyordu -> kaldirildi. */
+        }
+
+        /* Havuzun eylem satiri (Word Uret / Onizle / Sifirla).
+           Kullanici istegi 2026-07-17: "su kisim en altta kalmasin, o sabit kalsin,
+           havuz scroll olsun." Havuz artik icerik kadar uzun oldugu icin bu satir
+           kartin en dibine (1800px+ asagi) itiliyordu; butona basmak icin havuzun
+           tamamini kaydirmak gerekiyordu. Artik ekranin altina yapisik.
+           Sticky'nin kaydirma kabi = .main-content (overflow-y:auto, height:100vh);
+           kapsayan blok = .card. Kart bardan cok daha uzun oldugu icin yapisma
+           mesafesi var. */
+        .pool-actions {
+            display: flex;
+            gap: 12px;
+            position: sticky;
+            /* NEDEN 0 DEGIL: sticky'nin kabi kaydiricinin ICERIK kutusu, yani
+               .main-content'in alt dolgusu (--content-pad) disarida kaliyor.
+               bottom:0 ile bar ekranin 40px yukarisinda takiliyor ve o seritten
+               havuz ogeleri barin ALTINDAN gorunerek kayiyordu (olculdu: basta
+               "Gonderi 10", 400px'te "Gonderi 17/18" siziyordu).
+               Negatif deger bari ekranin dibine indirir. */
+            bottom: calc(-1 * var(--content-pad));
+            z-index: 5;
+            /* Kartin 30px dolgusunu kapla; yoksa kayan havuz ogeleri barin
+               yanindan ve altindan gorunur. */
+            margin: 24px -30px -30px;
+            padding: 16px 30px 30px;
+            /* OPAK olmak ZORUNDA: --bg-card koyu temada rgba(22,28,42,0.6), yani
+               %40 saydam -> duz var(--bg-card) verilirse kayan ogeler barin
+               ICINDEN gorunur. Iki katman (kart rengi + opak sayfa rengi) kartin
+               ekranda gorunen tonunu birebir uretir ve tema degisince kendi uyar. */
+            background: linear-gradient(var(--bg-card), var(--bg-card)), var(--bg-primary);
+            border-top: 1px solid var(--border-color);
+            /* Negatif margin kart kenarina dayaniyor -> kartin 16px kosesini koru */
+            border-radius: 0 0 16px 16px;
         }
 
         .item-card {
@@ -1556,7 +1594,7 @@ HTML_TEMPLATE = """
                         <!-- Dynamically loaded items will go here -->
                     </div>
 
-                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                    <div class="pool-actions">
                         <button class="btn btn-success" style="flex: 2; margin: 0;" onclick="generateManualWord(false)">🏁 Word Üret ve İndir</button>
                         <button class="btn btn-primary" style="flex: 2; margin: 0; background: var(--accent-color);" onclick="generateManualWord(true)">👁️ Önizle</button>
                         <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
