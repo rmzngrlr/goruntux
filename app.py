@@ -3004,8 +3004,16 @@ HTML_TEMPLATE = """
                 } else if (isFacebook) {
                     // FB dali isStatus/else'ten ONCE gelmeli: aksi halde FB linki en alttaki
                     // X-regex'ine duser, eslesmez ve "bilinmeyen" profil_url'u olarak islenirdi.
-                    var slug = XPlat.fbPageSlug(link);
-                    var username = 'fb:' + (slug || '@facebook_user');
+                    //
+                    // TEK BLOK (kullanici istegi 2026-07-17): butun FB linkleri ayni blokta.
+                    // Once sayfa slug'ina gore ayri bloklara bolunuyordu ("ntvspor" bir blok,
+                    // paylasim linkleri baska blok) — kullanici "hepsi Facebook, bir tutulsun"
+                    // dedi. Zaten panel onizlemesi tarama ONCESI: paylasim linklerinde sayfa
+                    // adi HENUZ bilinmiyor (yonlendirme tarama sirasinda olur), yani burada
+                    // gruplamak yaniltici da oluyordu.
+                    // NOT: Word'deki Baslik 2 gruplamasi ETKILENMEZ — o pool_group_key ile
+                    // sunucuda, yakalanan gercek linke gore yapiliyor.
+                    var username = 'fb';
                     if (!groups[username]) {
                         groups[username] = { profile_url: null, tweets: [] };
                     }
@@ -3038,23 +3046,12 @@ HTML_TEMPLATE = """
                 
                 // Group Header
                 html += '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 10px;">';
-                var isFbGroup = (username.indexOf('fb:') === 0);   // Faz FB-1
+                // Faz FB-1 + tek-blok (2026-07-17): butun FB linkleri 'fb' anahtarinda
+                // toplaniyor -> tek blok, tek baslik.
+                var isFbGroup = (username === 'fb');
                 var groupIcon = username === 'instagram' ? '📸' : (isFbGroup ? '📘' : '👤');
-                // Kullanici istegi (2026-07-17): FB bloklarinin BICIMI TEK TIP olsun —
-                // biri "ntvspor" digeri "Facebook Gönderileri" diye ayrisiyordu.
-                // Hepsi "Facebook · <detay>". Paylasim linklerinde sayfa adi HENUZ yok
-                // (yonlendirme tarama sirasinda olur) -> "Paylaşım linkleri" denir; Word
-                // ciktisinda gercek sayfa adi altinda toplanirlar.
-                // NOT: XPlat.groupFallbackTitle Word'de Baslik 2 yedegi olarak kullaniliyor,
-                // bicimi orada DEGISMEMELI -> panel etiketi burada ayri uretiliyor.
-                var fbEtiket = function (u) {
-                    var rest = u.slice(3);
-                    if (rest.indexOf('group:') === 0) return 'Grup ' + rest.slice(6);
-                    if (!rest || rest === '@facebook_user') return 'Paylaşım linkleri';
-                    return rest;
-                };
                 var displayName = username === 'instagram' ? 'Instagram Gönderileri'
-                                : (isFbGroup ? ('Facebook · ' + fbEtiket(username))
+                                : (isFbGroup ? 'Facebook Gönderileri'
                                              : '@' + username);
                 html += '  <span style="font-weight:bold; color:var(--twitter-color); font-size: 13px;">' + groupIcon + ' ' + displayName + '</span>';
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),
