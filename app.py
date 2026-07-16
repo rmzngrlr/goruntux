@@ -161,6 +161,22 @@ def normalize_link_key(link):
     l = l.rstrip('/')
     return l.lower()
 
+def x_temizle_link(link):
+    # X/Twitter linklerindeki sorgu (?s=20, ?t=...) ve hash'i atıp kanonik linke çevir.
+    # Instagram (?img_index vb. carousel için gerekli) ve diğerlerine DOKUNMAZ.
+    # Gorunumu/orijinal buyuk-kucuk harfi korur; yalnizca ?...#... kismini kirpar.
+    try:
+        if not link:
+            return link
+        low = link.lower()
+        if "instagram.com" in low:
+            return link
+        if "x.com" in low or "twitter.com" in low:
+            return link.split("#")[0].split("?")[0]
+        return link
+    except Exception:
+        return link
+
 # Kullanıcı adı çıkarılamadığında kullanılan genel/yer tutucu başlıklar.
 # Bunlar gerçek bir kullanıcı adı geldiğinde üzerine yazılabilir kabul edilir.
 _GENERIC_TITLES = {"@instagram_user", "instagram_user", "instagram gönderisi", "instagram gonderisi"}
@@ -2645,6 +2661,21 @@ HTML_TEMPLATE = """
                 .filter(function(l) { return l.length > 0; });
         }
 
+        // X/Twitter linklerindeki sorgu (?s=20, ?t=...) ve hash'i atıp kanonik linke çevir.
+        // Instagram (?img_index vb. carousel için gerekli) ve diğerlerine DOKUNMAZ.
+        function xCleanLink(link) {
+            try {
+                var s = String(link).trim();
+                var host = '';
+                try { host = new URL(s).hostname.toLowerCase(); } catch (e) { return s; }
+                if (host.indexOf('instagram.com') !== -1) return s;
+                if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
+                    return s.split('#')[0].split('?')[0];
+                }
+                return s;
+            } catch (e) { return link; }
+        }
+
         function processInputLinks() {
             var inputEl = document.getElementById('tweet_links_input');
             if (!inputEl) return;
@@ -2668,6 +2699,7 @@ HTML_TEMPLATE = """
                 window.accumulatedLinks = window.accumulatedLinks || [];
                 var eklenenSayisi = 0;
                 validLinks.forEach(function(link) {
+                    link = xCleanLink(link);
                     if (window.accumulatedLinks.indexOf(link) === -1) {
                         window.accumulatedLinks.push(link);
                         eklenenSayisi++;
@@ -4425,7 +4457,7 @@ def submit_word_result():
     
     for res in results:
         # Check if we already have this in active_job["results"]
-        link = res.get("link", "")
+        link = x_temizle_link(res.get("link", ""))
         norm_link = normalize_link_key(link)
         res_copy = res.copy()
         if "screenshot" in res_copy:
