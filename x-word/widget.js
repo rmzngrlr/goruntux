@@ -4430,7 +4430,7 @@
             //          (modal DEGIL: modalin ust seridi "X'in Gönderisi" her dilimde TEKRARLARDI).
             const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
             if (isFacebook) {
-                let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [];
+                let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [], _fbSbStyle = null;
                 try {
                     const _t0 = Date.now();
                     // TEKDUZE durum yazisi — X/IG ile AYNI kalip (bkz. :4303 civari).
@@ -4467,10 +4467,25 @@
                     const dpr = window.devicePixelRatio || 1;
 
                     // --- Sayfayi elleyen ayarlar OLCUMDEN ONCE (hepsi yerlesimi degistiriyor) ---
+                    // (a) KAYDIRMA CUBUGU kadrajda gorunmesin (kullanici istegi 2026-07-16).
+                    //     ONCE yalnizca fbScroller'in buldugu ogeye scrollbarWidth:'none'
+                    //     uyguluyordum ve cubuk SAHADA KALDI -> cubuk BASKA bir ogeye aitmis.
+                    //     Ayrica yedegim (genisligi cropWidth'ten dusmek) GORSELI KIRPIYORDU.
+                    //     Cozum: yakalama suresince GECICI stil enjekte et — hangi oge olursa
+                    //     olsun butun cubuklari kapsar, -webkit-scrollbar ile Chrome'da kesin
+                    //     calisir, ve kadraj genisligine DOKUNMAZ (kirpma yok).
+                    //     finally'de kaldirilir.
+                    if (!document.getElementById('x-fb-sb-hide')) {
+                        const _sbStyle = document.createElement('style');
+                        _sbStyle.id = 'x-fb-sb-hide';
+                        _sbStyle.textContent =
+                            '*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}' +
+                            '*{scrollbar-width:none!important;-ms-overflow-style:none!important}';
+                        (document.head || document.documentElement).appendChild(_sbStyle);
+                        _fbSbStyle = _sbStyle;
+                        await new Promise(r => setTimeout(r, 120));   // reflow
+                    }
                     if (scIc && sc) {
-                        // (a) KAYDIRMA CUBUGU kadrajda gorunmesin (kullanici istegi 2026-07-16).
-                        _fbStil.push([sc, 'scrollbarWidth', sc.style.scrollbarWidth]);
-                        sc.style.scrollbarWidth = 'none';
                         // (b) YUMUSAK KAYDIRMA: scrollTop animasyonlu ise 320ms'de hedefe varmaz
                         //     -> dilim YANLIS konumda yakalanir (birlestirme izi). IG yolu da
                         //     ayni onlemi aliyor (scrollBehavior='auto').
@@ -4492,10 +4507,10 @@
 
                     let kr = kadrajEl.getBoundingClientRect();
                     const cropLeft = Math.max(0, Math.round(kr.left));
-                    // scrollbarWidth:'none' desteklenmezse (eski tarayici) cubuk hala durur ->
-                    // genisligini kadrajdan DUS. Desteklenirse bu deger 0 olur, zararsiz.
-                    const sbW = scIc && sc ? Math.max(0, sc.offsetWidth - sc.clientWidth) : 0;
-                    const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width - sbW));
+                    // NOT: cubuk yukarida STIL ile gizlendi -> genisligi kadrajdan DUSMUYORUZ.
+                    // (Eski yedek "kr.width - sbW" idi ve GORSELI KIRPIYORDU — kullanici
+                    // "gorsel genisligini kirmadan coz" dedi.)
+                    const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width));
                     let fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
                     const pencere = scIc ? sc.clientHeight : Math.round(kr.height);
                     // Kullanici karari: goruntu BEGENI/YORUM/PAYLAS satirinin HEMEN ALTINDA bitsin.
@@ -4607,6 +4622,7 @@
                     _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
                     _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
                     _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
+                    try { if (_fbSbStyle) { _fbSbStyle.remove(); _fbSbStyle = null; } } catch (e) {}
                     _fbGizli = []; _fbGorunur = []; _fbStil = [];
 
                     gorev.combinedData.push(resItem);
@@ -4652,6 +4668,12 @@
                     _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
                     _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
                     _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
+                    // Gecici cubuk-gizleme stili: HER durumda kaldir (sayfada iz birakmasin).
+                    try {
+                        if (_fbSbStyle) { _fbSbStyle.remove(); _fbSbStyle = null; }
+                        const _kalan = document.getElementById('x-fb-sb-hide');
+                        if (_kalan) _kalan.remove();
+                    } catch (e) {}
                 }
                 // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
                 // TEKDUZE durum yazisi (butun platformlar ayni kalip)
