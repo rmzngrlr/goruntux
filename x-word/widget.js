@@ -4391,7 +4391,7 @@
             //          (modal DEGIL: modalin ust seridi "X'in Gönderisi" her dilimde TEKRARLARDI).
             const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
             if (isFacebook) {
-                let _fbGizli = [], _fbGorunur = [];
+                let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [];
                 try {
                     const _t0 = Date.now();
                     // 1) Kart: FB gec hidrasyon yapiyor -> ~3sn poll (IG deseni).
@@ -4429,7 +4429,13 @@
                     // Altta kalanlar ("En alakalı" menusu, "bazı yorumlar filtrelenmiş olabilir",
                     // yorum kutusu) gonderiye ait degil ve [role="article"] olmadiklari icin yorum
                     // gizlemeye TAKILMIYORLAR -> yuksekligi burada kesiyoruz.
-                    const _bitis = fbBitisY(card, sc, scIc);
+                    //
+                    // SADECE /posts (scIc = modal ici kaydirici). REEL'DE UYGULAMA:
+                    // reel duzeni FARKLI — etkilesim butonlari SAGDA DIKEY, aciklama ise ALTTA.
+                    // "Butonlarin altinda bitir" demek reel'de ACIKLAMAYI KESMEK demek (saha
+                    // hatasi 2026-07-16: reel aciklamasi yok oldu). Reel'de zaten modal/yorum
+                    // bolumu yok -> kesmeye ihtiyac da yok.
+                    const _bitis = scIc ? fbBitisY(card, sc, scIc) : null;
                     const _bitisPay = 8;   // butonlarin hemen ALTI (kesik gorunmesin)
                     let _kesildi = 0;
                     if (_bitis && _bitis + _bitisPay < fullH) {
@@ -4456,12 +4462,31 @@
                         // Cozum: hedefi maxScroll'a kirp, aradaki farki (ofset) KADRAJDAN dus.
                         const oncekiTop = sc.scrollTop;
                         const maxScroll = Math.max(0, fullH - pencere);
+                        // YUMUSAK KAYDIRMA: scrollTop animasyonlu ise 220ms icinde hedefe
+                        // varmaz -> dilim YANLIS konumda yakalanir (birlestirme izi).
+                        // IG yolu da ayni onlemi aliyor (scrollBehavior='auto').
+                        const _oncekiSb = sc.style.scrollBehavior;
+                        sc.style.scrollBehavior = 'auto';
+                        _fbStil.push([sc, 'scrollBehavior', _oncekiSb]);
+                        // YAPISKAN (sticky) ogeler: kaydirinca YERINDE KALIR ve bir sonraki
+                        // dilimin USTUNDE tekrar gorunur -> birlestirme izi/tekrar. IG yolu
+                        // sticky'leri gizliyor (:683); FB'de de gecici olarak static yapiyoruz.
+                        // (Gizlemek yerine static: yerlesim bozulmasin, sadece yapismasin.)
+                        kadrajEl.querySelectorAll('*').forEach(function (e) {
+                            try {
+                                if (getComputedStyle(e).position === 'sticky') {
+                                    _fbStil.push([e, 'position', e.style.position]);
+                                    e.style.position = 'static';
+                                }
+                            } catch (x) {}
+                        });
+                        await new Promise(r => setTimeout(r, 150));   // reflow
                         let y = 0, guard = 0;
                         while (y < fullH && guard < 20) {
                             guard++;
                             const hedef = Math.min(y, maxScroll);
                             sc.scrollTop = hedef;
-                            await new Promise(r => setTimeout(r, 220));
+                            await new Promise(r => setTimeout(r, 320));
                             // HAPSOLMUS KAYDIRMA: istedigimiz yere gercekten gitti mi?
                             if (Math.abs(sc.scrollTop - hedef) > 4) {
                                 printLog(`[Facebook] Kaydirma TUTMADI (istenen=${hedef}, gercek=${sc.scrollTop}) -> IPTAL`);
@@ -4485,6 +4510,7 @@
                                 segs.length = 0; break;
                             }
                             segs.push(res.dataUrl);
+                            _dilimLog.push(`y=${y}/st=${sc.scrollTop}/of=${ofset}/h=${sliceH}`);
                             y += sliceH;
                         }
                         try { sc.scrollTop = oncekiTop; } catch (e) {}
@@ -4498,7 +4524,9 @@
                     printLog(
                         `[Facebook] YAKALAMA (${mode}): ${segs.length} parca (${cropWidth}x${fullH})` +
                         `, kaydirici=${scIc ? 'ic' : 'ata/yok'}, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
-                        `, bitis=${_bitis === null ? 'BULUNAMADI(tam kart)' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
+                        `, bitis=${_bitis === null ? 'yok(reel/bulunamadi)' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
+                        `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
+                        (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
                         `, yazar="${a.ad}" id=${a.id || '-'} slug=${a.slug || '-'} (${a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
                     );
@@ -4516,7 +4544,8 @@
                     };
                     _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
                     _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
-                    _fbGizli = []; _fbGorunur = [];
+                    _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
+                    _fbGizli = []; _fbGorunur = []; _fbStil = [];
 
                     gorev.combinedData.push(resItem);
                     gorev.retry_count = 0;
@@ -4555,9 +4584,11 @@
                 } catch (e) {
                     printLog("[Facebook] YAKALAMA HATA: " + (e.message || e) + " -> gonderi atlaniyor");
                 } finally {
-                    // Sayfayi ELLEDIK (yorum gizleme + widget) -> her durumda geri al.
+                    // Sayfayi ELLEDIK (yorum gizleme + widget + sticky/scrollBehavior) -> her
+                    // durumda geri al.
                     _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
                     _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                    _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
                 }
                 // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
                 durumText.innerHTML = `
