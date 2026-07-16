@@ -4461,6 +4461,7 @@
                     await new Promise(r => setTimeout(r, 120));
 
                     // 4) Kaydirici + kadraj
+                    const _mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
                     const sc = fbScroller(card);
                     const scIc = !!(sc && card.contains(sc));   // 'ic' => modal ici kaydirici (posts)
                     const kadrajEl = scIc ? sc : card;
@@ -4518,12 +4519,18 @@
                     // yorum kutusu) gonderiye ait degil ve [role="article"] olmadiklari icin yorum
                     // gizlemeye TAKILMIYORLAR -> yuksekligi burada kesiyoruz.
                     //
-                    // SADECE /posts (scIc = modal ici kaydirici). REEL'DE UYGULAMA:
-                    // reel duzeni FARKLI — etkilesim butonlari SAGDA DIKEY, aciklama ise ALTTA.
-                    // "Butonlarin altinda bitir" demek reel'de ACIKLAMAYI KESMEK demek (saha
-                    // hatasi 2026-07-16: reel aciklamasi yok oldu). Reel'de zaten modal/yorum
-                    // bolumu yok -> kesmeye ihtiyac da yok.
-                    const _bitis = scIc ? fbBitisY(card, sc, scIc) : null;
+                    // SADECE /posts. REEL'DE UYGULAMA: reel duzeni FARKLI — etkilesim
+                    // butonlari SAGDA DIKEY, aciklama ise ALTTA; "butonlarin altinda bitir"
+                    // demek reel'de ACIKLAMAYI KESMEK demek (saha hatasi: reel aciklamasi
+                    // yok olmustu). Reel'de zaten modal/yorum bolumu yok -> kesmeye gerek de yok.
+                    //
+                    // KOSUL 'scIc' DEGIL 'mode' (saha hatasi 2026-07-16): scIc "modal ici
+                    // kaydirici VAR MI" demek, "reel mi" demek DEGIL. KISA bir /posts
+                    // gonderisinde icerik modala SIGIYOR -> kaydirici yok -> scIc=false ->
+                    // kirpma ATLANIYORDU ve yorum kutusu ("... adıyla yorum yap") kadraja
+                    // giriyordu. Saha logu: NTV Spor "yol=posts/tek-kare, bitis=-, kesilen=0px"
+                    // (kaydiricili gonderilerde ise calisiyordu: "posts/modal-kaydir, bitis=700+8").
+                    const _bitis = (_mode !== 'reel') ? fbBitisY(card, sc, scIc) : null;
                     const _bitisPay = 8;   // butonlarin hemen ALTI (kesik gorunmesin)
                     let _kesildi = 0;
                     if (_bitis && _bitis + _bitisPay < fullH) {
@@ -4592,7 +4599,7 @@
                     const raw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
                     const shot = await compressScreenshot(raw);
                     const a = fbAuthor();
-                    const mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
+                    const mode = _mode;
                     // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibiyle baslar;
                     // platforma ozel ayrintilar arkasina eklenir.
                     printLog(
