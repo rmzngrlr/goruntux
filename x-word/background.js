@@ -87,8 +87,92 @@ chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
   });
 });
 
+// ----------------- PLATFORM TESPITI (Faz FB-1) -----------------
+// app.py'deki detect_platform / fb_canonical_link'in KOPYASI.
+// !!! Bu TEK KACINILMAZ kopya: MV3 service worker uzaktan kod (/x-platform.js) YUKLEYEMEZ.
+// app.py (Python) ve /x-platform.js (panel) ile AYNI SONUCU vermek ZORUNDA — ayrisirsa
+// kuyruk eslesmesi ve gruplama bozulur. Degistirirken UCUNU BIRDEN degistir.
+function xIsFbHost(h) {
+  h = String(h || '').toLowerCase();
+  return h === 'facebook.com' || /\.facebook\.com$/.test(h);
+}
+function xUrlOf(link) {
+  let s = String(link == null ? '' : link).trim();
+  if (!s) return null;
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
+  try { return new URL(s); } catch (e) { return null; }
+}
+// 'x' | 'ig' | 'fb'. BILINMEYEN -> 'x' (mevcut davranis korunur).
+function xPlatformOf(link) {
+  const low = String(link == null ? '' : link).toLowerCase();
+  if (low.indexOf('instagram.com') !== -1) return 'ig';
+  const u = xUrlOf(link);
+  if (u && xIsFbHost(u.hostname)) return 'fb';
+  return 'x';
+}
+const XFB_ID_PARAMS = ['story_fbid', 'id', 'fbid', 'v'];   // SIRA ONEMLI
+function xFbCanonical(link) {
+  try {
+    const s = String(link == null ? '' : link).trim();
+    if (!s) return link;
+    const u = xUrlOf(s);
+    if (!u || !xIsFbHost(u.hostname)) return link;
+    const path = String(u.pathname || '/').replace(/\/+$/, '');
+    const low = path.toLowerCase();
+    const g = (k) => { const v = u.searchParams.get(k); return (v === null || v === '') ? null : v; };
+    const base = 'https://www.facebook.com';
+    let m;
+    m = path.match(/^\/groups\/([^/]+)\/(?:posts|permalink)\/([^/]+)$/i);
+    if (m) return base + '/groups/' + m[1] + '/posts/' + m[2];
+    m = path.match(/^\/([^/]+)\/posts\/([^/]+)$/i);
+    if (m) return base + '/' + m[1] + '/posts/' + m[2];
+    m = path.match(/^\/share\/([pvr])\/([^/]+)$/i);
+    if (m) return base + '/share/' + m[1].toLowerCase() + '/' + m[2];
+    m = path.match(/^\/reel\/([^/]+)$/i);
+    if (m) return base + '/reel/' + m[1];
+    if (low === '/watch' || low === '/video.php') { const v = g('v'); return v ? (base + '/watch/?v=' + v) : (base + low); }
+    if (low === '/photo.php' || low === '/photo') { const f = g('fbid'); return f ? (base + '/photo/?fbid=' + f) : (base + low); }
+    if (low === '/permalink.php' || low === '/story.php') {
+      const sf = g('story_fbid'), pid = g('id');
+      let out = base + low;
+      if (sf) { out += '?story_fbid=' + sf; if (pid) out += '&id=' + pid; }
+      return out;
+    }
+    const keep = [];
+    for (const k of XFB_ID_PARAMS) { const v = g(k); if (v) keep.push(k + '=' + v); }
+    let o = base + path;
+    if (keep.length) o += '?' + keep.join('&');
+    return o;
+  } catch (e) { return link; }
+}
+// FB GONDERI linki mi? (sayfa/profil linkleri kapsam disi)
+function xIsFbPostUrl(link) {
+  try {
+    if (xPlatformOf(link) !== 'fb') return false;
+    const u = xUrlOf(link);
+    if (!u) return false;
+    const p = String(u.pathname || '').replace(/\/+$/, '');
+    const low = p.toLowerCase();
+    if (/^\/groups\/[^/]+\/(?:posts|permalink)\/[^/]+$/i.test(p)) return true;
+    if (/^\/[^/]+\/posts\/[^/]+$/i.test(p)) return true;
+    if (/^\/share\/[pvr]\/[^/]+$/i.test(p)) return true;
+    if (/^\/reel\/[^/]+$/i.test(p)) return true;
+    if ((low === '/watch' || low === '/video.php') && u.searchParams.get('v')) return true;
+    if ((low === '/photo.php' || low === '/photo') && u.searchParams.get('fbid')) return true;
+    if ((low === '/permalink.php' || low === '/story.php') && u.searchParams.get('story_fbid')) return true;
+    return false;
+  } catch (e) { return false; }
+}
+
 function normalizeUrl(url) {
   if (!url) return "";
+  // Faz FB-1: FB'de KIMLIK SORGUDA olabilir (permalink.php?story_fbid=..&id=..) ->
+  // '?' ile kesmek YASAK. Kesilirse TUM permalink.php gonderileri ayni degere iner ve
+  // word_taramasi URL eslesmesi (background.js ~:193 'startsWith') HER gonderiyi
+  // HER digerine eslestirir -> yanlis sayfada yakalama.
+  if (xPlatformOf(url) === 'fb') {
+    return xFbCanonical(url).split('#')[0].replace(/\/+$/, '').toLowerCase();
+  }
   let clean = url.split('?')[0].toLowerCase().trim();
   clean = clean.replace('://twitter.com', '://x.com');
   if (clean.endsWith('/')) {
@@ -142,7 +226,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         }
       }
 
-      let temizUrl = tab.url.split('?')[0]; 
+      // Faz FB-1: FB'de kimlik SORGUDA olabilir -> '?' ile kesersek permalink.php/photo.php/
+      // watch gonderileri ayirt edilemez. FB icin sorguyu KORU (kanonik forma indirgeyerek).
+      let temizUrl = (xPlatformOf(tab.url) === 'fb') ? xFbCanonical(tab.url) : tab.url.split('?')[0];
       let urlObj;
       try {
         urlObj = new URL(temizUrl);
@@ -150,9 +236,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
         return;
       }
       
-      let path = urlObj.pathname; 
+      let path = urlObj.pathname;
       let isInstagramPost = /^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel)\/[^/]+/i.test(temizUrl);
-      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost;
+      let isFacebookPost = xIsFbPostUrl(temizUrl);   // Faz FB-1
+      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost;
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
 
       let storageKey = `x_profil_gorevi_${tabId}`;
@@ -218,7 +305,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
               } else {
                 try {
                   let urlObj = new URL(lowerUrl);
-                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com');
+                  // Faz FB-1: FB eklenmezse her FB gezinmesi 'gecici sayfa' sayilir ->
+                  // gorev NE iptal edilir NE ilerler, SONSUZA KADAR asili kalir.
+                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com') || xIsFbHost(urlObj.hostname);
                   if (!isTargetHost) {
                     isTransient = true;
                   } else {
@@ -795,9 +884,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let host = urlObj.hostname;
         // Is-sekmesi host'larindan (x/twitter/instagram) GELEN setUserAuth server_origin'i
         // KIRLETMESIN; yalnizca gercek panel gibi sayfalardan guncelle.
+        // Faz FB-1: FB is-sekmesi de haric tutulmali; aksi halde bir FB sekmesi
+        // server_origin'i "https://www.facebook.com:3012" olarak bootstrap edip KIRLETIR.
         let isTargetSocial = host === "x.com" || host.endsWith(".x.com") ||
                              host === "twitter.com" || host.endsWith(".twitter.com") ||
-                             host === "instagram.com" || host.endsWith(".instagram.com");
+                             host === "instagram.com" || host.endsWith(".instagram.com") ||
+                             xIsFbHost(host);
         if (!isTargetSocial) {
           // Map to Flask API port 3012. YETKILI kaynak registerPanel'dir; setUserAuth yalnizca
           // server_origin HENUZ BOSSA (bootstrap) yazar. Boylece rastgele bir http sekmesi
@@ -1428,8 +1520,9 @@ function processServerJob(job, origin) {
     logToServer(`[processServerJob] Sunucu görevi işlenmeye başlıyor. ID: ${job.job_id}`);
     chrome.tabs.query({}, (tabs) => {
       try {
-        // X, Twitter veya Instagram sekmesini bul
-        let workerTab = tabs.find(t => t.url && (t.url.includes('x.com') || t.url.includes('twitter.com') || t.url.includes('instagram.com')));
+        // X, Twitter, Instagram veya Facebook sekmesini bul (Faz FB-1: FB eklendi —
+        // aksi halde acik bir FB sekmesi is-sekmesi olarak yeniden kullanilmaz, yenisi acilir)
+        let workerTab = tabs.find(t => t.url && (t.url.includes('x.com') || t.url.includes('twitter.com') || t.url.includes('instagram.com') || xIsFbHost(xUrlOf(t.url) ? xUrlOf(t.url).hostname : '')));
         
         let targetUrl = "";
         let jobDetails = {};
@@ -1439,6 +1532,26 @@ function processServerJob(job, origin) {
           const extractUsername = (url) => {
             if (url.includes('instagram.com')) {
               return "instagram";
+            }
+            // Faz FB-1: FB dali X regex'lerinden ONCE gelmeli. Yoksa FB linki null doner ve
+            // asagida (`if (!username) return;`) SESSIZCE DUSER -> kuyruk bos, total_count 0,
+            // is bir sekme acip cikmaza girer. Sunucudaki pool_group_key ile AYNI 'fb:' oneki.
+            if (xPlatformOf(url) === 'fb') {
+              const c = xFbCanonical(url);
+              const u = xUrlOf(c);
+              const p = u ? String(u.pathname || '').replace(/\/+$/, '') : '';
+              let m = p.match(/^\/groups\/([^/]+)\/posts\//i);
+              if (m) return 'fb:group:' + m[1].toLowerCase();
+              m = p.match(/^\/([^/]+)\/posts\//i);
+              if (m) return 'fb:' + m[1].toLowerCase();
+              const low = p.toLowerCase();
+              if (low === '/permalink.php' || low === '/story.php') {
+                const id = u && u.searchParams.get('id');
+                if (id) return 'fb:' + id.toLowerCase();
+              }
+              // /share/p, /reel, /watch, /photo -> URL'de isim YOK. null DONME (dusurur);
+              // yer tutucu ver ki gonderi kuyruga girsin; gercek ad Faz 2'de yakalamadan gelecek.
+              return 'fb:@facebook_user';
             }
             if (url.includes('/status/')) {
               let match = url.match(/(?:x|twitter)\.com\/([a-zA-Z0-9_]{1,15})\/status/i);
@@ -1467,8 +1580,12 @@ function processServerJob(job, origin) {
               groups[username] = { profile: null, tweets: [] };
             }
             const isTweet = absUrl.includes('/status/');
-            const isInstagramPost = absUrl.includes('/p/') || absUrl.includes('/reel/');
-            if (isTweet || isInstagramPost) {
+            // Faz FB-1: FB gonderisi ONCE kontrol edilmeli. Yoksa FB linki bu satirdaki
+            // '/p/' || '/reel/' testine takilmayip PROFIL sayilir ve yanlis gorev tipi
+            // (profile_header) alir. (FB /reel/ zaten '/reel/' iceriyor — ayrimi platform yapar.)
+            const isFacebookPost = xIsFbPostUrl(absUrl);
+            const isInstagramPost = !isFacebookPost && (absUrl.includes('/p/') || absUrl.includes('/reel/'));
+            if (isTweet || isInstagramPost || isFacebookPost) {
               if (groups[username].tweets.indexOf(absUrl) === -1) {
                 groups[username].tweets.push(absUrl);
               }

@@ -15,6 +15,7 @@ import base64
 import zipfile
 import os
 import uuid
+from urllib.parse import urlparse, parse_qs
 
 # ----------------- GLOBALS & DATA STORAGE -----------------
 client_pools = {}
@@ -156,6 +157,19 @@ def tweet_kullanici_adi_oku(link):
 def normalize_link_key(link):
     if not link:
         return ""
+    # --- Faz FB-1: Facebook'ta KIMLIK SORGUDA olabilir (permalink.php?story_fbid=..&id=..,
+    # photo.php?fbid=.., /watch/?v=..) -> '?' ile KESMEK YASAK. Kesilirse aynı sayfadaki
+    # TUM permalink gonderileri TEK anahtara duser ve IndexedDB'de goruntuler birbirini EZER
+    # (hata vermez; rapor dogru link + YANLIS gorselle cikar).
+    # fb_canonical_link IDEMPOTENT -> ham link de kanonik link de AYNI anahtari verir.
+    # JS ikizi xNormLink AYNI kurali uygular; IKISINI BIRDEN degistir.
+    # NOT: guard substring degil detect_platform — 'evil.com/?u=facebook.com' bu dala SAPMAMALI,
+    # yoksa onun anahtari da degisir (sorgusu korunur) ve bayt-esitlik bozulur.
+    if detect_platform(link) == "fb":
+        # Anahtar her zaman kucuk harf (mevcut davranisla ayni: IG /p/CxYz bugun de kucultuluyor).
+        # KANONIK LINK orijinal buyuk-kucuk harfi korur ve .docx'e o girer — anahtar yalnizca anahtardir,
+        # ondan URL geri kurulmaz.
+        return fb_canonical_link(link).split("#")[0].rstrip("/").lower()
     l = link.split("?")[0].split("#")[0].strip()
     l = re.sub(r'/embed/?$', '', l, flags=re.IGNORECASE)
     l = l.rstrip('/')
@@ -180,15 +194,153 @@ def x_temizle_link(link):
             if im:
                 out += "?img_index=" + im.group(1)
             return out
+        # --- Faz FB-1: Facebook (SALT EKLEME — X/IG dallari degismedi) ---
+        if detect_platform(link) == "fb":
+            return fb_canonical_link(link)
         if "x.com" in low or "twitter.com" in low:
             return link.split("#")[0].split("?")[0]
         return link
     except Exception:
         return link
 
+# ----------------- PLATFORM TESPITI (Faz FB-1) -----------------
+# Platform HICBIR YERDE saklanmaz; her seferinde linkten turetilir. Kural UCLU:
+# 'x' | 'ig' | 'fb'. BILINMEYEN -> 'x' (bugunku davranis KORUNUR).
+# JS ikizleri: XPlat.platform() (/x-platform.js) ve xPlatformOf() (background.js).
+# UCUNU BIRDEN degistir; ayrisirlarsa gruplama/anahtar/goruntu eslesmesi bozulur.
+
+def _is_fb_host(h):
+    h = (h or "").lower()
+    return h == "facebook.com" or h.endswith(".facebook.com")
+
+def _url_host(link):
+    try:
+        s = (link or "").strip()
+        if s and not re.match(r'^https?://', s, re.I):
+            s = "https://" + s.lstrip("/")
+        return (urlparse(s).hostname or "").lower()
+    except Exception:
+        return ""
+
+def detect_platform(link):
+    low = (link or "").lower()
+    if "instagram.com" in low:        # MEVCUT KURAL — bilerek DEGISTIRILMEDI
+        return "ig"
+    if _is_fb_host(_url_host(link)):  # YENI: host-hassas. 'evil.com/?u=facebook.com' KACMAZ,
+        return "fb"                   # cunku substring degil gercek host'a bakiyoruz.
+    return "x"                        # MEVCUT VARSAYILAN
+
+# Facebook KIMLIK parametreleri. SIRA ONEMLI: kanonik cikti sabit olsun diye
+# beyaz-liste bu sirayla yeniden kurulur (asla kara liste — bilinmeyen izleme
+# parametresi eklendiginde sessizce sizmasin).
+_FB_ID_PARAMS = ("story_fbid", "id", "fbid", "v")
+
+def fb_canonical_link(link):
+    """Facebook linkini kanonik forma cevirir.
+
+    IDEMPOTENT olmak ZORUNDA: kendi ciktisina tekrar uygulandiginda AYNI sonucu
+    vermeli. Cunku yerel goruntu anahtari HAM link'ten, havuz link'i KANONIK
+    link'ten uretiliyor (widget.js deliverLocalImage vs submit_word_result);
+    ikisi ayrisirsa GORSEL SESSIZCE KAYBOLUR.
+
+    X/IG'de kimlik YOLDA (/status/123, /p/CODE) ama FB'de sik sik SORGUDA
+    (permalink.php?story_fbid=..&id=..) -> '?' ile kesmek YASAK.
+    """
+    try:
+        s = (link or "").strip()
+        if not s:
+            return link
+        if not re.match(r'^https?://', s, re.I):
+            s = "https://" + s.lstrip("/")
+        u = urlparse(s)
+        if not _is_fb_host(u.hostname):
+            return link                      # FB DEGIL -> DOKUNMA
+        path = (u.path or "/").rstrip("/")
+        low = path.lower()
+        q = parse_qs(u.query or "", keep_blank_values=False)
+
+        def g(k):
+            v = q.get(k) or []
+            return v[0] if v and v[0] else None
+
+        base = "https://www.facebook.com"     # m./web./mbasic. -> www. (host normalizasyonu)
+
+        # 1) /groups/{g}/posts/{id}  (permalink/{id} varyanti AYNI gonderi)
+        m = re.match(r'^/groups/([^/]+)/(?:posts|permalink)/([^/]+)$', path, re.I)
+        if m:
+            return base + "/groups/" + m.group(1) + "/posts/" + m.group(2)
+        # 2) /{ad}/posts/{id}
+        m = re.match(r'^/([^/]+)/posts/([^/]+)$', path, re.I)
+        if m:
+            return base + "/" + m.group(1) + "/posts/" + m.group(2)
+        # 3) /share/{p|v|r}/{kod}
+        m = re.match(r'^/share/([pvr])/([^/]+)$', path, re.I)
+        if m:
+            return base + "/share/" + m.group(1).lower() + "/" + m.group(2)
+        # 4) /reel/{id}
+        m = re.match(r'^/reel/([^/]+)$', path, re.I)
+        if m:
+            return base + "/reel/" + m.group(1)
+        # 5) /watch/?v={id}
+        if low in ("/watch", "/video.php"):
+            v = g("v")
+            return (base + "/watch/?v=" + v) if v else base + low
+        # 6) photo.php?fbid= ve /photo/?fbid= AYNI fotograf (fbid kuresel tekil) -> TEK form.
+        #    set/type yalnizca albom baglami, kimlik DEGIL.
+        if low in ("/photo.php", "/photo"):
+            fbid = g("fbid")
+            return (base + "/photo/?fbid=" + fbid) if fbid else base + low
+        # 7) permalink.php / story.php — story.php ile permalink.php BILEREK
+        #    birlestirilmedi (FB erisimi olmadan dogrulanamaz; Faz 3'e birakildi).
+        if low in ("/permalink.php", "/story.php"):
+            sf, pid = g("story_fbid"), g("id")
+            out = base + low
+            if sf:
+                out += "?story_fbid=" + sf
+                if pid:
+                    out += "&id=" + pid
+            return out
+        # 8) Taninmayan FB formu: host'u normalize et, YALNIZ beyaz-liste parametrelerini tut.
+        keep = [(k, g(k)) for k in _FB_ID_PARAMS if g(k)]
+        out = base + path
+        if keep:
+            out += "?" + "&".join(k + "=" + v for k, v in keep)
+        return out
+    except Exception:
+        return link
+
+def fb_page_slug(link):
+    """FB linkinden sayfa/grup kimligini SADECE URL'den cikarir; yoksa None.
+
+      /{ad}/posts/{id}               -> 'ad'
+      permalink.php?story_fbid=&id=Y -> 'Y'  (sayisal sayfa id'si — cirkin ama KARARLI)
+      /groups/{g}/posts/{id}         -> 'group:{g}'
+      /share/p, /reel, /watch, /photo -> None  (isim YALNIZCA Faz 2'de yakalamadan gelir)
+    """
+    try:
+        c = fb_canonical_link(link)
+        u = urlparse(c if re.match(r'^https?://', c or "", re.I) else "https://" + (c or "").lstrip("/"))
+        if not _is_fb_host(u.hostname):
+            return None
+        path = (u.path or "").rstrip("/")
+        m = re.match(r'^/groups/([^/]+)/posts/', path, re.I)
+        if m:
+            return "group:" + m.group(1).lower()
+        m = re.match(r'^/([^/]+)/posts/', path, re.I)
+        if m:
+            return m.group(1).lower()
+        if path.lower() in ("/permalink.php", "/story.php"):
+            q = parse_qs(u.query or "")
+            v = (q.get("id") or [None])[0]
+            return v.lower() if v else None
+        return None      # /share/p, /reel, /watch, /photo -> URL'de isim YOK
+    except Exception:
+        return None
+
 # Kullanıcı adı çıkarılamadığında kullanılan genel/yer tutucu başlıklar.
 # Bunlar gerçek bir kullanıcı adı geldiğinde üzerine yazılabilir kabul edilir.
-_GENERIC_TITLES = {"@instagram_user", "instagram_user", "instagram gönderisi", "instagram gonderisi"}
+_GENERIC_TITLES = {"@instagram_user", "instagram_user", "instagram gönderisi", "instagram gonderisi",
+                   "@facebook_user", "facebook_user", "facebook gönderisi", "facebook gonderisi"}
 
 def is_generic_title(t):
     if not t:
@@ -203,6 +355,22 @@ def pool_group_key(item):
     if not username and link and "instagram.com" in link.lower():
         t = (item.get("title", "") or "").strip()
         username = t.lower() if t else "@instagram_user"
+    # --- Faz FB-1 (SALT EKLEME: X/IG dallari yukarida DEGISMEDI) ---
+    # FB anahtarlari 'fb:' ONEKLI olmak ZORUNDA: grup anahtarlari platforma gore
+    # isimlendirilmemis, dolayisiyla FB sayfasi 'bbcnews' ile X hesabi '@bbcnews'
+    # ayni anahtara duser ve TEK Baslik 2 altinda birlesirdi (ayni markayi X/IG/FB'de
+    # izlemek bu urunun ana kullanimi -> ilk gunden cakisirdi).
+    # SLUG-ONCE (IG'nin baslik-once mantigindan bilerek FARKLI): slug URL'den gelir,
+    # yani Faz 1'de YAKALAMA OLMADAN da gruplama calisir ve test edilebilir.
+    if not username and link and detect_platform(link) == "fb":
+        slug = fb_page_slug(link)
+        if slug:
+            username = "fb:" + slug
+        else:
+            # /share/p, /reel, /watch, /photo -> URL'de isim YOK; gercek ad Faz 2'de
+            # yakalamadan gelir ve is_generic_title uzerinden yer tutucunun ustune yazilir.
+            t = (item.get("title", "") or "").strip()
+            username = ("fb:" + t.lower()) if (t and not is_generic_title(t)) else "fb:@facebook_user"
     return username if username else None
 
 def iter_paragraphs_with_hyperlinks(paragraph):
@@ -1287,7 +1455,7 @@ HTML_TEMPLATE = """
                     
                     <div class="form-group">
                         <label for="m_link">2. Tweet / Web Linki (Opsiyonel):</label>
-                        <input type="text" id="m_link" placeholder="https://x.com/...">
+                        <input type="text" id="m_link" placeholder="x.com/... · instagram.com/p/... · facebook.com/.../posts/...">
                     </div>
 
                     <!-- Image Input Dropzone (Google Image Search style) -->
@@ -1336,8 +1504,8 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div class="form-group" id="links-input-group">
-                        <label for="tweet_links_input">Taranacak Tweet Linkleri (Her Satıra Bir Link):</label>
-                        <textarea id="tweet_links_input" style="height: 38px; min-height: 38px; max-height: 38px; resize: none; overflow-y: hidden; line-height: 24px; padding: 6px 12px;" placeholder="Tweet linklerini buraya yapıştırın (Her satıra bir link)..."></textarea>
+                        <label for="tweet_links_input">Taranacak Gönderi Linkleri (Her Satıra Bir Link):</label>
+                        <textarea id="tweet_links_input" style="height: 38px; min-height: 38px; max-height: 38px; resize: none; overflow-y: hidden; line-height: 24px; padding: 6px 12px;" placeholder="X, Instagram veya Facebook linklerini buraya yapıştırın (Her satıra bir link)..."></textarea>
                     </div>
 
                     <!-- Canlı Link Önizleme ve Silme Alanı -->
@@ -1405,8 +1573,9 @@ HTML_TEMPLATE = """
             <div class="modal-body">
                 <h3>🏷️ Başlık 1 Stili (Platform Ayracı)</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
-                    Yalnızca çıktıda <b>hem X hem Instagram</b> varsa görünür: gönderiler
-                    "X (Twitter)" ve "Instagram" başlıklarıyla ayrılır. Tek platform varsa kullanılmaz.
+                    Yalnızca çıktıda <b>birden fazla platform</b> varsa görünür: gönderiler
+                    "X (Twitter)", "Instagram" ve "Facebook" başlıklarıyla ayrılır
+                    (havuzda ilk görünen platform önce). Tek platform varsa kullanılmaz.
                 </div>
                 <div class="form-group">
                     <label for="b1_font">Yazı Tipi (Font):</label>
@@ -2661,6 +2830,50 @@ HTML_TEMPLATE = """
 
         window.accumulatedLinks = window.accumulatedLinks || [];
 
+        // Faz FB-1: FB linki icin onizlemede gosterilecek kisa etiket.
+        function fbShortLabel(url) {
+            try {
+                var u = new URL(XPlat.fbCanonical(url));
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                var m = p.match(/^\\/groups\\/([^/]+)\\/posts\\/([^/]+)$/i);
+                if (m) return 'Grup ' + m[1] + ' · Gönderi ' + m[2];
+                m = p.match(/^\\/([^/]+)\\/posts\\/([^/]+)$/i);
+                if (m) return m[1] + ' · Gönderi ' + m[2];
+                m = p.match(/^\\/share\\/[pvr]\\/([^/]+)$/i);
+                if (m) return 'Paylaşım kodu ' + m[1];
+                m = p.match(/^\\/reel\\/([^/]+)$/i);
+                if (m) return 'Reel ' + m[1];
+                var v = u.searchParams.get('v');
+                if (v) return 'Video ' + v;
+                var fbid = u.searchParams.get('fbid');
+                if (fbid) return 'Fotoğraf ' + fbid;
+                var sf = u.searchParams.get('story_fbid');
+                if (sf) return 'Gönderi ' + sf + (u.searchParams.get('id') ? (' · Sayfa ' + u.searchParams.get('id')) : '');
+                return p || 'gönderi';
+            } catch (e) { return 'gönderi'; }
+        }
+        // Faz FB-1: Facebook GONDERI linki mi? (sayfa/profil linkleri KAPSAM DISI —
+        // FB'de profil karti yakalama yok, yalnizca gonderi tipleri destekleniyor.)
+        // Desteklenen: /{ad}/posts/{id}, permalink.php?story_fbid=..&id=.., /share/{p|v|r}/{kod},
+        // /groups/{g}/posts|permalink/{id}, /reel/{id}, /watch/?v=.., photo.php|/photo/?fbid=..
+        function isFbPostUrl(url) {
+            try {
+                if (!window.XPlat || XPlat.platform(url) !== 'fb') return false;
+                var s = String(url).trim();
+                if (!/^https?:\\/\\//i.test(s)) s = 'https://' + s.replace(/^\\/+/, '');
+                var u = new URL(s);
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                var low = p.toLowerCase();
+                if (/^\\/groups\\/[^/]+\\/(?:posts|permalink)\\/[^/]+$/i.test(p)) return true;
+                if (/^\\/[^/]+\\/posts\\/[^/]+$/i.test(p)) return true;
+                if (/^\\/share\\/[pvr]\\/[^/]+$/i.test(p)) return true;
+                if (/^\\/reel\\/[^/]+$/i.test(p)) return true;
+                if ((low === '/watch' || low === '/video.php') && u.searchParams.get('v')) return true;
+                if ((low === '/photo.php' || low === '/photo') && u.searchParams.get('fbid')) return true;
+                if ((low === '/permalink.php' || low === '/story.php') && u.searchParams.get('story_fbid')) return true;
+                return false;
+            } catch (e) { return false; }
+        }
         function isProfileUrl(url) {
             var clean = url.trim().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('?')[0].split('#')[0];
             var match = clean.match(/^(x|twitter)\\.com\\/([a-zA-Z0-9_]{1,15})\\/?$/i);
@@ -2698,13 +2911,17 @@ HTML_TEMPLATE = """
                 return out;
             } catch (e) { return s; }
         }
-        // X/Twitter: sorgu+hash at. Instagram: /p/CODE'e normalize et. Digerleri: DOKUNMA.
+        // X/Twitter: sorgu+hash at. Instagram: /p/CODE'e normalize et. Facebook: kanonik forma
+        // cevir (kimlik SORGUDA olabilir -> sorgu koruklu beyaz-liste). Digerleri: DOKUNMA.
+        // Sunucudaki x_temizle_link'in IKIZI — ikisi ayrisirsa havuz link'i ile goruntu
+        // anahtari uyusmaz ve GORSEL KAYBOLUR.
         function xCleanLink(link) {
             try {
                 var s = String(link).trim();
                 var host = '';
                 try { host = new URL(s).hostname.toLowerCase(); } catch (e) { return s; }
                 if (host.indexOf('instagram.com') !== -1) return xIgCanonical(s);
+                if (window.XPlat && XPlat.platform(s) === 'fb') return XPlat.fbCanonical(s);
                 if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
                     return s.split('#')[0].split('?')[0];
                 }
@@ -2725,7 +2942,8 @@ HTML_TEMPLATE = """
                 var isProfile = isProfileUrl(line);
                 var lineLow = line.toLowerCase();
                 var isInstagram = lineLow.includes('instagram.com/p/') || lineLow.includes('instagram.com/reel/') || lineLow.includes('instagram.com/reels/') || lineLow.includes('instagram.com/tv/');
-                if (isStatus || isProfile || isInstagram) {
+                var isFacebook = isFbPostUrl(line);   // Faz FB-1
+                if (isStatus || isProfile || isInstagram || isFacebook) {
                     validLinks.push(line);
                 } else {
                     remainingLines.push(line);
@@ -2774,8 +2992,20 @@ HTML_TEMPLATE = """
             links.forEach(function(link) {
                 var isInstagram = link.includes('instagram.com/p/') || link.includes('instagram.com/reel/');
                 var isStatus = link.includes('/status/');
+                var isFacebook = (window.XPlat && XPlat.platform(link) === 'fb');   // Faz FB-1
                 if (isInstagram) {
                     var username = "instagram";
+                    if (!groups[username]) {
+                        groups[username] = { profile_url: null, tweets: [] };
+                    }
+                    if (groups[username].tweets.indexOf(link) === -1) {
+                        groups[username].tweets.push(link);
+                    }
+                } else if (isFacebook) {
+                    // FB dali isStatus/else'ten ONCE gelmeli: aksi halde FB linki en alttaki
+                    // X-regex'ine duser, eslesmez ve "bilinmeyen" profil_url'u olarak islenirdi.
+                    var slug = XPlat.fbPageSlug(link);
+                    var username = 'fb:' + (slug || '@facebook_user');
                     if (!groups[username]) {
                         groups[username] = { profile_url: null, tweets: [] };
                     }
@@ -2808,13 +3038,18 @@ HTML_TEMPLATE = """
                 
                 // Group Header
                 html += '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 10px;">';
-                var groupIcon = username === 'instagram' ? '📸' : '👤';
-                var displayName = username === 'instagram' ? 'Instagram Gönderileri' : '@' + username;
+                var isFbGroup = (username.indexOf('fb:') === 0);   // Faz FB-1
+                var groupIcon = username === 'instagram' ? '📸' : (isFbGroup ? '📘' : '👤');
+                var displayName = username === 'instagram' ? 'Instagram Gönderileri'
+                                : (isFbGroup ? (window.XPlat ? XPlat.groupFallbackTitle(username) : username)
+                                             : '@' + username);
                 html += '  <span style="font-weight:bold; color:var(--twitter-color); font-size: 13px;">' + groupIcon + ' ' + displayName + '</span>';
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),
                 // başlığın sağında. Gri=kapalı, yeşil=açık. Açıkken tweet linkinden türetilen
                 // x.com/<kullanıcı> profil linki listeye eklenir (profil kartı en üste gelir).
-                if (username !== 'instagram' && username !== 'bilinmeyen') {
+                // FB gruplari haric: FB'de profil karti yakalama YOK (X'e ozel ozellik) ve
+                // toggleProfileCardLink 'https://x.com/'+username uretir -> FB'de anlamsiz link olurdu.
+                if (username !== 'instagram' && username !== 'bilinmeyen' && !isFbGroup) {
                     var pcOn = !!grp.profile_url;
                     var pcBg = pcOn ? 'rgba(0,186,124,0.15)' : 'rgba(255,255,255,0.06)';
                     var pcColor = pcOn ? '#00ba7c' : 'var(--text-secondary)';
@@ -2829,14 +3064,21 @@ HTML_TEMPLATE = """
                     html += '<div style="display:flex; flex-direction:column; gap:8px; margin-left:4px;">';
                     grp.tweets.forEach(function(tweetUrl) {
                         var isInsta = tweetUrl.includes('instagram.com/p/') || tweetUrl.includes('instagram.com/reel/');
+                        var isFbLink = (window.XPlat && XPlat.platform(tweetUrl) === 'fb');
                         var label = "";
                         if (isInsta) {
                             var parts = tweetUrl.split('instagram.com/')[1] || "";
                             var code = parts.split('/')[1] || parts.split('/')[0] || "gönderi";
                             label = "&#128279; Instagram Gönderi Kodu: " + code.split('?')[0].split('#')[0];
-                        } else {
+                        } else if (isFbLink) {
+                            label = "&#128279; Facebook: " + fbShortLabel(tweetUrl);
+                        } else if (tweetUrl.indexOf('/status/') !== -1) {
                             var tweetId = tweetUrl.split('/status/')[1].split('?')[0].split('#')[0];
                             label = "&#128279; Tweet ID'si: " + tweetId;
+                        } else {
+                            // Savunma: /status/ icermeyen ve taninmayan link buraya duserse
+                            // eskiden split('/status/')[1] undefined olup TypeError atardi.
+                            label = "&#128279; " + tweetUrl;
                         }
                         html += '  <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">';
                         html += "    <a href='" + tweetUrl + "' target='_blank' style='color:var(--text-secondary); text-decoration:none; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:80%;'>" + label + "</a>";
@@ -2876,7 +3118,10 @@ HTML_TEMPLATE = """
                 if (x.indexOf('(') !== -1) { t = x; break; }
             }
             if (t) return t;
-            if (group) return (group.charAt(0) === '@' ? group : '@' + group);
+            // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
+            // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
+            if (group) return (window.XPlat ? XPlat.groupFallbackTitle(group)
+                                            : (group.charAt(0) === '@' ? group : '@' + group));
             return 'Tekil öğe';
         }
         function ensurePoolStyles() {
@@ -3487,12 +3732,167 @@ HTML_TEMPLATE = """
             </div>
         </div>
     </div>
+    <!-- Platform tespiti + FB kanoniklestirme (ORTAK). Digerlerinden ONCE yuklenmeli:
+         xNormLink (x-local-images.js) ve entryPlatform (x-local-docx.js) window.XPlat'i kullanir. -->
+    <script src="/x-platform.js"></script>
     <!-- İstemci-taraflı (tarayıcıda) Word üretimi — sadece "Deneysel" anahtar açıkken kullanılır -->
     <script src="/x-local-docx.js"></script>
     <script src="/x-local-images.js"></script>
 </body>
 </html>
 """
+
+# ----------------- ORTAK PLATFORM MODULU (Faz FB-1) -----------------
+# app.py'deki detect_platform / fb_canonical_link / fb_page_slug fonksiyonlarinin
+# JS IKIZI. Panel tarafinda UC yerden kullanilir (HTML_TEMPLATE inline, LOCAL_DOCX_JS,
+# LOCAL_IMAGES_JS) — ayri ayri kopyalanmasin diye tek dosya olarak sunulur.
+#
+# background.js (MV3 service worker) uzaktan kod yukleyemedigi icin TEK kacinilmaz
+# kopyayi o tutar (xPlatformOf).
+#
+# !!! BU DOSYA app.py'deki Python ikizleriyle AYNI SONUCU vermek ZORUNDA. Ayrisirlarsa
+# havuz ogeleri ile IndexedDB goruntuleri farkli anahtar alir ve GORSELLER KAYBOLUR/KARISIR
+# (bkz. xNormLink yorumu — gecmiste tam olarak bu yasandi).
+X_PLATFORM_JS = r'''
+(function(){
+  // --- host yardimcilari (Python: _is_fb_host / _url_host) ---
+  function isFbHost(h){
+    h = String(h||'').toLowerCase();
+    return h === 'facebook.com' || /\.facebook\.com$/.test(h);
+  }
+  function urlOf(link){
+    // Python _url_host ile ayni: protokol yoksa https:// ekle.
+    var s = String(link==null?'':link).trim();
+    if(!s) return null;
+    if(!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/,'');
+    try { return new URL(s); } catch(e){ return null; }
+  }
+  function hostOf(link){ var u = urlOf(link); return u ? String(u.hostname||'').toLowerCase() : ''; }
+
+  // --- platform tespiti (Python: detect_platform) ---
+  // 'x' | 'ig' | 'fb'. BILINMEYEN -> 'x' (mevcut davranis KORUNUR).
+  function platform(link){
+    var low = String(link==null?'':link).toLowerCase();
+    if(low.indexOf('instagram.com') !== -1) return 'ig';   // MEVCUT KURAL — DEGISTIRILMEDI
+    if(isFbHost(hostOf(link))) return 'fb';                // YENI (host-hassas)
+    return 'x';                                            // MEVCUT VARSAYILAN
+  }
+
+  var FB_ID_PARAMS = ['story_fbid','id','fbid','v'];   // SIRA ONEMLI (Python _FB_ID_PARAMS)
+
+  // --- FB kanoniklestirme (Python: fb_canonical_link) ---
+  // IDEMPOTENT olmak ZORUNDA: kendi ciktisina tekrar uygulandiginda AYNI sonuc.
+  function fbCanonical(link){
+    try{
+      var s = String(link==null?'':link).trim();
+      if(!s) return link;
+      var u = urlOf(s);
+      if(!u || !isFbHost(u.hostname)) return link;    // FB DEGIL -> DOKUNMA
+      var path = String(u.pathname||'/').replace(/\/+$/,'');
+      var low = path.toLowerCase();
+      function g(k){ var v = u.searchParams.get(k); return (v === null || v === '') ? null : v; }
+      var base = 'https://www.facebook.com';          // m./web./mbasic. -> www.
+      var m;
+      // 1) /groups/{g}/posts/{id}  (permalink/{id} varyanti AYNI gonderi)
+      m = path.match(/^\/groups\/([^/]+)\/(?:posts|permalink)\/([^/]+)$/i);
+      if(m) return base + '/groups/' + m[1] + '/posts/' + m[2];
+      // 2) /{ad}/posts/{id}
+      m = path.match(/^\/([^/]+)\/posts\/([^/]+)$/i);
+      if(m) return base + '/' + m[1] + '/posts/' + m[2];
+      // 3) /share/{p|v|r}/{kod}
+      m = path.match(/^\/share\/([pvr])\/([^/]+)$/i);
+      if(m) return base + '/share/' + m[1].toLowerCase() + '/' + m[2];
+      // 4) /reel/{id}
+      m = path.match(/^\/reel\/([^/]+)$/i);
+      if(m) return base + '/reel/' + m[1];
+      // 5) /watch/?v={id}
+      if(low === '/watch' || low === '/video.php'){
+        var v = g('v');
+        return v ? (base + '/watch/?v=' + v) : (base + low);
+      }
+      // 6) photo.php?fbid= ve /photo/?fbid= AYNI fotograf (fbid kuresel tekil) -> TEK form.
+      if(low === '/photo.php' || low === '/photo'){
+        var fbid = g('fbid');
+        return fbid ? (base + '/photo/?fbid=' + fbid) : (base + low);
+      }
+      // 7) permalink.php / story.php (story.php BILEREK birlestirilmedi — Faz 3)
+      if(low === '/permalink.php' || low === '/story.php'){
+        var sf = g('story_fbid'), pid = g('id');
+        var out = base + low;
+        if(sf){ out += '?story_fbid=' + sf; if(pid) out += '&id=' + pid; }
+        return out;
+      }
+      // 8) Taninmayan FB formu: host normalize + YALNIZ beyaz-liste parametreleri.
+      var keep = [];
+      for(var i=0;i<FB_ID_PARAMS.length;i++){
+        var kv = g(FB_ID_PARAMS[i]);
+        if(kv) keep.push(FB_ID_PARAMS[i] + '=' + kv);
+      }
+      var o = base + path;
+      if(keep.length) o += '?' + keep.join('&');
+      return o;
+    } catch(e){ return link; }
+  }
+
+  // --- FB sayfa/grup kimligi, SADECE URL'den (Python: fb_page_slug) ---
+  function fbPageSlug(link){
+    try{
+      var c = fbCanonical(link);
+      var u = urlOf(c);
+      if(!u || !isFbHost(u.hostname)) return null;
+      var path = String(u.pathname||'').replace(/\/+$/,'');
+      var m = path.match(/^\/groups\/([^/]+)\/posts\//i);
+      if(m) return 'group:' + m[1].toLowerCase();
+      m = path.match(/^\/([^/]+)\/posts\//i);
+      if(m) return m[1].toLowerCase();
+      var low = path.toLowerCase();
+      if(low === '/permalink.php' || low === '/story.php'){
+        var v = u.searchParams.get('id');
+        return v ? v.toLowerCase() : null;
+      }
+      return null;   // /share/p, /reel, /watch, /photo -> URL'de isim YOK
+    } catch(e){ return null; }
+  }
+
+  // --- genel/yer tutucu baslik (Python: is_generic_title / _GENERIC_TITLES) ---
+  // Gercek bir ad geldiginde uzerine yazilabilir kabul edilen basliklar.
+  var GENERIC_TITLES = ['@instagram_user','instagram_user','instagram gönderisi','instagram gonderisi',
+                        '@facebook_user','facebook_user','facebook gönderisi','facebook gonderisi'];
+  function isGenericTitle(t){
+    if(!t) return true;
+    return GENERIC_TITLES.indexOf(String(t).trim().toLowerCase()) !== -1;
+  }
+
+  // --- Grup anahtarindan yedek baslik ---
+  // X/IG icin BUGUNKU ifade birebir korunur. FB anahtarlari 'fb:' onekli
+  // (ayni adli X hesabiyla CAKISMASIN) -> onek soyulur.
+  function groupFallbackTitle(val){
+    var v = String(val==null?'':val);
+    if(v.indexOf('fb:') === 0){
+      var rest = v.slice(3);
+      if(rest.indexOf('group:') === 0) return 'Facebook Grubu: ' + rest.slice(6);
+      if(!rest || rest === '@facebook_user') return 'Facebook Gönderileri';
+      return rest;
+    }
+    return (v.charAt(0) === '@') ? v : '@' + v;   // MEVCUT — birebir
+  }
+
+  window.XPlat = {
+    platform: platform,
+    fbCanonical: fbCanonical,
+    fbPageSlug: fbPageSlug,
+    groupFallbackTitle: groupFallbackTitle,
+    isGenericTitle: isGenericTitle,
+    isFbHost: isFbHost
+  };
+})();
+'''
+
+
+@app.route('/x-platform.js', methods=['GET'])
+def x_platform_js():
+    from flask import Response
+    return Response(X_PLATFORM_JS, mimetype='application/javascript')
 
 # ----------------- CLIENT-SIDE (BROWSER) DOCX GENERATOR (FAZ 1, ANAHTARLI) -----------------
 # Bu JS, panelde (istemci tarayıcısında) .docx üretir. Sunucu tarafı üretim (python-docx)
@@ -3591,6 +3991,15 @@ LOCAL_DOCX_JS = r'''
         var t0=(item.title||'').trim();
         username = t0 ? t0.toLowerCase() : '@instagram_user';
       }
+      // Faz FB-1: sunucudaki pool_group_key ile AYNI kural. IKISINI BIRDEN degistir.
+      if(!username && link && window.XPlat && XPlat.platform(link)==='fb'){
+        var slug = XPlat.fbPageSlug(link);
+        if(slug){ username = 'fb:' + slug; }
+        else {
+          var tf=(item.title||'').trim();
+          username = (tf && !XPlat.isGenericTitle(tf)) ? ('fb:' + tf.toLowerCase()) : 'fb:@facebook_user';
+        }
+      }
       if(username){
         if(!groups[username]){ groups[username]={items:[]}; order.push(['group',username]); }
         groups[username].items.push(item);
@@ -3677,11 +4086,14 @@ LOCAL_DOCX_JS = r'''
     }
 
     // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
+    // Faz FB-1: kural artik UCLU ve XPlat'a (sunucudaki detect_platform ikizi) delege edilir.
+    // Eskiden 'instagram.com degilse X' idi -> Facebook linki SESSIZCE X sayilirdi.
+    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook' };
     function entryPlatform(entry){
       var it = (entry[0]==='group') ? groups[entry[1]].items[0] : entry[1];
-      var lk = ((it && it.link)||'').toLowerCase();
-      if(lk.indexOf('instagram.com')!==-1) return 'ig';
-      return 'x'; // x.com / twitter.com veya bilinmeyen -> X
+      var lk = ((it && it.link)||'');
+      if(window.XPlat) return XPlat.platform(lk);
+      return (lk.toLowerCase().indexOf('instagram.com')!==-1) ? 'ig' : 'x';  // XPlat yoksa eski davranis
     }
     // Platformlarin ILK GORUNME sirasi (havuz sirasina gore).
     var platSeen={}, platOrder=[], _pi;
@@ -3689,7 +4101,9 @@ LOCAL_DOCX_JS = r'''
       var _p=entryPlatform(order[_pi]);
       if(!platSeen[_p]){ platSeen[_p]=true; platOrder.push(_p); }
     }
-    var bothPlatforms = platSeen['x'] && platSeen['ig'];
+    // Faz FB-1: ikili '&&' yerine "birden fazla platform var mi". Tek platformda
+    // Baslik 1 BASILMAZ (mevcut davranis birebir korunur).
+    var multiPlatform = platOrder.length > 1;
 
     var body=[], headerIndex=0;
     async function renderEntry(entry){
@@ -3703,7 +4117,10 @@ LOCAL_DOCX_JS = r'''
           if(!baslik) baslik=tt;
           if(tt.indexOf('(')!==-1){ baslik=tt; break; }
         }
-        if(!baslik) baslik = (val.charAt(0)==='@') ? val : '@'+val;
+        // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
+        // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
+        if(!baslik) baslik = window.XPlat ? XPlat.groupFallbackTitle(val)
+                                          : ((val.charAt(0)==='@') ? val : '@'+val);
         headerIndex++;
         if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
         body.push(headingXml(baslikFormatla(baslik)));
@@ -3724,12 +4141,13 @@ LOCAL_DOCX_JS = r'''
       }
     }
 
-    if(bothPlatforms){
-      // Hem X hem Instagram var -> Baslik 1 ile ayir (ilk gorunen platform once).
+    if(multiPlatform){
+      // Birden fazla platform (X / Instagram / Facebook) -> Baslik 1 ile ayir
+      // (ilk gorunen platform once; havuz sirasina gore).
       var pj, oi;
       for(pj=0; pj<platOrder.length; pj++){
         var plat=platOrder[pj];
-        body.push(heading1Xml(plat==='ig' ? 'Instagram' : 'X (Twitter)'));
+        body.push(heading1Xml(PLAT_LABEL[plat] || 'X (Twitter)'));
         for(oi=0; oi<order.length; oi++){
           if(entryPlatform(order[oi])===plat){ await renderEntry(order[oi]); }
         }
@@ -3819,7 +4237,15 @@ LOCAL_IMAGES_JS = r'''
     // Sunucu normalize_link_key ile AYNI alt-kume: ?/# soy, trailing /embed, trailing /, lowercase.
     // twitter->x ve orta-string /embed/ collapse YAPILMAZ; aksi halde sunucunun AYRI tuttugu
     // (or. twitter.com vs x.com) iki havuz ogesini istemci tek anahtara birlestirip goruntuleri karistiriyordu.
+    // Faz FB-1: Facebook'ta KIMLIK SORGUDA (permalink.php?story_fbid=..&id=..) -> '?' ile kesilemez.
+    // XPlat.fbCanonical, Python fb_canonical_link ile AYNI kurali uygular (ikizler test edildi).
+    // Sunucu normalize_link_key ile BIRLIKTE degistirilmeli; ayrisirsa goruntuler kaybolur/karisir.
     if(!link) return '';
+    if(window.XPlat && XPlat.platform(link)==='fb'){
+      // Python: fb_canonical_link(link).split("#")[0].rstrip("/").lower()
+      // rstrip('/') TUM sondaki slash'lari atar -> JS'te /\/+$/ (tek slash soyan .slice(0,-1) DEGIL).
+      return XPlat.fbCanonical(link).split('#')[0].replace(/\/+$/,'').toLowerCase();
+    }
     var s=String(link).split('#')[0].split('?')[0].trim().toLowerCase();
     s=s.replace(/\/embed$/,'');
     if(s.length>1 && s.charAt(s.length-1)==='/') s=s.slice(0,-1);
