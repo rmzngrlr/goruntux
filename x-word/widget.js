@@ -535,11 +535,13 @@
                 const cbWidgetEl = document.getElementById('w-cb-container');
                 let origWidgetDisplay = "";
                 let origCbWidgetDisplay = "";
+                let igMsgHidden = []; // Faz IG-1: no-zoom modunda gizlenen Instagram "Mesajlar" (DM) balonu
                 let dateTimeRow = null;
                 const isInstagram = window.location.hostname.includes('instagram.com');
 
                 try {
-                    if (isInstagram) {
+                    if (isInstagram && !xWidgetIgNoZoom) {
+                        // zoom-to-fit modunda widget gizlenir (article tam ekrana alındığından üzerine binebilir).
                         if (widgetEl) {
                             origWidgetDisplay = widgetEl.style.display;
                             widgetEl.style.display = 'none';
@@ -548,6 +550,32 @@
                             origCbWidgetDisplay = cbWidgetEl.style.display;
                             cbWidgetEl.style.display = 'none';
                         }
+                    } else if (isInstagram && xWidgetIgNoZoom) {
+                        // Faz IG-1 (sade no-zoom): widget'a DOKUNMA (kırpma bölgesi zaten dışarıda bırakır).
+                        // SADECE Instagram "Mesajlar" (DM) balonunu gizle (sağ-altta sabit, içeriğe binebilir).
+                        try {
+                            let anchor = document.querySelector('svg[aria-label="Mesajlar"], svg[aria-label="Messages"], svg[aria-label*="Mesaj" i], svg[aria-label*="Message" i]');
+                            if (!anchor) {
+                                const cand = Array.from(document.querySelectorAll('div,span'));
+                                for (const e of cand) {
+                                    const t = (e.textContent || '').trim().toLowerCase();
+                                    const rr = e.getBoundingClientRect();
+                                    if ((t === 'mesajlar' || t === 'messages') && rr.top > window.innerHeight * 0.5 && rr.left > window.innerWidth * 0.4) { anchor = e; break; }
+                                }
+                            }
+                            if (anchor) {
+                                let node = anchor, target = null;
+                                for (let i = 0; i < 8 && node && node !== document.body; i++) {
+                                    const cs = window.getComputedStyle(node);
+                                    if (cs.position === 'fixed' || cs.position === 'absolute') target = node;
+                                    node = node.parentElement;
+                                }
+                                target = target || anchor;
+                                igMsgHidden.push({ el: target, v: target.style.visibility });
+                                target.style.setProperty('visibility', 'hidden', 'important');
+                                printLog("[Instagram] Mesajlar balonu gizlendi.");
+                            }
+                        } catch (e) {}
                     }
                     // Tüm img'lerin yüklenmesini bekle (max 3s)
                     const imgs = Array.from(element.querySelectorAll('img'));
@@ -635,9 +663,10 @@
                     
                     if (isInstagram) {
                         // Instagram: Kart yüksekliği ekran boyundan büyükse sığması için dinamik olarak küçült (zoom out)
+                        // Faz IG-1: no-zoom modunda KÜÇÜLTME yok — X gibi kaydır+birleştir yapılır.
                         const originalZoom = element.style.zoom;
                         const rectBeforeZoom = element.getBoundingClientRect();
-                        if (rectBeforeZoom.height > vH - 30) {
+                        if (!xWidgetIgNoZoom && rectBeforeZoom.height > vH - 30) {
                             const igZoom = (vH - 30) / rectBeforeZoom.height;
                             stickyElements.push({ el: element, origZoom: originalZoom });
                             element.style.setProperty('zoom', igZoom, 'important');
@@ -710,13 +739,11 @@
                     }
                     
                     if (window.location.hostname.includes('instagram.com')) {
-                        // Instagram gönderilerinde sadece ana post kartını ve sağındaki açıklama alanını içeren temiz alanı kırp
-                        const isReel = window.location.pathname.includes('/reel/');
-                        if (isReel) {
-                            // Reel ekranında sol/orta video + açıklama alanını kapsayacak güvenli bir crop yap
-                            articleHeight = Math.min(vH, r.height);
+                        if (xWidgetIgNoZoom) {
+                            // Faz IG-1 (sade no-zoom): tam yüksekliği ölç; X yolu kaydırıp birleştirerek tamamını alır.
+                            articleHeight = r.height;
                         } else {
-                            // Normal post ekranında da tam sığacak şekilde dikey crop yap
+                            // Instagram (zoom-to-fit): tek karede sığacak şekilde dikey crop.
                             articleHeight = Math.min(vH, r.height);
                         }
                     }
@@ -740,10 +767,9 @@
                     const snapshots = [];
                     let rawResult = "";
 
-                    if (isInstagram) {
-                        // Instagram: CSS izolasyon + captureVisibleTab.
-                        // article elementi tam ekrana alınır, geri kalan her şey gizlenir,
-                        // X/Twitter'daki gibi captureTab ile temiz görüntü alınır.
+                    if (isInstagram && !xWidgetIgNoZoom) {
+                        // Instagram (zoom-to-fit): CSS izolasyon + captureVisibleTab.
+                        // NOT: no-zoom modunda bu blok ATLANIR; aşağıdaki X yolu (kaydır+birleştir) kullanılır.
                         printLog("[Instagram] CSS izolasyon ile ekran görüntüsü alınıyor...");
 
                         const isProfilePage = !window.location.href.includes('/p/') && !window.location.href.includes('/reel/');
@@ -1117,13 +1143,17 @@
                     spacer.remove();
                     disableSmoothScrollStyles.remove();
 
-                    if (isInstagram) {
+                    if (isInstagram && !xWidgetIgNoZoom) {
                         if (widgetEl && origWidgetDisplay !== undefined) {
                             widgetEl.style.display = origWidgetDisplay;
                         }
                         if (cbWidgetEl && origCbWidgetDisplay !== undefined) {
                             cbWidgetEl.style.display = origCbWidgetDisplay;
                         }
+                    }
+                    // Faz IG-1: gizlenen Instagram "Mesajlar" balonunu geri aç.
+                    for (const h of igMsgHidden) {
+                        try { if (h.v) h.el.style.setProperty('visibility', h.v); else h.el.style.removeProperty('visibility'); } catch (e) {}
                     }
 
                     for (const item of stickyElements) {
