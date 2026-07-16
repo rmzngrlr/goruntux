@@ -3040,8 +3040,21 @@ HTML_TEMPLATE = """
                 html += '<div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 10px;">';
                 var isFbGroup = (username.indexOf('fb:') === 0);   // Faz FB-1
                 var groupIcon = username === 'instagram' ? '📸' : (isFbGroup ? '📘' : '👤');
+                // Kullanici istegi (2026-07-17): FB bloklarinin BICIMI TEK TIP olsun —
+                // biri "ntvspor" digeri "Facebook Gönderileri" diye ayrisiyordu.
+                // Hepsi "Facebook · <detay>". Paylasim linklerinde sayfa adi HENUZ yok
+                // (yonlendirme tarama sirasinda olur) -> "Paylaşım linkleri" denir; Word
+                // ciktisinda gercek sayfa adi altinda toplanirlar.
+                // NOT: XPlat.groupFallbackTitle Word'de Baslik 2 yedegi olarak kullaniliyor,
+                // bicimi orada DEGISMEMELI -> panel etiketi burada ayri uretiliyor.
+                var fbEtiket = function (u) {
+                    var rest = u.slice(3);
+                    if (rest.indexOf('group:') === 0) return 'Grup ' + rest.slice(6);
+                    if (!rest || rest === '@facebook_user') return 'Paylaşım linkleri';
+                    return rest;
+                };
                 var displayName = username === 'instagram' ? 'Instagram Gönderileri'
-                                : (isFbGroup ? (window.XPlat ? XPlat.groupFallbackTitle(username) : username)
+                                : (isFbGroup ? ('Facebook · ' + fbEtiket(username))
                                              : '@' + username);
                 html += '  <span style="font-weight:bold; color:var(--twitter-color); font-size: 13px;">' + groupIcon + ' ' + displayName + '</span>';
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),

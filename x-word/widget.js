@@ -4756,6 +4756,7 @@
                     printLog(
                         `Yakalama: ${segs.length} parça (${cropWidth}x${fullH}), yol=${mode}/${scIc ? 'modal-kaydir' : 'tek-kare'}` +
                         `, yazar="${a.ad}" (${a.kaynak})` +
+                        (_kayitLink !== activeUrl ? `, link=YONLENEN(${_kayitLink.split('?')[0].slice(-40)})` : '') +
                         `, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
                         (_genisletildi ? `, kadrajGenisletildi=+${_genisletildi}px(stats)` : '') +
                         `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}${_bitisTani.el ? ' <- ' + _bitisTani.el : ''}, kesilen=${_kesildi}px` +
@@ -4777,8 +4778,28 @@
                     //    else dali title = account_name yapiyor (app.py degisikligi GEREKMIYOR).
                     //    Gruplama ETKILENMEZ: pool_group_key slug'i LINK'ten turetiyor, bu
                     //    alandan degil. a.ad hicbir zaman bos kalmaz (fbAuthor slug'a duser).
+                    // KULLANICI KARARI (2026-07-17): Word'de PAYLASIM linki degil, FB'nin
+                    // YONLENDIRDIGI GERCEK sayfa gorunsun.
+                    //   kuyruk : facebook.com/share/p/1DTEaEbLsJ   (kullanicinin yapistirdigi)
+                    //   gercek : facebook.com/futbolgazetesi/posts/pfbid...  (FB buraya goturdu)
+                    // Yan fayda (asil kazanc): GRUPLAMA da duzeliyor — paylasim linkinde sayfa
+                    // adi YOK, o yuzden pool_group_key "fb:@facebook_user" tek torbasina
+                    // dusuyordu; gercek linkte ad VAR -> "fb:futbolgazetesi" olur ve gonderi
+                    // sayfasinin kendi Baslik 2'si altinda toplanir.
+                    //
+                    // Ham href yeterli: sunucu x_temizle_link ile kanoniklestiriyor (?rdid,
+                    // ?share_url gibi izleme parametreleri atilir) ve normalize_link_key FB'de
+                    // fb_canonical_link'e delege ettigi icin IDEMPOTENT -> goruntu anahtari
+                    // (xNormLink(resItem.link)) ile havuz linkinin anahtari AYNI kalir.
+                    // Havuz tarama basinda temizlendigi icin (/api/auto/start -> pool.clear())
+                    // eski /share/p ogesiyle cakisma olmaz.
+                    let _kayitLink = activeUrl;
+                    try {
+                        const _href = window.location.href;
+                        if (/(^|\.)facebook\.com$/i.test(new URL(_href).hostname)) _kayitLink = _href;
+                    } catch (e) {}
                     const resItem = {
-                        link: activeUrl,
+                        link: _kayitLink,
                         account_name: a.ad || '',
                         username: '',
                         screenshot: shot,
