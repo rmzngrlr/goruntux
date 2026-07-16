@@ -231,10 +231,24 @@
     // "Sen ve 42 kisi", grup uyeleri) -> belge-geneli tarama HIC YAPILMIYOR.
     function fbAuthor() {
         try {
-            // 0) /{ad}/posts/{id} -> yazar URL'DE. Kirlenme IMKANSIZ.
+            // 0) /{ad}/posts/{id} -> SLUG URL'DE. Kirlenme IMKANSIZ (operatorun hesabi
+            //    URL'e karisamaz). GORUNEN AD icin DOM'a bakariz: kullanici karari
+            //    "Ad (@slug)" -> slug tek basina yetmez.
             var m = location.pathname.match(/^\/([^/]+)\/posts\//);
             if (m && m[1] && m[1].toLowerCase() !== 'profile.php') {
-                return { ad: m[1], id: '', slug: m[1], kaynak: 'url' };
+                var slug = m[1];
+                var ad = '';
+                // Ayni slug'a giden profil linkinin METNI = gorunen ad ("Futbol Gazetesi").
+                // Slug'a kilitli oldugu icin BASKA birinin adini almayiz.
+                var as = document.querySelectorAll('a[href^="/' + slug + '"], a[href*="/' + slug + '/"]');
+                for (var i = 0; i < as.length; i++) {
+                    var t = (as[i].innerText || '').replace(/\s+/g, ' ').trim();
+                    // zaman damgasi ("4h", "2 sa") ve bos/uzun metinleri ele
+                    if (!t || t.length > 60) continue;
+                    if (/^\d+\s*(sa|dk|sn|g|h|m|d|w|y)$/i.test(t)) continue;
+                    ad = t; break;
+                }
+                return { ad: ad || slug, id: '', slug: slug, kaynak: ad ? 'url+dom' : 'url' };
             }
             // 1) reel: a[aria-label="Sahibin Profilini Gör"] -> SPESIFIK olarak gonderi sahibi.
             //    Saha: iki anchor ayni href'le gelir; biri avatar (bos metin), biri ADLI.
@@ -4309,71 +4323,182 @@
             // CASE 2: Tweet Article Capture Task
             const isInstagram = window.location.hostname.includes('instagram.com');
 
-            // --- Faz FB-1 GUVENLIK KAPISI: Facebook YAKALAMA HENUZ YOK (Faz 2'de gelecek) ---
-            // Faz 1'de FB linkleri kuyruga girebiliyor (havuz/gruplama/Baslik 1 icin calisir),
-            // ama widget'ta FB yolu olmadigindan asagidaki dongu X seciciyi
-            // (article[data-testid="tweet"]) arar, FB'de ASLA bulamaz -> "Tweet yuklenemedi"
-            // -> 120sn'de bir location.reload() ile SONSUZ dongu (retry_count'un ust siniri YOK).
-            // FB'de tekrarlanan sayfa yenileme dogrudan otomasyon imzasidir (checkpoint /
-            // hesap kisitlama riski). Bu yuzden FB gonderisi retry dongusune HIC sokulmadan
-            // TEMIZ atlanir. Faz 2 geldiginde bu kapi yerini gercek FB yakalama yoluna birakacak.
+            // ============ Faz FB-2 Adim 2: FACEBOOK YAKALAMA ============
+            // Bu blok X seciciye (article[data-testid="tweet"]) HIC ulasmadan erken doner.
+            // Ulassaydi FB'de asla bulamaz -> "Tweet yuklenemedi" -> 120sn'de bir
+            // location.reload() ile SONSUZ dongu (retry_count'un ust siniri YOK) -> FB'de
+            // tekrarlanan yenileme dogrudan otomasyon imzasi (checkpoint/hesap riski).
+            //
+            // YAKALAMA MODELI — sahadan olculdu (KURU-CALISMA, 2026-07-16, vp=1450x698):
+            //   reel : kart 1156x610, kaydirici kartin ATASI (sh=1926) ama kart viewport'a
+            //          SIGIYOR (610<698) -> TEK KARE, kaydirma YOK.
+            //   posts: kart = MODAL 700x634 (FB gonderi modali IKI SUTUNLU -> ortak ata modal),
+            //          gercek icerik modalin ICINDEKI kaydiricida (sh=839/ch=507 — yorumlar
+            //          gizlendikten sonra; oncesi 2278) -> 2 DILIM, kadraj = KAYDIRICI bolgesi
+            //          (modal DEGIL: modalin ust seridi "X'in Gönderisi" her dilimde TEKRARLARDI).
             const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
             if (isFacebook) {
-                // --- Faz FB-2 Adim 1: KURU CALISMA (yakalama YOK, sadece olcum) ---
-                // Hedeflemeyi piksel harcamadan dogrula: dogru karti mi buluyoruz, dogru
-                // kaydiriciyi mi seciyoruz, yazar dogru mu geliyor. Sonuc sunucu loguna gider.
+                let _fbGizli = [], _fbGorunur = [];
                 try {
                     const _t0 = Date.now();
-                    // FB gec hidrasyon yapiyor -> kart gelene kadar ~3sn bekle (IG poll deseni).
-                    let _card = null;
-                    for (let _w = 0; _w < 15; _w++) {
-                        _card = fbFindPost();
-                        if (_card && _card.getBoundingClientRect().height > 100) break;
+                    // 1) Kart: FB gec hidrasyon yapiyor -> ~3sn poll (IG deseni).
+                    let card = null;
+                    for (let w = 0; w < 15; w++) {
+                        card = fbFindPost();
+                        if (card && card.getBoundingClientRect().height > 100) break;
                         await new Promise(r => setTimeout(r, 200));
                     }
-                    const _r0 = _card ? _card.getBoundingClientRect() : null;
-                    // Yorumlari gizle + metni ac -> kart sinirinin GERCEK yakalama boyutunu olc.
-                    const _hidden = fbYorumlariGizle(_card);
-                    const _smN = await fbMetniAc(_card);
-                    await new Promise(r => setTimeout(r, 250));   // reflow
-                    const _r = _card ? _card.getBoundingClientRect() : null;
-                    const _sc = _card ? fbScroller(_card) : null;
-                    const _dlg = document.querySelectorAll('[role="dialog"],[aria-modal="true"]').length;
-                    const _win = document.scrollingElement || document.documentElement;
-                    const _a = fbAuthor();
-                    const _mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
-                    // Kaydirici NEREDE? reel'de kartin ATASI, /posts'ta modal oldugu icin ICINDE.
-                    // Yakalama modeli buna gore degisir -> logla.
-                    const _scNerede = !_sc ? '-' : (_sc.contains(_card) ? 'ata' : (_card && _card.contains(_sc) ? 'ic' : 'baska'));
-                    // Yakalama plani: kac dilim gerekecek?
-                    const _kartH = _r ? Math.round(_r.height) : 0;
-                    const _sigar = _kartH > 0 && _kartH <= window.innerHeight;
-                    const _fullH = (_scNerede === 'ic' && _sc) ? _sc.scrollHeight : _kartH;
-                    const _pencere = (_scNerede === 'ic' && _sc) ? _sc.clientHeight : window.innerHeight;
-                    const _dilim = _sigar && _scNerede !== 'ic' ? 1 : (_pencere > 0 ? Math.ceil(_fullH / _pencere) : 0);
+                    if (!card) throw new Error("gonderi karti bulunamadi");
+
+                    // 2) Yorumlari gizle (kullanici karari) + kesik metni ac.
+                    //    Yorum gizleme ayrica kart yuksekligini YAPISAL olarak stabillestirir
+                    //    (tembel yuklenen yorumlar yakalama sirasinda kartı buyutuyordu).
+                    _fbGizli = fbYorumlariGizle(card);
+                    const smN = await fbMetniAc(card);
+                    await new Promise(r => setTimeout(r, 300));   // reflow
+
+                    // 3) Widget kadrajda gorunmesin (IG'deki gibi visibility — reflow/flas olmasin).
+                    [document.getElementById('x-downloader-widget'), document.getElementById('w-cb-container')]
+                        .forEach(function (el) { if (el) { _fbGorunur.push([el, el.style.visibility]); el.style.visibility = 'hidden'; } });
+                    await new Promise(r => setTimeout(r, 120));
+
+                    // 4) Kaydirici + kadraj
+                    const sc = fbScroller(card);
+                    const scIc = !!(sc && card.contains(sc));   // 'ic' => modal ici kaydirici (posts)
+                    const kadrajEl = scIc ? sc : card;
+                    const dpr = window.devicePixelRatio || 1;
+                    let kr = kadrajEl.getBoundingClientRect();
+                    const cropLeft = Math.max(0, Math.round(kr.left));
+                    const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width));
+                    const fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
+                    const pencere = scIc ? sc.clientHeight : Math.round(kr.height);
+                    const segs = [];
+
+                    if (!scIc) {
+                        // --- reel: tek kare ---
+                        const top = Math.max(0, Math.round(kr.top));
+                        const h = Math.round(Math.min(window.innerHeight - top, kr.height));
+                        const res = await new Promise(resolve => {
+                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve);
+                        });
+                        if (res && res.status === "success" && res.dataUrl) segs.push(res.dataUrl);
+                    } else {
+                        // --- posts: modal ici kaydiriciyi kaydir, dilimle ---
+                        // KRITIK: bir kaydiricinin gidebilecegi EN FAZLA scrollTop = sh - ch
+                        // (saha: 839-507 = 332). Naif "scrollTop = y" son dilimde 507 ister,
+                        // tarayici 332'ye KIRPAR -> "kaydirma tutmadi" korumasi tetiklenir ve
+                        // HER /posts gonderisi atlanirdi. Koruma olmasaydi daha kotusu: dilim
+                        // 332..839'u alir, 332..507 IKI KEZ gorunur -> bozuk goruntu, sessizce.
+                        // Cozum: hedefi maxScroll'a kirp, aradaki farki (ofset) KADRAJDAN dus.
+                        const oncekiTop = sc.scrollTop;
+                        const maxScroll = Math.max(0, fullH - pencere);
+                        let y = 0, guard = 0;
+                        while (y < fullH && guard < 20) {
+                            guard++;
+                            const hedef = Math.min(y, maxScroll);
+                            sc.scrollTop = hedef;
+                            await new Promise(r => setTimeout(r, 220));
+                            // HAPSOLMUS KAYDIRMA: istedigimiz yere gercekten gitti mi?
+                            if (Math.abs(sc.scrollTop - hedef) > 4) {
+                                printLog(`[Facebook] Kaydirma TUTMADI (istenen=${hedef}, gercek=${sc.scrollTop}) -> IPTAL`);
+                                segs.length = 0; break;
+                            }
+                            kr = kadrajEl.getBoundingClientRect();
+                            // Son dilimde kaydirici sonuna dayanir: y ile gercek scrollTop
+                            // arasindaki fark kadar ASAGIDAN kadraj al (ust uste binme YOK).
+                            const ofset = Math.max(0, y - sc.scrollTop);
+                            const sliceH = Math.round(Math.min(pencere - ofset, fullH - y));
+                            if (sliceH <= 2) break;
+                            const res = await new Promise(resolve => {
+                                swSendReliable({ action: "captureAndCrop", rect: { top: Math.max(0, Math.round(kr.top + ofset)), left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
+                            });
+                            if (!res || res.status !== "success" || !res.dataUrl) break;
+                            // AYNI DILIM korumasi: kaydirma calismiyorsa her dilim AYNI cikar.
+                            // Cikti BOS OLMADIGI icin captureLooksBlank (std<6) bunu YAKALAMAZ ->
+                            // makul gorunen YANLIS gorsel gonderilir. Tek kesin koruma bu.
+                            if (segs.length && segs[segs.length - 1] === res.dataUrl) {
+                                printLog("[Facebook] AYNI dilim 2 kez -> kaydirma calismiyor, IPTAL.");
+                                segs.length = 0; break;
+                            }
+                            segs.push(res.dataUrl);
+                            y += sliceH;
+                        }
+                        try { sc.scrollTop = oncekiTop; } catch (e) {}
+                    }
+
+                    if (!segs.length) throw new Error("parca alinamadi");
+                    const raw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
+                    const shot = await compressScreenshot(raw);
+                    const a = fbAuthor();
+                    const mode = location.pathname.indexOf('/reel/') === 0 ? 'reel' : 'posts';
                     printLog(
-                        `[Facebook] KURU-CALISMA (${_mode}): vp=${window.innerWidth}x${window.innerHeight}` +
-                        `, dialog=${_dlg}` +
-                        `, kartOnce=${_r0 ? Math.round(_r0.width) + 'x' + Math.round(_r0.height) : 'YOK'}` +
-                        `, kartSonra=${_r ? Math.round(_r.width) + 'x' + Math.round(_r.height) : 'YOK'}` +
-                        `, kartTop=${_r ? Math.round(_r.top) : '-'}, kartLeft=${_r ? Math.round(_r.left) : '-'}` +
-                        `, yorumGizli=${_hidden.length}, seeMore=${_smN}` +
-                        `, kaydirici=${_sc ? _sc.tagName + '(' + _scNerede + ') sh=' + _sc.scrollHeight + '/ch=' + _sc.clientHeight : 'YOK'}` +
-                        `, PLAN: ${_dilim} dilim (fullH=${_fullH}, pencere=${_pencere}, kartSigar=${_sigar})` +
-                        `, winScroll=${_win.scrollHeight}/${_win.clientHeight}` +
-                        `, yazar="${_a.ad}" id=${_a.id || '-'} slug=${_a.slug || '-'} (${_a.kaynak})` +
+                        `[Facebook] YAKALAMA (${mode}): ${segs.length} parca (${cropWidth}x${fullH})` +
+                        `, kaydirici=${scIc ? 'ic' : 'ata/yok'}, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
+                        `, yazar="${a.ad}" id=${a.id || '-'} slug=${a.slug || '-'} (${a.kaynak})` +
                         `, sure=${Date.now() - _t0}ms`
                     );
-                    // KURU calisma: sayfayi ELLEDIK, geri al (yakalama yok, iz birakma).
-                    _hidden.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+
+                    // 5) Sonuc: account_name = gorunen ad, username = "@slug" (varsa).
+                    //    app.py submit_word_result X mantigi bunu dogru isliyor:
+                    //      username && account && username not in account -> "Ad (@slug)"  [kullanici karari]
+                    //      aksi halde -> "Ad"  (slug yoksa duz ad; reel/profile.php boyle)
+                    const resItem = {
+                        link: activeUrl,
+                        account_name: a.ad || '',
+                        username: a.slug ? ('@' + a.slug) : '',
+                        screenshot: shot,
+                        is_profile: false
+                    };
+                    _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                    _fbGizli = []; _fbGorunur = [];
+
+                    gorev.combinedData.push(resItem);
+                    gorev.retry_count = 0;
+                    gorev.kuyruk.shift();
+                    const kaldi = gorev.kuyruk.length;
+                    const toplam = (gorev.total_count) || (gorev.combinedData.length + kaldi);
+                    durumText.innerHTML = `✅ <b>Facebook gönderisi alındı</b><br><span style="font-size:11px;">${gorev.combinedData.length}/${toplam}</span>`;
+                    swSendReliable({
+                        action: "submitWordResult",
+                        origin: gorev.server_origin || "http://localhost:3012",
+                        job_id: gorev.job_id,
+                        results: [xStripForServer(resItem, gorev)],
+                        final: kaldi === 0
+                    }, () => {
+                        swSendReliable({
+                            action: "updateWordProgress",
+                            origin: gorev.server_origin || "http://localhost:3012",
+                            job_id: gorev.job_id,
+                            current: gorev.combinedData.length,
+                            total: toplam
+                        }, () => {
+                            if (kaldi > 0) {
+                                let u = {}; u[storageKey] = gorev;
+                                chrome.storage.local.set(u, () => {
+                                    const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                                    setTimeout(() => { window.location.href = nextUrl; }, 600);
+                                });
+                            } else {
+                                chrome.storage.local.remove(storageKey, () => {
+                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                });
+                            }
+                        });
+                    });
+                    return;
                 } catch (e) {
-                    printLog("[Facebook] KURU-CALISMA hata: " + (e.message || e));
+                    printLog("[Facebook] YAKALAMA HATA: " + (e.message || e) + " -> gonderi atlaniyor");
+                } finally {
+                    // Sayfayi ELLEDIK (yorum gizleme + widget) -> her durumda geri al.
+                    _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
                 }
-                printLog("[Facebook] Yakalama henuz eklenmedi (Faz 2) — gonderi atlaniyor: " + activeUrl);
+                // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
                 durumText.innerHTML = `
                     <div style="text-align:center;">
                         <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Facebook gönderisi atlandı</span><br>
-                        <span style="font-size:11px; color:var(--w-text-muted);">Facebook ekran görüntüsü henüz desteklenmiyor.<br>Link havuza eklenebilir, yakalama sonraki aşamada gelecek.</span>
+                        <span style="font-size:11px; color:var(--w-text-muted);">Ekran görüntüsü alınamadı; sonraki gönderiye geçiliyor.</span>
                     </div>`;
                 gorev.retry_count = 0;
                 gorev.kuyruk.shift();
