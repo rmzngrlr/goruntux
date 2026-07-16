@@ -4420,9 +4420,37 @@
                     const scIc = !!(sc && card.contains(sc));   // 'ic' => modal ici kaydirici (posts)
                     const kadrajEl = scIc ? sc : card;
                     const dpr = window.devicePixelRatio || 1;
+
+                    // --- Sayfayi elleyen ayarlar OLCUMDEN ONCE (hepsi yerlesimi degistiriyor) ---
+                    if (scIc && sc) {
+                        // (a) KAYDIRMA CUBUGU kadrajda gorunmesin (kullanici istegi 2026-07-16).
+                        _fbStil.push([sc, 'scrollbarWidth', sc.style.scrollbarWidth]);
+                        sc.style.scrollbarWidth = 'none';
+                        // (b) YUMUSAK KAYDIRMA: scrollTop animasyonlu ise 320ms'de hedefe varmaz
+                        //     -> dilim YANLIS konumda yakalanir (birlestirme izi). IG yolu da
+                        //     ayni onlemi aliyor (scrollBehavior='auto').
+                        _fbStil.push([sc, 'scrollBehavior', sc.style.scrollBehavior]);
+                        sc.style.scrollBehavior = 'auto';
+                        // (c) YAPISKAN (sticky) ogeler: kaydirinca YERINDE KALIR ve bir sonraki
+                        //     dilimin USTUNDE tekrar gorunur -> birlestirme izi/tekrar.
+                        //     Gizlemek yerine static: yerlesim bozulmasin, sadece yapismasin.
+                        kadrajEl.querySelectorAll('*').forEach(function (e) {
+                            try {
+                                if (getComputedStyle(e).position === 'sticky') {
+                                    _fbStil.push([e, 'position', e.style.position]);
+                                    e.style.position = 'static';
+                                }
+                            } catch (x) {}
+                        });
+                        await new Promise(r => setTimeout(r, 200));   // reflow
+                    }
+
                     let kr = kadrajEl.getBoundingClientRect();
                     const cropLeft = Math.max(0, Math.round(kr.left));
-                    const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width));
+                    // scrollbarWidth:'none' desteklenmezse (eski tarayici) cubuk hala durur ->
+                    // genisligini kadrajdan DUS. Desteklenirse bu deger 0 olur, zararsiz.
+                    const sbW = scIc && sc ? Math.max(0, sc.offsetWidth - sc.clientWidth) : 0;
+                    const cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width - sbW));
                     let fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
                     const pencere = scIc ? sc.clientHeight : Math.round(kr.height);
                     // Kullanici karari: goruntu BEGENI/YORUM/PAYLAS satirinin HEMEN ALTINDA bitsin.
@@ -4462,25 +4490,9 @@
                         // Cozum: hedefi maxScroll'a kirp, aradaki farki (ofset) KADRAJDAN dus.
                         const oncekiTop = sc.scrollTop;
                         const maxScroll = Math.max(0, fullH - pencere);
-                        // YUMUSAK KAYDIRMA: scrollTop animasyonlu ise 220ms icinde hedefe
-                        // varmaz -> dilim YANLIS konumda yakalanir (birlestirme izi).
-                        // IG yolu da ayni onlemi aliyor (scrollBehavior='auto').
-                        const _oncekiSb = sc.style.scrollBehavior;
-                        sc.style.scrollBehavior = 'auto';
-                        _fbStil.push([sc, 'scrollBehavior', _oncekiSb]);
-                        // YAPISKAN (sticky) ogeler: kaydirinca YERINDE KALIR ve bir sonraki
-                        // dilimin USTUNDE tekrar gorunur -> birlestirme izi/tekrar. IG yolu
-                        // sticky'leri gizliyor (:683); FB'de de gecici olarak static yapiyoruz.
-                        // (Gizlemek yerine static: yerlesim bozulmasin, sadece yapismasin.)
-                        kadrajEl.querySelectorAll('*').forEach(function (e) {
-                            try {
-                                if (getComputedStyle(e).position === 'sticky') {
-                                    _fbStil.push([e, 'position', e.style.position]);
-                                    e.style.position = 'static';
-                                }
-                            } catch (x) {}
-                        });
-                        await new Promise(r => setTimeout(r, 150));   // reflow
+                        // NOT: scrollbar/scrollBehavior/sticky ayarlari OLCUMDEN ONCE yapildi
+                        // (yukarida) — hepsi yerlesimi degistiriyor, olcumden sonra uygulanirsa
+                        // kr/fullH/pencere BAYAT kalirdi.
                         let y = 0, guard = 0;
                         while (y < fullH && guard < 20) {
                             guard++;
