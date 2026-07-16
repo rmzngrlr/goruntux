@@ -329,6 +329,35 @@
                 });
             }
 
+            // Faz IG-1: Instagram no-zoom capture icin dikey parca birlestirme.
+            // Her parca viewport-tepesine hizali cekildiginden (fixed elementi yukari kaydirarak),
+            // parcalar basitce ust uste eklenir (dpr-olcekli boyutlarda).
+            function igVerticalStitch(dataUrls) {
+                return new Promise(function (resolve) {
+                    var settled = false;
+                    var done = function (v) { if (settled) return; settled = true; clearTimeout(t); resolve(v); };
+                    var t = setTimeout(function () { done(dataUrls[0]); }, 9000);
+                    var imgs = dataUrls.map(function () { return new Image(); });
+                    var loaded = 0;
+                    var onload = function () {
+                        loaded++;
+                        if (loaded < imgs.length) return;
+                        try {
+                            var W = imgs[0].naturalWidth;
+                            var totalH = 0, i;
+                            for (i = 0; i < imgs.length; i++) totalH += imgs[i].naturalHeight;
+                            var canvas = document.createElement('canvas');
+                            canvas.width = W; canvas.height = totalH;
+                            var ctx = canvas.getContext('2d');
+                            var y = 0;
+                            for (i = 0; i < imgs.length; i++) { ctx.drawImage(imgs[i], 0, y); y += imgs[i].naturalHeight; }
+                            done(canvas.toDataURL('image/png'));
+                        } catch (e) { done(dataUrls[0]); }
+                    };
+                    imgs.forEach(function (img, i) { img.onload = onload; img.onerror = function () { done(dataUrls[0]); }; img.src = dataUrls[i]; });
+                });
+            }
+
             // Görselleri data: URL formatına çevir (Blob'ları yerel, haricileri background ile okur, CSS background-image'leri de kapsar)
             async function prefetchImages(element) {
                 const imgs = Array.from(element.querySelectorAll('img'));
@@ -920,10 +949,14 @@
                             hideIgExtras();
 
                             // 6. Kartın yeni yüksekliğine göre dikey sığdırma (Dynamic Zoom)
-                            const rectAfterLayout = articleEl.getBoundingClientRect();
-                            if (rectAfterLayout.height > vH - 20) {
-                                const newZoom = (vH - 20) / rectAfterLayout.height;
-                                igSet(articleEl, 'zoom', newZoom);
+                            // Faz IG-1: no-zoom bayragi acikken KUCULTME uygulanmaz; kart uzunsa asagida
+                            // kaydir+birlestir ile tam cozunurlukte yakalanir.
+                            if (!xWidgetIgNoZoom) {
+                                const rectAfterLayout = articleEl.getBoundingClientRect();
+                                if (rectAfterLayout.height > vH - 20) {
+                                    const newZoom = (vH - 20) / rectAfterLayout.height;
+                                    igSet(articleEl, 'zoom', newZoom);
+                                }
                             }
 
                             // 7. İçerikteki gerçek boyutları sağlayan asıl container'ı bul
@@ -952,36 +985,69 @@
                             }
 
                             const ar = contentBox.getBoundingClientRect();
-                            const cropRect = {
-                                top:    Math.max(0, Math.round(ar.top)),
-                                left:   Math.max(0, Math.round(ar.left)),
-                                width:  Math.round(ar.width),
-                                height: Math.round(Math.min(ar.height, vH))
-                            };
 
-                            printLog(`[Instagram] CSS izolasyon rect: ${JSON.stringify(cropRect)}`);
-
-                            // 6. Ekran görüntüsü al (X/Twitter ile aynı mekanizma)
-                            const igResult = await new Promise(resolve => {
-                                chrome.runtime.sendMessage({
-                                    action: "captureAndCrop",
-                                    rect:   cropRect,
-                                    dpr:    window.devicePixelRatio || 1
-                                }, resolve);
-                            });
-
-                            if (igResult && igResult.status === "success" && igResult.dataUrl) {
-                                rawResult = igResult.dataUrl;
-                            } else {
-                                printLog("[Instagram] captureAndCrop hatası: " + (igResult ? igResult.message : "yanıt yok") + ", fallback olarak tam sayfa çekimi deneniyor.");
-                                const ssFallback = await new Promise(resolve => {
-                                    chrome.runtime.sendMessage({ action: "captureTab" }, resolve);
-                                });
-                                if (ssFallback && ssFallback.status === "success" && ssFallback.dataUrl) {
-                                    // if fallback succeeds, use it
-                                    rawResult = await cropScreenshot(ssFallback.dataUrl, cropRect);
+                            if (xWidgetIgNoZoom && ar.height > vH + 4) {
+                                // Faz IG-1 (no-zoom): kart viewport'tan uzun -> fixed article'i her adimda
+                                // yukari kaydirarak dilim dilim yakala, sonra dikey birlestir. Zoom YOK => tam cozunurluk.
+                                const dprI = window.devicePixelRatio || 1;
+                                const boxLeft = Math.max(0, Math.round(ar.left));
+                                const boxWidth = Math.round(ar.width);
+                                const fullH = ar.height;
+                                const boxOffset = ar.top; // contentBox'un fixed-article(top:0) icindeki viewport ofseti
+                                const nSeg = Math.ceil(fullH / vH);
+                                const igSegs = [];
+                                for (let si = 0; si < nSeg; si++) {
+                                    igSet(articleEl, 'top', (-(boxOffset + si * vH)) + 'px');
+                                    await new Promise(r => setTimeout(r, 180));
+                                    const sliceH = Math.max(1, Math.round(Math.min(vH, fullH - si * vH)));
+                                    const segRes = await new Promise(resolve => {
+                                        chrome.runtime.sendMessage({ action: "captureAndCrop", rect: { top: 0, left: boxLeft, width: boxWidth, height: sliceH }, dpr: dprI }, resolve);
+                                    });
+                                    if (segRes && segRes.status === "success" && segRes.dataUrl) igSegs.push(segRes.dataUrl);
+                                    else break;
+                                }
+                                igSet(articleEl, 'top', '0');
+                                if (igSegs.length > 0) {
+                                    printLog(`[Instagram] No-zoom ${igSegs.length} parça birleştiriliyor.`);
+                                    rawResult = (igSegs.length === 1) ? igSegs[0] : await igVerticalStitch(igSegs);
                                 } else {
-                                    return null;
+                                    printLog("[Instagram] No-zoom yakalama başarısız, zoom-to-fit yoluna dönülüyor.");
+                                }
+                            }
+
+                            if (!rawResult) {
+                                // Mevcut yol: zoom-to-fit (ya da no-zoom kısa kart) -> tek çekim.
+                                const arS = contentBox.getBoundingClientRect();
+                                const cropRect = {
+                                    top:    Math.max(0, Math.round(arS.top)),
+                                    left:   Math.max(0, Math.round(arS.left)),
+                                    width:  Math.round(arS.width),
+                                    height: Math.round(Math.min(arS.height, vH))
+                                };
+
+                                printLog(`[Instagram] CSS izolasyon rect: ${JSON.stringify(cropRect)}`);
+
+                                // Ekran görüntüsü al (X/Twitter ile aynı mekanizma)
+                                const igResult = await new Promise(resolve => {
+                                    chrome.runtime.sendMessage({
+                                        action: "captureAndCrop",
+                                        rect:   cropRect,
+                                        dpr:    window.devicePixelRatio || 1
+                                    }, resolve);
+                                });
+
+                                if (igResult && igResult.status === "success" && igResult.dataUrl) {
+                                    rawResult = igResult.dataUrl;
+                                } else {
+                                    printLog("[Instagram] captureAndCrop hatası: " + (igResult ? igResult.message : "yanıt yok") + ", fallback olarak tam sayfa çekimi deneniyor.");
+                                    const ssFallback = await new Promise(resolve => {
+                                        chrome.runtime.sendMessage({ action: "captureTab" }, resolve);
+                                    });
+                                    if (ssFallback && ssFallback.status === "success" && ssFallback.dataUrl) {
+                                        rawResult = await cropScreenshot(ssFallback.dataUrl, cropRect);
+                                    } else {
+                                        return null;
+                                    }
                                 }
                             }
                         } finally {
@@ -1221,6 +1287,10 @@
     // metadata (baslik/link) gidiyor (screenshot bos). Bayrak kapaliyken her sey bugunkuyle ayni.
     var xWidgetLocalImages = false;
     try { chrome.storage.local.get(['local_images'], function (r) { xWidgetLocalImages = !!(r && r.local_images); }); } catch (e) {}
+
+    // Faz IG-1: Instagram'i zoom'lamadan (X gibi kaydir+birlestir) yakalama bayragi.
+    var xWidgetIgNoZoom = false;
+    try { chrome.storage.local.get(['ig_no_zoom'], function (r) { xWidgetIgNoZoom = !!(r && r.ig_no_zoom); }); } catch (e) {}
 
     function xStripForServer(resItem, gorev) {
         try {

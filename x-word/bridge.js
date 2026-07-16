@@ -122,6 +122,15 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
+  // Faz IG-1: Instagram no-zoom bayragi -> eklentiye bildir.
+  if (event.data && event.data.type === "X_RAPOR_SET_IG_NOZOOM") {
+    try {
+      chrome.runtime.sendMessage({ action: "setIgNoZoom", value: !!event.data.value }, () => {
+        if (chrome.runtime.lastError) { /* ignore */ }
+      });
+    } catch(e) {}
+  }
+
   // Handle Active Profile Detection requests
   if (event.data && event.data.type === "X_RAPOR_DETECT_ACTIVE_PROFILE") {
     try {

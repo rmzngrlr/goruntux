@@ -840,6 +840,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // Faz IG-1: Instagram no-zoom (kaydir+birlestir) bayragi. Widget bunu okuyup zoom yerine dilimli yakalar.
+  if (message.action === "setIgNoZoom") {
+    chrome.storage.local.set({ ig_no_zoom: !!message.value }, () => {
+      logToServer(`[setIgNoZoom] Instagram no-zoom modu: ${!!message.value}`);
+    });
+    sendResponse({ status: "success" });
+    return false;
+  }
+
   // Faz #1-A: widget'tan gelen ekran goruntusunu (sunucuya GITMEYECEK) panel sekmesine ilet.
   if (message.action === "deliverLocalImage") {
     chrome.storage.local.get(['panel_tab_id'], (res) => {

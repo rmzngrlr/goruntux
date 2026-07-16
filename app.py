@@ -1458,6 +1458,19 @@ HTML_TEMPLATE = """
                     bu tarayıcıda (IndexedDB) tutulur. Sunucu yalnızca başlık/link/sıra tutar; çok PC'li kullanımda
                     yoğunluğu azaltır. Kapatırsan görseller (eskisi gibi) sunucuya gönderilir.
                 </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+                <h3>📸 Instagram Yakalama (deneysel)</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="ig_no_zoom_toggle" onchange="xSetIgNoZoom(this.checked)">
+                    <label for="ig_no_zoom_toggle">Instagram'ı küçültmeden yakala (X gibi kaydır + birleştir)</label>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
+                    <b>Deneysel:</b> açıkken uzun Instagram gönderileri sayfaya <b>zoom yapılmadan</b>, kaydırılıp
+                    birleştirilerek tam çözünürlükte yakalanır. Kapalıyken (varsayılan) mevcut "sığdır (zoom)"
+                    yöntemi kullanılır. Instagram sayfa yapısı değişken olduğundan <b>gerçek gönderilerinle test et.</b>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="toggleStyleModal()">Uygula ve Kapat</button>
@@ -2116,6 +2129,13 @@ HTML_TEMPLATE = """
             showToast(on ? 'Ekran görüntüleri artık tarayıcıda tutulacak (deneysel).' : 'Ekran görüntüleri sunucuya gönderilecek (varsayılan).', 'success');
             refreshStatus();
         }
+        // --- Faz IG-1: Instagram no-zoom bayragi ---
+        function xSetIgNoZoom(on) {
+            try { localStorage.setItem('x_ig_no_zoom', on ? '1' : '0'); } catch (e) {}
+            try { window.postMessage({ type: "X_RAPOR_SET_IG_NOZOOM", value: !!on }, "*"); } catch (e) {}
+            showToast(on ? 'Instagram küçültmeden (kaydır+birleştir) yakalanacak — deneysel.' : 'Instagram "sığdır (zoom)" yöntemine döndü.', 'success');
+        }
+
         function xInitLocalImages() {
             try {
                 var on = xLocalImagesEnabled();
@@ -2123,6 +2143,13 @@ HTML_TEMPLATE = """
                 if (el) el.checked = on;
                 // Baslangicta eklentiyi mevcut bayrakla senkronize et.
                 window.postMessage({ type: "X_RAPOR_SET_LOCAL_IMAGES", value: on }, "*");
+            } catch (e) {}
+            try {
+                var igOn = false;
+                try { igOn = localStorage.getItem('x_ig_no_zoom') === '1'; } catch (e) {}
+                var igEl = document.getElementById('ig_no_zoom_toggle');
+                if (igEl) igEl.checked = igOn;
+                window.postMessage({ type: "X_RAPOR_SET_IG_NOZOOM", value: igOn }, "*");
             } catch (e) {}
             // Yeni goruntu gelince / depo hazir olunca havuzu tazele (yerel gorseller gorunsun).
             try {
