@@ -112,6 +112,16 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
+  // Faz #1-A: yerel goruntu bayragini eklentiye bildir (widget bu bayraga gore goruntuyu
+  // sunucuya gondermeyip panele iletir).
+  if (event.data && event.data.type === "X_RAPOR_SET_LOCAL_IMAGES") {
+    try {
+      chrome.runtime.sendMessage({ action: "setLocalImages", value: !!event.data.value }, () => {
+        if (chrome.runtime.lastError) { /* ignore */ }
+      });
+    } catch(e) {}
+  }
+
   // Handle Active Profile Detection requests
   if (event.data && event.data.type === "X_RAPOR_DETECT_ACTIVE_PROFILE") {
     try {
@@ -126,6 +136,20 @@ window.addEventListener("message", (event) => {
     }
   }
 });
+
+// Faz #1-A: SW'den gelen yerel goruntuyu panel sayfasina aktar (SW -> bridge -> panel).
+// Panel (x-local-images.js) X_RAPOR_LOCAL_IMAGE mesajini dinleyip IndexedDB'ye yazar.
+if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+    try {
+      if (msg && msg.action === "localImage" && msg.link && msg.dataUrl) {
+        window.postMessage({ type: "X_RAPOR_LOCAL_IMAGE", link: msg.link, dataUrl: msg.dataUrl, mime: msg.mime || "" }, "*");
+        sendResponse && sendResponse({ status: "ok" });
+      }
+    } catch (e) {}
+    return false;
+  });
+}
 
 // CustomEvent listener for fetching x.com cookies specifically for the admin panel bridge
 document.addEventListener('xrapor_request_cookies', (event) => {

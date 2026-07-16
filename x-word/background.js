@@ -830,6 +830,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // Faz #1-A: panelden gelen yerel-goruntu bayragi. Widget bu bayraga gore ekran goruntusunu
+  // SUNUCUYA gondermeyip panele iletir.
+  if (message.action === "setLocalImages") {
+    chrome.storage.local.set({ local_images: !!message.value }, () => {
+      logToServer(`[setLocalImages] Yerel goruntu modu: ${!!message.value}`);
+    });
+    sendResponse({ status: "success" });
+    return false;
+  }
+
+  // Faz #1-A: widget'tan gelen ekran goruntusunu (sunucuya GITMEYECEK) panel sekmesine ilet.
+  if (message.action === "deliverLocalImage") {
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const panelTabId = res.panel_tab_id;
+      if (!panelTabId) { try { sendResponse({ status: "error", message: "panel_tab_id yok" }); } catch (_) {} return; }
+      chrome.tabs.sendMessage(panelTabId, {
+        action: "localImage",
+        link: message.link,
+        dataUrl: message.dataUrl,
+        mime: message.mime || ""
+      }, () => {
+        const err = chrome.runtime.lastError;
+        try { sendResponse({ status: err ? "error" : "success", message: err ? err.message : "" }); } catch (_) {}
+      });
+    });
+    return true; // async yanit
+  }
+
   if (message.action === "savePanelOrigin") {
     // Panel sayfası yüklendiğinde bridge.js bu mesajı gönderir.
     const newOrigin = message.origin;

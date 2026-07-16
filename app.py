@@ -1445,6 +1445,19 @@ HTML_TEMPLATE = """
                     Word raporu <b>bu bilgisayarda, tarayıcıda</b> üretilir; çok PC'li kullanımda merkezî
                     yoğunluğu azaltır. Nadir bir hata olursa otomatik olarak sunucuda üretime düşülür (güvenlik ağı).
                 </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+                <h3>🖼️ Ekran Görüntüsü Yeri</h3>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="local_images_toggle" onchange="xSetLocalImages(this.checked)">
+                    <label for="local_images_toggle">Ekran görüntülerini sunucuya gönderme; tarayıcıda tut (varsayılan)</label>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; line-height: 1.4;">
+                    <b>Varsayılan açık:</b> görseller sunucuya <b>hiç gönderilmez</b>; eklenti doğrudan panele iletir ve
+                    bu tarayıcıda (IndexedDB) tutulur. Sunucu yalnızca başlık/link/sıra tutar; çok PC'li kullanımda
+                    yoğunluğu azaltır. Kapatırsan görseller (eskisi gibi) sunucuya gönderilir.
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary" onclick="toggleStyleModal()">Uygula ve Kapat</button>
@@ -2001,6 +2014,9 @@ HTML_TEMPLATE = """
                 }
             });
 
+            // Faz #1-A: yerel goruntu bayragini baslat + eklentiyi senkronize et.
+            xInitLocalImages();
+
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -2087,6 +2103,32 @@ HTML_TEMPLATE = """
             // Sunucu uretimi yalnizca xGenerateLocal hata verirse otomatik, gorunmez guvenlik agi
             // olarak devreye girer (server-fallback + /api/*/generate uclari korunur, geri-alinabilir).
             return true;
+        }
+
+        // --- Faz #1-A: Yerel ekran goruntusu bayragi ---
+        function xLocalImagesEnabled() {
+            try { return !!(window.XLocalImages && window.XLocalImages.isEnabled()); } catch (e) { return false; }
+        }
+        function xSetLocalImages(on) {
+            try { if (window.XLocalImages) window.XLocalImages.setEnabled(on); } catch (e) {}
+            // Eklentiye bildir: widget bu bayraga gore goruntuyu SUNUCUYA gondermeyip panele iletir.
+            try { window.postMessage({ type: "X_RAPOR_SET_LOCAL_IMAGES", value: !!on }, "*"); } catch (e) {}
+            showToast(on ? 'Ekran görüntüleri artık tarayıcıda tutulacak (deneysel).' : 'Ekran görüntüleri sunucuya gönderilecek (varsayılan).', 'success');
+            refreshStatus();
+        }
+        function xInitLocalImages() {
+            try {
+                var on = xLocalImagesEnabled();
+                var el = document.getElementById('local_images_toggle');
+                if (el) el.checked = on;
+                // Baslangicta eklentiyi mevcut bayrakla senkronize et.
+                window.postMessage({ type: "X_RAPOR_SET_LOCAL_IMAGES", value: on }, "*");
+            } catch (e) {}
+            // Yeni goruntu gelince / depo hazir olunca havuzu tazele (yerel gorseller gorunsun).
+            try {
+                window.addEventListener('x-local-image-added', function () { refreshStatus(); });
+                window.addEventListener('x-local-images-ready', function () { refreshStatus(); });
+            } catch (e) {}
         }
         function xBuildStyleOpts() {
             return {
@@ -2247,6 +2289,9 @@ HTML_TEMPLATE = """
                 showToast('Lutfen en az bir tweet linki girin!', 'danger');
                 return;
             }
+
+            // Faz #1-A: yeni tarama sunucu havuzunu temizliyor; yerel goruntu deposunu da temizle.
+            try { if (window.XLocalImages) window.XLocalImages.clear(); } catch (e) {}
 
             fetch('/api/auto/start', {
                 method: 'POST',
@@ -2791,9 +2836,15 @@ HTML_TEMPLATE = """
                 for (var j = 0; j < blk.items.length; j++) {
                     var x = blk.items[j];
                     var poolIdx = x.index - 1;
-                    var thumb = x.has_image
-                        ? '<img draggable="false" src="/api/manual/image/' + x.index + '?client_id=' + localStorage.getItem('x_client_id') + '&t=' + new Date().getTime() + '" class="item-thumb" alt="Görsel">'
-                        : '<div class="item-thumb pool-noimg">Görsel yok</div>';
+                    var thumb;
+                    if (xLocalImagesEnabled() && window.XLocalImages && window.XLocalImages.hasImage(x.link)) {
+                        // Yerel modda goruntu sunucuda degil; tarayicidaki IndexedDB'den (link'e gore).
+                        thumb = '<img draggable="false" src="' + window.XLocalImages.getImageUrl(x.link) + '" class="item-thumb" alt="Görsel">';
+                    } else if (x.has_image) {
+                        thumb = '<img draggable="false" src="/api/manual/image/' + x.index + '?client_id=' + localStorage.getItem('x_client_id') + '&t=' + new Date().getTime() + '" class="item-thumb" alt="Görsel">';
+                    } else {
+                        thumb = '<div class="item-thumb pool-noimg">Görsel yok</div>';
+                    }
                     html += '<div class="pool-item" draggable="false" data-pool-index="' + poolIdx + '" data-blockkey="' + poolEscapeHtml(blk.key) + '">' +
                             '<span class="pool-grip">⠿</span>' +
                             thumb +
@@ -3167,6 +3218,8 @@ HTML_TEMPLATE = """
         }
 
         function resetAutomationUIAndBackend() {
+            // Faz #1-A: yerel goruntu deposunu da temizle (sunucu havuzu sifirlaniyor).
+            try { if (window.XLocalImages) window.XLocalImages.clear(); } catch (e) {}
             window.accumulatedLinks = [];
             var inputEl = document.getElementById('tweet_links_input');
             if (inputEl) {
@@ -3323,6 +3376,7 @@ HTML_TEMPLATE = """
     </div>
     <!-- İstemci-taraflı (tarayıcıda) Word üretimi — sadece "Deneysel" anahtar açıkken kullanılır -->
     <script src="/x-local-docx.js"></script>
+    <script src="/x-local-images.js"></script>
 </body>
 </html>
 """
@@ -3398,6 +3452,22 @@ LOCAL_DOCX_JS = r'''
     var res = await fetch('/api/pool/data');
     var data = await res.json();
     var items = (data && data.items) || [];
+
+    // Faz #1-A: Yerel modda goruntuler sunucuda YOK (image_b64 bos gelir);
+    // tarayicidaki IndexedDB'den link'e gore enjekte et.
+    try {
+      if (window.XLocalImages && window.XLocalImages.isEnabled()) {
+        // IndexedDB->_cache yuklemesi bitene kadar bekle (taze panel yenilemesinde goruntusuz .docx olmasin).
+        if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch(e){} }
+        for (var _i=0; _i<items.length; _i++){
+          var _lk = items[_i].link || '';
+          if (window.XLocalImages.hasImage(_lk)) {
+            items[_i].image_b64 = window.XLocalImages.getBase64(_lk);
+            items[_i].image_mime = window.XLocalImages.getMime(_lk);
+          }
+        }
+      }
+    } catch(e){}
 
     var groups={}, order=[], idx;
     for(idx=0; idx<items.length; idx++){
@@ -3577,6 +3647,95 @@ LOCAL_DOCX_JS = r'''
 def x_local_docx_js():
     from flask import Response
     return Response(LOCAL_DOCX_JS, mimetype='application/javascript')
+
+# ----------------- YEREL GORUNTU DEPOSU (Faz #1-A) -----------------
+# Ekran goruntuleri, "local_images" bayragi acikken sunucuya gitmez; eklenti bunlari
+# guvenilir panel_tab_id uzerinden dogrudan panele iletir ve panel tarayicida IndexedDB'de tutar.
+# Sunucu havuzu yalnizca metadata (baslik, link, sira) tasir; goruntu baytlari YERELDE kalir.
+# Bayrak KAPALIYKEN bu modul pasiftir; her sey bugunkuyle ayni (sunucu) calisir.
+LOCAL_IMAGES_JS = r'''
+(function(){
+  'use strict';
+  var DB_NAME='goruntux_local_images', STORE='images';
+  var _db=null, _cache={}, _ready=false, _readyPromise=null;
+
+  function xNormLink(link){
+    // Sunucu normalize_link_key ile AYNI alt-kume: ?/# soy, trailing /embed, trailing /, lowercase.
+    // twitter->x ve orta-string /embed/ collapse YAPILMAZ; aksi halde sunucunun AYRI tuttugu
+    // (or. twitter.com vs x.com) iki havuz ogesini istemci tek anahtara birlestirip goruntuleri karistiriyordu.
+    if(!link) return '';
+    var s=String(link).split('#')[0].split('?')[0].trim().toLowerCase();
+    s=s.replace(/\/embed$/,'');
+    if(s.length>1 && s.charAt(s.length-1)==='/') s=s.slice(0,-1);
+    return s;
+  }
+  function openDb(){
+    return new Promise(function(resolve){
+      try{
+        var req=indexedDB.open(DB_NAME,1);
+        req.onupgradeneeded=function(e){ var db=e.target.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'k'}); };
+        req.onsuccess=function(e){ resolve(e.target.result); };
+        req.onerror=function(){ resolve(null); };
+      }catch(err){ resolve(null); }
+    });
+  }
+  function loadAll(){
+    return new Promise(function(resolve){
+      if(!_db){ resolve(); return; }
+      try{
+        var req=_db.transaction(STORE,'readonly').objectStore(STORE).getAll();
+        req.onsuccess=function(){ var arr=req.result||[]; for(var i=0;i<arr.length;i++) _cache[arr[i].k]={dataUrl:arr[i].dataUrl,mime:arr[i].mime}; resolve(); };
+        req.onerror=function(){ resolve(); };
+      }catch(e){ resolve(); }
+    });
+  }
+  function putItem(k,dataUrl,mime){
+    _cache[k]={dataUrl:dataUrl,mime:mime};
+    if(!_db) return;
+    try{ _db.transaction(STORE,'readwrite').objectStore(STORE).put({k:k,dataUrl:dataUrl,mime:mime}); }catch(e){}
+  }
+  function clearAll(){
+    _cache={};
+    if(!_db) return Promise.resolve();
+    return new Promise(function(resolve){
+      try{ var tx=_db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear(); tx.oncomplete=function(){resolve();}; tx.onerror=function(){resolve();}; }catch(e){ resolve(); }
+    });
+  }
+  // Faz #1-C: yerel goruntu VARSAYILAN. Ayarlanmamis (null) -> ACIK; sadece acikca '0' yapan kapali kalir.
+  function isEnabled(){ try{ var v=localStorage.getItem('x_local_images'); return v===null ? true : (v==='1'); }catch(e){ return true; } }
+  function setEnabled(v){ try{ localStorage.setItem('x_local_images', v?'1':'0'); }catch(e){} }
+  function mimeFromDataUrl(u){ var m=/^data:([^;,]+)/.exec(u||''); return (m&&m[1])?m[1]:'image/jpeg'; }
+  function base64FromDataUrl(u){ var i=(u||'').indexOf(','); return i>=0?u.slice(i+1):''; }
+
+  window.XLocalImages={
+    isEnabled:isEnabled, setEnabled:setEnabled, normLink:xNormLink,
+    hasImage:function(link){ return !!_cache[xNormLink(link)]; },
+    getImageUrl:function(link){ var e=_cache[xNormLink(link)]; return e?e.dataUrl:''; },
+    getBase64:function(link){ var e=_cache[xNormLink(link)]; return e?base64FromDataUrl(e.dataUrl):''; },
+    getMime:function(link){ var e=_cache[xNormLink(link)]; return e?(e.mime||mimeFromDataUrl(e.dataUrl)):''; },
+    clear:function(){ return clearAll(); },
+    count:function(){ return Object.keys(_cache).length; },
+    whenReady:function(){ return _readyPromise||Promise.resolve(); }
+  };
+
+  // Eklentiden (bridge -> panel postMessage) gelen goruntuleri depola.
+  window.addEventListener('message', function(ev){
+    if(ev.source!==window) return;
+    var d=ev.data;
+    if(!d || d.type!=='X_RAPOR_LOCAL_IMAGE') return;
+    if(!d.link || !d.dataUrl) return;
+    putItem(xNormLink(d.link), d.dataUrl, d.mime||mimeFromDataUrl(d.dataUrl));
+    try{ window.dispatchEvent(new CustomEvent('x-local-image-added',{detail:{link:d.link}})); }catch(e){}
+  });
+
+  _readyPromise = openDb().then(function(db){ _db=db; return loadAll(); }).then(function(){ _ready=true; try{ window.dispatchEvent(new CustomEvent('x-local-images-ready')); }catch(e){} });
+})();
+'''
+
+@app.route('/x-local-images.js', methods=['GET'])
+def x_local_images_js():
+    from flask import Response
+    return Response(LOCAL_IMAGES_JS, mimetype='application/javascript')
 
 # ----------------- FLASK FRONTEND ROUTES -----------------
 @app.route('/', methods=['GET'])

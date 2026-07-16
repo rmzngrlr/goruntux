@@ -1216,6 +1216,41 @@
         attempt(retries);
     }
 
+    // Faz #1-A: Yerel goruntu modu. Panel bayragi SW'ye yaziyor (chrome.storage.local.local_images).
+    // Bu bayrak acikken ekran goruntusunu SUNUCUYA gondermeyip panele iletiyoruz; sunucuya yalnizca
+    // metadata (baslik/link) gidiyor (screenshot bos). Bayrak kapaliyken her sey bugunkuyle ayni.
+    var xWidgetLocalImages = false;
+    try { chrome.storage.local.get(['local_images'], function (r) { xWidgetLocalImages = !!(r && r.local_images); }); } catch (e) {}
+
+    function xStripForServer(resItem, gorev) {
+        try {
+            if (xWidgetLocalImages && resItem && resItem.screenshot && resItem.link) {
+                var fullItem = resItem; // teslim basarisiz olursa sunucuya bununla kurtarma yapariz
+                // Goruntuyu panele ilet (sunucuya gitmez). swSendReliable retry eder.
+                swSendReliable({ action: "deliverLocalImage", link: resItem.link, dataUrl: resItem.screenshot }, function (resp) {
+                    if (!(resp && resp.status === "success")) {
+                        // Teslim edilemedi (panel kapali/bayat) -> VERI KAYBI OLMASIN: sunucuya GORSELLI
+                        // kurtarma submit'i. Server link'e gore mevcut ogeyi bulup BOS gorseli doldurur (final'e dokunmaz).
+                        try {
+                            swSendReliable({
+                                action: "submitWordResult",
+                                origin: (gorev && gorev.server_origin) || "http://localhost:3012",
+                                job_id: gorev && gorev.job_id,
+                                results: [fullItem],
+                                final: false
+                            }, function () {});
+                            logToServer("[localImage] Panele teslim basarisiz -> sunucuya gorselli kurtarma gonderildi: " + fullItem.link);
+                        } catch (e) {}
+                    }
+                });
+                var copy = {}; for (var k in resItem) copy[k] = resItem[k];
+                copy.screenshot = ''; // ana submit sunucuya GORSELSIZ gider
+                return copy;
+            }
+        } catch (e) {}
+        return resItem;
+    }
+
     function showError(err) {
         console.error("X Rapor Hata:", err);
         logToServer(`HATA: ${err.message || err}`);
@@ -2002,7 +2037,7 @@
                         });
                     } else {
                         // Send results
-                        durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                        durumText.innerHTML = `⏳ <b>Sonuçlar kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                         let submitData = {
                             action: "submitServerResult",
                             origin: gorev.server_origin,
@@ -2584,7 +2619,7 @@
                     tivitBilgiKutusu.style.display = 'none';
 
                     if (gorev.is_server_job) {
-                        durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                        durumText.innerHTML = `⏳ <b>Sonuçlar kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                         let submitData = {
                             action: "submitServerResult",
                             origin: gorev.server_origin,
@@ -3287,7 +3322,7 @@
                 }
 
                 // All targets completed, submit combined results to Flask
-                durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                durumText.innerHTML = `⏳ <b>Sonuçlar kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                 let submitData = {
                     action: "submitServerResult",
                     origin: gorev.server_origin,
@@ -3745,7 +3780,7 @@
                         action: "submitWordResult",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
-                        results: [resItem],
+                        results: [xStripForServer(resItem, gorev)],
                         final: false
                     }, (response) => {
                         swSendReliable({
@@ -3763,13 +3798,13 @@
                     });
                 } else {
                     const progress = gorev.combinedData.length;
-                    durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                    durumText.innerHTML = `⏳ <b>Sonuçlar kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                     
                     swSendReliable({
                         action: "submitWordResult",
                         origin: gorev.server_origin || "http://localhost:3012",
                         job_id: gorev.job_id,
-                        results: [resItem],
+                        results: [xStripForServer(resItem, gorev)],
                         final: true
                     }, () => {
                         swSendReliable({
@@ -4212,13 +4247,13 @@
                 const progress = gorev.combinedData.length;
                 const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
 
-                durumText.innerHTML = `⏳ <b>Sonuç sunucuya gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                durumText.innerHTML = `⏳ <b>Sonuç kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
 
                 swSendReliable({
                     action: "submitWordResult",
                     origin: gorev.server_origin || "http://localhost:3012",
                     job_id: gorev.job_id,
-                    results: [resItem],
+                    results: [xStripForServer(resItem, gorev)],
                     final: false
                 }, (response) => {
                     if (response && response.status === 'cancelled') {
@@ -4250,13 +4285,13 @@
             } else {
                 const progress = gorev.combinedData.length;
                 
-                durumText.innerHTML = `⏳ <b>Sonuçlar Sunucuya Gönderiliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
+                durumText.innerHTML = `⏳ <b>Sonuçlar kaydediliyor...</b><br>Lütfen sekmeyi kapatmayın.`;
                 
                 swSendReliable({
                     action: "submitWordResult",
                     origin: gorev.server_origin || "http://localhost:3012",
                     job_id: gorev.job_id,
-                    results: [resItem],
+                    results: [xStripForServer(resItem, gorev)],
                     final: true
                 }, () => {
                     swSendReliable({
