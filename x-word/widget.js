@@ -280,7 +280,15 @@
                     p = p.parentElement;
                 }
                 if (yorumIcinde) continue;
-                if (r.bottom > enAlt) enAlt = r.bottom;
+                if (r.bottom > enAlt) {
+                    enAlt = r.bottom;
+                    // TANI: bitisi HANGI oge belirledi? Saha hatasi bunsuz cozulemiyor —
+                    // "bitis=581" tek basina yanlis ogeyi gostermiyor.
+                    if (taniOut) {
+                        taniOut.el = (el.getAttribute('aria-label') || '?').slice(0, 30) +
+                                     '[' + (el.getAttribute('role') || '-') + '/' + el.tagName + ']';
+                    }
+                }
             }
             if (enAlt < 0) {
                 // Secici esleşti ama HICBIRI gorunur degil (hepsi rect=0 / yorum icinde).
@@ -4679,7 +4687,7 @@
                         `Yakalama: ${segs.length} parça (${cropWidth}x${fullH}), yol=${mode}/${scIc ? 'modal-kaydir' : 'tek-kare'}` +
                         `, yazar="${a.ad}" (${a.kaynak})` +
                         `, yorumGizli=${_fbGizli.length}, seeMore=${smN}` +
-                        `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}, kesilen=${_kesildi}px` +
+                        `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}${_bitisTani.el ? ' <- ' + _bitisTani.el : ''}, kesilen=${_kesildi}px` +
                         `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
                         (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
                         `, engBekle=${_engBekledi}` +
