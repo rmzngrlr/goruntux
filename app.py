@@ -1493,14 +1493,14 @@ HTML_TEMPLATE = """
                 <div class="card">
                     <h3>🤖 Eklenti ile Otomatik Rapor Üretme</h3>
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
-                        Chrome tarayıcınıza yükleyeceğiniz <b>x-word</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti tweetleri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
+                        Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
                     </p>
 
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
                         <div id="extension-status-container">
                             <div class="status-badge status-disconnected" id="ext-status-badge">🔴 Eklenti Bekleniyor...</div>
                         </div>
-                        <a href="/api/extension/download_zip" class="btn btn-secondary">📥 x-word Chrome Eklentisini İndir (.zip)</a>
+                        <a href="/api/extension/download_zip" class="btn btn-secondary">📥 GörüntüX Chrome Eklentisini İndir (.zip)</a>
                     </div>
 
                     <div class="form-group" id="links-input-group">
