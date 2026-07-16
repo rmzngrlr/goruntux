@@ -4241,10 +4241,46 @@
                     return "";
                 };
 
-                // 1. EN GÜVENİLİR (embed dahil): Gönderi kartı KAPSAMINDA yazarın profil linkini bul.
-                // Embed sayfasında yazar linki mutlaktır (https://www.instagram.com/kullanici/).
+                // Bir profil-yolu href'inin İLK segmentinden yazar adı: /mahajansitr/reel/CODE/ -> mahajansitr
+                const usernameFromFirstSeg = (rawHref) => {
+                    if (!rawHref) return "";
+                    let h = rawHref.split('?')[0].split('#')[0].trim();
+                    h = h.replace(/^https?:\/\/[^/]+/i, ''); // host'u at (varsa)
+                    let seg = (h.replace(/^\//, '').split('/')[0] || "").toLowerCase();
+                    if (!seg || IG_RESERVED.includes(seg)) return "";
+                    if (!/^[a-z0-9._]{1,30}$/.test(seg)) return "";
+                    return seg;
+                };
+
+                // 0. EN GÜVENİLİR: Gönderi zaman damgasının (header'daki <time>) linki daima
+                // /{yazar}/(p|reel)/{kod}/ biçimindedir. article seçimi ne olursa olsun header'da bulunur;
+                // böylece sol menü/yorum kutusundaki GİRİŞ YAPAN kullanıcının linki asla yazar sanılmaz.
+                if (!username) {
+                    const postCode = (activeUrl.match(/\/(?:p|reel|tv)\/([^/?#]+)/) || [])[1] || "";
+                    const timeEls = (article || document).querySelectorAll('time');
+                    let picked = "";
+                    // Önce gönderi koduyla eşleşen zaman linkini dene (yorumların zamanlarına karışmamak için).
+                    for (let t of timeEls) {
+                        const a = t.closest('a'); if (!a) continue;
+                        const href = a.getAttribute('href') || "";
+                        if (postCode && href.indexOf(postCode) === -1) continue;
+                        const u = usernameFromFirstSeg(href);
+                        if (u) { picked = u; break; }
+                    }
+                    // Kod eşleşmesi bulunamazsa ilk profilli zaman linkini kullan.
+                    if (!picked) {
+                        for (let t of timeEls) {
+                            const a = t.closest('a'); if (!a) continue;
+                            const u = usernameFromFirstSeg(a.getAttribute('href') || "");
+                            if (u) { picked = u; break; }
+                        }
+                    }
+                    if (picked) { username = picked; accountName = picked; }
+                }
+
+                // 1. Gönderi kartı KAPSAMINDA yazarın profil linki (embed dahil, header <time> yoksa yedek).
                 // Kapsamı kartla sınırlı tuttuğumuz için tam sayfada gezinme/öneri linklerini yanlışlıkla seçmeyiz.
-                if (article && article !== document.body) {
+                if (!username && article && article !== document.body) {
                     const cand = scanAnchorsForUsername(article);
                     if (cand) {
                         username = cand;
