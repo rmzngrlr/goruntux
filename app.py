@@ -2416,13 +2416,6 @@ HTML_TEMPLATE = """
             showToast(on ? 'Ekran görüntüleri artık tarayıcıda tutulacak (deneysel).' : 'Ekran görüntüleri sunucuya gönderilecek (varsayılan).', 'success');
             refreshStatus();
         }
-        // --- Faz IG-1: Instagram no-zoom bayragi ---
-        function xSetIgNoZoom(on) {
-            try { localStorage.setItem('x_ig_no_zoom', on ? '1' : '0'); } catch (e) {}
-            try { window.postMessage({ type: "X_RAPOR_SET_IG_NOZOOM", value: !!on }, "*"); } catch (e) {}
-            showToast(on ? 'Instagram küçültmeden (kaydır+birleştir) yakalanacak — deneysel.' : 'Instagram "sığdır (zoom)" yöntemine döndü.', 'success');
-        }
-
         function xInitLocalImages() {
             try {
                 var on = xLocalImagesEnabled();
@@ -2430,13 +2423,6 @@ HTML_TEMPLATE = """
                 if (el) el.checked = on;
                 // Baslangicta eklentiyi mevcut bayrakla senkronize et.
                 window.postMessage({ type: "X_RAPOR_SET_LOCAL_IMAGES", value: on }, "*");
-            } catch (e) {}
-            try {
-                var igOn = false;
-                try { igOn = localStorage.getItem('x_ig_no_zoom') === '1'; } catch (e) {}
-                var igEl = document.getElementById('ig_no_zoom_toggle');
-                if (igEl) igEl.checked = igOn;
-                window.postMessage({ type: "X_RAPOR_SET_IG_NOZOOM", value: igOn }, "*");
             } catch (e) {}
             // Yeni goruntu gelince / depo hazir olunca havuzu tazele (yerel gorseller gorunsun).
             try {

@@ -1003,8 +1003,6 @@
                 const hiddenFooterElements = [];
                 const widgetEl = document.getElementById('x-downloader-widget');
                 const cbWidgetEl = document.getElementById('w-cb-container');
-                let origWidgetDisplay = "";
-                let origCbWidgetDisplay = "";
                 let igMsgHidden = []; // Faz IG-1: no-zoom modunda gizlenen Instagram "Mesajlar" (DM) balonu
                 let dateTimeRow = null;
                 const isInstagram = window.location.hostname.includes('instagram.com');
@@ -1012,23 +1010,13 @@
                 // Faz IG-1 (sade no-zoom): kırpma hedefi = TÜM post kartı (article) — solda medya + sağda
                 // kullanıcı adı/açıklama/hashtag/yorum/etkileşim sütunu. Böylece açıklama da görüntüye girer.
                 // (Sadece medya elementini ölçünce sağ sütun/açıklama kırpma dışında kalıyordu.)
-                if (isInstagram && xWidgetIgNoZoom) {
+                if (isInstagram) {
                     const igPost = igFindPost();
                     if (igPost) element = igPost;
                 }
 
                 try {
-                    if (isInstagram && !xWidgetIgNoZoom) {
-                        // zoom-to-fit modunda widget gizlenir (article tam ekrana alındığından üzerine binebilir).
-                        if (widgetEl) {
-                            origWidgetDisplay = widgetEl.style.display;
-                            widgetEl.style.display = 'none';
-                        }
-                        if (cbWidgetEl) {
-                            origCbWidgetDisplay = cbWidgetEl.style.display;
-                            cbWidgetEl.style.display = 'none';
-                        }
-                    } else if (isInstagram && xWidgetIgNoZoom) {
+                    if (isInstagram) {
                         // Faz IG-1 (sade no-zoom): iki-sütun kırpması widget'ın üzerine binebildiğinden, widget'ı
                         // YOK ETMEDEN görünmez yap (visibility:hidden -> reflow/flaş yok), yakalama sonrası geri aç.
                         try {
@@ -1167,7 +1155,7 @@
                     // Tüm post kartını (article = header + medya + AÇIKLAMA + etkileşim) window-scroll ile
                     // parça parça yakalayıp dikey birleştirir. Mesajlar balonu yukarıda gizlendi; widget'a
                     // dokunulmaz (kırpma bölgesi zaten dışarıda bırakır). article'ın tamamı alındığından açıklama da girer.
-                    if (isInstagram && xWidgetIgNoZoom) {
+                    if (isInstagram) {
                         try {
                             const post = igFindPost() || element;
                             // Tepeye çık ve article'ın MUTLAK sayfa konumunu al (video/yerleşme payı için kısa bekle).
@@ -1212,18 +1200,8 @@
                     element.scrollIntoView({ block: 'start', behavior: 'instant' });
                     
                     if (isInstagram) {
-                        // Instagram: Kart yüksekliği ekran boyundan büyükse sığması için dinamik olarak küçült (zoom out)
-                        // Faz IG-1: no-zoom modunda KÜÇÜLTME yok — X gibi kaydır+birleştir yapılır.
-                        const originalZoom = element.style.zoom;
-                        const rectBeforeZoom = element.getBoundingClientRect();
-                        if (!xWidgetIgNoZoom && rectBeforeZoom.height > vH - 30) {
-                            const igZoom = (vH - 30) / rectBeforeZoom.height;
-                            stickyElements.push({ el: element, origZoom: originalZoom });
-                            element.style.setProperty('zoom', igZoom, 'important');
-                            // Yeniden hizala
-                            element.scrollIntoView({ block: 'start', behavior: 'instant' });
-                            await new Promise(r => setTimeout(r, 150));
-                        }
+                        // Instagram KÜÇÜLTME (zoom-out) YAPMAZ: X gibi kaydır+birleştir yapılır.
+                        // (Buradaki zoom-to-fit dali xWidgetIgNoZoom=true oldugundan hic calismiyordu -> kaldirildi.)
 
                         // Instagram'da bazen üst sarmalayıcıların overflow stilleri kaydırmayı engeller, bunları geçici olarak düzelt
                         let parent = element.parentNode;
@@ -1289,13 +1267,8 @@
                     }
                     
                     if (window.location.hostname.includes('instagram.com')) {
-                        if (xWidgetIgNoZoom) {
-                            // Faz IG-1 (sade no-zoom): tam yüksekliği ölç; X yolu kaydırıp birleştirerek tamamını alır.
-                            articleHeight = r.height;
-                        } else {
-                            // Instagram (zoom-to-fit): tek karede sığacak şekilde dikey crop.
-                            articleHeight = Math.min(vH, r.height);
-                        }
+                        // Faz IG-1 (sade no-zoom): tam yüksekliği ölç; X yolu kaydırıp birleştirerek tamamını alır.
+                        articleHeight = r.height;
                     }
 
                     const measuredRect = {
@@ -1317,376 +1290,64 @@
                     const snapshots = [];
                     let rawResult = "";
 
-                    if (isInstagram && !xWidgetIgNoZoom) {
-                        // Instagram (zoom-to-fit): CSS izolasyon + captureVisibleTab.
-                        // NOT: no-zoom modunda bu blok ATLANIR; aşağıdaki X yolu (kaydır+birleştir) kullanılır.
-                        printLog("[Instagram] CSS izolasyon ile ekran görüntüsü alınıyor...");
+                    // Instagram artik X ile AYNI yolu kullanir: kaydir + birlestir.
+                    // Burada "zoom-to-fit" adli 313 satirlik ikinci bir yakalama yolu vardi;
+                    // xWidgetIgNoZoom sabit true oldugundan HIC calismiyordu (2026-07-17 kaldirildi).
+                    const ssFirst = await new Promise(resolve => {
+                        swSendReliable({ action: "captureTab" }, resolve);
+                    });
 
-                        const isProfilePage = !window.location.href.includes('/p/') && !window.location.href.includes('/reel/');
-                        let articleEl = null;
-                        if (isProfilePage) {
-                            articleEl = element;
-                        } else {
-                            articleEl = document.querySelector('.Embed');
-                            if (!articleEl) {
-                                const mainEl = document.querySelector('main[role="main"]') || document.querySelector('main');
-                                if (mainEl && mainEl.children.length > 0) {
-                                    articleEl = mainEl.children[0];
-                                }
-                            }
-                            if (!articleEl) {
-                                articleEl = document.querySelector('article');
-                            }
-                        }
-                        if (!articleEl) {
-                            const mediaEl = document.querySelector('img[style*="object-fit"], video, img');
-                            if (mediaEl) {
-                                let p = mediaEl.parentNode;
-                                while (p && p !== document.body) {
-                                    const r = p.getBoundingClientRect();
-                                    if (p.tagName === 'MAIN' || p.tagName === 'BODY') break;
-                                    if (r.width > 200) { articleEl = p; break; }
-                                    p = p.parentNode;
-                                }
-                            }
-                        }
+                    if (!ssFirst || ssFirst.status !== "success" || !ssFirst.dataUrl) {
+                        printLog("Ekran görüntüsü alma hatası (1)");
+                        return null;
+                    }
+                    snapshots.push(ssFirst.dataUrl);
 
-                        if (!articleEl) {
-                            printLog("[Instagram] article, dialog veya Embed elementi bulunamadı, null dönülüyor.");
-                            return null;
-                        }
-
-                        // Geri yükleme için orijinal stilleri sakla
-                        const igStyled = [];
-                        function igSet(el, prop, val) {
-                            igStyled.push({ el, prop, orig: el.style.getPropertyValue(prop), priority: el.style.getPropertyPriority(prop) });
-                            el.style.setProperty(prop, val, 'important');
-                        }
-                        function igRestoreAll() {
-                            igStyled.forEach(({ el, prop, orig, priority }) => {
-                                if (orig) {
-                                    el.style.setProperty(prop, orig, priority);
-                                } else {
-                                    el.style.removeProperty(prop);
-                                }
-                            });
-                        }
-
-                        try {
-                            // 1. article'ın ata zincirini bul (bunlar gizlenmeyecek)
-                            const ancestors = new Set();
-                            let cur = articleEl;
-                            while (cur && cur !== document.documentElement) {
-                                ancestors.add(cur);
-                                cur = cur.parentNode;
-                            }
-
-                            // 2. Her atanın kardeşlerini gizle
-                            ancestors.forEach(ancestor => {
-                                const parent = ancestor.parentNode;
-                                if (!parent) return;
-                                Array.from(parent.children).forEach(child => {
-                                    if (!ancestors.has(child)) {
-                                        igSet(child, 'display', 'none');
-                                    }
-                                });
-                            });
-
-                            // Asenkron yüklenen önerileri ve footer'ı temizleme fonksiyonu
-                            function hideIgExtras() {
-                                if (articleEl === document.body) return;
-                                // Footer temizliği
-                                document.querySelectorAll('footer, .Footer, [role="contentinfo"]').forEach(el => {
-                                    if (el !== articleEl && !articleEl.contains(el)) {
-                                        igSet(el, 'display', 'none');
-                                    }
-                                });
-                                // Önerilen gönderiler başlığı ve grid temizliği (Metin tabanlı arama)
-                                const textNodes = [];
-                                const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
-                                let node;
-                                while (node = walk.nextNode()) {
-                                    const txt = node.nodeValue.toLowerCase();
-                                    if (txt.includes('diğer gönderi') || txt.includes('more posts') || txt.includes('see more posts') || txt.includes('diğer gönderiler')) {
-                                        textNodes.push(node);
-                                    }
-                                }
-                                textNodes.forEach(node => {
-                                    let p = node.parentElement;
-                                    while (p && p !== document.body) {
-                                        if (p.contains(articleEl)) {
-                                            break;
-                                        }
-                                        const rect = p.getBoundingClientRect();
-                                        if (rect.height > 80) {
-                                            igSet(p, 'display', 'none');
-                                            break;
-                                        }
-                                        p = p.parentNode;
-                                    }
-                                });
-                            }
-
-                            // İlk faz temizlik
-                            hideIgExtras();
-
-                            // Ekstra önlem: footer, h2, hr ve More Posts (Diğer Gönderiler) elemanlarını doğrudan gizle
-                            const extraHides = document.querySelectorAll('footer, h2, hr, [class*="morePosts"]');
-                            extraHides.forEach(el => {
-                                if (el !== articleEl && !articleEl.contains(el)) {
-                                    igSet(el, 'display', 'none');
-                                }
-                            });
-
-                            // 3. Nokta atışı: "Yorum ekle..." (yorum yazma) satırındaki KENDİ profil resmini gizle.
-                            // Gönderi görselini ve yazar avatarını KORU; yalnızca yorum-yazma satırındaki küçük avatarı gizle.
-                            // "Yorum ekle..." yazısı kalır, sadece resim gider.
-                            try {
-                                // Yorum yazma girişini bul (placeholder / aria-label ile)
-                                const commentEntry = Array.from(articleEl.querySelectorAll(
-                                    'textarea, input, [contenteditable="true"], [role="textbox"]'
-                                )).find(el => {
-                                    const ph = (el.getAttribute('placeholder') || '').toLowerCase();
-                                    const al = (el.getAttribute('aria-label') || '').toLowerCase();
-                                    return ph.includes('yorum') || ph.includes('comment') ||
-                                           al.includes('yorum') || al.includes('comment');
-                                });
-                                if (commentEntry) {
-                                    // Yorum satırının kapsayıcısını bul: yukarı çık ama satır KISA kalsın (≈<160px),
-                                    // böylece yanlışlıkla gönderi medyasını içeren büyük kapsayıcıyı seçmeyiz.
-                                    let row = commentEntry.parentElement;
-                                    let composerRow = commentEntry.parentElement;
-                                    for (let i = 0; i < 6 && row && row !== articleEl; i++) {
-                                        const h = row.getBoundingClientRect().height;
-                                        if (h > 0 && h < 160) composerRow = row;
-                                        else if (h >= 160) break;
-                                        row = row.parentElement;
-                                    }
-                                    // Bu kısa satırdaki avatarı gizle: img / canvas ve arka-plan-resimli küçük span/div.
-                                    // Satır kısa olduğu için burada gönderi medyası bulunmaz; güvenle gizlenir.
-                                    composerRow.querySelectorAll('img, canvas').forEach(el => {
-                                        igSet(el, 'display', 'none');
-                                    });
-                                    composerRow.querySelectorAll('span, div').forEach(el => {
-                                        const bg = window.getComputedStyle(el).backgroundImage;
-                                        const r = el.getBoundingClientRect();
-                                        if (bg && bg !== 'none' && r.width > 0 && r.width < 60 && r.height < 60) {
-                                            igSet(el, 'display', 'none');
-                                        }
-                                    });
-                                }
-                            } catch (e) { /* sessiz geç */ }
-
-                            // Yedek yöntem: form yapısına göre de dene (giriş alanı bulunamazsa).
-                            // Yalnızca küçük görselleri (avatar) hedefle; büyük gönderi medyasına dokunma.
-                            const commentForm = articleEl.querySelector('form');
-                            if (commentForm && commentForm.parentNode) {
-                                commentForm.parentNode.querySelectorAll('img, canvas').forEach(el => {
-                                    const r = el.getBoundingClientRect();
-                                    if (r.width > 0 && r.width < 60 && r.height < 60) {
-                                        igSet(el, 'display', 'none');
-                                    }
-                                });
-                            }
-
-                            // Ekran görüntüsü almadan önce article'ın güncel orijinal (doğal) boyutunu ölçüyoruz
-                            const originalRect = articleEl.getBoundingClientRect();
-                            const naturalWidth = originalRect.width > 0 ? originalRect.width + 'px' : 'auto';
-                            const naturalHeight = originalRect.height > 0 ? originalRect.height + 'px' : 'auto';
-
-                            // 4. article'ı izole et ancak kendi doğal boyutlarında bırak
-                            igSet(articleEl, 'box-sizing', 'border-box');
-                            igSet(articleEl, 'position', 'fixed');
-                            igSet(articleEl, 'top', '0');
-                            igSet(articleEl, 'left', '0');
-                            igSet(articleEl, 'width', naturalWidth);
-                            igSet(articleEl, 'max-width', '100vw');
-                            igSet(articleEl, 'height', naturalHeight);
-                            igSet(articleEl, 'max-height', 'none');
-                            igSet(articleEl, 'z-index', '2147483647');
-                            igSet(articleEl, 'background-color', '#ffffff');
-                            igSet(articleEl, 'margin', '0');
-                            igSet(articleEl, 'padding', '0');
-                            igSet(articleEl, 'overflow', 'visible');
-                            igSet(document.body, 'overflow', 'hidden');
-                            igSet(document.body, 'background-color', '#ffffff');
-
-                            // Ayrıca gövde background'unu temizle (artık margin vb beyaz gözükmesin diye transparan)
-                            // igSet(document.body, 'background-color', 'transparent'); // Eğer body'i transparent yaparsak dışarısı siyah çıkabilir capture sırasında. Beyaz kalması ama cropRect'in tam içeriğe odaklanması daha güvenli
-
-                            // Article'ın arka planı şeffaf olsun ki dış sınırlarındaki olası dolgular beyaz gözükmesin (sadece iç kartın kendi rengi kalır)
-                            igSet(articleEl, 'background-color', 'transparent');
-                            igSet(document.documentElement, 'overflow', 'hidden');
-
-                            // 5. Reflow bekle
-                            await new Promise(r => setTimeout(r, 400));
-
-                            // İkinci faz temizlik (Asenkron gelen yapıları avlamak için)
-                            hideIgExtras();
-
-                            // 6. Kartın yeni yüksekliğine göre dikey sığdırma (Dynamic Zoom)
-                            // Faz IG-1: no-zoom bayragi acikken KUCULTME uygulanmaz; kart uzunsa asagida
-                            // kaydir+birlestir ile tam cozunurlukte yakalanir.
-                            if (!xWidgetIgNoZoom) {
-                                const rectAfterLayout = articleEl.getBoundingClientRect();
-                                if (rectAfterLayout.height > vH - 20) {
-                                    const newZoom = (vH - 20) / rectAfterLayout.height;
-                                    igSet(articleEl, 'zoom', newZoom);
-                                }
-                            }
-
-                            // 7. İçerikteki gerçek boyutları sağlayan asıl container'ı bul
-                            // Instagram'da dış wrapper bazen ekranı kaplar veya padding içerir. İçteki asıl flex container kartın kendisidir.
-                            // ÖNEMLİ: Aday kutu GERÇEKTEN medyayı (görsel/video) içermeli. Aksi halde "en büyük alan"
-                            // sezgisi, özellikle yatay/kısa görsellerde yanlışlıkla açıklama/yorum bloğuna kilitlenip
-                            // boş/yanlış bölge kırpabiliyor (aralıklı boş görüntü sorununun ana nedeni).
-                            const igMediaEl = articleEl.querySelector('img[srcset], img[style*="object-fit"], video') || articleEl.querySelector('img');
-                            let contentBox = articleEl;
-                            let candidateBox = null;
-                            const innerDivs = Array.from(articleEl.querySelectorAll('div'));
-                            for (let div of innerDivs) {
-                                const r = div.getBoundingClientRect();
-                                // Kartlar genellikle ekrandan belirgin şekilde dardır ama çok da ufak değillerdir.
-                                // Ana kapsayıcılar genelde width > 400 ve height > 300'dür ve originalRect'ten dardır.
-                                if (r.width > 300 && r.height > 300 && r.width <= originalRect.width && r.height <= originalRect.height
-                                    && (!igMediaEl || div.contains(igMediaEl))) {
-                                    // En büyük hacimli (alanı) container asıl karttır diyebiliriz, ama articleEl'in kendisi hariç
-                                    if (!candidateBox || (r.width * r.height > candidateBox.getBoundingClientRect().width * candidateBox.getBoundingClientRect().height)) {
-                                        candidateBox = div;
-                                    }
-                                }
-                            }
-                            if (candidateBox && (candidateBox.getBoundingClientRect().width < originalRect.width || candidateBox.getBoundingClientRect().height < originalRect.height)) {
-                                contentBox = candidateBox;
-                            }
-
-                            const ar = contentBox.getBoundingClientRect();
-
-                            if (xWidgetIgNoZoom && ar.height > vH + 4) {
-                                // Faz IG-1 (no-zoom): kart viewport'tan uzun -> fixed article'i her adimda
-                                // yukari kaydirarak dilim dilim yakala, sonra dikey birlestir. Zoom YOK => tam cozunurluk.
-                                const dprI = window.devicePixelRatio || 1;
-                                const boxLeft = Math.max(0, Math.round(ar.left));
-                                const boxWidth = Math.round(ar.width);
-                                const fullH = ar.height;
-                                const boxOffset = ar.top; // contentBox'un fixed-article(top:0) icindeki viewport ofseti
-                                const nSeg = Math.ceil(fullH / vH);
-                                const igSegs = [];
-                                for (let si = 0; si < nSeg; si++) {
-                                    igSet(articleEl, 'top', (-(boxOffset + si * vH)) + 'px');
-                                    await new Promise(r => setTimeout(r, 180));
-                                    const sliceH = Math.max(1, Math.round(Math.min(vH, fullH - si * vH)));
-                                    const segRes = await new Promise(resolve => {
-                                        chrome.runtime.sendMessage({ action: "captureAndCrop", rect: { top: 0, left: boxLeft, width: boxWidth, height: sliceH }, dpr: dprI }, resolve);
-                                    });
-                                    if (segRes && segRes.status === "success" && segRes.dataUrl) igSegs.push(segRes.dataUrl);
-                                    else break;
-                                }
-                                igSet(articleEl, 'top', '0');
-                                if (igSegs.length > 0) {
-                                    printLog(`[Instagram] No-zoom ${igSegs.length} parça birleştiriliyor.`);
-                                    rawResult = (igSegs.length === 1) ? igSegs[0] : await igVerticalStitch(igSegs);
-                                } else {
-                                    printLog("[Instagram] No-zoom yakalama başarısız, zoom-to-fit yoluna dönülüyor.");
-                                }
-                            }
-
-                            if (!rawResult) {
-                                // Mevcut yol: zoom-to-fit (ya da no-zoom kısa kart) -> tek çekim.
-                                const arS = contentBox.getBoundingClientRect();
-                                const cropRect = {
-                                    top:    Math.max(0, Math.round(arS.top)),
-                                    left:   Math.max(0, Math.round(arS.left)),
-                                    width:  Math.round(arS.width),
-                                    height: Math.round(Math.min(arS.height, vH))
-                                };
-
-                                printLog(`[Instagram] CSS izolasyon rect: ${JSON.stringify(cropRect)}`);
-
-                                // Ekran görüntüsü al (X/Twitter ile aynı mekanizma)
-                                const igResult = await new Promise(resolve => {
-                                    chrome.runtime.sendMessage({
-                                        action: "captureAndCrop",
-                                        rect:   cropRect,
-                                        dpr:    window.devicePixelRatio || 1
-                                    }, resolve);
-                                });
-
-                                if (igResult && igResult.status === "success" && igResult.dataUrl) {
-                                    rawResult = igResult.dataUrl;
-                                } else {
-                                    printLog("[Instagram] captureAndCrop hatası: " + (igResult ? igResult.message : "yanıt yok") + ", fallback olarak tam sayfa çekimi deneniyor.");
-                                    const ssFallback = await new Promise(resolve => {
-                                        chrome.runtime.sendMessage({ action: "captureTab" }, resolve);
-                                    });
-                                    if (ssFallback && ssFallback.status === "success" && ssFallback.dataUrl) {
-                                        rawResult = await cropScreenshot(ssFallback.dataUrl, cropRect);
-                                    } else {
-                                        return null;
-                                    }
-                                }
-                            }
-                        } finally {
-                            // 7. Her koşulda stilleri geri yükle
-                            igRestoreAll();
-                        }
+                    // G. Tweet viewport'a sığıyorsa tek çekim yeterli
+                    if (measuredRect.height <= vH) {
+                        const crop = {
+                            top:    Math.max(0, measuredRect.top),
+                            left:   Math.max(0, measuredRect.left),
+                            width:  Math.min(vW, measuredRect.right) - Math.max(0, measuredRect.left),
+                            height: Math.min(vH, measuredRect.bottom) - Math.max(0, measuredRect.top)
+                        };
+                        rawResult = await cropScreenshot(ssFirst.dataUrl, crop);
+                        // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
+                        // (X'te sonuc logu HIC yoktu -> taramada ne oldugu logdan anlasilmiyordu.)
+                        printLog(`Yakalama: 1 parça (${Math.round(crop.width)}x${Math.round(crop.height)}), yol=tek-kare`);
                     } else {
-                        const ssFirst = await new Promise(resolve => {
-                            swSendReliable({ action: "captureTab" }, resolve);
-                        });
+                        // H. Uzun tweet: viewport yüksekliği kadar kaydırarak çoklu çekim yap
+                        printLog(`Uzun gönderi algılandı, tam boy çekim yapılıyor...`);
+                        let totalScrolled = 0;
 
-                        if (!ssFirst || ssFirst.status !== "success" || !ssFirst.dataUrl) {
-                            printLog("Ekran görüntüsü alma hatası (1)");
-                            return null;
-                        }
-                        snapshots.push(ssFirst.dataUrl);
+                        while (totalScrolled + vH < measuredRect.height) {
+                            const scrollBefore = window.scrollY || document.documentElement.scrollTop;
+                            window.scrollBy({ top: vH, left: 0, behavior: 'instant' });
+                            await new Promise(r => setTimeout(r, 250));
+                            const scrollAfter = window.scrollY || document.documentElement.scrollTop;
+                            const delta = scrollAfter - scrollBefore;
 
-                        // G. Tweet viewport'a sığıyorsa tek çekim yeterli
-                        if (measuredRect.height <= vH) {
-                            const crop = {
-                                top:    Math.max(0, measuredRect.top),
-                                left:   Math.max(0, measuredRect.left),
-                                width:  Math.min(vW, measuredRect.right) - Math.max(0, measuredRect.left),
-                                height: Math.min(vH, measuredRect.bottom) - Math.max(0, measuredRect.top)
-                            };
-                            rawResult = await cropScreenshot(ssFirst.dataUrl, crop);
-                            // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
-                            // (X'te sonuc logu HIC yoktu -> taramada ne oldugu logdan anlasilmiyordu.)
-                            printLog(`Yakalama: 1 parça (${Math.round(crop.width)}x${Math.round(crop.height)}), yol=tek-kare`);
-                        } else {
-                            // H. Uzun tweet: viewport yüksekliği kadar kaydırarak çoklu çekim yap
-                            printLog(`Uzun gönderi algılandı, tam boy çekim yapılıyor...`);
-                            let totalScrolled = 0;
-
-                            while (totalScrolled + vH < measuredRect.height) {
-                                const scrollBefore = window.scrollY || document.documentElement.scrollTop;
-                                window.scrollBy({ top: vH, left: 0, behavior: 'instant' });
-                                await new Promise(r => setTimeout(r, 250));
-                                const scrollAfter = window.scrollY || document.documentElement.scrollTop;
-                                const delta = scrollAfter - scrollBefore;
-
-                                if (delta < 5) {
-                                    printLog("Sayfa sonu: kaydirma durdu.");
-                                    break;
-                                }
-                                totalScrolled += delta;
-
-                                const ssN = await new Promise(resolve => {
-                                    swSendReliable({ action: "captureTab" }, resolve);
-                                });
-
-                                if (!ssN || ssN.status !== "success" || !ssN.dataUrl) {
-                                    printLog(`Ekran goruntüsü alma hatası (${snapshots.length + 1}), mevcut parcalar kullaniliyor.`);
-                                    break;
-                                }
-                                snapshots.push(ssN.dataUrl);
+                            if (delta < 5) {
+                                printLog("Sayfa sonu: kaydirma durdu.");
+                                break;
                             }
+                            totalScrolled += delta;
 
-                            // I. Tüm parçaları birleştir
-                            // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
-                            printLog(`Yakalama: ${snapshots.length} parça (${Math.round(measuredRect.width)}x${Math.round(measuredRect.height)}), yol=kaydir-birlestir`);
-                            rawResult = await stitchMultipleScreenshots(snapshots, measuredRect, vH, dpr);
+                            const ssN = await new Promise(resolve => {
+                                swSendReliable({ action: "captureTab" }, resolve);
+                            });
+
+                            if (!ssN || ssN.status !== "success" || !ssN.dataUrl) {
+                                printLog(`Ekran goruntüsü alma hatası (${snapshots.length + 1}), mevcut parcalar kullaniliyor.`);
+                                break;
+                            }
+                            snapshots.push(ssN.dataUrl);
                         }
+
+                        // I. Tüm parçaları birleştir
+                        // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
+                        printLog(`Yakalama: ${snapshots.length} parça (${Math.round(measuredRect.width)}x${Math.round(measuredRect.height)}), yol=kaydir-birlestir`);
+                        rawResult = await stitchMultipleScreenshots(snapshots, measuredRect, vH, dpr);
                     }
 
                     // Compress the final image on the client side
@@ -1697,14 +1358,6 @@
                     spacer.remove();
                     disableSmoothScrollStyles.remove();
 
-                    if (isInstagram && !xWidgetIgNoZoom) {
-                        if (widgetEl && origWidgetDisplay !== undefined) {
-                            widgetEl.style.display = origWidgetDisplay;
-                        }
-                        if (cbWidgetEl && origCbWidgetDisplay !== undefined) {
-                            cbWidgetEl.style.display = origCbWidgetDisplay;
-                        }
-                    }
                     // Faz IG-1: gizlenen Instagram "Mesajlar" balonunu geri aç.
                     for (const h of igMsgHidden) {
                         try { if (h.v) h.el.style.setProperty('visibility', h.v); else h.el.style.removeProperty('visibility'); } catch (e) {}
@@ -1881,8 +1534,9 @@
     var xWidgetLocalImages = false;
     try { chrome.storage.local.get(['local_images'], function (r) { xWidgetLocalImages = !!(r && r.local_images); }); } catch (e) {}
 
-    // Instagram artık VARSAYILAN olarak zoom'suz (X gibi kaydır+birleştir) yakalanır (toggle kaldırıldı).
-    var xWidgetIgNoZoom = true;
+    // Instagram X ile AYNI yolu kullanir: kaydir + birlestir. Eskiden bunu bir "zoom-to-fit"
+    // yolundan ayiran xWidgetIgNoZoom bayragi vardi; toggle kaldirilinca bayrak sabit true
+    // kaldi ve ikinci yol OLU koda dondu. Bayrak da, o yol da 2026-07-17'de kaldirildi.
 
     function xStripForServer(resItem, gorev) {
         try {
