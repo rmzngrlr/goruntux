@@ -102,13 +102,48 @@ function xUrlOf(link) {
   if (!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
   try { return new URL(s); } catch (e) { return null; }
 }
-// 'x' | 'ig' | 'fb'. BILINMEYEN -> 'x' (mevcut davranis korunur).
+function xIsTtHost(h) {   // Faz TT-1 (Python: _is_tt_host, panel: XPlat.isTtHost)
+  h = String(h || '').toLowerCase();
+  return h === 'tiktok.com' || /\.tiktok\.com$/.test(h);
+}
+// 'x' | 'ig' | 'fb' | 'tt'. BILINMEYEN -> 'x' (mevcut davranis korunur).
+// MV3 servis worker'i uzaktan kod YUKLEYEMEZ -> /x-platform.js'i kullanamiyoruz;
+// bu, kacinilmaz UCUNCU kopya. Python detect_platform + XPlat.platform ile SIRA DAHIL
+// birebir ayni tutulmali.
 function xPlatformOf(link) {
   const low = String(link == null ? '' : link).toLowerCase();
   if (low.indexOf('instagram.com') !== -1) return 'ig';
   const u = xUrlOf(link);
   if (u && xIsFbHost(u.hostname)) return 'fb';
+  if (u && xIsTtHost(u.hostname)) return 'tt';
   return 'x';
+}
+// Faz TT-1: kimlik YOLDA -> sorgu tamamen atilir. vm./vt. kisa host'lari KORUNUR.
+const XTT_KISA_HOSTLAR = ['vm.tiktok.com', 'vt.tiktok.com'];
+function xTtCanonical(link) {
+  try {
+    const u = xUrlOf(link);
+    if (!u || !xIsTtHost(u.hostname)) return link;
+    const host = String(u.hostname).toLowerCase();
+    const path = String(u.pathname || '/').replace(/\/+$/, '');
+    if (XTT_KISA_HOSTLAR.indexOf(host) !== -1) return 'https://' + host + (path || '/');
+    return 'https://www.tiktok.com' + (path || '/');
+  } catch (e) { return link; }
+}
+// Faz TT-1: TikTok GONDERI url'i mi (kapsam: video). Kisa linkler de gonderi sayilir —
+// FB /share/ ile ayni: hedefi yonlenme cozer.
+function xIsTtPostUrl(link) {
+  try {
+    if (xPlatformOf(link) !== 'tt') return false;
+    const u = xUrlOf(link);
+    if (!u) return false;
+    const host = String(u.hostname).toLowerCase();
+    const p = String(u.pathname || '').replace(/\/+$/, '');
+    if (XTT_KISA_HOSTLAR.indexOf(host) !== -1) return /^\/[A-Za-z0-9]+$/.test(p);
+    if (/^\/@[^/]+\/(?:video|photo)\/\d+$/i.test(p)) return true;
+    if (/^\/t\/[^/]+$/i.test(p)) return true;
+    return false;
+  } catch (e) { return false; }
 }
 const XFB_ID_PARAMS = ['story_fbid', 'id', 'fbid', 'v'];   // SIRA ONEMLI
 function xFbCanonical(link) {
@@ -198,6 +233,11 @@ function normalizeUrl(url) {
   if (xPlatformOf(url) === 'fb') {
     return xFbCanonical(url).split('#')[0].replace(/\/+$/, '').toLowerCase();
   }
+  // Faz TT-1: kimlik YOLDA, sorgu atilabilir; ama xTtCanonical HOST'u da normalize
+  // ediyor (m./çıplak -> www) -> m.tiktok.com ile www.tiktok.com AYNI degere iner.
+  if (xPlatformOf(url) === 'tt') {
+    return xTtCanonical(url).split('#')[0].replace(/\/+$/, '').toLowerCase();
+  }
   let clean = url.split('?')[0].toLowerCase().trim();
   clean = clean.replace('://twitter.com', '://x.com');
   if (clean.endsWith('/')) {
@@ -253,7 +293,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
       // Faz FB-1: FB'de kimlik SORGUDA olabilir -> '?' ile kesersek permalink.php/photo.php/
       // watch gonderileri ayirt edilemez. FB icin sorguyu KORU (kanonik forma indirgeyerek).
-      let temizUrl = (xPlatformOf(tab.url) === 'fb') ? xFbCanonical(tab.url) : tab.url.split('?')[0];
+      let _plat = xPlatformOf(tab.url);
+      // Faz TT-1: TikTok'ta sorgu (is_from_webapp, web_id) atilir + host normalize edilir.
+      let temizUrl = (_plat === 'fb') ? xFbCanonical(tab.url)
+                   : (_plat === 'tt') ? xTtCanonical(tab.url)
+                   : tab.url.split('?')[0];
       let urlObj;
       try {
         urlObj = new URL(temizUrl);
@@ -264,7 +308,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       let path = urlObj.pathname;
       let isInstagramPost = /^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel)\/[^/]+/i.test(temizUrl);
       let isFacebookPost = xIsFbPostUrl(temizUrl);   // Faz FB-1
-      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost;
+      let isTiktokPost = xIsTtPostUrl(temizUrl);     // Faz TT-1
+      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost;
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
 
       let storageKey = `x_profil_gorevi_${tabId}`;
@@ -379,7 +424,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                   let urlObj = new URL(lowerUrl);
                   // Faz FB-1: FB eklenmezse her FB gezinmesi 'gecici sayfa' sayilir ->
                   // gorev NE iptal edilir NE ilerler, SONSUZA KADAR asili kalir.
-                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com') || xIsFbHost(urlObj.hostname);
+                  // Faz TT-1: tiktok EKLENMEZSE her TikTok gezinmesi 'gecici sayfa' sayilir ->
+                  // gorev NE iptal edilir NE ilerler, SONSUZA KADAR asili kalir (FB'de yasandi).
+                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com') || xIsFbHost(urlObj.hostname) || xIsTtHost(urlObj.hostname);
                   if (!isTargetHost) {
                     isTransient = true;
                   } else {
@@ -980,7 +1027,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let isTargetSocial = host === "x.com" || host.endsWith(".x.com") ||
                              host === "twitter.com" || host.endsWith(".twitter.com") ||
                              host === "instagram.com" || host.endsWith(".instagram.com") ||
-                             xIsFbHost(host);
+                             xIsFbHost(host) || xIsTtHost(host);   // Faz TT-1
         if (!isTargetSocial) {
           // Map to Flask API port 3012. YETKILI kaynak registerPanel'dir; setUserAuth yalnizca
           // server_origin HENUZ BOSSA (bootstrap) yazar. Boylece rastgele bir http sekmesi
@@ -1635,6 +1682,17 @@ function processServerJob(job, origin) {
               // yer tutucu ver ki gonderi kuyruga girsin; gercek ad Faz 2'de yakalamadan gelecek.
               return 'fb:@facebook_user';
             }
+            // Faz TT-1: TikTok dali da X regex'lerinden ONCE. Yoksa link null doner ve
+            // `if (!username) return;` ile SESSIZCE DUSER -> kuyruk bos kalir (FB'de yasandi).
+            // Sunucudaki pool_group_key ile AYNI 'tt:' oneki.
+            if (xPlatformOf(url) === 'tt') {
+              const u = xUrlOf(xTtCanonical(url));
+              const p = u ? String(u.pathname || '').replace(/\/+$/, '') : '';
+              const m = p.match(/^\/@([^/]+)\/(?:video|photo)\/\d+/i);
+              if (m) return 'tt:' + m[1].toLowerCase();
+              // Kisa link (vm./vt./t/) -> URL'de isim YOK; yer tutucu ver ki kuyruga girsin.
+              return 'tt:@tiktok_user';
+            }
             if (url.includes('/status/')) {
               let match = url.match(/(?:x|twitter)\.com\/([a-zA-Z0-9_]{1,15})\/status/i);
               return match ? match[1].toLowerCase() : null;
@@ -1666,8 +1724,12 @@ function processServerJob(job, origin) {
             // '/p/' || '/reel/' testine takilmayip PROFIL sayilir ve yanlis gorev tipi
             // (profile_header) alir. (FB /reel/ zaten '/reel/' iceriyor — ayrimi platform yapar.)
             const isFacebookPost = xIsFbPostUrl(absUrl);
-            const isInstagramPost = !isFacebookPost && (absUrl.includes('/p/') || absUrl.includes('/reel/'));
-            if (isTweet || isInstagramPost || isFacebookPost) {
+            // Faz TT-1: TikTok gonderisi de IG testinden ONCE dislanmali; aksi halde
+            // /@user/photo/123 linki '/p/' iceriyor gibi gorunmez ama kisa linkler ve
+            // ileride /photo/ formu yanlis gorev tipine dusebilir.
+            const isTiktokPost = xIsTtPostUrl(absUrl);
+            const isInstagramPost = !isFacebookPost && !isTiktokPost && (absUrl.includes('/p/') || absUrl.includes('/reel/'));
+            if (isTweet || isInstagramPost || isFacebookPost || isTiktokPost) {
               if (groups[username].tweets.indexOf(absUrl) === -1) {
                 groups[username].tweets.push(absUrl);
               }

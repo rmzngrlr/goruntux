@@ -171,6 +171,15 @@ def normalize_link_key(link):
         # KANONIK LINK orijinal buyuk-kucuk harfi korur ve .docx'e o girer — anahtar yalnizca anahtardir,
         # ondan URL geri kurulmaz.
         return fb_canonical_link(link).split("#")[0].rstrip("/").lower()
+    # --- Faz TT-1: TikTok'ta kimlik YOLDA -> sorgu atilabilir (asagidaki varsayilan dal
+    # bunu zaten yapardi). AMA yine de delege ediyoruz cunku tt_canonical_link HOST'u da
+    # normalize ediyor (m./çıplak -> www). Varsayilan dala biraksaydik
+    # m.tiktok.com/@u/video/1 ile www.tiktok.com/@u/video/1 AYRI anahtar olurdu; havuz
+    # linki kanonik (www) uretildigi icin gorsel HAM linkin anahtarina yazilir ve
+    # ayrisirlardi -> gorsel SESSIZCE kaybolurdu (FB'de ogrenilen tam bu tuzak).
+    # JS ikizi xNormLink AYNI kurali uygular; IKISINI BIRDEN degistir.
+    if detect_platform(link) == "tt":
+        return tt_canonical_link(link).split("#")[0].rstrip("/").lower()
     l = link.split("?")[0].split("#")[0].strip()
     l = re.sub(r'/embed/?$', '', l, flags=re.IGNORECASE)
     l = l.rstrip('/')
@@ -198,6 +207,12 @@ def x_temizle_link(link):
         # --- Faz FB-1: Facebook (SALT EKLEME — X/IG dallari degismedi) ---
         if detect_platform(link) == "fb":
             return fb_canonical_link(link)
+        # --- Faz TT-1: TikTok (SALT EKLEME) ---
+        # Havuza/rapora giren GORUNUR link. Sorgu atilir: ?is_from_webapp=1&web_id=...
+        # web_id TARAYICI izleme kimligidir — raporda durmasi hem cirkin hem anlamsiz,
+        # ustelik ayni gonderinin iki linkini farkli gosterirdi (FB'de fbclid ile ayni is).
+        if detect_platform(link) == "tt":
+            return tt_canonical_link(link)
         if "x.com" in low or "twitter.com" in low:
             return link.split("#")[0].split("?")[0]
         return link
@@ -214,6 +229,13 @@ def _is_fb_host(h):
     h = (h or "").lower()
     return h == "facebook.com" or h.endswith(".facebook.com")
 
+def _is_tt_host(h):
+    # Faz TT-1. FB ile ayni desen: host-hassas (substring DEGIL) ->
+    # 'evil.com/?u=tiktok.com' bu dala SAPMAZ.
+    # vm./vt. KISA link alan adlaridir ve tiktok.com altindadir -> buraya dahil.
+    h = (h or "").lower()
+    return h == "tiktok.com" or h.endswith(".tiktok.com")
+
 def _url_host(link):
     try:
         s = (link or "").strip()
@@ -227,9 +249,15 @@ def detect_platform(link):
     low = (link or "").lower()
     if "instagram.com" in low:        # MEVCUT KURAL — bilerek DEGISTIRILMEDI
         return "ig"
-    if _is_fb_host(_url_host(link)):  # YENI: host-hassas. 'evil.com/?u=facebook.com' KACMAZ,
+    _h = _url_host(link)
+    if _is_fb_host(_h):               # host-hassas. 'evil.com/?u=facebook.com' KACMAZ,
         return "fb"                   # cunku substring degil gercek host'a bakiyoruz.
+    if _is_tt_host(_h):               # Faz TT-1 (yeni)
+        return "tt"
     return "x"                        # MEVCUT VARSAYILAN
+    # NOT: varsayilan 'x' oldugu icin TANINMAYAN her link sessizce X sayilir. TikTok
+    # eklenmeden once bir tiktok linki X basligi altinda rapora giriyordu — FB'de de
+    # ayni tuzak vardi. Yeni platform eklerken bu dal MUTLAKA once yazilmali.
 
 # Facebook KIMLIK parametreleri. SIRA ONEMLI: kanonik cikti sabit olsun diye
 # beyaz-liste bu sirayla yeniden kurulur (asla kara liste — bilinmeyen izleme
@@ -338,10 +366,62 @@ def fb_page_slug(link):
     except Exception:
         return None
 
+# --- Faz TT-1: TikTok kanonik link ---
+# FB'nin aksine KIMLIK YOLDA (/@kullanici/video/{id}) -> "kimlik sorguda" cehennemi YOK.
+# Sorgu TAMAMEN atilir: is_from_webapp, web_id (tarayici izleme kimligi), sender_device...
+# hepsi izleme copu; hicbiri gonderiyi ayirt etmez.
+#
+# IDEMPOTENT olmak ZORUNDA (FB'de ogrenildi): gorsel yazma anahtari HAM linkten, havuz
+# linki KANONIK linkten uretiliyor. Ayrisirlarsa goruntuler SESSIZCE kaybolur.
+#   tt_canonical_link(tt_canonical_link(x)) == tt_canonical_link(x)
+#
+# HOST: m./çıplak tiktok.com -> www.tiktok.com. AMA vm./vt. KORUNUR — onlar KISA link
+# alan adlari, ayri bir gonderi uzayi; www'ye cevirmek farkli bir sayfaya isaret ederdi.
+_TT_KISA_HOSTLAR = ("vm.tiktok.com", "vt.tiktok.com")
+
+def tt_canonical_link(link):
+    try:
+        s = (link or "").strip()
+        if not s:
+            return ""
+        if not re.match(r'^https?://', s, re.I):
+            s = "https://" + s.lstrip("/")
+        u = urlparse(s)
+        host = (u.hostname or "").lower()
+        if not _is_tt_host(host):
+            return link
+        path = (u.path or "/").rstrip("/")
+        if host in _TT_KISA_HOSTLAR:
+            # Kisa link: hedefi ancak YONLENME cozer (FB /share/ ile ayni durum).
+            # Host'a DOKUNMA, yolu oldugu gibi birak, yalnizca sorguyu at.
+            return "https://" + host + (path or "/")
+        # Ana site: m./çıplak -> www
+        return "https://www.tiktok.com" + (path or "/")
+    except Exception:
+        return link
+
+def tt_kullanici_adi_oku(link):
+    """TikTok kullanici adi — YOLDAN. /@rtedijital/video/123 -> 'rtedijital'.
+
+    FB'nin aksine bu HER kanonik gonderi linkinde VAR (FB'de /share/, /reel/, /watch/
+    formlarinda URL'de isim YOKTU ve yakalamayi beklemek gerekiyordu). Yani TikTok'ta
+    gruplama Faz 1'de, YAKALAMA OLMADAN calisir.
+    Kisa linkte (vm./vt.) isim yok -> None; gercek ad yonlenmeden/yakalamadan gelir.
+    """
+    try:
+        if not link or detect_platform(link) != "tt":
+            return None
+        u = urlparse(tt_canonical_link(link))
+        m = re.match(r'^/@([^/]+)/(?:video|photo)/\d+', u.path or "", re.I)
+        return m.group(1).lower() if m else None
+    except Exception:
+        return None
+
 # Kullanıcı adı çıkarılamadığında kullanılan genel/yer tutucu başlıklar.
 # Bunlar gerçek bir kullanıcı adı geldiğinde üzerine yazılabilir kabul edilir.
 _GENERIC_TITLES = {"@instagram_user", "instagram_user", "instagram gönderisi", "instagram gonderisi",
-                   "@facebook_user", "facebook_user", "facebook gönderisi", "facebook gonderisi"}
+                   "@facebook_user", "facebook_user", "facebook gönderisi", "facebook gonderisi",
+                   "@tiktok_user", "tiktok_user", "tiktok gönderisi", "tiktok gonderisi"}
 
 def is_generic_title(t):
     if not t:
@@ -372,6 +452,20 @@ def pool_group_key(item):
             # yakalamadan gelir ve is_generic_title uzerinden yer tutucunun ustune yazilir.
             t = (item.get("title", "") or "").strip()
             username = ("fb:" + t.lower()) if (t and not is_generic_title(t)) else "fb:@facebook_user"
+    # --- Faz TT-1 (SALT EKLEME) ---
+    # 'tt:' oneki FB ile AYNI gerekce: TikTok @rtedijital ile X @rtedijital ayni anahtara
+    # duser ve TEK Baslik 2 altinda birlesirdi. Onek olmadan cakisirlar.
+    # SLUG-ONCE: FB'den farkli olarak TikTok'ta ad HER kanonik gonderi linkinde var ->
+    # gruplama yakalama olmadan calisir.
+    if not username and link and detect_platform(link) == "tt":
+        slug = tt_kullanici_adi_oku(link)
+        if slug:
+            username = "tt:" + slug
+        else:
+            # Kisa link (vm./vt./t/) -> URL'de isim YOK; gercek ad yonlenmeden veya
+            # yakalamadan gelir ve is_generic_title uzerinden yer tutucunun ustune yazilir.
+            t = (item.get("title", "") or "").strip()
+            username = ("tt:" + t.lower()) if (t and not is_generic_title(t)) else "tt:@tiktok_user"
     return username if username else None
 
 def iter_paragraphs_with_hyperlinks(paragraph):
@@ -3046,6 +3140,23 @@ HTML_TEMPLATE = """
         // Bu yuzden ad, grup adi ve "Sayfa <id>" eki atildi; her formdan yalnizca kod alinir.
         // NOT: bu SADECE ekran etiketi. Kimlik/eslestirme XPlat.fbCanonical + xNormLink ile
         // yapiliyor -> etiketin sadelesmesi anahtarlari etkilemez.
+        // Faz TT-1: TikTok gonderi kodu (onizleme etiketi icin).
+        // FB'deki fbPostCode ile AYNI amac ve AYNI bicim -> "TikTok Gönderi Kodu: <kod>".
+        // FB'den FARKI: kimlik YOLDA, tek kalip yeter (FB'de 7 form vardi).
+        //   /@kullanici/video/{id}  -> id
+        //   /@kullanici/photo/{id}  -> id   (kapsam disi ama link yapistirilirsa dogru etiketlensin)
+        //   vm./vt./t/{kod}         -> kod  (kisa link; hedef ancak yonlenmeyle bilinir)
+        function ttPostCode(url) {
+            try {
+                var u = new URL(XPlat.ttCanonical(url));
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                var m = p.match(/^\\/@[^/]+\\/(?:video|photo)\\/(\\d+)$/i)
+                     || p.match(/^\\/t\\/([^/]+)$/i)
+                     || p.match(/^\\/([A-Za-z0-9]+)$/);   // vm./vt. kisa kodu
+                return m ? m[1] : (p.replace(/^\\//, '') || '');
+            } catch (e) { return ''; }
+        }
+
         function fbPostCode(url) {
             try {
                 var u = new URL(XPlat.fbCanonical(url));
@@ -3082,6 +3193,24 @@ HTML_TEMPLATE = """
                 if ((low === '/watch' || low === '/video.php') && u.searchParams.get('v')) return true;
                 if ((low === '/photo.php' || low === '/photo') && u.searchParams.get('fbid')) return true;
                 if ((low === '/permalink.php' || low === '/story.php') && u.searchParams.get('story_fbid')) return true;
+                return false;
+            } catch (e) { return false; }
+        }
+        // Faz TT-1: TikTok GONDERI url'i mi (ALIM KAPISI).
+        // Bu dal olmazsa TikTok linki panelde SESSIZCE REDDEDILIR ve metin kutusunda kalir
+        // (FB'de tam bunu yasadik). background.js'teki xIsTtPostUrl ile AYNI kural.
+        // Kapsam kullanici karari: VIDEO gonderileri (+ kisa linkler, hepsi videoya yonlenir).
+        // /photo/ kapsam disi ama link yapistirilirsa reddetmek yerine kabul edilir —
+        // yakalama Faz 2'de neyi destekledigine karar verir.
+        function isTtPostUrl(url) {
+            try {
+                if (!window.XPlat || XPlat.platform(url) !== 'tt') return false;
+                var u = new URL(XPlat.ttCanonical(url));
+                var host = String(u.hostname || '').toLowerCase();
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                if (host === 'vm.tiktok.com' || host === 'vt.tiktok.com') return /^\\/[A-Za-z0-9]+$/.test(p);
+                if (/^\\/@[^/]+\\/(?:video|photo)\\/\\d+$/i.test(p)) return true;
+                if (/^\\/t\\/[^/]+$/i.test(p)) return true;
                 return false;
             } catch (e) { return false; }
         }
@@ -3133,6 +3262,8 @@ HTML_TEMPLATE = """
                 try { host = new URL(s).hostname.toLowerCase(); } catch (e) { return s; }
                 if (host.indexOf('instagram.com') !== -1) return xIgCanonical(s);
                 if (window.XPlat && XPlat.platform(s) === 'fb') return XPlat.fbCanonical(s);
+                // Faz TT-1: sorgu tamamen atilir (is_from_webapp, web_id = izleme copu).
+                if (window.XPlat && XPlat.platform(s) === 'tt') return XPlat.ttCanonical(s);
                 if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
                     return s.split('#')[0].split('?')[0];
                 }
@@ -3154,7 +3285,8 @@ HTML_TEMPLATE = """
                 var lineLow = line.toLowerCase();
                 var isInstagram = lineLow.includes('instagram.com/p/') || lineLow.includes('instagram.com/reel/') || lineLow.includes('instagram.com/reels/') || lineLow.includes('instagram.com/tv/');
                 var isFacebook = isFbPostUrl(line);   // Faz FB-1
-                if (isStatus || isProfile || isInstagram || isFacebook) {
+                var isTiktok = isTtPostUrl(line);     // Faz TT-1
+                if (isStatus || isProfile || isInstagram || isFacebook || isTiktok) {
                     validLinks.push(line);
                 } else {
                     remainingLines.push(line);
@@ -3204,6 +3336,7 @@ HTML_TEMPLATE = """
                 var isInstagram = link.includes('instagram.com/p/') || link.includes('instagram.com/reel/');
                 var isStatus = link.includes('/status/');
                 var isFacebook = (window.XPlat && XPlat.platform(link) === 'fb');   // Faz FB-1
+                var isTiktok   = (window.XPlat && XPlat.platform(link) === 'tt');   // Faz TT-1
                 if (isInstagram) {
                     var username = "instagram";
                     if (!groups[username]) {
@@ -3225,6 +3358,19 @@ HTML_TEMPLATE = """
                     // NOT: Word'deki Baslik 2 gruplamasi ETKILENMEZ — o pool_group_key ile
                     // sunucuda, yakalanan gercek linke gore yapiliyor.
                     var username = 'fb';
+                    if (!groups[username]) {
+                        groups[username] = { profile_url: null, tweets: [] };
+                    }
+                    if (groups[username].tweets.indexOf(link) === -1) {
+                        groups[username].tweets.push(link);
+                    }
+                } else if (isTiktok) {
+                    // Faz TT-1: FB dali gibi, isStatus/else'ten ONCE. TEK BLOK — FB'de
+                    // kullanicinin istedigi bicimin aynisi ("hepsi TikTok, bir tutulsun").
+                    // Not: TikTok'ta kullanici adi URL'de VAR, yani bloklara bolebilirdik;
+                    // ama kisa linklerde (vm./vt.) YOK -> ayni listede iki farkli bicim
+                    // olurdu. FB'de tam bu yuzden tek bloga gecmistik.
+                    var username = 'tt';
                     if (!groups[username]) {
                         groups[username] = { profile_url: null, tweets: [] };
                     }
@@ -3260,10 +3406,13 @@ HTML_TEMPLATE = """
                 // Faz FB-1 + tek-blok (2026-07-17): butun FB linkleri 'fb' anahtarinda
                 // toplaniyor -> tek blok, tek baslik.
                 var isFbGroup = (username === 'fb');
-                var groupIcon = username === 'instagram' ? '📸' : (isFbGroup ? '📘' : '👤');
+                var isTtGroup = (username === 'tt');   // Faz TT-1: FB ile ayni tek-blok deseni
+                var groupIcon = username === 'instagram' ? '📸'
+                              : (isFbGroup ? '📘' : (isTtGroup ? '🎵' : '👤'));
                 var displayName = username === 'instagram' ? 'Instagram Gönderileri'
                                 : (isFbGroup ? 'Facebook Gönderileri'
-                                             : '@' + username);
+                                : (isTtGroup ? 'TikTok Gönderileri'
+                                             : '@' + username));
                 html += '  <span style="font-weight:bold; color:var(--twitter-color); font-size: 13px;">' + groupIcon + ' ' + displayName + '</span>';
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),
                 // başlığın sağında. Gri=kapalı, yeşil=açık. Açıkken tweet linkinden türetilen
@@ -3295,6 +3444,9 @@ HTML_TEMPLATE = """
                             // Instagram dalindaki bicimin ayni: "<Platform> Gönderi Kodu: <kod>"
                             var fbKod = fbPostCode(tweetUrl);
                             label = "&#128279; Facebook Gönderi Kodu: " + (fbKod || 'bilinmiyor');
+                        } else if (window.XPlat && XPlat.platform(tweetUrl) === 'tt') {
+                            // Faz TT-1: ayni bicim. Kod = video id (kimlik YOLDA).
+                            label = "&#128279; TikTok Gönderi Kodu: " + (ttPostCode(tweetUrl) || 'bilinmiyor');
                         } else if (tweetUrl.indexOf('/status/') !== -1) {
                             var tweetId = tweetUrl.split('/status/')[1].split('?')[0].split('#')[0];
                             label = "&#128279; Tweet ID'si: " + tweetId;
@@ -3396,7 +3548,7 @@ HTML_TEMPLATE = """
             // KENDILIGINDEN asamaz; savePoolOrderFromDom da DOM sirasini okudugu icin
             // bolum sirasi dogrudan havuz sirasina, oradan da Word'deki Baslik 1 sirasina
             // yansir. Bolum sirasi: havuzda ILK gorunen platform once (Word ile AYNI kural).
-            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook' };
+            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok' };
             var sections = [], bySec = {};
             for (var si = 0; si < blocks.length; si++) {
                 var sPlat = poolPlatformOf(blocks[si].items[0]);
@@ -4052,6 +4204,10 @@ X_PLATFORM_JS = r'''
     h = String(h||'').toLowerCase();
     return h === 'facebook.com' || /\.facebook\.com$/.test(h);
   }
+  function isTtHost(h){   // Faz TT-1 (Python: _is_tt_host)
+    h = String(h||'').toLowerCase();
+    return h === 'tiktok.com' || /\.tiktok\.com$/.test(h);
+  }
   function urlOf(link){
     // Python _url_host ile ayni: protokol yoksa https:// ekle.
     var s = String(link==null?'':link).trim();
@@ -4062,12 +4218,44 @@ X_PLATFORM_JS = r'''
   function hostOf(link){ var u = urlOf(link); return u ? String(u.hostname||'').toLowerCase() : ''; }
 
   // --- platform tespiti (Python: detect_platform) ---
-  // 'x' | 'ig' | 'fb'. BILINMEYEN -> 'x' (mevcut davranis KORUNUR).
+  // 'x' | 'ig' | 'fb' | 'tt'. BILINMEYEN -> 'x' (mevcut davranis KORUNUR).
+  // Python detect_platform ile SIRA DAHIL birebir ayni olmali.
   function platform(link){
     var low = String(link==null?'':link).toLowerCase();
     if(low.indexOf('instagram.com') !== -1) return 'ig';   // MEVCUT KURAL — DEGISTIRILMEDI
-    if(isFbHost(hostOf(link))) return 'fb';                // YENI (host-hassas)
+    var h = hostOf(link);
+    if(isFbHost(h)) return 'fb';                           // host-hassas
+    if(isTtHost(h)) return 'tt';                           // Faz TT-1
     return 'x';                                            // MEVCUT VARSAYILAN
+  }
+
+  // --- TikTok kanonik link (Python: tt_canonical_link) ---
+  // Kimlik YOLDA -> sorgu TAMAMEN atilir (is_from_webapp, web_id = izleme copu).
+  // IDEMPOTENT olmak ZORUNDA: gorsel anahtari HAM linkten, havuz linki KANONIK linkten.
+  // vm./vt. KISA link alan adlari KORUNUR (ayri gonderi uzayi; www'ye cevirmek yanlis
+  // sayfaya isaret ederdi).
+  var TT_KISA_HOSTLAR = ['vm.tiktok.com','vt.tiktok.com'];
+  function ttCanonical(link){
+    try {
+      var u = urlOf(link);
+      if(!u || !isTtHost(u.hostname)) return link;   // TikTok DEGIL -> DOKUNMA
+      var host = String(u.hostname).toLowerCase();
+      var path = String(u.pathname || '/').replace(/\/+$/, '');
+      if(TT_KISA_HOSTLAR.indexOf(host) !== -1) return 'https://' + host + (path || '/');
+      return 'https://www.tiktok.com' + (path || '/');
+    } catch(e){ return link; }
+  }
+
+  // --- TikTok kullanici adi (Python: tt_kullanici_adi_oku) ---
+  // FB'nin aksine HER kanonik gonderi linkinde VAR -> gruplama yakalama olmadan calisir.
+  function ttUsername(link){
+    try {
+      if(platform(link) !== 'tt') return null;
+      var u = urlOf(ttCanonical(link));
+      if(!u) return null;
+      var m = String(u.pathname||'').match(/^\/@([^/]+)\/(?:video|photo)\/\d+/i);
+      return m ? m[1].toLowerCase() : null;
+    } catch(e){ return null; }
   }
 
   var FB_ID_PARAMS = ['story_fbid','id','fbid','v'];   // SIRA ONEMLI (Python _FB_ID_PARAMS)
@@ -4149,7 +4337,8 @@ X_PLATFORM_JS = r'''
   // --- genel/yer tutucu baslik (Python: is_generic_title / _GENERIC_TITLES) ---
   // Gercek bir ad geldiginde uzerine yazilabilir kabul edilen basliklar.
   var GENERIC_TITLES = ['@instagram_user','instagram_user','instagram gönderisi','instagram gonderisi',
-                        '@facebook_user','facebook_user','facebook gönderisi','facebook gonderisi'];
+                        '@facebook_user','facebook_user','facebook gönderisi','facebook gonderisi',
+                        '@tiktok_user','tiktok_user','tiktok gönderisi','tiktok gonderisi'];
   function isGenericTitle(t){
     if(!t) return true;
     return GENERIC_TITLES.indexOf(String(t).trim().toLowerCase()) !== -1;
@@ -4166,6 +4355,13 @@ X_PLATFORM_JS = r'''
       if(!rest || rest === '@facebook_user') return 'Facebook Gönderileri';
       return rest;
     }
+    // Faz TT-1: 'tt:' oneki de soyulur. TikTok'ta ekranda kullanici adi '@' ile
+    // gosterilir (@rtedijital) -> X/IG ifadesiyle ayni bicime dusuyoruz.
+    if(v.indexOf('tt:') === 0){
+      var r2 = v.slice(3);
+      if(!r2 || r2 === '@tiktok_user') return 'TikTok Gönderileri';
+      return (r2.charAt(0) === '@') ? r2 : '@' + r2;
+    }
     return (v.charAt(0) === '@') ? v : '@' + v;   // MEVCUT — birebir
   }
 
@@ -4173,9 +4369,12 @@ X_PLATFORM_JS = r'''
     platform: platform,
     fbCanonical: fbCanonical,
     fbPageSlug: fbPageSlug,
+    ttCanonical: ttCanonical,
+    ttUsername: ttUsername,
     groupFallbackTitle: groupFallbackTitle,
     isGenericTitle: isGenericTitle,
-    isFbHost: isFbHost
+    isFbHost: isFbHost,
+    isTtHost: isTtHost
   };
 })();
 '''
@@ -4402,7 +4601,7 @@ LOCAL_DOCX_JS = r'''
     // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
     // Faz FB-1: kural artik UCLU ve XPlat'a (sunucudaki detect_platform ikizi) delege edilir.
     // Eskiden 'instagram.com degilse X' idi -> Facebook linki SESSIZCE X sayilirdi.
-    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook' };
+    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook', tt:'TikTok' };
     function entryPlatform(entry){
       var it = (entry[0]==='group') ? groups[entry[1]].items[0] : entry[1];
       var lk = ((it && it.link)||'');
@@ -4699,6 +4898,14 @@ LOCAL_IMAGES_JS = r'''
       // Python: fb_canonical_link(link).split("#")[0].rstrip("/").lower()
       // rstrip('/') TUM sondaki slash'lari atar -> JS'te /\/+$/ (tek slash soyan .slice(0,-1) DEGIL).
       return XPlat.fbCanonical(link).split('#')[0].replace(/\/+$/,'').toLowerCase();
+    }
+    // Faz TT-1: TikTok'ta kimlik YOLDA, yani asagidaki varsayilan dal sorguyu zaten atardi.
+    // AMA delege ediyoruz cunku ttCanonical HOST'u da normalize ediyor (m./çıplak -> www).
+    // Varsayilan dala biraksaydik m.tiktok.com/... ile www.tiktok.com/... AYRI anahtar olur,
+    // havuz linki kanonik (www) uretildigi icin gorsel HAM linkin anahtarina yazilir ve
+    // ayrisirlardi -> gorsel SESSIZCE kaybolurdu. Python normalize_link_key ile AYNI.
+    if(window.XPlat && XPlat.platform(link)==='tt'){
+      return XPlat.ttCanonical(link).split('#')[0].replace(/\/+$/,'').toLowerCase();
     }
     var s=String(link).split('#')[0].split('?')[0].trim().toLowerCase();
     s=s.replace(/\/embed$/,'');
