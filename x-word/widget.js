@@ -19,13 +19,14 @@
         return clean;
     }
 
-    // ----------------- PLATFORM (Faz FB-2) -----------------
-    // 'x' | 'ig' | 'fb'. isInstagram BUGUNKU degerini AYNEN korur (3 yerde ayri ayri
-    // tanimli: :568/:3878/:4022) — bu helper yalnizca yaninda isFacebook tanimlamak icin.
+    // ----------------- PLATFORM (Faz FB-2 / TT-1) -----------------
+    // 'x' | 'ig' | 'fb' | 'tt'. isInstagram BUGUNKU degerini AYNEN korur (3 yerde ayri ayri
+    // tanimli: :568/:3878/:4022) — bu helper yalnizca yaninda isFacebook/isTiktok tanimlamak icin.
     function xPlatform() {
         var h = window.location.hostname;
         if (h.indexOf('instagram.com') !== -1) return 'ig';
         if (/(^|\.)facebook\.com$/i.test(h)) return 'fb';
+        if (/(^|\.)tiktok\.com$/i.test(h)) return 'tt';   // Faz TT-1
         return 'x';
     }
 
@@ -33,7 +34,7 @@
     // BUTUN platformlarda ayni kalibi kullansin diye tek kaynak.
     function xPlatformAdi() {
         var p = xPlatform();
-        return p === 'ig' ? 'Instagram' : (p === 'fb' ? 'Facebook' : 'X');
+        return p === 'ig' ? 'Instagram' : (p === 'fb' ? 'Facebook' : (p === 'tt' ? 'TikTok' : 'X'));
     }
 
     // FB gonderi formundaki bir URL mi? (background.js xIsFbPostUrl ikizi)
@@ -4551,6 +4552,50 @@
                         setTimeout(() => { window.location.href = nextUrl; }, 600);
                     } else {
                         // Kuyruk bitti -> taramayi DUZGUN kapat (reload dongusu YOK).
+                        swSendReliable({
+                            action: "submitWordResult",
+                            origin: gorev.server_origin || "http://localhost:3012",
+                            job_id: gorev.job_id,
+                            results: [],
+                            final: true
+                        }, () => {
+                            chrome.storage.local.remove(storageKey, () => {
+                                chrome.runtime.sendMessage({
+                                    action: "completeJobAndFocusPanel",
+                                    origin: gorev.server_origin
+                                });
+                            });
+                        });
+                    }
+                });
+                return;
+            }
+
+            // ============ Faz TT-1: TIKTOK — YAKALAMA YOK, TEMIZ ATLA ============
+            // Faz 1 yalnizca iskelet (link kabulu + etiket + gruplama + Baslik 1). Yakalama
+            // Faz 2'de gelecek. AMA bu kapi OLMAZSA: TikTok sayfasi asagidaki X seciciye
+            // (article[data-testid="tweet"]) duser, ASLA bulamaz -> "Tweet yuklenemedi" ->
+            // 120sn'de bir location.reload() ile SONSUZ DONGU (retry_count'un ust siniri YOK).
+            // FB Faz 1'inde (v3.15) TAM BUNU yasadik: gonderi acildi, orada kaldi, sayfa
+            // durmadan yenilendi. Ders alinmisti; TikTok'a uygulamak Faz 1'de ATLANDI ->
+            // burada kapatiliyor.
+            // FB'nin TEMIZ ATLAMA blogunun aynisi: kuyruktan dus, sonrakine gec, kuyruk
+            // bitince taramayi DUZGUN kapat (reload YOK).
+            if (xPlatform() === 'tt') {
+                printLog("Yakalama henuz yok (Faz 1) -> gonderi atlaniyor");
+                durumText.innerHTML = `
+                    <div style="text-align:center;">
+                        <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Gönderi atlandı</span><br>
+                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü henüz desteklenmiyor, sonrakine geçiliyor.</span>
+                    </div>`;
+                gorev.retry_count = 0;
+                gorev.kuyruk.shift();
+                let ttUpd = {}; ttUpd[storageKey] = gorev;
+                chrome.storage.local.set(ttUpd, () => {
+                    if (gorev.kuyruk.length > 0) {
+                        const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                        setTimeout(() => { window.location.href = nextUrl; }, 600);
+                    } else {
                         swSendReliable({
                             action: "submitWordResult",
                             origin: gorev.server_origin || "http://localhost:3012",
