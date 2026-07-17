@@ -1083,7 +1083,18 @@
                     ));
 
                     // A. Tweet alt kısmını (beğeni, rt sayıları ve etkileşim butonları) bul ve gizle
-                    const timeEl = element.querySelector('time');
+                    //
+                    // ALINTI TWEET DUZELTMESI (2026-07-17, kullanici ciktisi):
+                    // querySelector('time') DOM'daki ILK <time>'i verir. Alinti tweette bu,
+                    // ALINTILANAN (nested) tweetin zaman damgasidir ("· 2s"), disaridaki tweetin
+                    // TARIH satiri DEGIL. Sonuc: dateTimeRow alintilanan tweet KUTUSUNA oturuyor,
+                    // kirpma orada bitiyor ve disaridaki "5:03 ÖÖ · 15 Tem 2026" satiri kadraj
+                    // DISINDA kaliyordu -- ustelik asagidaki nextElementSibling dongusu onu
+                    // GIZLIYORDU da. Disaridaki tarih satiri DOM'da alintidan SONRA gelir, yani
+                    // SON <time> her zaman odur (alinti tek seviye gomulur -> en fazla 2 <time>).
+                    // Normal (alintisiz) tweette tek <time> vardir -> son == ilk, davranis AYNI.
+                    const _tumTimes = element.querySelectorAll('time');
+                    const timeEl = _tumTimes.length ? _tumTimes[_tumTimes.length - 1] : null;
                     if (timeEl) {
                         let contentColumn = timeEl.parentElement;
                         while (contentColumn && contentColumn !== element) {
