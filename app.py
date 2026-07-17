@@ -447,12 +447,25 @@ def link_ekle_hyperlink(paragraf, url, metin, font_name, size_pt, color_hex, und
 # (olculdu: 524x1180 gonderi karti -> 1.69", 598x250 kisa metin -> 6.50").
 #
 # TAVAN NEDEN SART: sayfa Letter (12240x15840 twip) + kenar bosluklari (720/1080)
-# -> 7.0" x 10.0" kullanilabilir alan. Orani 0.44 olan bir gonderi karti 5" genislikte
-# 11.3" yuksek olur, hicbir sayfaya sigmaz. Tavana takilan gorselin genisligi hedeften
+# -> 7.0" x 10.0" kullanilabilir alan. Orani 0.44 olan bir gonderi karti 6" genislikte
+# 13.5" yuksek olur, hicbir sayfaya sigmaz. Tavana takilan gorselin genisligi hedeften
 # sapar; istek bu yuzden "esit" degil "esit derecesinde yakin".
 # 9.0" = 10.0" metin yuksekligi - ~1.0" baslik+link+aralik payi (baslik puntosu
 # kullanici tarafindan ayarlanabildigi icin pay genis tutuldu).
-HEDEF_GORSEL_GENISLIK_INCH = 5.0
+#
+# HEDEF GENISLIK NEDEN 6.0" (kullanici karari 2026-07-17, "sayfayi taşma olmadan
+# doldurabildigimiz kadar dolduralim"): metin alani 7.0" genis; 5.0" hedefte sayfanin
+# sag %33'u hep bos kaliyordu. Simulasyon (10 gonderilik temsili karisim) sunu gosterdi:
+# hedefi buyutmek EK SAYFAYA MAL OLMUYOR (5.0"->10 sayfa, 7.0"->10 sayfa) cunku uzun
+# kartlar zaten YUKSEKLIK tavanina dayali, genisletmek onlara yer ekletmiyor.
+#   5.0" -> alan doluluğu %38, genislik farki 1.25x
+#   6.0" -> %46, 1.50x   <- secilen orta yol
+#   7.0" -> %52, 1.75x
+# Doldurma ile genislik esitligi ZIT yonde: tavana dayanmis gorseli genisletmenin tek
+# yolu uzatmak, sayfa buna izin vermiyor -> ikisi ayni anda maksimum olamaz.
+# (Kenar bosluklarini daraltmak denendi: 0.75"->0.5" doluluğu %52.1 -> %51.9 YAPIYOR,
+#  alan buyudukce payda da buyudugu icin ise yaramiyor -> kenar bosluklari degismedi.)
+HEDEF_GORSEL_GENISLIK_INCH = 6.0
 GORSEL_TAVAN_YUKSEKLIK_INCH = 9.0
 
 def gorsel_ekle_ve_boyutlandir(doc_obj, gorsel_data):
@@ -4214,7 +4227,7 @@ LOCAL_DOCX_JS = r'''
       // -> gerekce ve sayilarin tam aciklamasi orada. Ozet: GENISLIK-ONCE; genislik
       // hedefe sabit, yukseklik en-boy oranindan turer (goruntu esnetilmez); tavan
       // sayfaya sigma zorunlulugu (7.0"x10.0" kullanilabilir alan).
-      var HEDEF_W=5.0, TAVAN_H=9.0;
+      var HEDEF_W=6.0, TAVAN_H=9.0;
       var wIn, hIn;
       if(sz.w>0 && sz.h>0){
         var ar=sz.w/sz.h;
