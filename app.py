@@ -433,11 +433,20 @@ def link_ekle_hyperlink(paragraf, url, metin, font_name, size_pt, color_hex, und
     paragraf._p.append(hyperlink)
 
 # --- .docx gorsel olculeri (kullanici karari 2026-07-17) ---
-# JS IKIZI: LOCAL_DOCX_JS icindeki imageXml (app.py ~4200). IKISI BIRLIKTE DEGISMELI.
-# Ayrisirlarsa ayni havuzdan iki farkli boyutta rapor cikar: Word normalde TARAYICIDA
-# uretilir (imageXml), ama /api/upload/format ("Format Docx" sekmesi), /api/manual/generate
-# (istemci uretimi hata verirse devreye giren gorunmez yedek) ve
-# /api/extension/generate_single bu Python yolunu kullanir.
+#
+# !!! ARTIK JS IKIZI DEGIL - BILEREK AYRISTI (2026-07-17) !!!
+# Word'un ASIL uretildigi yol TARAYICI (LOCAL_DOCX_JS). Orasi kullanici istegi uzerine
+# SAYFA BAZLI boyutlamaya gecti: sayfalama Word'den devralindi, ayni sayfaya dusen
+# gorsellere ORTAK genislik veriliyor (bkz. LOCAL_DOCX_JS ~4270 "SAYFA BAZLI YERLESIM").
+# Bu Python yolu ayni seyi YAPAMAZ ve yapmasi da beklenmiyor:
+#   - /api/upload/format ("Format Docx" sekmesi) MEVCUT bir .docx'i yeniden bicimlendirir;
+#     havuz verisi/en-boy plani yoktur, sayfalamayi yeniden kurmasi ayri bir istir.
+#   - /api/manual/generate yalnizca tarayici uretimi HATA VERIRSE devreye giren gorunmez
+#     yedektir (xLocalGenEnabled hep true) -> nadir ve "calissin yeter" yolu.
+#   - /api/extension/generate_single tek ogedir; eslestirilecek ikinci gorsel yoktur.
+# Bu yuzden burasi GORSEL BAZLI basit kuralda birakildi. Iki yol ayni belgeyi ayni
+# olcude uretmez; bu bilinen ve kabul edilen fark. Tarayici yolunu degistirirken buraya
+# dokunmak GEREKMEZ - ama sunucu yolunun ciktisi "eski duzen" gorunur.
 #
 # KURAL: GENISLIK-ONCE. Genislik hedefe sabitlenir, yukseklik en-boy oranindan turer
 # -> en-boy orani korunur, goruntu esnetilmez, piksel verisi hic islenmez (yalnizca
@@ -4217,28 +4226,11 @@ LOCAL_DOCX_JS = r'''
       rPr+='<w:color w:val="'+b1Color+'"/><w:sz w:val="'+b1Sz+'"/><w:szCs w:val="'+b1Sz+'"/>';
       return '<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
-    async function imageXml(item){
+    // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
+    // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
+    function imageXml(item, wIn, hIn){
       var rid=addImage(item);
       if(!rid) return '';
-      var mime=item.image_mime||'image/jpeg';
-      var dataUrl='data:'+mime+';base64,'+item.image_b64;
-      var sz=await loadImageSize(dataUrl);
-      // PYTHON IKIZI: gorsel_ekle_ve_boyutlandir (app.py ~435). IKISI BIRLIKTE DEGISMELI
-      // -> gerekce ve sayilarin tam aciklamasi orada. Ozet: GENISLIK-ONCE; genislik
-      // hedefe sabit, yukseklik en-boy oranindan turer (goruntu esnetilmez); tavan
-      // sayfaya sigma zorunlulugu (7.0"x10.0" kullanilabilir alan).
-      var HEDEF_W=6.0, TAVAN_H=9.0;
-      var wIn, hIn;
-      if(sz.w>0 && sz.h>0){
-        var ar=sz.w/sz.h;
-        wIn=HEDEF_W; hIn=wIn/ar;
-        if(hIn>TAVAN_H){ hIn=TAVAN_H; wIn=hIn*ar; }
-      } else {
-        // Olcu okunamadi (bozuk veri): oran bilinmiyor. wp:extent hem cx hem cy ister,
-        // biri tahmin edilmek zorunda. Eski yedek bicimin orani (4.5/3.8) korunup
-        // genislik hedefe cekildi.
-        wIn=HEDEF_W; hIn=HEDEF_W/(4.5/3.8);
-      }
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       return '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
@@ -4286,8 +4278,70 @@ LOCAL_DOCX_JS = r'''
     // Baslik 1 BASILMAZ (mevcut davranis birebir korunur).
     var multiPlatform = platOrder.length > 1;
 
-    var body=[], headerIndex=0;
-    async function renderEntry(entry){
+    // ================= SAYFA BAZLI YERLESIM (kullanici karari 2026-07-17) =================
+    // Istek: "genislik/yukseklik oranini bozmadan oyle ayarla ki, gorselin yuksekligi
+    // cok uzun degilse bir sayfada en az 2 gorsel olsun (Baslik2-Gorsel-Link x2); o
+    // sayfadaki 2 gorselin genislikleri ayni olacak kadar yakin olsun; bu sekillendirme
+    // SAYFA BAZLI olsun."
+    //
+    // Bunun icin sayfalamayi Word'den DEVRALIYORUZ (kendi sayfa sonumuzu koyuyoruz):
+    // "ayni sayfada kim var" bilinmeden ortak genislik hesaplanamaz, dolayisiyla
+    // sayfalamayi Word'e birakip ayni anda sayfa bazli boyutlama yapmak imkansiz.
+    //
+    // MATEMATIK: iki gorsel de W genisse yukseklikleri W/ar1 ve W/ar2 olur (oran
+    // KORUNUR, esneme yok). Sayfaya sigma sarti:
+    //     W*(1/ar1 + 1/ar2) + paylar <= SAYFA_H
+    //     W = min(METIN_W, (SAYFA_H - paylar) / (1/ar1 + 1/ar2))
+    // W esigin altina duserse gorseller "cok uzun" demektir -> cift bozulur, gorsel
+    // TEK BASINA sayfaya gider ve orada W = min(METIN_W, (SAYFA_H - pay) * ar) olur.
+    // Ornek (olculdu): iki IG/FB gonderi karti (oran 0.44) ayni sayfaya ancak 1.81"
+    // ile sigiyor -> esigin altinda -> her biri tek basina 4.03" x 9.0".
+    var SAYFA_H = 10.0;       // 15840 - 720 - 720 twip
+    var METIN_W = 7.0;        // 12240 - 1080 - 1080 twip
+    var ESIK_W  = 2.5;        // kullanici karari: ortak genislik bunun altina duserse cift bozulur
+    var GUVENLIK_PAY = 0.25;  // Word'un satir yuksekligini birebir bilemeyiz -> temkinli pay
+
+    var b1Pt=(parseInt(opts.b1_size,10)||18), bPt=(parseInt(opts.b_size,10)||14), lPt=(parseInt(opts.l_size,10)||10);
+
+    // Metin yuksekligi tahmini. Link metni URL'nin TAMAMI ve FB pfbid linkleri ~120
+    // karakter -> 7"lik satira sigmaz, 2 satira kayar. AZ tahmin edersek sayfa TASAR
+    // ve Word kendi sayfa sonunu atar (tam kacindigimiz sey) -> karakter genisligi
+    // ve satir yuksekligi bilerek BOL tutuldu; fazla tahmin yalnizca gorseli bir
+    // miktar kucultur, bicimi bozmaz.
+    function satirSayisi(metin, puntoPt, genislikIn){
+      var karGenPt = 0.55 * puntoPt;                 // Calibri ~0.5; temkinli
+      var satirBasiKar = Math.max(1, Math.floor((genislikIn*72) / karGenPt));
+      return Math.max(1, Math.ceil(String(metin||'').length / satirBasiKar));
+    }
+    function metinY(metin, puntoPt, genislikIn, afterTwip){
+      return satirSayisi(metin, puntoPt, genislikIn) * (1.2*puntoPt)/72 + (afterTwip/1440);
+    }
+    // Bir birimin gorsel DISI dikey maliyeti (baslik + link + araliklar)
+    function birimPay(b){
+      var p=0;
+      if(b.h1) p += 240/1440 + metinY(b.h1, b1Pt, METIN_W, 120);  // Baslik1: before 240
+      if(b.h2) p += metinY(b.h2, bPt, METIN_W, 120);              // Baslik2
+      if(b.item.image_b64) p += 120/1440;                          // gorsel paragrafi after
+      p += metinY(b.link||'', lPt, METIN_W, b.son?360:240);        // link
+      return p;
+    }
+    // Bir sayfadaki TUM gorsellere verilecek ORTAK genislik
+    function ortakGenislik(grup){
+      var pay=0, tersToplam=0, i;
+      for(i=0;i<grup.length;i++){ pay += birimPay(grup[i]); if(grup[i].ar) tersToplam += 1/grup[i].ar; }
+      var kalan = SAYFA_H - pay - GUVENLIK_PAY;
+      if(kalan<=0) return 0;
+      if(tersToplam<=0) return METIN_W;   // sayfada hic gorsel yok -> genislik onemsiz
+      return Math.min(METIN_W, kalan/tersToplam);
+    }
+
+    // ---- 1. GECIS: birimleri topla (henuz XML yok). Birim = 1 gorsel + linki;
+    //      onune dusen Baslik1/Baslik2 birimle birlikte tasinir.
+    //      NOT: Baslik2 GRUP basina bir kez basilir (mevcut yapi) -> bir hesabin 3
+    //      gonderisi varsa yapi H2 + (gorsel+link)x3 olur; sayfa sonu grubun ortasina
+    //      denk gelirse Baslik2 TEKRARLANMAZ. Word'un bugunku davranisiyla ayni.
+    var birimler=[], headerIndex=0;
+    function toplaEntry(entry, h1){
       var type=entry[0], val=entry[1];
       if(type==='group'){
         var group=groups[val];
@@ -4304,39 +4358,90 @@ LOCAL_DOCX_JS = r'''
                                           : ((val.charAt(0)==='@') ? val : '@'+val);
         headerIndex++;
         if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
-        body.push(headingXml(baslikFormatla(baslik)));
         var ordered=group.items; // grup içi sıra: havuz sırası (kullanıcı sürükleyerek düzenler)
         var k;
         for(k=0;k<ordered.length;k++){
-          var it2=ordered[k];
-          if(it2.image_b64){ body.push(await imageXml(it2)); }
-          var last=(k===ordered.length-1);
-          body.push(linkXml(it2.link||'', last?360:240, last));
+          birimler.push({ h1:(k===0?h1:null), h2:(k===0?baslikFormatla(baslik):null),
+                          item:ordered[k], link:(ordered[k].link||''), son:(k===ordered.length-1) });
         }
       } else {
-        var item2=val;
-        var b2=(item2.title||'').trim();
-        if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; body.push(headingXml(baslikFormatla(b2))); }
-        if(item2.image_b64){ body.push(await imageXml(item2)); }
-        body.push(linkXml(item2.link||'', 360, true));
+        var item2=val, b2=(item2.title||'').trim();
+        if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; }
+        birimler.push({ h1:h1, h2:(b2?baslikFormatla(b2):null),
+                        item:item2, link:(item2.link||''), son:true });
       }
     }
-
     if(multiPlatform){
       // Birden fazla platform (X / Instagram / Facebook) -> Baslik 1 ile ayir
       // (ilk gorunen platform once; havuz sirasina gore).
       var pj, oi;
       for(pj=0; pj<platOrder.length; pj++){
-        var plat=platOrder[pj];
-        body.push(heading1Xml(PLAT_LABEL[plat] || 'X (Twitter)'));
+        var plat=platOrder[pj], ilk=true;
         for(oi=0; oi<order.length; oi++){
-          if(entryPlatform(order[oi])===plat){ await renderEntry(order[oi]); }
+          if(entryPlatform(order[oi])===plat){
+            toplaEntry(order[oi], ilk ? (PLAT_LABEL[plat] || 'X (Twitter)') : null);
+            ilk=false;
+          }
         }
       }
     } else {
       // Tek platform -> Baslik 1 yok (mevcut davranis).
       var oi2;
-      for(oi2=0; oi2<order.length; oi2++){ await renderEntry(order[oi2]); }
+      for(oi2=0; oi2<order.length; oi2++){ toplaEntry(order[oi2], null); }
+    }
+
+    // ---- 2. GECIS: en-boy oranlarini oku (tek async adim; boyutlama buna dayanir)
+    var bi2;
+    for(bi2=0; bi2<birimler.length; bi2++){
+      var bu=birimler[bi2];
+      bu.ar = null;
+      if(bu.item.image_b64){
+        var sz=await loadImageSize('data:'+(bu.item.image_mime||'image/jpeg')+';base64,'+bu.item.image_b64);
+        // Olcu okunamazsa (bozuk veri) eski yedek bicimin orani; wp:extent hem cx hem
+        // cy ister, biri tahmin edilmek zorunda.
+        bu.ar = (sz.w>0 && sz.h>0) ? (sz.w/sz.h) : (4.5/3.8);
+      }
+    }
+
+    // ---- 3. GECIS: sayfalara ayir + her sayfanin ORTAK genisligini hesapla
+    var sayfalar=[], ix=0;
+    while(ix < birimler.length){
+      var a=birimler[ix], b=(ix+1<birimler.length) ? birimler[ix+1] : null;
+      var ciftKuruldu=false;
+      if(b){
+        var W2=ortakGenislik([a,b]);
+        if(W2 >= ESIK_W){
+          a.w=W2; a.h=a.ar?(W2/a.ar):0;
+          b.w=W2; b.h=b.ar?(W2/b.ar):0;
+          sayfalar.push([a,b]); ix+=2; ciftKuruldu=true;
+        }
+      }
+      if(!ciftKuruldu){
+        // "Cok uzun" -> tek basina sayfa; tum sayfa yuksekligi ona kalir.
+        var kalan1=SAYFA_H - birimPay(a) - GUVENLIK_PAY;
+        var W1=a.ar ? Math.min(METIN_W, Math.max(0.1, kalan1)*a.ar) : METIN_W;
+        a.w=W1; a.h=a.ar?(W1/a.ar):0;
+        sayfalar.push([a]); ix+=1;
+      }
+    }
+
+    // ---- 4. GECIS: XML uret + aciik sayfa sonu koy
+    // Sayfa sonu paragrafi 1pt'lik "exact" satir yuksekligiyle uretilir; yoksa bos
+    // paragraf tam satir kadar yer kaplar ve hesabimizi bozar.
+    function sayfaSonuXml(){
+      return '<w:p><w:pPr><w:spacing w:after="0" w:line="20" w:lineRule="exact"/></w:pPr>'
+           + '<w:r><w:br w:type="page"/></w:r></w:p>';
+    }
+    var body=[], si, bj;
+    for(si=0; si<sayfalar.length; si++){
+      for(bj=0; bj<sayfalar[si].length; bj++){
+        var u=sayfalar[si][bj];
+        if(u.h1) body.push(heading1Xml(u.h1));
+        if(u.h2) body.push(headingXml(u.h2));
+        if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
+        body.push(linkXml(u.link, u.son?360:240, u.son));
+      }
+      if(si < sayfalar.length-1) body.push(sayfaSonuXml());
     }
 
     var sectPr='<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
