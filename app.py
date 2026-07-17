@@ -2849,18 +2849,8 @@ HTML_TEMPLATE = """
                     } else if (uyariEl) {
                         uyariEl.style.display = 'none';
                     }
-
-                    // Baslat butonunu KILITLE. Yalnizca gorunurluk/afiyet; gercek koruma
-                    // startAutomation icindeki kapida (buton durumu bayat kalirsa diye).
-                    var basBtn = document.getElementById('auto-start-btn');
-                    if (basBtn) {
-                        basBtn.disabled = eskiMi;
-                        basBtn.style.opacity = eskiMi ? '0.45' : '';
-                        basBtn.style.cursor = eskiMi ? 'not-allowed' : '';
-                        basBtn.title = eskiMi
-                            ? ('Eklenti güncel değil (kurulu v' + kuruluSurum + ', en güncel v' + sonSurum + ') — önce güncelleyin.')
-                            : '';
-                    }
+                    // Kilidin KENDISI burada DEGIL, bu isleyicinin EN SONUNDA uygulanir
+                    // (asagidaki durum dallari inputEl.disabled = false yapiyor).
                 } catch (e) {}
 
                 // Update manual list section
@@ -3004,6 +2994,37 @@ HTML_TEMPLATE = """
                     if (downloadArea) downloadArea.style.display = 'none';
                     actionButtons.style.display = 'flex';
                 }
+
+                // ===== KILIT: eklenti YOK ya da ESKI ise bu sekmede islem yapilamaz =====
+                // Kullanici istegi 2026-07-17: "sadece baslat butonunu kilitlemek yetmez,
+                // input alanini da kilitle eklenti yoksa ya da surumu guncel degilse."
+                //
+                // NEDEN TAM BURADA (isleyicinin EN SONU): yukaridaki durum dallari girdiyi
+                // ACIYOR (inputEl.disabled = false, ~2988). Kilidi daha erken uygulasaydik
+                // her yoklamada SESSIZCE geri alinirdi -> kilit hic tutmazdi.
+                // Tarama SURERKEN links-input-group zaten gizleniyor; oraya karismiyoruz,
+                // yalnizca ogelerin disabled durumunu yonetiyoruz.
+                try {
+                    var kilitli = (!connected) || !!window.extensionOutdated;
+                    var kilitSebep = !connected
+                        ? 'Eklenti bağlı değil — Chrome eklentisini kurun/aktif edin.'
+                        : ('Eklenti güncel değil (kurulu v' + (window.extensionInstalledVersion || '?')
+                           + ', en güncel v' + (window.extensionLatestVersion || '?') + ') — önce güncelleyin.');
+                    var girdiEl = document.getElementById('tweet_links_input');
+                    if (girdiEl) {
+                        girdiEl.disabled = kilitli;
+                        girdiEl.style.opacity = kilitli ? '0.45' : '1';
+                        girdiEl.style.cursor = kilitli ? 'not-allowed' : 'text';
+                        girdiEl.title = kilitli ? kilitSebep : '';
+                    }
+                    var basBtn = document.getElementById('auto-start-btn');
+                    if (basBtn) {
+                        basBtn.disabled = kilitli;
+                        basBtn.style.opacity = kilitli ? '0.45' : '';
+                        basBtn.style.cursor = kilitli ? 'not-allowed' : '';
+                        basBtn.title = kilitli ? kilitSebep : '';
+                    }
+                } catch (e) {}
             })
             .catch(err => console.error("Status polling hatası:", err));
         }
