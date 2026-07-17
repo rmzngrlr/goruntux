@@ -164,6 +164,31 @@ function xIsFbPostUrl(link) {
   } catch (e) { return false; }
 }
 
+// Faz FB-2 (son parca): Facebook otomasyondan suphelenince gonderi yerine DOGRULAMA
+// ekranina yonlendirir (/checkpoint/... veya /challenge/...). O noktada devam etmek
+// (yeniden yukleme, sonraki gonderiye gecme) durumu KOTULESTIRIR -> tarama durdurulur.
+//
+// HIZ YAVASLATMA BILEREK YAPILMADI: plan 3-8sn rastgele bekleme ongoruyordu ama o
+// rakam hicbir olcume dayanmiyordu. Olcum sunu gosterdi: gonderiler arasindaki 100ms
+// (widget.js) istekler ARASI aralik degil, yakalama bittikten sonraki son sicrama;
+// gercek dongu sayfa yuklenmesi + yorum gizleme + kaydir/birlestir + yukleme ile zaten
+// SANIYELER suruyor ve sayfaya gore DEGISKEN (yani korunmak istenen "sabit aralik
+// imzasi" pratikte zaten yok). Kullanici da sahada sorun yasamadigini bildirdi.
+// Bu koruma ise BEDAVA: hicbir seyi yavaslatmaz, yalnizca FB zaten isaretlemisse calisir.
+//
+// Host'a duyarli (xIsFbHost) ve yol ONEKINE bakar: 'evil.com/?u=facebook.com/checkpoint'
+// veya '/bir-sayfa/checkpoint-bilgi' KACMAZ.
+function xIsFbCheckpointUrl(link) {
+  try {
+    if (xPlatformOf(link) !== 'fb') return false;
+    const u = xUrlOf(link);
+    if (!u) return false;
+    const p = String(u.pathname || '').toLowerCase().replace(/\/+$/, '');
+    return p === '/checkpoint' || p.startsWith('/checkpoint/')
+        || p === '/challenge'  || p.startsWith('/challenge/');
+  } catch (e) { return false; }
+}
+
 function normalizeUrl(url) {
   if (!url) return "";
   // Faz FB-1: FB'de KIMLIK SORGUDA olabilir (permalink.php?story_fbid=..&id=..) ->
@@ -247,10 +272,28 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       chrome.storage.local.get([storageKey], (result) => {
         try {
           let gorev = result[storageKey];
-          
+
+          // FB DOGRULAMA EKRANI -> TARAMAYI ANINDA DURDUR (kullanici onayi 2026-07-17).
+          // Eslestirme mantigindan ONCE: checkpoint URL'i hedefle eslesmez, dolayisiyla
+          // asagidaki "eslesmedi" dali calisir ve gorev ya yeniden yonlendirilir ya da
+          // asili kalir; ikisi de FB'ye baski yapmaya DEVAM etmek demektir.
+          // Widget'a konamazdi: widgetiFirlat yalnizca URL ESLESIRSE cagriliyor, yani
+          // checkpoint sayfasinda widget hic enjekte edilmiyor -> kontrol calismazdi.
+          if (gorev && gorev.aktif && xIsFbCheckpointUrl(tab.url)) {
+            logToServer(`[Facebook] DOGRULAMA EKRANI ALGILANDI (${path}) — tarama DURDURULUYOR. `
+                      + `Devam etmek hesap riskini artirir. Lutfen facebook.com'da dogrulamayi `
+                      + `tamamlayip taramayi yeniden baslatin.`);
+            chrome.storage.local.remove(storageKey, () => {
+              chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (cfg) => {
+                resetServerJobReliable(cfg.server_origin);
+              });
+            });
+            return;
+          }
+
           if (gorev && gorev.aktif) {
             let eslesiyor = false;
-            
+
             if (gorev.asama === "profil_taramasi") {
               let expectedPath = "";
               if (gorev.is_list_scrape) {
