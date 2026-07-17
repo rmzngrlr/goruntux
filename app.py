@@ -14,6 +14,7 @@ from PIL import Image as PILImage
 import base64
 import zipfile
 import os
+import json
 import uuid
 from urllib.parse import urlparse, parse_qs
 
@@ -518,6 +519,29 @@ def gorsel_ekle_ve_boyutlandir(doc_obj, gorsel_data):
                 p_img.add_run().add_picture(gorsel_stream, width=Inches(HEDEF_GORSEL_GENISLIK_INCH))
         except Exception as inner_e:
             print(f"[gorsel_ekle_ve_boyutlandir] Fallback hatası: {inner_e}", flush=True)
+
+def _eklenti_surumu_oku():
+    """Panelin sundugu .zip'teki (yani EN GUNCEL) eklenti surumu — x-word/manifest.json.
+
+    NEDEN ACILISTA BIR KEZ: /api/status 1.5 sn'de bir yoklaniyor; manifest'i her
+    yoklamada acmak dakikada ~40 gereksiz disk erisimi olurdu. Docker'da x-word/
+    imaja gomulu -> calisirken DEGISMEZ; degisince zaten konteyner yeniden kurulur
+    ve bu deger tazelenir.
+
+    Okunamazsa BOS doner ve panel uyariyi HIC gostermez: yanlis "guncelle" uyarisi
+    vermektense susmak dogru (kullanici bosuna eklenti yeniden yukler).
+    """
+    try:
+        p = os.path.join(os.path.dirname(__file__), "x-word", "manifest.json")
+        with open(p, encoding="utf-8") as f:
+            return str(json.load(f).get("version") or "").strip()
+    except Exception as e:
+        print(f"[eklenti_surum] x-word/manifest.json okunamadi: {e}", flush=True)
+        return ""
+
+
+EKLENTI_SURUMU = _eklenti_surumu_oku()
+
 
 def eklenti_zip_olustur():
     zip_buffer = io.BytesIO()
@@ -1589,6 +1613,8 @@ HTML_TEMPLATE = """
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
                         <div id="extension-status-container">
                             <div class="status-badge status-disconnected" id="ext-status-badge">🔴 Eklenti Bekleniyor...</div>
+                            <!-- Eklenti KURULU ama ESKI ise gorunur (bkz. refreshStatus). -->
+                            <div id="ext-version-warning" style="display: none; margin-top: 8px; font-size: 12px; font-weight: 600; line-height: 1.5; color: #ffb020;"></div>
                         </div>
                         <a href="/api/extension/download_zip" class="btn btn-secondary">📥 GörüntüX Chrome Eklentisini İndir (.zip)</a>
                     </div>
@@ -2731,6 +2757,27 @@ HTML_TEMPLATE = """
         }
 
         // Dynamic State Poller (Runs every 1.5s)
+        // Eklenti surumlerini KIYASLA. a<b ise -1, a>b ise 1, esitse 0.
+        //
+        // NEDEN ELDE YAZILDI (iki naif yol da YANLIS):
+        //   parseFloat  -> "3.40" ile "3.4" AYNI sayidir (3.4) -> 3.40 kuruluyken bile
+        //                  "guncel degil" demez ama 3.9 vs 3.40'ta 3.9'u YENI sanir.
+        //   metin (<)   -> "3.9" > "3.40" cikar (once '9' vs '4') -> ESKI surumu YENI sanir.
+        // Dogrusu Chrome'un kurali: noktayla ayrilmis TAM SAYILAR, parca parca kiyaslanir.
+        //   "3.40" -> [3,40] ; "3.39" -> [3,39] ; 40 > 39 -> 3.40 daha yeni.
+        // Eksik parca 0 sayilir: "3.4" -> [3,4] ; "3.4.1" -> [3,4,1] -> 3.4.1 daha yeni.
+        function xSurumKiyas(a, b) {
+            var pa = String(a).trim().split('.');
+            var pb = String(b).trim().split('.');
+            var n = Math.max(pa.length, pb.length);
+            for (var i = 0; i < n; i++) {
+                var x = parseInt(pa[i], 10); if (isNaN(x)) x = 0;
+                var y = parseInt(pb[i], 10); if (isNaN(y)) y = 0;
+                if (x !== y) return (x < y) ? -1 : 1;
+            }
+            return 0;
+        }
+
         function refreshStatus() {
             fetch('/api/status')
             .then(res => res.json())
@@ -2754,6 +2801,32 @@ HTML_TEMPLATE = """
                     badge.className = "status-badge status-disconnected";
                     badge.innerText = "Eklenti bekleniyor...";
                 }
+
+                // --- Eklenti surum uyarisi (kullanici istegi 2026-07-17) ---
+                // Panel bugune kadar yalnizca eklentinin KURULU olup olmadigina bakiyordu;
+                // hangi surum oldugu umurunda degildi -> cok eski bir eklentiyle de yesil
+                // yanıyordu. Kurulu surumu bridge.js ZATEN yaziyor (data-x-rapor-version);
+                // en guncel surumu de sunucu manifest.json'dan okuyup /api/status ile veriyor.
+                //
+                // UC AYRI DURUM, karistirilmamali:
+                //   kurulu degil        -> surum bilinemez, uyari YOK (kirmizi rozet zaten soyluyor)
+                //   kurulu + guncel     -> uyari YOK
+                //   kurulu + ESKI       -> uyari VAR
+                // Kurulu surum sunucudakinden ILERIDE ise (gelistirme makinesi) de susulur.
+                try {
+                    var uyariEl = document.getElementById('ext-version-warning');
+                    var kuruluSurum = document.documentElement.getAttribute('data-x-rapor-version') || '';
+                    var sonSurum = data.ext_latest_version || '';
+                    if (uyariEl && kuruluSurum && sonSurum && xSurumKiyas(kuruluSurum, sonSurum) < 0) {
+                        uyariEl.innerHTML = '&#9888;&#65039; Eklenti güncel değil — kurulu <b>v' + kuruluSurum
+                            + '</b>, en güncel <b>v' + sonSurum + '</b>.<br>'
+                            + '.zip\\'i indirip eklenti klasörünüzün üzerine açın, sonra chrome://extensions '
+                            + 'sayfasında yenile (&#8635;) düğmesine basın.';
+                        uyariEl.style.display = 'block';
+                    } else if (uyariEl) {
+                        uyariEl.style.display = 'none';
+                    }
+                } catch (e) {}
 
                 // Update manual list section
                 const manualListSec = document.getElementById('manual-list-section');
@@ -4680,6 +4753,9 @@ def get_status():
         "results_count": job["results_count"],
         "total_count": job["total_count"],
         "is_connected": is_connected,
+        # Panelin sundugu .zip'teki surum. Panel bunu KURULU surumle (bridge.js'in
+        # yazdigi data-x-rapor-version) kiyaslayip "guncelle" uyarisi gosterir.
+        "ext_latest_version": EKLENTI_SURUMU,
         "start_time": job.get("start_time", 0.0),
         "end_time": job.get("end_time", 0.0),
         "manuel_count": len(pool),
