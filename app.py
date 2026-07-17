@@ -4216,7 +4216,10 @@ LOCAL_DOCX_JS = r'''
       if(opts.b_italic) rPr+='<w:i/>';
       if(opts.b_underline) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+bColor+'"/><w:sz w:val="'+bSz+'"/><w:szCs w:val="'+bSz+'"/>';
-      return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      // keepNext: baslik kendisinden sonraki paragrafla (gorsel) AYNI sayfada kalir.
+      // Sabit sayfa sonu kaldirildigi icin (2026-07-17) sayfa sinirini artik Word
+      // belirliyor; baslik sayfa dibinde yalniz kalmasin diye bagliyoruz.
+      return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:keepNext/><w:keepLines/><w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     function heading1Xml(text){
       var rPr='<w:rFonts w:ascii="'+xmlEsc(b1Font)+'" w:hAnsi="'+xmlEsc(b1Font)+'"/>';
@@ -4232,7 +4235,9 @@ LOCAL_DOCX_JS = r'''
       var rid=addImage(item);
       if(!rid) return '';
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
-      return '<w:p><w:pPr><w:jc w:val="left"/><w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
+      // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini artik
+      // Word belirliyor; sabit sayfa sonu 2026-07-17'de kaldirildi).
+      return '<w:p><w:pPr><w:keepNext/><w:jc w:val="left"/><w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
         + '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
@@ -4439,13 +4444,23 @@ LOCAL_DOCX_JS = r'''
       }
     }
 
-    // ---- 4. GECIS: XML uret + aciik sayfa sonu koy
-    // Sayfa sonu paragrafi 1pt'lik "exact" satir yuksekligiyle uretilir; yoksa bos
-    // paragraf tam satir kadar yer kaplar ve hesabimizi bozar.
-    function sayfaSonuXml(){
-      return '<w:p><w:pPr><w:spacing w:after="0" w:line="20" w:lineRule="exact"/></w:pPr>'
-           + '<w:r><w:br w:type="page"/></w:r></w:p>';
-    }
+    // ---- 4. GECIS: XML uret. SABIT SAYFA SONU YOK (kullanici istegi 2026-07-17).
+    //
+    // Once buraya acik sayfa sonu (<w:br w:type="page"/>) konuyordu. Kullanici bildirdi:
+    // "wordu hazirlayip ciktiyi aldiktan sonra bir sayfada 1 gorseli silince olmasi
+    // gereken otomatik kayma sayfa sonu yuzunden olmuyor." Dogru teshis - ve mekanizma
+    // TEK: sabit sayfa sonu hem yerlesimi civiliyor hem de kaymayi engelliyordu.
+    //
+    // Cakismayi cozen olcum: yerlesimi saglayan sey sayfa sonu DEGIL, BOYUTLAMA.
+    // 3. gecis gorselleri zaten "cift sayfaya sigacak" sekilde boyutluyor; ustelik
+    // ucuncu bir giris sayfaya sigmiyor (en kisa uc giris 10.98" > 10"). Bu yuzden
+    // sayfa sonlari kaldirilinca Word'un kendi akisi PLANIN AYNISINI uretiyor
+    // (simule edildi: s1[kisa,kisa] s2[uzun] s3[uzun] s4[orta,kisa] - birebir ayni).
+    // Sayfalar 'sayfalar' dizisinde planlandigi gibi olusur ama artik SERBEST akar:
+    // kullanici bir gorseli silince sonrasi kendiliginden yukari kayar.
+    //
+    // Yerlesimi kopmalara karsi keepNext koruyor (headingXml + imageXml): baslik
+    // gorselinden, gorsel de linkinden ayri sayfaya dusmez.
     var body=[], si, bj;
     for(si=0; si<sayfalar.length; si++){
       for(bj=0; bj<sayfalar[si].length; bj++){
@@ -4455,7 +4470,6 @@ LOCAL_DOCX_JS = r'''
         if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
         body.push(linkXml(u.link, u.son?360:240, u.son));
       }
-      if(si < sayfalar.length-1) body.push(sayfaSonuXml());
     }
 
     var sectPr='<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
