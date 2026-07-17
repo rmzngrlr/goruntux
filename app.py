@@ -4066,10 +4066,31 @@ X_PLATFORM_JS = r'''
 '''
 
 
+def _js_yanit(kaynak):
+    """Panele gomulu uretilen JS'i ONBELLEKSIZ sun.
+
+    NEDEN (2026-07-17, sahada isirdi): bu dosyalar <script src="/x-local-docx.js">
+    gibi SURUM EKI OLMADAN cagriliyor ve rota hicbir onbellek basligi koymuyordu.
+    Word ARTIK TARAYICIDA uretiliyor (LOCAL_DOCX_JS) -> tarayici eski kopyayi
+    tutunca `docker compose up -d --build` yapilsa bile ESKI uretici calisiyor ve
+    sunucudaki degisiklik kullaniciya hic ulasmiyor. Sessiz: panel yeni, ciktı eski.
+    Kullanici "sabit sayfa sonu kalkti" denen surumde hala sayfa sonu davranisi
+    gordu; teshis bu oldu.
+
+    Dosyalar kucuk (~25KB) ve panel yerel agda -> no-store'un bedeli yok sayilir,
+    karsiliginda "hangi kod calisiyor" belirsizligi tamamen kalkar.
+    """
+    from flask import Response
+    r = Response(kaynak, mimetype='application/javascript')
+    r.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    r.headers['Pragma'] = 'no-cache'
+    r.headers['Expires'] = '0'
+    return r
+
+
 @app.route('/x-platform.js', methods=['GET'])
 def x_platform_js():
-    from flask import Response
-    return Response(X_PLATFORM_JS, mimetype='application/javascript')
+    return _js_yanit(X_PLATFORM_JS)
 
 # ----------------- CLIENT-SIDE (BROWSER) DOCX GENERATOR (FAZ 1, ANAHTARLI) -----------------
 # Bu JS, panelde (istemci tarayıcısında) .docx üretir. Sunucu tarafı üretim (python-docx)
@@ -4527,14 +4548,18 @@ LOCAL_DOCX_JS = r'''
     return new Blob([zipBytes], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
   }
 
+  // SURUM DAMGASI: Word tarayicida uretiliyor; bu dosyanin eski kopyasi onbellekte
+  // kalirsa sunucu guncellense bile ESKI uretici calisir ve fark sessizce gizlenir
+  // (sahada tam bunu yasadik -> rota artik no-store, bkz. _js_yanit). Konsolda hangi
+  // surumun calistigi GORULEBILIR olsun diye basiliyor.
+  console.log('[GörüntüX] x-local-docx.js — sayfa bazli yerlesim, sabit sayfa sonu YOK (2026-07-17)');
   window.XLocalDocx = { generateBlob: generateBlob };
 })();
 '''
 
 @app.route('/x-local-docx.js', methods=['GET'])
 def x_local_docx_js():
-    from flask import Response
-    return Response(LOCAL_DOCX_JS, mimetype='application/javascript')
+    return _js_yanit(LOCAL_DOCX_JS)
 
 # ----------------- YEREL GORUNTU DEPOSU (Faz #1-A) -----------------
 # Ekran goruntuleri, "local_images" bayragi acikken sunucuya gitmez; eklenti bunlari
@@ -4630,8 +4655,7 @@ LOCAL_IMAGES_JS = r'''
 
 @app.route('/x-local-images.js', methods=['GET'])
 def x_local_images_js():
-    from flask import Response
-    return Response(LOCAL_IMAGES_JS, mimetype='application/javascript')
+    return _js_yanit(LOCAL_IMAGES_JS)
 
 # ----------------- FLASK FRONTEND ROUTES -----------------
 @app.route('/', methods=['GET'])
