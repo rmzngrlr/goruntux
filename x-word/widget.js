@@ -4647,19 +4647,8 @@
                         b.style.setProperty('display', 'none', 'important');
                     });
 
-                    // 3) Widget'i gorunmez yap (kadraja binebilir). YOK ETME degil visibility ->
-                    //    reflow/flas olmaz (IG'de ogrenilen).
-                    //
-                    // ID ile ALINIYOR, widgetEl/cbWidgetEl DEGISKENLERI KULLANILMIYOR: onlar
-                    // captureArticle'in (989..1388) YERELI; bu blok wordTaramaYonetimi icinde
-                    // (4592) yani KAPSAM DISI. Once dogrudan kullanmistim -> her TikTok
-                    // gonderisinde "ReferenceError: widgetEl is not defined" -> kendi try'im
-                    // yutuyor -> "gonderi atlandi" + BOS rapor. (FB blogu bu ikisini hic
-                    // kullanmadigi icin ayni tuzaga dusmemisti.)
-                    [document.getElementById('x-downloader-widget'),
-                     document.getElementById('w-cb-container')].forEach(function (w) {
-                        if (w) { _ttGorunur.push([w, w.style.visibility]); w.style.setProperty('visibility', 'hidden', 'important'); }
-                    });
+                    // 3) Widget'i gizleme karari 6. adimda (kadraj hesaplandiktan SONRA) verilir:
+                    //    yalnizca GERCEKTEN cakisiyorsa gizlenir. Bkz. asagidaki "3b".
 
                     // 4) Kareyi SABITLE: duraklat + basa sar. YAPILMAZSA cikti RASTGELE olur —
                     //    olculdu: sayfa acildiginda video 20.43s'deydi (sure 82.47), yani ayni
@@ -4728,6 +4717,34 @@
                     const cw = R - L, ch2 = B - T;
                     if (cw < 40 || ch2 < 40) throw new Error("kadraj cok kucuk: " + cw + "x" + ch2);
 
+                    // 3b) Widget'i YALNIZCA KADRAJA BINIYORSA gizle (kullanici istegi 2026-07-17:
+                    //     "TikTok'ta widget'i anlik gorunmez yapma"). Istegin ozu dogru — gereksiz
+                    //     titremesin — ama KOSULSUZ kaldirmak yanlis olurdu: widget
+                    //     position:fixed; top:100px; right:20px; width:290px (bkz. :510), yani
+                    //     1280 genislikte x=970..1260. TikTok kadraji x=436..1051 ve ETKILESIM
+                    //     RAYI (begeni/yorum/kaydet/paylas) x=1003..1051 -> TAM widget'in altinda;
+                    //     dikeyde de widget y=100'den, ray y=272'den basliyor. Gizlemeseydik
+                    //     begeni/yorum sayilarinin USTUNE widget binerdi.
+                    //     X'te gizleme yok cunku tweet solda kalir, widget'a girmez — kullanicinin
+                    //     X gozlemi dogru, TikTok'a genellemesi degil.
+                    //     Cakisma yoksa (genis ekran) HIC DOKUNULMAZ -> titreme de olmaz.
+                    //     visibility (display degil) -> reflow/flas yok (IG'de ogrenilen).
+                    const _binerMi = function (el) {
+                        if (!el) return false;
+                        const r = el.getBoundingClientRect();
+                        if (r.width < 1 || r.height < 1) return false;
+                        return !(r.right <= L || r.left >= R || r.bottom <= T || r.top >= B);
+                    };
+                    let _gizlenen = 0;
+                    [document.getElementById('x-downloader-widget'),
+                     document.getElementById('w-cb-container')].forEach(function (w) {
+                        if (_binerMi(w)) {
+                            _ttGorunur.push([w, w.style.visibility]);
+                            w.style.setProperty('visibility', 'hidden', 'important');
+                            _gizlenen++;
+                        }
+                    });
+
                     const dpr = window.devicePixelRatio || 1;
                     const res = await new Promise(resolve => {
                         swSendReliable({ action: "captureAndCrop", rect: { top: T, left: L, width: cw, height: ch2 }, dpr: dpr }, resolve);
@@ -4737,7 +4754,7 @@
                     if (!shot) throw new Error("sikistirma basarisiz");
 
                     // TEKDUZE log — butun platformlar ayni kalip.
-                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=tek-kare, kare=${_kareOnce}s->${_kareSonra}s, dahaFazlasi=${_acildi ? 'evet' : 'hayir'}`);
+                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=tek-kare, kare=${_kareOnce}s->${_kareSonra}s, dahaFazlasi=${_acildi ? 'evet' : 'hayir'}, widgetGizlendi=${_gizlenen}`);
 
                     // Yazar URL'den: DOM'a bakmiyoruz (operator tuzagi imkansiz, hesap yok).
                     const _ttAd = (location.pathname.match(/^\/@([^/]+)\//) || [])[1] || '';
