@@ -4512,6 +4512,22 @@ LOCAL_DOCX_JS = r'''
           username = (tf && !XPlat.isGenericTitle(tf)) ? ('fb:' + tf.toLowerCase()) : 'fb:@facebook_user';
         }
       }
+      // Faz TT-1: sunucudaki pool_group_key 'tt:' dalinin IKIZI.
+      // BU DAL FAZ 1'DE ATLANDI -> username null kaliyor -> her gonderi 'standalone'
+      // oluyor ve KENDI Baslik 2'sini aliyordu. Kullanici bildirdi: "ayni kullanicinin
+      // bircok TikTok linkini verdim, her ss icin ayri baslik yapti."
+      // Word TARAYICIDA uretiliyor -> Baslik 2 gruplamasini belirleyen yer BURASI;
+      // sunucudaki pool_group_key'i duzeltmek TEK BASINA yetmiyor. (Ustteki FB yorumu
+      // "IKISINI BIRDEN degistir" diye uyariyordu; tam o tuzaga dustum.)
+      if(!username && link && window.XPlat && XPlat.platform(link)==='tt'){
+        var ttSlug = XPlat.ttUsername(link);
+        if(ttSlug){ username = 'tt:' + ttSlug; }
+        else {
+          // Kisa link (vm./vt./t/) -> URL'de isim YOK; gercek ad yakalamadan gelir.
+          var tt2=(item.title||'').trim();
+          username = (tt2 && !XPlat.isGenericTitle(tt2)) ? ('tt:' + tt2.toLowerCase()) : 'tt:@tiktok_user';
+        }
+      }
       if(username){
         if(!groups[username]){ groups[username]={items:[]}; order.push(['group',username]); }
         groups[username].items.push(item);
