@@ -4710,6 +4710,19 @@
                     let T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
                     let R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
                     let B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
+
+                    // KARTIN SINIRINA HAPSET — sahada patladi (2026-07-17, kullanici ciktisi):
+                    // Kart TAM EKRAN boyunda (720) ve cocuklarini KIRPIYOR. Acilmis aciklamanin
+                    // RECT'i 720'yi asabiliyor AMA orada aciklamanin devami YOK — kart onu
+                    // kirpmis durumda; 720'nin altinda SIRADAKI KART var.
+                    // Bunu "ekran disinda kalan icerik" sanip kaydirinca 2. dilim SONRAKI
+                    // VIDEOYU yakaladi ve birlesik goruntunun altina yapisti.
+                    // Kart siniri kadrajin GERCEK ust siniri: disinda bize ait hicbir sey yok.
+                    const _kr = kart.getBoundingClientRect();
+                    L = Math.max(L, _kr.left - PAY);
+                    T = Math.max(T, _kr.top - PAY);
+                    R = Math.min(R, _kr.right + PAY);
+                    B = Math.min(B, _kr.bottom);
                     // Viewport'a KIRP: kadrajin disi yakalanamaz (captureVisibleTab yalnizca
                     // gorunen alani verir) -> istemeden kaydirilmis/bos serit gelmesin.
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
@@ -4766,8 +4779,15 @@
                         return rr.dataUrl;
                     };
 
-                    // Kirpilmamis gercek alt sinir (viewport'a kirpMADAN)
-                    const B_tam = Math.round(Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY);
+                    // Kirpilmamis gercek alt sinir — viewport'a kirpMADAN, ama KARTA HAPSEDILMIS.
+                    // Kart sinirini asan hicbir sey BIZE AIT DEGIL (sonraki karttir) -> onu
+                    // kaydirarak "kurtarmaya" calismak sonraki videoyu kadraja sokar (sahada oldu).
+                    // Bu yuzden B_tam kartin dibiyle sinirli; kart viewport'a sigiyorsa _delta=0
+                    // olur ve kaydirma yolu HIC calismaz.
+                    const B_tam = Math.round(Math.min(
+                        Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY,
+                        _kr.bottom
+                    ));
                     let _delta = Math.max(0, B_tam - window.innerHeight);   // ekran DISINDA kalan
                     let _yol = 'tek-kare', _parca = 1, _ham = null;
 
