@@ -4745,16 +4745,83 @@
                         }
                     });
 
+                    // 7) KAYDIR + BIRLESTIR (kullanici istegi 2026-07-17: "ekrana sigmayinca
+                    //    kesik oldu, scrape yapabilirdi").
+                    //
+                    // Aciklama "daha fazlası" ile ACILINCA icerik viewport'u ASIYOR ve kadraj
+                    // viewport'a kirpildigi icin son satir KESILIYORDU.
+                    //
+                    // TIKTOK'UN TUZAGI: pencere KAYMIYOR (olculdu: sh==ch==720). Kayan sey
+                    // videolarin AKIS KABI ve o kap YAPISKAN (scroll-snap) olabilir -> kaydirmak
+                    // SIRADAKI VIDEOYA atlatabilir. Bu yuzden FB'nin raylari:
+                    //   - hareketi DOGRULA; tutmadiysa tek kareye DUS
+                    //   - snap yuzunden ASIRI kaydiysa GERI AL ve tek kareye DUS
+                    //   - hicbir durumda gonderiyi ATLAMA (en kotu ihtimal = bugunku davranis)
                     const dpr = window.devicePixelRatio || 1;
-                    const res = await new Promise(resolve => {
-                        swSendReliable({ action: "captureAndCrop", rect: { top: T, left: L, width: cw, height: ch2 }, dpr: dpr }, resolve);
-                    });
-                    if (!res || res.status !== "success" || !res.dataUrl) throw new Error("captureAndCrop basarisiz");
-                    const shot = await compressScreenshot(res.dataUrl);
+                    const _capture = async function (top, h) {
+                        const rr = await new Promise(resolve => {
+                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
+                        });
+                        if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
+                        return rr.dataUrl;
+                    };
+
+                    // Kirpilmamis gercek alt sinir (viewport'a kirpMADAN)
+                    const B_tam = Math.round(Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY);
+                    let _delta = Math.max(0, B_tam - window.innerHeight);   // ekran DISINDA kalan
+                    let _yol = 'tek-kare', _parca = 1, _ham = null;
+
+                    if (_delta > 0 && _delta <= 300) {
+                        // Gercek kaydiriciyi bul (pencere degil; kartin atalarindan biri)
+                        let sc = null, el = kart;
+                        while (el && el !== document.body) {
+                            const cs = getComputedStyle(el);
+                            if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 20) { sc = el; break; }
+                            el = el.parentElement;
+                        }
+                        if (sc) {
+                            const _oncekiTop = sc.scrollTop;
+                            const _snap = sc.style.scrollSnapType, _dav = sc.style.scrollBehavior;
+                            try {
+                                // snap KAPAT: acikken tarayici bizim kucuk kaydirmamizi yutar ya da
+                                // sonraki videoya YAPISTIRIR.
+                                sc.style.setProperty('scroll-snap-type', 'none', 'important');
+                                sc.style.setProperty('scroll-behavior', 'auto', 'important');
+                                const ust = await _capture(T, window.innerHeight - T);   // 1. dilim: gorunen kisim
+                                sc.scrollTop = _oncekiTop + _delta;
+                                await new Promise(r => setTimeout(r, 250));
+                                const _gercek = sc.scrollTop - _oncekiTop;
+                                if (_gercek < 4) {
+                                    printLog(`kaydirma TUTMADI (istendi=${_delta}, oldu=${_gercek}) -> tek kareye dusuluyor`);
+                                } else if (_gercek > _delta + 20) {
+                                    printLog(`kaydirma ASIRI (istendi=${_delta}, oldu=${_gercek} — snap?) -> tek kareye dusuluyor`);
+                                } else {
+                                    const alt = await _capture(window.innerHeight - _gercek, _gercek);   // 2. dilim: kalan
+                                    if (ust === alt) {
+                                        printLog("iki dilim AYNI -> birlestirme iptal, tek kareye dusuluyor");
+                                    } else {
+                                        _ham = await igVerticalStitch([ust, alt]);
+                                        _yol = 'kaydir-birlestir'; _parca = 2;
+                                    }
+                                }
+                            } catch (e) {
+                                printLog("kaydir-birlestir hatasi: " + (e.message || e) + " -> tek kareye dusuluyor");
+                            } finally {
+                                sc.scrollTop = _oncekiTop;   // sayfayi BULDUGUMUZ gibi birak
+                                sc.style.scrollSnapType = _snap || '';
+                                sc.style.scrollBehavior = _dav || '';
+                            }
+                        } else {
+                            printLog("kaydirici bulunamadi -> tek kareye dusuluyor");
+                        }
+                    }
+
+                    if (!_ham) _ham = await _capture(T, ch2);   // tek kare (bugunku davranis)
+                    const shot = await compressScreenshot(_ham);
                     if (!shot) throw new Error("sikistirma basarisiz");
 
                     // TEKDUZE log — butun platformlar ayni kalip.
-                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=tek-kare, kare=${_kareOnce}s->${_kareSonra}s, dahaFazlasi=${_acildi ? 'evet' : 'hayir'}, widgetGizlendi=${_gizlenen}`);
+                    printLog(`Yakalama: ${_parca} parça (${cw}x${_yol === 'tek-kare' ? ch2 : (B_tam - T)}), yol=${_yol}, ekranDisi=${_delta}px, kare=${_kareOnce}s->${_kareSonra}s, dahaFazlasi=${_acildi ? 'evet' : 'hayir'}, widgetGizlendi=${_gizlenen}`);
 
                     // Yazar URL'den: DOM'a bakmiyoruz (operator tuzagi imkansiz, hesap yok).
                     const _ttAd = (location.pathname.match(/^\/@([^/]+)\//) || [])[1] || '';
