@@ -4571,22 +4571,225 @@
                 return;
             }
 
-            // ============ Faz TT-1: TIKTOK — YAKALAMA YOK, TEMIZ ATLA ============
-            // Faz 1 yalnizca iskelet (link kabulu + etiket + gruplama + Baslik 1). Yakalama
-            // Faz 2'de gelecek. AMA bu kapi OLMAZSA: TikTok sayfasi asagidaki X seciciye
-            // (article[data-testid="tweet"]) duser, ASLA bulamaz -> "Tweet yuklenemedi" ->
-            // 120sn'de bir location.reload() ile SONSUZ DONGU (retry_count'un ust siniri YOK).
-            // FB Faz 1'inde (v3.15) TAM BUNU yasadik: gonderi acildi, orada kaldi, sayfa
-            // durmadan yenilendi. Ders alinmisti; TikTok'a uygulamak Faz 1'de ATLANDI ->
-            // burada kapatiliyor.
-            // FB'nin TEMIZ ATLAMA blogunun aynisi: kuyruktan dus, sonrakine gec, kuyruk
-            // bitince taramayi DUZGUN kapat (reload YOK).
+            // ============ Faz TT-2: TIKTOK YAKALAMA ============
+            // Bu blok X seciciye (article[data-testid="tweet"]) HIC ulasmadan doner. Ulassaydi
+            // TikTok'ta asla bulamaz -> "Tweet yuklenemedi" -> 120sn'de bir location.reload()
+            // ile SONSUZ DONGU (retry_count'un ust siniri YOK). FB Faz 1'inde (v3.15) tam bunu
+            // yasadik; TikTok Faz 1'inde de atlanmisti (v3.43'te kapatildi).
+            //
+            // YAKALAMA MODELI — sahadan olculdu (2026-07-17, vp=1280x720, cikis yapilmis, TR):
+            //   Sayfa bir AKIS: [data-e2e="recommend-list-item-container"] 17 tane; HEDEF ILKI,
+            //     altindakiler TikTok'un ONERILERI. Ilkini almazsak rastgele oneri raporlanir.
+            //   Kart [264,0,959,720]; video [436,16,550,688]; sag ray (begeni/yorum/kaydet/
+            //     paylas) x≈1003-1051, y≈272-704; aciklama [448,670,436,55] videonun altina biner.
+            //   Kart TEK EKRANA SIGIYOR (688 < 720) -> kaydir+birlestir YOK, tek kare + kirpma.
+            //   Pencere KAYMIYOR (sh==ch==720); gercek kaydirici DivColumnListContainer
+            //     (sh=12240) — kart sigdigi icin ona dokunmuyoruz.
+            //
+            // IG/FB'DEN KOLAY OLMASININ SEBEBI: kullanicinin TikTok HESABI YOK -> DOM'da giris
+            // yapmis kullanici yok -> "yazar = operator" tuzagi YAPISAL olarak imkansiz; hiz/
+            // checkpoint korumasi da gereksiz. Yazar zaten URL'de (/@kullanici/video/{id}).
             if (xPlatform() === 'tt') {
-                printLog("Yakalama henuz yok (Faz 1) -> gonderi atlaniyor");
+                let _ttGorunur = [], _ttGizli = [];
+                try {
+                    {
+                        const _alinan = (gorev.combinedData ? gorev.combinedData.length : 0) + 1;
+                        const _toplam = (gorev.total_count) || ((gorev.combinedData ? gorev.combinedData.length : 0) + gorev.kuyruk.length);
+                        durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan}/${_toplam}</span>`;
+                    }
+
+                    // 1) Kart: TikTok gec hidrasyon yapiyor -> ~3sn poll (FB/IG deseni).
+                    //    HEDEF = ILK kart. querySelector zaten ilkini verir; yine de acikca
+                    //    belirtiyorum ki sonraki okuyan "neden [0]" diye sormasin.
+                    let kart = null, video = null;
+                    for (let w = 0; w < 15; w++) {
+                        kart = document.querySelector('[data-e2e="recommend-list-item-container"]');
+                        video = kart ? kart.querySelector('video') : null;
+                        // Etkilesim rayini da BEKLE: FB'de yalnizca karti bekleyip erken cikinca
+                        // etkilesim henuz gelmemis oluyordu ve kadraj disinda kaliyordu.
+                        if (kart && video && kart.querySelector('[data-e2e="like-count"]')) break;
+                        await new Promise(r => setTimeout(r, 200));
+                    }
+                    if (!kart) throw new Error("gonderi karti bulunamadi");
+
+                    // 1.5) CAPTCHA KAPISI — yakalamadan ONCE.
+                    // TikTok otomasyondan suphelenince video sayfasinin USTUNE kaydirmali
+                    // bulmaca cikariyor ("Bulmacaya uyması için kaydırıcıyı sürükleyin").
+                    // SAHADAN OLCULDU (2026-07-17): captcha aciktayken kart, video VE like-count
+                    // DOM'da DURUYOR -> kart poll'u BASARILI olur, yakalama devam eder ve rapora
+                    // videonun ustunde CAPTCHA PENCERESI olan bir goruntu girer. Hata vermez.
+                    // Bu yuzden acik kapi SART.
+                    //
+                    // ATLAMAK degil DURDURMAK: captcha bir kez ciktiysa sonraki gonderilerde de
+                    // cikar -> hepsi atlanir, bos rapor + bosa gecen zaman. FB checkpoint
+                    // kararinin aynisi: dur, kullaniciya soyle, o elle cozup yeniden baslatsin.
+                    // (Captcha'yi otomatik cozmek YOK.)
+                    if (document.querySelector('#captcha-verify-container-main-page, .captcha-verify-container')) {
+                        printLog("DOGRULAMA BULMACASI (captcha) algilandi -> tarama DURDURULUYOR. "
+                               + "Lutfen tiktok.com'da bulmacayi cozup taramayi yeniden baslatin.");
+                        durumText.innerHTML = `
+                            <div style="text-align:center;">
+                                <span style="color:#f4212e; font-size:13px; font-weight:bold;">🛑 Doğrulama bulmacası</span><br>
+                                <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · tarama durduruldu. Bulmacayı çözüp yeniden başlatın.</span>
+                            </div>`;
+                        durdurVeTemizle(storageKey, null, gorev.server_origin);
+                        return;
+                    }
+
+                    // 2) Cerez bandini GIZLE. IKI KAT GIZLI: <tiktok-cookie-banner> SHADOW DOM'da
+                    //    ve host'u SIFIR boyutlu ([0,720,0,0]) -> genel "sabit ogeleri gizle"
+                    //    mantigi onu NE gorur (querySelector shadow'a girmez) NE de boyut
+                    //    filtresinden gecirir. Acik kural SART; yoksa bant sessizce kadraja girer.
+                    //    TIKLAMA YOK: "Tümüne izin ver" onay durumunu DEGISTIRIR, gizlemek degistirmez
+                    //    (FB cerez bandi kararinin aynisi).
+                    document.querySelectorAll('tiktok-cookie-banner').forEach(function (b) {
+                        _ttGizli.push([b, b.style.display]);
+                        b.style.setProperty('display', 'none', 'important');
+                    });
+
+                    // 3) Widget'i gorunmez yap (kadraja binebilir). YOK ETME degil visibility ->
+                    //    reflow/flas olmaz (IG'de ogrenilen).
+                    [widgetEl, cbWidgetEl].forEach(function (w) {
+                        if (w) { _ttGorunur.push([w, w.style.visibility]); w.style.setProperty('visibility', 'hidden', 'important'); }
+                    });
+
+                    // 4) Kareyi SABITLE: duraklat + basa sar. YAPILMAZSA cikti RASTGELE olur —
+                    //    olculdu: sayfa acildiginda video 20.43s'deydi (sure 82.47), yani ayni
+                    //    gonderi her taramada FARKLI gorsel verirdi.
+                    let _kareOnce = null, _kareSonra = null;
+                    if (video) {
+                        _kareOnce = +(video.currentTime || 0).toFixed(2);
+                        await new Promise(function (res) {
+                            let bitti = false;
+                            const fin = function () { if (!bitti) { bitti = true; res(); } };
+                            try { video.pause(); } catch (e) {}
+                            if (Math.abs(video.currentTime || 0) < 0.05) { fin(); return; }
+                            try { video.addEventListener('seeked', fin, { once: true }); } catch (e) {}
+                            try { video.currentTime = 0; } catch (e) { fin(); }
+                            setTimeout(fin, 1200);   // yedek: 'seeked' hic gelmezse asili kalma
+                        });
+                        _kareSonra = +(video.currentTime || 0).toFixed(2);
+                    }
+
+                    // 5) Kesik aciklamayi ac ("daha fazlası"). En iyi caba: TikTok React ile
+                    //    calisiyor ve sentetik click TUTMAYABILIR (olculdu: el.click() olculeri
+                    //    degistirmedi). Basarisiz olursa yakalama YINE DE devam eder — aciklama
+                    //    kesik cikar ama gonderi atlanmaz.
+                    let _acildi = false;
+                    try {
+                        const btn = Array.from(kart.querySelectorAll('button,span,div')).find(function (e) {
+                            const t = (e.textContent || '').trim().toLowerCase();
+                            return (t === 'daha fazlası' || t === 'more' || t === 'daha fazla')
+                                && e.getBoundingClientRect().width > 10;
+                        });
+                        if (btn) {
+                            ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(function (tip) {
+                                btn.dispatchEvent(new MouseEvent(tip, { bubbles: true, cancelable: true, view: window }));
+                            });
+                            _acildi = true;
+                        }
+                    } catch (e) {}
+                    await new Promise(r => setTimeout(r, 350));   // reflow
+
+                    // 6) KADRAJ: kadraja GIRMESI GEREKEN ogelerin BIRLESIMI. Sabit koordinat
+                    //    YAZMIYORUZ — TikTok yerlesimi ekran boyutuna gore degisiyor; olculen
+                    //    [436,16,550,688] yalnizca 1280x720'de gecerliydi.
+                    const parcalar = [];
+                    const ekle = function (sel) {
+                        const e = kart.querySelector(sel);
+                        if (!e) return;
+                        const r = e.getBoundingClientRect();
+                        if (r.width > 1 && r.height > 1) parcalar.push(r);
+                    };
+                    ekle('video');
+                    ekle('[data-e2e="video-desc"]');
+                    ekle('[data-e2e="video-author-avatar"]');
+                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
+                    ekle('[data-e2e="video-music"]');
+                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
+
+                    const PAY = 8;   // ray ikonlarinin/golgenin rect'e girmeyen kismi icin
+                    let L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - PAY;
+                    let T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
+                    let R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
+                    let B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
+                    // Viewport'a KIRP: kadrajin disi yakalanamaz (captureVisibleTab yalnizca
+                    // gorunen alani verir) -> istemeden kaydirilmis/bos serit gelmesin.
+                    L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
+                    R = Math.min(window.innerWidth, Math.round(R)); B = Math.min(window.innerHeight, Math.round(B));
+                    const cw = R - L, ch2 = B - T;
+                    if (cw < 40 || ch2 < 40) throw new Error("kadraj cok kucuk: " + cw + "x" + ch2);
+
+                    const dpr = window.devicePixelRatio || 1;
+                    const res = await new Promise(resolve => {
+                        swSendReliable({ action: "captureAndCrop", rect: { top: T, left: L, width: cw, height: ch2 }, dpr: dpr }, resolve);
+                    });
+                    if (!res || res.status !== "success" || !res.dataUrl) throw new Error("captureAndCrop basarisiz");
+                    const shot = await compressScreenshot(res.dataUrl);
+                    if (!shot) throw new Error("sikistirma basarisiz");
+
+                    // TEKDUZE log — butun platformlar ayni kalip.
+                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=tek-kare, kare=${_kareOnce}s->${_kareSonra}s, dahaFazlasi=${_acildi ? 'evet' : 'hayir'}`);
+
+                    // Yazar URL'den: DOM'a bakmiyoruz (operator tuzagi imkansiz, hesap yok).
+                    const _ttAd = (location.pathname.match(/^\/@([^/]+)\//) || [])[1] || '';
+                    const resItem = {
+                        link: window.location.href,   // sunucu x_temizle_link ile kanoniklestirir
+                        account_name: _ttAd ? ('@' + _ttAd) : '',
+                        username: '',
+                        screenshot: shot,
+                        is_profile: false
+                    };
+                    _ttGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _ttGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                    _ttGizli = []; _ttGorunur = [];
+
+                    gorev.combinedData.push(resItem);
+                    gorev.retry_count = 0;
+                    gorev.kuyruk.shift();
+                    const kaldi = gorev.kuyruk.length;
+                    const toplam = (gorev.total_count) || (gorev.combinedData.length + kaldi);
+                    durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
+                    swSendReliable({
+                        action: "submitWordResult",
+                        origin: gorev.server_origin || "http://localhost:3012",
+                        job_id: gorev.job_id,
+                        results: [xStripForServer(resItem, gorev)],
+                        final: kaldi === 0
+                    }, () => {
+                        swSendReliable({
+                            action: "updateWordProgress",
+                            origin: gorev.server_origin || "http://localhost:3012",
+                            job_id: gorev.job_id,
+                            current: gorev.combinedData.length,
+                            total: toplam
+                        }, () => {
+                            if (kaldi > 0) {
+                                let u = {}; u[storageKey] = gorev;
+                                chrome.storage.local.set(u, () => {
+                                    const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                                    setTimeout(() => { window.location.href = nextUrl; }, 600);
+                                });
+                            } else {
+                                chrome.storage.local.remove(storageKey, () => {
+                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                });
+                            }
+                        });
+                    });
+                    return;
+                } catch (e) {
+                    printLog("YAKALAMA HATA: " + (e.message || e) + " -> gonderi atlaniyor");
+                } finally {
+                    // Sayfayi ELLEDIK (cerez bandi + widget) -> her durumda geri al.
+                    _ttGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _ttGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                }
+                // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
                 durumText.innerHTML = `
                     <div style="text-align:center;">
                         <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Gönderi atlandı</span><br>
-                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü henüz desteklenmiyor, sonrakine geçiliyor.</span>
+                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü alınamadı, sonrakine geçiliyor.</span>
                     </div>`;
                 gorev.retry_count = 0;
                 gorev.kuyruk.shift();
