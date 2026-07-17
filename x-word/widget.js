@@ -4649,7 +4649,15 @@
 
                     // 3) Widget'i gorunmez yap (kadraja binebilir). YOK ETME degil visibility ->
                     //    reflow/flas olmaz (IG'de ogrenilen).
-                    [widgetEl, cbWidgetEl].forEach(function (w) {
+                    //
+                    // ID ile ALINIYOR, widgetEl/cbWidgetEl DEGISKENLERI KULLANILMIYOR: onlar
+                    // captureArticle'in (989..1388) YERELI; bu blok wordTaramaYonetimi icinde
+                    // (4592) yani KAPSAM DISI. Once dogrudan kullanmistim -> her TikTok
+                    // gonderisinde "ReferenceError: widgetEl is not defined" -> kendi try'im
+                    // yutuyor -> "gonderi atlandi" + BOS rapor. (FB blogu bu ikisini hic
+                    // kullanmadigi icin ayni tuzaga dusmemisti.)
+                    [document.getElementById('x-downloader-widget'),
+                     document.getElementById('w-cb-container')].forEach(function (w) {
                         if (w) { _ttGorunur.push([w, w.style.visibility]); w.style.setProperty('visibility', 'hidden', 'important'); }
                     });
 
