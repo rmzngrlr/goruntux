@@ -4387,19 +4387,17 @@ LOCAL_DOCX_JS = r'''
         var ordered=group.items; // grup içi sıra: havuz sırası (kullanıcı sürükleyerek düzenler)
         var k;
         for(k=0;k<ordered.length;k++){
-          // h2 yalnizca grubun ILK gonderisinde -> ayni sayfaya dusen ayni hesabin iki
-          // gonderisi TEK Baslik2 gorur (kullanici istegi 2026-07-17).
-          // grupBaslik ise HER gonderide durur: grup sayfaya bolunurse devam sayfasinin
-          // basligi ondan tekrar kurulur (asagiya bak).
+          // h2 YALNIZCA grubun ILK gonderisinde: bir hesabin basligi belgede BIR KEZ
+          // gorunur, gonderileri altinda akar (kac sayfaya yayildigi farketmez).
+          // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
+          // gorur (kullanici istegi 2026-07-17).
           birimler.push({ h1:(k===0?h1:null), h2:(k===0?baslikFormatla(baslik):null),
-                          grupBaslik: baslikFormatla(baslik),
                           item:ordered[k], link:(ordered[k].link||''), son:(k===ordered.length-1) });
         }
       } else {
         var item2=val, b2=(item2.title||'').trim();
         if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; }
         birimler.push({ h1:h1, h2:(b2?baslikFormatla(b2):null),
-                        grupBaslik:(b2?baslikFormatla(b2):null),
                         item:item2, link:(item2.link||''), son:true });
       }
     }
@@ -4439,14 +4437,16 @@ LOCAL_DOCX_JS = r'''
     var sayfalar=[], ix=0;
     while(ix < birimler.length){
       var a=birimler[ix], b=(ix+1<birimler.length) ? birimler[ix+1] : null;
-      // ORFAN KORUMASI: 'a' her zaman bu sayfanin ILK birimi. Baslik2'si yoksa grubun
-      // devamidir (basligi onceki sayfada kaldi) -> sayfa basliksiz gorselle acilirdi.
-      // Basligi tekrarla. Bu ATAMA genislik hesabindan ONCE yapilmali; birimPay onu
-      // sayar, yoksa sayfa payi eksik hesaplanip TASAR.
-      // NOT: 'b' bilerek dokunulmadan birakilir -> ayni hesabin ayni sayfadaki ikinci
-      // gonderisi ikinci bir Baslik2 URETMEZ (kullanici istegi: sayfadaki 2 gorsel ayni
-      // hesaba aitse TEK Baslik2).
-      if(!a.h2 && a.grupBaslik) a.h2 = a.grupBaslik;
+      // Baslik2 GRUP BASINA BIR KEZ (kullanici istegi 2026-07-17: "ayni basligin her
+      // sayfa basinda olmasini da coz").
+      //
+      // Burada bir sure "sayfa basina dusen birimin basligini tekrarla" kodu vardi:
+      // sabit sayfa sonlari varken devam sayfasi basliksiz aciliyordu (orfan) ve bunu
+      // kapatiyordu. Sabit sayfa sonlari kalkinca (bkz. 4. gecis) bu koruma yalnizca
+      // GEREKSIZ degil, ZARARLI hale geldi: ayni hesabin gonderileri birden cok sayfaya
+      // yayilinca "MAH Ajansi (@mahajansi)" her sayfa basinda tekrar ediyordu.
+      // Akis serbest oldugunda dogru davranis, basligin bir kez gorunup icerigin
+      // sayfalara yayilmasidir - her belgenin yaptigi sey. Kaldirildi.
       var ciftKuruldu=false;
       if(b){
         var W2=ortakGenislik([a,b]);
