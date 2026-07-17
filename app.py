@@ -1639,7 +1639,10 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div style="display: flex; gap: 15px;" id="auto-action-buttons">
-                        <button class="btn" style="flex: 1;" onclick="startAutomation()">🚀 Başlat</button>
+                        <!-- Eklenti ESKI ise refreshStatus bunu disabled yapar. Kapsayicinin
+                             (auto-action-buttons) GORUNURLUGUNU tarama durumu yonetiyor -> ona
+                             dokunulmaz, yalnizca butonun kendisi kilitlenir. -->
+                        <button class="btn" style="flex: 1;" id="auto-start-btn" onclick="startAutomation()">🚀 Başlat</button>
                     </div>
 
                     <div class="progress-container" id="progress-area" style="display: none;">
@@ -2613,6 +2616,19 @@ HTML_TEMPLATE = """
                 showToast('Taramayı başlatmak için eklentinin bağlı ve hazır olması gerekmektedir. Lütfen Chrome eklentisini aktif edin!', 'warning');
                 return;
             }
+            // Eklenti ESKI ise tarama YOK (kullanici istegi 2026-07-17).
+            // NEDEN: eski eklenti + yeni sunucu = sessiz yanlis cikti. Bugun tam bunu
+            // yasadik (onbellekteki eski uretici yeni sunucuyla calisip eski duzende Word
+            // uretti; ikimiz de yanlis yeri konustuk). Hata vermeden yanlis rapor uretmektense
+            // BASLATMAMAK dogru.
+            // Buton zaten kilitli (refreshStatus) ama ASIL koruma burasi: buton durumu bayat
+            // kalabilir, yoklama gecikebilir; kapi tiklamanin kendisinde.
+            if (window.extensionOutdated) {
+                showToast('Eklenti güncel değil (kurulu v' + (window.extensionInstalledVersion || '?')
+                    + ', en güncel v' + (window.extensionLatestVersion || '?')
+                    + '). Tarama başlatılamaz — .zip\\'i indirip eklentiyi güncelleyin.', 'danger');
+                return;
+            }
             processInputLinks();
             window.accumulatedLinks = window.accumulatedLinks || [];
             const links = window.accumulatedLinks;
@@ -2817,14 +2833,33 @@ HTML_TEMPLATE = """
                     var uyariEl = document.getElementById('ext-version-warning');
                     var kuruluSurum = document.documentElement.getAttribute('data-x-rapor-version') || '';
                     var sonSurum = data.ext_latest_version || '';
-                    if (uyariEl && kuruluSurum && sonSurum && xSurumKiyas(kuruluSurum, sonSurum) < 0) {
+                    var eskiMi = !!(kuruluSurum && sonSurum && xSurumKiyas(kuruluSurum, sonSurum) < 0);
+                    // startAutomation bunu okur (kullanici istegi 2026-07-17: eklenti guncel
+                    // degilse bu sekmede islem YAPILAMASIN).
+                    window.extensionOutdated = eskiMi;
+                    window.extensionInstalledVersion = kuruluSurum;
+                    window.extensionLatestVersion = sonSurum;
+
+                    if (uyariEl && eskiMi) {
                         uyariEl.innerHTML = '&#9888;&#65039; Eklenti güncel değil — kurulu <b>v' + kuruluSurum
-                            + '</b>, en güncel <b>v' + sonSurum + '</b>.<br>'
+                            + '</b>, en güncel <b>v' + sonSurum + '</b>. Tarama bu sürümle başlatılamaz.<br>'
                             + '.zip\\'i indirip eklenti klasörünüzün üzerine açın, sonra chrome://extensions '
                             + 'sayfasında yenile (&#8635;) düğmesine basın.';
                         uyariEl.style.display = 'block';
                     } else if (uyariEl) {
                         uyariEl.style.display = 'none';
+                    }
+
+                    // Baslat butonunu KILITLE. Yalnizca gorunurluk/afiyet; gercek koruma
+                    // startAutomation icindeki kapida (buton durumu bayat kalirsa diye).
+                    var basBtn = document.getElementById('auto-start-btn');
+                    if (basBtn) {
+                        basBtn.disabled = eskiMi;
+                        basBtn.style.opacity = eskiMi ? '0.45' : '';
+                        basBtn.style.cursor = eskiMi ? 'not-allowed' : '';
+                        basBtn.title = eskiMi
+                            ? ('Eklenti güncel değil (kurulu v' + kuruluSurum + ', en güncel v' + sonSurum + ') — önce güncelleyin.')
+                            : '';
                     }
                 } catch (e) {}
 
