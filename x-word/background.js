@@ -567,26 +567,20 @@ function widgetiFirlat(tabId) {
     func: (id) => { window.xRaporTabId = id; },
     args: [tabId]
   }).then(() => {
-    logToServer(`[widgetiFirlat] Tab ID set edildi. html2canvas yükleniyor...`);
-    chrome.scripting.executeScript({
+    // ASAMA 3 / ADIM 1 (v3.63): zincir SADELESTIRILDI.
+    // Eskiden sira su idi: tabId -> html2canvas.min.js -> xlsx.full.min.js -> widget.js.
+    // Iki kutuphane de OLU (olculdu: 'html2canvas(' cagrisi 0; 'XLSX.' yalnizca hic
+    // cagrilmayan excelDosyasiOlustur icinde) AMA zincirli olduklari icin CANLI yolun
+    // on kosuluydular — biri yuklenemezse widget.js HIC enjekte edilmiyordu.
+    // Once zinciri kisaltiyoruz; dosyalar SAHADA dogrulandiktan SONRA silinecek.
+    // tabId adimi KALIYOR: widget.js:6004 window.xRaporTabId'yi okuyor, sira onemli.
+    return chrome.scripting.executeScript({
       target: { tabId: tabId },
-      files: ["html2canvas.min.js"]
-    }).then(() => {
-      logToServer(`[widgetiFirlat] html2canvas yüklendi. xlsx yükleniyor...`);
-      chrome.scripting.executeScript({
-        target: { tabId: tabId },
-        files: ["xlsx.full.min.js"]
-      }).then(() => {
-        logToServer(`[widgetiFirlat] xlsx yüklendi. widget.js yükleniyor...`);
-        chrome.scripting.executeScript({
-          target: { tabId: tabId },
-          files: ["widget.js"]
-        }).then(() => {
-          logToServer(`[widgetiFirlat] widget.js başarıyla yüklendi!`);
-        }).catch((err) => logToServer(`[widgetiFirlat] widget.js yükleme hatası: ${err.message || err}`));
-      }).catch((err) => logToServer(`[widgetiFirlat] xlsx.full.min.js yükleme hatası: ${err.message || err}`));
-    }).catch((err) => logToServer(`[widgetiFirlat] html2canvas.min.js yükleme hatası: ${err.message || err}`));
-  }).catch((err) => logToServer(`[widgetiFirlat] Tab ID set hatası: ${err.message || err}`));
+      files: ["widget.js"]
+    });
+  }).then(() => {
+    logToServer(`[widgetiFirlat] widget.js başarıyla yüklendi!`);
+  }).catch((err) => logToServer(`[widgetiFirlat] yükleme hatası: ${err.message || err}`));
 }
 
 // Clean up storage key when tab is closed to prevent stale tasks
