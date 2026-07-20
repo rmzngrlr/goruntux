@@ -4638,19 +4638,218 @@
                 return;
             }
 
-            // ============ Faz YT-1: YOUTUBE — YAKALAMA YOK, TEMIZ ATLA ============
-            // Faz 1 yalnizca iskelet (link kabulu + kanonik + gruplama + Baslik 1).
-            // Yakalama Faz 2'de gelecek (video / Shorts / topluluk gonderisi = UC yerlesim).
-            // BU KAPI OLMAZSA: YouTube sayfasi asagidaki X seciciye duser, ASLA bulamaz ->
-            // "Tweet yuklenemedi" -> 120sn'de bir location.reload() ile SONSUZ DONGU
-            // (retry_count'un ust siniri YOK). FB Faz 1'inde (v3.15) ve TikTok Faz 1'inde
-            // TAM BUNU yasadik -> bu sefer AYNI commit'te kapatiliyor.
+            // ============ Faz YT-2: YOUTUBE YAKALAMA (video) ============
+            // Bu blok X seciciye HIC ulasmadan doner (aksi halde 120sn'de bir reload ile
+            // SONSUZ DONGU — FB v3.15 ve TikTok Faz 1'inde yasandi).
+            //
+            // YERLESIM — sahadan olculdu (2026-07-20, vp=1440x900, cikis yapilmis, TR):
+            //   #movie_player   [16,68,943,530]    oynatici
+            //   h1 baslik       [16,610,943,28]
+            //   kanal+abone     [68,648,..]/[68,670,..]
+            //   eylem cubugu    [550,650,254,40]   (begeni sayisi + Paylas + Kaydet)
+            //   goruntulenme    [28,713,919,20]    "4,8 Mn görüntüleme 13 saat önce"
+            //   -> KADRAJ = oynatici ustu .. goruntulenme alti (kullanici karari:
+            //      oynatici + baslik + kanal + istatistik; aciklama ve yorumlar DISARIDA)
+            //   Sagdaki oneriler (x>975) ve ust nav (y<56) kadrajin DISINDA kaliyor.
+            //
+            // Faz 2a: yalnizca /watch. /shorts/ ve /post/ AYRI yerlesim -> Faz 2b'de;
+            // simdilik TEMIZ ATLANIYOR (asagida).
+            if (xPlatform() === 'yt' && location.pathname.toLowerCase() === '/watch') {
+                let _ytGorunur = [], _ytGizli = [];
+                try {
+                    {
+                        const _alinan = (gorev.combinedData ? gorev.combinedData.length : 0) + 1;
+                        const _toplam = (gorev.total_count) || ((gorev.combinedData ? gorev.combinedData.length : 0) + gorev.kuyruk.length);
+                        durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan}/${_toplam}</span>`;
+                    }
+
+                    // 1) Oynatici + baslik gelene kadar bekle (YouTube SPA, gec hidrasyon).
+                    //    NOT: goruntulenme satirinin METNI beklenmez — YouTube rakamlari
+                    //    DONEN ANIMASYONLA ciziyor, textContent "1234567890..." veriyor ama
+                    //    EKRANDA dogru sayi gorunuyor (olculdu). Metne gore beklemek
+                    //    25 tur (7.5sn) sonunda bile bitmezdi.
+                    let ply = null, bas = null;
+                    for (let w = 0; w < 20; w++) {
+                        ply = document.querySelector('#movie_player');
+                        bas = document.querySelector('h1.ytd-watch-metadata, #title h1');
+                        if (ply && bas && ply.getBoundingClientRect().height > 100) break;
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+                    if (!ply || !bas) throw new Error("oynatici/baslik bulunamadi");
+
+                    // 2) REKLAM BITENE KADAR BEKLE. Reklam oynarken oynaticida REKLAM var ve
+                    //    video.duration REKLAMIN suresini veriyor (olculdu: 6.1sn, gercek video
+                    //    8170.9sn). Yakalama o anda yapilsa rapora REKLAM girerdi.
+                    //    Isaret: #movie_player'da 'ad-showing' sinifi. En fazla ~12sn beklenir;
+                    //    bitmezse yine de devam edilir (bos rapor yerine dogru cerceve sansi).
+                    let _reklamBekledi = 0;
+                    for (let w = 0; w < 40; w++) {
+                        if (!/(^|\s)ad-showing(\s|$)/.test(ply.className)) break;
+                        _reklamBekledi++;
+                        const atla = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button');
+                        if (atla) { try { atla.click(); } catch (e) {} }   // "Reklami atla" cikarsa kullan
+                        await new Promise(r => setTimeout(r, 300));
+                    }
+
+                    // 3) Kareyi SABITLE: duraklat + basa sar -> ayni video her taramada AYNI
+                    //    goruntu (TikTok'ta ogrenilen). Reklam bittikten SONRA yapilir.
+                    const vid = document.querySelector('#movie_player video');
+                    let _kareOnce = null, _kareSonra = null;
+                    if (vid) {
+                        _kareOnce = +(vid.currentTime || 0).toFixed(2);
+                        await new Promise(function (res) {
+                            let bitti = false; const fin = () => { if (!bitti) { bitti = true; res(); } };
+                            try { vid.pause(); } catch (e) {}
+                            if (Math.abs(vid.currentTime || 0) < 0.05) { fin(); return; }
+                            try { vid.addEventListener('seeked', fin, { once: true }); } catch (e) {}
+                            try { vid.currentTime = 0; } catch (e) { fin(); }
+                            setTimeout(fin, 1500);
+                        });
+                        _kareSonra = +(vid.currentTime || 0).toFixed(2);
+                    }
+
+                    // 4) Kadraja BINEBILECEK katmanlari gizle (tiklama YOK — onay/abonelik
+                    //    durumu degistirmeyiz; FB cerez bandi kararinin aynisi).
+                    ['ytd-consent-bump-v2-lightbox',
+                     'ytd-popup-container tp-yt-paper-dialog',
+                     'tp-yt-iron-overlay-backdrop',
+                     'ytd-mealbar-promo-renderer',
+                     '#masthead-container'].forEach(function (sel) {
+                        document.querySelectorAll(sel).forEach(function (el) {
+                            const r = el.getBoundingClientRect();
+                            if (r.width < 1 || r.height < 1) return;
+                            _ytGizli.push([el, el.style.display]);
+                            el.style.setProperty('display', 'none', 'important');
+                        });
+                    });
+                    await new Promise(r => setTimeout(r, 250));   // reflow
+
+                    // 5) KADRAJ = oynatici + baslik + kanal + istatistik birlesimi.
+                    //    SABIT KOORDINAT YOK: yerlesim pencere genisligine gore degisiyor.
+                    const parcalar = [];
+                    const ekle = function (sel) {
+                        const e = document.querySelector(sel);
+                        if (!e) return;
+                        const r = e.getBoundingClientRect();
+                        if (r.width > 1 && r.height > 1) parcalar.push(r);
+                    };
+                    ekle('#movie_player');
+                    ekle('h1.ytd-watch-metadata');
+                    ekle('#owner');
+                    ekle('#top-level-buttons-computed');
+                    ekle('ytd-watch-info-text');
+                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
+
+                    const PAY = 8;
+                    let L = Math.min.apply(null, parcalar.map(r => r.left)) - PAY;
+                    let T = Math.min.apply(null, parcalar.map(r => r.top)) - PAY;
+                    let R2 = Math.max.apply(null, parcalar.map(r => r.right)) + PAY;
+                    let B = Math.max.apply(null, parcalar.map(r => r.bottom)) + PAY;
+                    L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
+                    R2 = Math.min(window.innerWidth, Math.round(R2));
+                    B = Math.min(window.innerHeight, Math.round(B));
+                    const cw = R2 - L, ch2 = B - T;
+                    if (cw < 120 || ch2 < 120) throw new Error(`kadraj gecersiz (${cw}x${ch2})`);
+                    if (cw > window.innerWidth * 0.98 && ch2 > window.innerHeight * 0.98) {
+                        throw new Error(`kadraj TUM SAYFA kadar (${cw}x${ch2}) — guvenilmez`);
+                    }
+
+                    // 6) Widget YALNIZCA kadraja biniyorsa gizlensin (TikTok'taki karar).
+                    const _biner = function (el) {
+                        if (!el) return false;
+                        const r = el.getBoundingClientRect();
+                        if (r.width < 1 || r.height < 1) return false;
+                        return !(r.right <= L || r.left >= R2 || r.bottom <= T || r.top >= B);
+                    };
+                    let _gizlenen = 0;
+                    [document.getElementById('x-downloader-widget'),
+                     document.getElementById('w-cb-container')].forEach(function (w) {
+                        if (_biner(w)) {
+                            _ytGorunur.push([w, w.style.visibility]);
+                            w.style.setProperty('visibility', 'hidden', 'important');
+                            _gizlenen++;
+                        }
+                    });
+
+                    const dpr = window.devicePixelRatio || 1;
+                    const res = await new Promise(resolve => {
+                        swSendReliable({ action: "captureAndCrop", rect: { top: T, left: L, width: cw, height: ch2 }, dpr: dpr }, resolve);
+                    });
+                    if (!res || res.status !== "success" || !res.dataUrl) throw new Error("captureAndCrop basarisiz");
+                    const shot = await compressScreenshot(res.dataUrl);
+                    if (!shot) throw new Error("sikistirma basarisiz");
+
+                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=watch, kare=${_kareOnce}s->${_kareSonra}s, reklamBekle=${_reklamBekledi}, katmanGizli=${_ytGizli.length}, widgetGizlendi=${_gizlenen}`);
+
+                    // Kanal adi: gruplama icin (URL'de YOK -> DOM'dan).
+                    let _kanal = '';
+                    try {
+                        const k = document.querySelector('#owner ytd-channel-name a, #owner ytd-channel-name yt-formatted-string');
+                        _kanal = k ? String(k.textContent || '').replace(/\s+/g, ' ').trim() : '';
+                    } catch (e) {}
+
+                    const resItem = {
+                        link: window.location.href,   // sunucu x_temizle_link ile kanoniklestirir
+                        account_name: _kanal,
+                        username: '',
+                        screenshot: shot,
+                        is_profile: false
+                    };
+                    _ytGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _ytGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                    _ytGizli = []; _ytGorunur = [];
+
+                    gorev.combinedData.push(resItem);
+                    gorev.retry_count = 0;
+                    gorev.kuyruk.shift();
+                    const kaldi = gorev.kuyruk.length;
+                    const toplam = (gorev.total_count) || (gorev.combinedData.length + kaldi);
+                    durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
+                    swSendReliable({
+                        action: "submitWordResult",
+                        origin: gorev.server_origin || "http://localhost:3012",
+                        job_id: gorev.job_id,
+                        results: [xStripForServer(resItem, gorev)],
+                        final: kaldi === 0
+                    }, () => {
+                        swSendReliable({
+                            action: "updateWordProgress",
+                            origin: gorev.server_origin || "http://localhost:3012",
+                            job_id: gorev.job_id,
+                            current: gorev.combinedData.length,
+                            total: toplam
+                        }, () => {
+                            if (kaldi > 0) {
+                                let u = {}; u[storageKey] = gorev;
+                                chrome.storage.local.set(u, () => {
+                                    const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                                    setTimeout(() => { window.location.href = nextUrl; }, 600);
+                                });
+                            } else {
+                                chrome.storage.local.remove(storageKey, () => {
+                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                });
+                            }
+                        });
+                    });
+                    return;
+                } catch (e) {
+                    printLog("YAKALAMA HATA: " + (e.message || e) + " -> gonderi atlaniyor");
+                } finally {
+                    _ytGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} });
+                    _ytGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
+                }
+                // hata -> asagidaki TEMIZ ATLAMA'ya dus
+            }
+
+            // ============ Faz YT-2b bekliyor: Shorts / topluluk gonderisi ============
+            // Bu iki yerlesim henuz yazilmadi -> TEMIZ ATLA (retry dongusune GIRME).
             if (xPlatform() === 'yt') {
-                printLog("Yakalama henuz yok (Faz 1) -> gonderi atlaniyor");
+                printLog("Yakalama yapilamadi -> gonderi atlaniyor");
                 durumText.innerHTML = `
                     <div style="text-align:center;">
                         <span style="color:#f7ba14; font-size:13px; font-weight:bold;">⏭️ Gönderi atlandı</span><br>
-                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü henüz desteklenmiyor, sonrakine geçiliyor.</span>
+                        <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ekran görüntüsü alınamadı, sonrakine geçiliyor.</span>
                     </div>`;
                 gorev.retry_count = 0;
                 gorev.kuyruk.shift();
@@ -4663,15 +4862,10 @@
                         swSendReliable({
                             action: "submitWordResult",
                             origin: gorev.server_origin || "http://localhost:3012",
-                            job_id: gorev.job_id,
-                            results: [],
-                            final: true
+                            job_id: gorev.job_id, results: [], final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
-                                chrome.runtime.sendMessage({
-                                    action: "completeJobAndFocusPanel",
-                                    origin: gorev.server_origin
-                                });
+                                chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                             });
                         });
                     }
