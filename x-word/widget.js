@@ -2068,141 +2068,11 @@
         });
     }
 
-    // Excel Exporter using XML Spreadsheet Format (SpreadsheetML) - 100% CSP Friendly!
-    function excelDosyasıOlustur(data) {
-        if (typeof XLSX === 'undefined') {
-            console.error("XLSX kütüphanesi yüklenemedi. Rapor indirilemiyor.");
-            alert("X Rapor Hatası: XLSX kütüphanesi yüklenemedi. Lütfen sayfayı yenileyip tekrar deneyin.");
-            return;
-        }
-
-        let replyCount = data.yorumlar && data.yorumlar.length > 0 
-            ? data.yorumlar.length 
-            : sayiCozumle(data.ozet.replies);
-            
-        let retweetCount = data.retweets && data.retweets.length > 0 
-            ? data.retweets.length 
-            : sayiCozumle(data.ozet.retweets);
-            
-        let quoteCount = data.quotes && data.quotes.length > 0 
-            ? data.quotes.length 
-            : sayiCozumle(data.ozet.quotes);
-            
-        let likeCount = data.likes && data.likes.length > 0 
-            ? data.likes.length 
-            : sayiCozumle(data.ozet.likes);
-            
-        let viewCount = sayiCozumle(data.ozet.views);
-
-        // 1. Özet Sayfası
-        const ozetData = [
-            ["Tweet Analiz Özeti"],
-            [],
-            ["Tweet URL", data.ozet.url],
-            ["Yazar", data.ozet.yazar],
-            ["Tarih", data.ozet.tarih],
-            ["Metin", data.ozet.metin],
-            [],
-            ["Görüntülenme Sayısı", viewCount],
-            ["Yorum Sayısı", replyCount],
-            ["Retweet Sayısı", retweetCount],
-            ["Alıntı Sayısı", quoteCount],
-            ["Beğeni Sayısı", likeCount]
-        ];
-
-        const wsOzet = XLSX.utils.aoa_to_sheet(ozetData);
-        wsOzet['!cols'] = [{ wch: 20 }, { wch: 45 }];
-
-        // Köprü bağlantılarını ekle (Hyperlinks)
-        if (replyCount > 0 && data.yorumlar && data.yorumlar.length > 0) {
-            wsOzet['B9'] = { t: 'n', v: replyCount, f: 'HYPERLINK("#\'Yorumlar\'!A1", ' + replyCount + ')' };
-        }
-        if (retweetCount > 0 && data.retweets && data.retweets.length > 0) {
-            wsOzet['B10'] = { t: 'n', v: retweetCount, f: 'HYPERLINK("#\'Retweetler\'!A1", ' + retweetCount + ')' };
-        }
-        if (quoteCount > 0 && data.quotes && data.quotes.length > 0) {
-            wsOzet['B11'] = { t: 'n', v: quoteCount, f: 'HYPERLINK("#\'Alintilar\'!A1", ' + quoteCount + ')' };
-        }
-        if (likeCount > 0 && data.likes && data.likes.length > 0) {
-            wsOzet['B12'] = { t: 'n', v: likeCount, f: 'HYPERLINK("#\'Begeniler\'!A1", ' + likeCount + ')' };
-        }
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, wsOzet, "Ozet");
-
-        // 2. Retweetler Sayfası
-        if (data.retweets && data.retweets.length > 0) {
-            const rtData = [["Hesap Adı", "Kullanıcı Adı"]];
-            data.retweets.forEach(item => {
-                rtData.push([item.name, item.handle]);
-            });
-            const wsRt = XLSX.utils.aoa_to_sheet(rtData);
-            wsRt['!cols'] = [{ wch: 25 }, { wch: 25 }];
-            XLSX.utils.book_append_sheet(wb, wsRt, "Retweetler");
-        }
-
-        // 3. Alıntılar Sayfası
-        if (data.quotes && data.quotes.length > 0) {
-            const qData = [["Hesap Adı", "Kullanıcı Adı", "Alıntı Metni", "Alıntı Tarihi", "İçerik Türü"]];
-            data.quotes.forEach(item => {
-                qData.push([item.name, item.username, item.text, item.date, item.type || 'Metin']);
-            });
-            const wsQ = XLSX.utils.aoa_to_sheet(qData);
-            wsQ['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 45 }, { wch: 20 }, { wch: 15 }];
-            XLSX.utils.book_append_sheet(wb, wsQ, "Alintilar");
-        }
-
-        // 4. Beğeniler Sayfası
-        if (data.likes && data.likes.length > 0) {
-            const lData = [["Hesap Adı", "Kullanıcı Adı"]];
-            data.likes.forEach(item => {
-                lData.push([item.name, item.handle]);
-            });
-            const wsL = XLSX.utils.aoa_to_sheet(lData);
-            wsL['!cols'] = [{ wch: 25 }, { wch: 25 }];
-            XLSX.utils.book_append_sheet(wb, wsL, "Begeniler");
-        }
-
-        // 5. Yorumlar Sayfası
-        if (data.yorumlar && data.yorumlar.length > 0) {
-            const yData = [["Hesap Adı", "Kullanıcı Adı", "Yorum Metni", "Yorum Tarihi", "Yorum Linki"]];
-            data.yorumlar.forEach(item => {
-                yData.push([item.name, item.username, item.text, item.date, item.url]);
-            });
-            const wsY = XLSX.utils.aoa_to_sheet(yData);
-            wsY['!cols'] = [{ wch: 25 }, { wch: 25 }, { wch: 45 }, { wch: 20 }, { wch: 35 }];
-            XLSX.utils.book_append_sheet(wb, wsY, "Yorumlar");
-        }
-
-        // Binary XLSX dosyasını yaz
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary', cellFormula: true });
-        
-        function s2ab(s) {
-            const buf = new ArrayBuffer(s.length);
-            const view = new Uint8Array(buf);
-            for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
-            return buf;
-        }
-
-        const blob = new Blob([s2ab(wbout)], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        
-        let kisaMetin = data.ozet.metin
-            .replace(/[\r\n]+/g, " ")
-            .replace(/[^a-zA-Z0-9ğüşıöçĞÜŞİÖÇ\s]/g, "")
-            .trim()
-            .substring(0, 25)
-            .replace(/\s+/g, "-");
-        if (!kisaMetin) kisaMetin = "rapor";
-        
-        let safeTarih = data.ozet.tarih.replace(/[: ]/g, '-');
-        link.download = `${safeTarih}_${kisaMetin}_analiz.xlsx`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
+    // SILINDI (v3.64): excelDosyasiOlustur + ic ice s2ab. Sayfalari 'Ozet / Retweetler /
+    // Alintilar / Begeniler / Yorumlar' olan bir Excel dosyasi uretiyordu — yani bir X
+    // ETKILESIM KAZIMA ciktisi. Bu urunun isi ekran goruntusu -> Word raporu; Excel yok.
+    // Onceki programdan kalma. Cagirani YOKTU (grep: tek eslesme tanimin kendisiydi) ve
+    // besledigi xlsx.full.min.js (881 KB) bu commit'te paketten cikarildi.
 
     // STATE MACHINE: Detailed scraping management
     async function detayliTaramaYonetimi(gorev, storageKey) {
@@ -3908,7 +3778,9 @@
                     }
                     
                     // Tweeti viewport tepesine hizala (zoom YOK — yapı bozulmaz)
-                    // html2canvas ile tüm tiviti yakala (viewport bağımsız)
+                    // captureArticle ile tüm tiviti yakala (kaydır+birleştir; viewport bağımsız).
+                    // NOT: burada eskiden "html2canvas ile" yazıyordu — o kütüphane hiç
+                    // çağrılmıyordu ve v3.64'te paketten çıkarıldı; yorum yanıltıcıydı.
                     article.scrollIntoView({ block: 'start', behavior: 'instant' });
                     await new Promise(r => setTimeout(r, 600));
 

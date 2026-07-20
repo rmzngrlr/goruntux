@@ -567,13 +567,15 @@ function widgetiFirlat(tabId) {
     func: (id) => { window.xRaporTabId = id; },
     args: [tabId]
   }).then(() => {
-    // ASAMA 3 / ADIM 1 (v3.63): zincir SADELESTIRILDI.
+    // ASAMA 3 (v3.63 + v3.64): zincir SADELESTIRILDI ve kutuphaneler PAKETTEN CIKARILDI.
     // Eskiden sira su idi: tabId -> html2canvas.min.js -> xlsx.full.min.js -> widget.js.
-    // Iki kutuphane de OLU (olculdu: 'html2canvas(' cagrisi 0; 'XLSX.' yalnizca hic
+    // Iki kutuphane de OLUYDU (olculdu: 'html2canvas(' cagrisi 0; 'XLSX.' yalnizca hic
     // cagrilmayan excelDosyasiOlustur icinde) AMA zincirli olduklari icin CANLI yolun
-    // on kosuluydular — biri yuklenemezse widget.js HIC enjekte edilmiyordu.
-    // Once zinciri kisaltiyoruz; dosyalar SAHADA dogrulandiktan SONRA silinecek.
-    // tabId adimi KALIYOR: widget.js:6004 window.xRaporTabId'yi okuyor, sira onemli.
+    // on kosuluydular — biri yuklenemezse widget.js HIC enjekte edilmiyordu. Bu yuzden
+    // ikiye bolundu: v3.63 yalnizca zinciri kisaltti (dosyalar duruyordu), kullanici
+    // sahada dogruladi, v3.64'te dosyalar + manifest kaydi + Excel ureticisi silindi.
+    // tabId adimi KALIYOR: widget.js'teki captureAndCrop yolu window.xRaporTabId'yi
+    // okuyor ve iki adim da ayni (varsayilan ISOLATED) world'de calisiyor, sira onemli.
     return chrome.scripting.executeScript({
       target: { tabId: tabId },
       files: ["widget.js"]
