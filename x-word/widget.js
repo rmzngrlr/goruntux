@@ -120,12 +120,31 @@
     // oldugu icin kartin rect'ini GENISLETMIYOR; ata dogru olsa bile kadraj kesiyor).
     function fbFindPost(outEng) {
         try {
-            // 1) KAP: en icteki dialog (varsa) — /posts. Yoksa belge geneli — /reel.
-            var D = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+            // 1) KAP: en icteki GORUNUR dialog (varsa) — /posts. Yoksa belge geneli — /reel.
+            //
+            // SAHA HATASI (2026-07-20, kullanici teshis ciktisi): Facebook BILDIRIMLER
+            // panelini de role="dialog" olarak DOM'a ONCEDEN basiyor ve o panel GIZLI (0x0).
+            // Eski kod "baska dialog icermeyen ilk dialog"u DOM SIRASINA gore seciyordu:
+            //   [0] 0x0     role=dialog  "Bildirimler..."   <- yaprak, DOM'da BIRINCI -> SECILIYORDU
+            //   [1] 900x718 role=dialog  "Sabah'in Gönderisi"
+            //   [2] 700x654 aria-modal   "Sabah'in Gönderisi"  <- GERCEK modal
+            // Sonuc zinciri: kap = 0x0 panel -> kapsam bos -> medya YOK, etkilesim YOK ->
+            // kart 0x0 -> kirpma dikdortgeni gecersiz -> captureAndCrop kirpamayip TUM
+            // GORUNUR SEKMEYI dondurdu -> rapora sol menu/reklamlar/arkadaki akis girdi.
+            // Kodda hicbir sey degismemisti; FB'nin sayfasi degisti (bildirim paneli artik
+            // onceden basiliyor).
+            // Cozum: (a) once GORUNUR dialoglar, (b) aria-modal="true" varsa O gercek modaldir.
+            var Dham = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+            var D = Dham.filter(function (d) {
+                var r = d.getBoundingClientRect();
+                return r.width > 100 && r.height > 100;
+            });
             var kap = null;
             if (D.length) {
-                var inner = D.filter(function (d) { return !D.some(function (x) { return x !== d && d.contains(x); }); });
-                kap = inner[0] || D[D.length - 1];
+                var am = D.filter(function (d) { return d.getAttribute('aria-modal') === 'true'; });
+                var aday = am.length ? am : D;
+                var inner = aday.filter(function (d) { return !aday.some(function (x) { return x !== d && d.contains(x); }); });
+                kap = inner[0] || aday[aday.length - 1];
             }
             var scope = kap || document.body;
 
@@ -4237,6 +4256,23 @@
                         await new Promise(r => setTimeout(r, 200));
                     }
                     if (!card) throw new Error("gonderi karti bulunamadi");
+
+                    // 1b) AKIL SAGLIGI KAPISI (2026-07-20). Poll dongusu "kart hazir mi" diye
+                    //     bakiyor ama DONGUDEN SONRA dogrulamiyordu: card TRUTHY ama 0x0 ise
+                    //     `if (!card)` tutmuyor, yakalama bozuk olcuyle devam ediyor ve
+                    //     captureAndCrop gecersiz dikdortgende TUM SEKMEYI donduruyordu ->
+                    //     rapora sol menu/reklamlarla birlikte tam sayfa giriyordu (sahada oldu).
+                    //     Artik: kart makul degilse gonderiyi TEMIZ ATLA. Yanlis goruntuyu
+                    //     rapora koymaktansa atlamak dogru — atlama gorunur, yanlis goruntu degil.
+                    {
+                        const _cr = card.getBoundingClientRect();
+                        if (_cr.width < 120 || _cr.height < 120) {
+                            throw new Error(`kart olcusu gecersiz (${Math.round(_cr.width)}x${Math.round(_cr.height)})`);
+                        }
+                        if (_cr.width > window.innerWidth * 0.95 && _cr.height > window.innerHeight * 0.95) {
+                            throw new Error(`kart TUM SAYFA kadar (${Math.round(_cr.width)}x${Math.round(_cr.height)}) — kadraj guvenilmez`);
+                        }
+                    }
 
                     // 2) Yorumlari gizle (kullanici karari) + kesik metni ac.
                     //    Yorum gizleme ayrica kart yuksekligini YAPISAL olarak stabillestirir
