@@ -4737,17 +4737,34 @@
                     ekle('h1.ytd-watch-metadata');
                     ekle('#owner');
                     ekle('#top-level-buttons-computed');
-                    ekle('ytd-watch-info-text');
+                    // ACIKLAMA KUTUSU (kullanici duzeltmesi 2026-07-20): once yalnizca
+                    // ytd-watch-info-text (goruntulenme satiri) alinip orada kesiliyordu.
+                    // Kullanici istedigi ciktiyi gosterdi: aciklama kutusunun TAMAMI da
+                    // girmeli ("149 B görüntüleme 2 yıl önce" + aciklama metni + "...daha fazla").
+                    // #bottom-row o kutuyu KAPSIYOR (olculdu 1150x800: info [.,651,.,20]
+                    // -> bottom-row [16,627,715,116] alt=743).
+                    ekle('#bottom-row');
                     if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
 
                     const PAY = 8;
                     let L = Math.min.apply(null, parcalar.map(r => r.left)) - PAY;
                     let T = Math.min.apply(null, parcalar.map(r => r.top)) - PAY;
                     let R2 = Math.max.apply(null, parcalar.map(r => r.right)) + PAY;
-                    let B = Math.max.apply(null, parcalar.map(r => r.bottom)) + PAY;
+                    let B_tam = Math.max.apply(null, parcalar.map(r => r.bottom)) + PAY;
+                    // SINIR: YORUMLAR. Kadraj asla yorumlara TASMAMALI — kaydirirken
+                    // yorumlari iceri almak TikTok'ta yasadigimiz "sonraki karti yakalama"
+                    // hatasinin aynisi olurdu (olculdu 960x760: kadraj alt=625, yorumlar 641).
+                    try {
+                        const _ym = document.querySelector('#comments');
+                        if (_ym) {
+                            const _yr = _ym.getBoundingClientRect();
+                            if (_yr.height > 0) B_tam = Math.min(B_tam, _yr.top);
+                        }
+                    } catch (e) {}
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
                     R2 = Math.min(window.innerWidth, Math.round(R2));
-                    B = Math.min(window.innerHeight, Math.round(B));
+                    B_tam = Math.round(B_tam);
+                    const B = Math.min(window.innerHeight, B_tam);
                     const cw = R2 - L, ch2 = B - T;
                     if (cw < 120 || ch2 < 120) throw new Error(`kadraj gecersiz (${cw}x${ch2})`);
                     if (cw > window.innerWidth * 0.98 && ch2 > window.innerHeight * 0.98) {
@@ -4771,15 +4788,57 @@
                         }
                     });
 
+                    // KAYDIR + BIRLESTIR (kullanici: "bunun icin scroll yapmak gerek").
+                    // Kadraj ekrana sigmayinca aciklama kutusu kesiliyordu. YouTube'da
+                    // PENCERE kayiyor (TikTok/FB'deki hapsolmus kaydiricinin aksine) ve
+                    // oynatici yapiskan DEGIL, mini oynaticiya da donmuyor -> olculdu:
+                    // scrollBy(250) sonrasi oynatici y 68 -> -182, mini YOK.
+                    // Raylar TikTok'takiyle ayni: hareket dogrulanir, tutmazsa/asiri olursa
+                    // ya da iki dilim AYNI cikarsa TEK KAREYE dusulur (bugunku davranis).
                     const dpr = window.devicePixelRatio || 1;
-                    const res = await new Promise(resolve => {
-                        swSendReliable({ action: "captureAndCrop", rect: { top: T, left: L, width: cw, height: ch2 }, dpr: dpr }, resolve);
-                    });
-                    if (!res || res.status !== "success" || !res.dataUrl) throw new Error("captureAndCrop basarisiz");
-                    const shot = await compressScreenshot(res.dataUrl);
+                    const _capture = async function (top, h) {
+                        const rr = await new Promise(resolve => {
+                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
+                        });
+                        if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
+                        return rr.dataUrl;
+                    };
+                    let _delta = Math.max(0, B_tam - window.innerHeight);
+                    let _yol = 'tek-kare', _parca = 1, _ham = null;
+                    if (_delta > 0 && _delta <= 700) {
+                        const _oncekiY = window.scrollY;
+                        const _dav = document.documentElement.style.scrollBehavior;
+                        try {
+                            document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
+                            const ust = await _capture(T, window.innerHeight - T);
+                            window.scrollBy(0, _delta);
+                            await new Promise(r => setTimeout(r, 350));
+                            const _gercek = window.scrollY - _oncekiY;
+                            if (_gercek < 4) {
+                                printLog(`kaydirma TUTMADI (istendi=${_delta}, oldu=${_gercek}) -> tek kareye dusuluyor`);
+                            } else if (_gercek > _delta + 20) {
+                                printLog(`kaydirma ASIRI (istendi=${_delta}, oldu=${_gercek}) -> tek kareye dusuluyor`);
+                            } else {
+                                const alt = await _capture(window.innerHeight - _gercek, _gercek);
+                                if (ust === alt) {
+                                    printLog("iki dilim AYNI -> birlestirme iptal, tek kareye dusuluyor");
+                                } else {
+                                    _ham = await igVerticalStitch([ust, alt]);
+                                    _yol = 'kaydir-birlestir'; _parca = 2;
+                                }
+                            }
+                        } catch (e) {
+                            printLog("kaydir-birlestir hatasi: " + (e.message || e) + " -> tek kareye dusuluyor");
+                        } finally {
+                            window.scrollTo(0, _oncekiY);   // sayfayi BULDUGUMUZ gibi birak
+                            document.documentElement.style.scrollBehavior = _dav || '';
+                        }
+                    }
+                    if (!_ham) _ham = await _capture(T, ch2);
+                    const shot = await compressScreenshot(_ham);
                     if (!shot) throw new Error("sikistirma basarisiz");
 
-                    printLog(`Yakalama: 1 parça (${cw}x${ch2}), yol=watch, kare=${_kareOnce}s->${_kareSonra}s, reklamBekle=${_reklamBekledi}, katmanGizli=${_ytGizli.length}, widgetGizlendi=${_gizlenen}`);
+                    printLog(`Yakalama: ${_parca} parça (${cw}x${_yol === 'tek-kare' ? ch2 : (B_tam - T)}), yol=watch/${_yol}, ekranDisi=${_delta}px, kare=${_kareOnce}s->${_kareSonra}s, reklamBekle=${_reklamBekledi}, katmanGizli=${_ytGizli.length}, widgetGizlendi=${_gizlenen}`);
 
                     // Kanal adi: gruplama icin (URL'de YOK -> DOM'dan).
                     let _kanal = '';
