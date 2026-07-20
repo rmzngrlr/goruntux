@@ -865,9 +865,17 @@ HTML_TEMPLATE = """
         }
 
         .header h1 span.title-text {
-            background: linear-gradient(90deg, #1d9bf0, #00ba7c);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            /* Kullanici istegi 2026-07-17: "yesilli mavili degil, temaya gore beyaz ya da
+               koyu renk". Once mavi->yesil gradyan vardi (#1d9bf0 -> #00ba7c) ve metne
+               background-clip:text + text-fill-color:transparent ile uygulaniyordu.
+               UCU DE KALKMAK ZORUNDA: -webkit-text-fill-color:transparent kalirsa 'color'
+               EZILIR ve yazi GORUNMEZ olur (gradyan da gittigi icin arkasinda hicbir sey
+               kalmaz). --text-primary zaten temaya gore donuyor:
+                 koyu tema  -> #e7e9ea (beyaza yakin)
+                 acik tema  -> #0f1419 (koyu)
+               Not: ayni gradyan .progress-bar-fill'de de var; istek YAZI icindi -> ORASI
+               BILEREK DEGISTIRILMEDI. */
+            color: var(--text-primary);
             display: inline-block;
         }
 
