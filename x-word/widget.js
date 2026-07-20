@@ -4761,6 +4761,22 @@
                             if (_yr.height > 0) B_tam = Math.min(B_tam, _yr.top);
                         }
                     } catch (e) {}
+                    // SINIR: ONERILER SUTUNU (#secondary). Kullanici ciktisinda kadrajin
+                    // SAGINDA oneri kucuk resimlerinden bir serit vardi. Sebep: alt sinir
+                    // (yorumlar) konmustu ama SAG sinir yoktu ve #movie_player "full-bleed"
+                    // modda icerik sutunundan DAHA GENIS oluyor (olculdu 960x760:
+                    // movie_player sag=945, #primary-inner sag=929).
+                    // Benim testimde gorunmemisti cunku o genislikte #secondary 0x0'di
+                    // (daralinca alta kayiyor); kullanicinin penceresinde ise SAGDA duruyor.
+                    // Alt sinirin (yorumlar) tam karsiligi: sag sinir = onerilerin SOL kenari.
+                    // #primary-inner'a kirpMIYORUZ — o, full-bleed videonun kenarlarini keserdi.
+                    try {
+                        const _sec = document.querySelector('#secondary');
+                        if (_sec) {
+                            const _sr = _sec.getBoundingClientRect();
+                            if (_sr.width > 1 && _sr.height > 1) R2 = Math.min(R2, _sr.left);
+                        }
+                    } catch (e) {}
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
                     R2 = Math.min(window.innerWidth, Math.round(R2));
                     B_tam = Math.round(B_tam);
