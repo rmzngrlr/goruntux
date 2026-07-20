@@ -4248,9 +4248,22 @@
                         card = fbFindPost(_engOut);
                         const _kartHazir = card && card.getBoundingClientRect().height > 100;
                         if (_kartHazir) {
-                            // reel'de kirpma yok -> etkilesimi beklemeye gerek yok.
-                            if (location.pathname.indexOf('/reel/') === 0) break;
-                            if (card.querySelector(FB_ENG_SEL)) break;
+                            // SAHA HATASI (2026-07-20): burada reel icin KOSULSUZ break vardi.
+                            // Gerekcesi "reel'de kirpma yok -> etkilesimi beklemeye gerek yok"
+                            // idi ve YARIM DOGRUYDU: reel'de alt kirpma (fbBitisY) gerekmiyor,
+                            // AMA kadraj GENISLETMESI (stats sutunu) tam da bu dugmelere bakiyor
+                            // (_engOut.list). Ray henuz cizilmemisse liste BOS -> _genisletildi=0
+                            // -> begen/yorum/paylas sutunu kadraj DISINDA kaliyordu (kullanici
+                            // ciktisi: video var, sag sutun YOK).
+                            // Artik reel de rayi BEKLIYOR. Gelmezse 3sn sonra eskisi gibi devam
+                            // eder -> bugunkunden kotu olamaz.
+                            if (location.pathname.indexOf('/reel/') === 0) {
+                                // Reel'de ray kartin ALT AGACINDA olmayabilir (ayri sutun) ->
+                                // card.querySelector DEGIL, fbFindPost'un topladigi GORUNUR liste.
+                                if (_engOut.list && _engOut.list.length) break;
+                            } else if (card.querySelector(FB_ENG_SEL)) {
+                                break;
+                            }
                             _engBekledi++;
                         }
                         await new Promise(r => setTimeout(r, 200));
@@ -4333,10 +4346,13 @@
                     }
 
                     let kr = kadrajEl.getBoundingClientRect();
-                    // REEL: stats sutunu (👍/💬/↗) position:absolute -> kartin rect'ini
-                    // GENISLETMIYOR. Ata dogru bulunsa bile kadraj sutunu KESIYOR
-                    // (saha: kart 1120 genislik, stats yok). Kadraji GORUNUR etkilesim
-                    // butonlarini kapsayacak sekilde genislet.
+                    // REEL: stats sutunu (👍/💬/↗) kartin rect'ine GIRMIYOR -> ata dogru
+                    // bulunsa bile kadraj sutunu KESIYOR (saha: kart 1120 genislik, stats yok).
+                    // Kadraji GORUNUR etkilesim butonlarini kapsayacak sekilde genislet.
+                    // NOT (2026-07-20 olcumu): burada eskiden "position:absolute oldugu icin"
+                    // yaziyordu; FB o sutunu artik position:relative ile ciziyor. Genisletme
+                    // YINE DE gerekli — sebep konumlandirma degil, sutunun kartin ALT AGACINDA
+                    // olmamasi. Gerekceyi konumlandirmaya baglamak yaniltici oldugu icin duzeltildi.
                     // Yalnizca scIc DEGILKEN (kadraj=kart): modal ici kaydiricida kadraj
                     // zaten kaydirilan bolge, genisletmek yanlis olurdu.
                     let _genisletildi = 0;
