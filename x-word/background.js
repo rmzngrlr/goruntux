@@ -102,6 +102,11 @@ function xUrlOf(link) {
   if (!/^https?:\/\//i.test(s)) s = 'https://' + s.replace(/^\/+/, '');
   try { return new URL(s); } catch (e) { return null; }
 }
+function xIsYtHost(h) {   // Faz YT-1 (Python: _is_yt_host, panel: XPlat.isYtHost)
+  h = String(h || '').toLowerCase();
+  return h === 'youtube.com' || /\.youtube\.com$/.test(h)
+      || h === 'youtu.be'    || /\.youtu\.be$/.test(h);
+}
 function xIsTtHost(h) {   // Faz TT-1 (Python: _is_tt_host, panel: XPlat.isTtHost)
   h = String(h || '').toLowerCase();
   return h === 'tiktok.com' || /\.tiktok\.com$/.test(h);
@@ -116,7 +121,49 @@ function xPlatformOf(link) {
   const u = xUrlOf(link);
   if (u && xIsFbHost(u.hostname)) return 'fb';
   if (u && xIsTtHost(u.hostname)) return 'tt';
+  if (u && xIsYtHost(u.hostname)) return 'yt';
   return 'x';
+}
+// Faz YT-1: /watch?v=ID kimligi SORGUDA; /shorts/ID ve /post/ID YOLDA.
+// youtu.be/live/embed -> watch?v=ID (ayni video). Shorts AYRI (yerlesim farkli).
+const XYT_KISA_HOSTLAR = ['youtu.be', 'www.youtu.be'];
+function xYtVid(x) { return /^[A-Za-z0-9_-]{5,20}$/.test(x || '') ? x : null; }
+function xYtCanonical(link) {
+  try {
+    const u = xUrlOf(link);
+    if (!u || !xIsYtHost(u.hostname)) return link;
+    const host = String(u.hostname).toLowerCase();
+    const path = String(u.pathname || '/').replace(/\/+$/, '');
+    let m;
+    if (XYT_KISA_HOSTLAR.indexOf(host) !== -1) {
+      m = path.match(/^\/([^/]+)$/);
+      const v0 = m ? xYtVid(m[1]) : null;
+      return v0 ? ('https://www.youtube.com/watch?v=' + v0) : ('https://www.youtube.com' + (path || '/'));
+    }
+    if (path.toLowerCase() === '/watch') {
+      const v1 = xYtVid(u.searchParams.get('v'));
+      return v1 ? ('https://www.youtube.com/watch?v=' + v1) : 'https://www.youtube.com/watch';
+    }
+    m = path.match(/^\/(?:live|embed|v)\/([^/]+)$/i);
+    if (m) { const v2 = xYtVid(m[1]); if (v2) return 'https://www.youtube.com/watch?v=' + v2; }
+    m = path.match(/^\/shorts\/([^/]+)$/i);
+    if (m) { const v3 = xYtVid(m[1]); if (v3) return 'https://www.youtube.com/shorts/' + v3; }
+    m = path.match(/^\/post\/([^/]+)$/i);
+    if (m) return 'https://www.youtube.com/post/' + m[1];
+    return 'https://www.youtube.com' + (path || '/');
+  } catch (e) { return link; }
+}
+function xIsYtPostUrl(link) {
+  try {
+    if (xPlatformOf(link) !== 'yt') return false;
+    const u = xUrlOf(xYtCanonical(link));
+    if (!u) return false;
+    const p = String(u.pathname || '').replace(/\/+$/, '');
+    if (p.toLowerCase() === '/watch') return !!u.searchParams.get('v');
+    if (/^\/shorts\/[^/]+$/i.test(p)) return true;
+    if (/^\/post\/[^/]+$/i.test(p)) return true;
+    return false;
+  } catch (e) { return false; }
 }
 // Faz TT-1: kimlik YOLDA -> sorgu tamamen atilir. vm./vt. kisa host'lari KORUNUR.
 const XTT_KISA_HOSTLAR = ['vm.tiktok.com', 'vt.tiktok.com'];
@@ -238,6 +285,11 @@ function normalizeUrl(url) {
   if (xPlatformOf(url) === 'tt') {
     return xTtCanonical(url).split('#')[0].replace(/\/+$/, '').toLowerCase();
   }
+  // Faz YT-1: kimlik SORGUDA (/watch?v=) -> '?' ile kesmek YASAK; ayrica youtu.be/live/
+  // embed ayni videoya iner -> hangi bicimde acilirsa acilsin ayni degere.
+  if (xPlatformOf(url) === 'yt') {
+    return xYtCanonical(url).split('#')[0].replace(/\/+$/, '').toLowerCase();
+  }
   let clean = url.split('?')[0].toLowerCase().trim();
   clean = clean.replace('://twitter.com', '://x.com');
   if (clean.endsWith('/')) {
@@ -297,6 +349,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       // Faz TT-1: TikTok'ta sorgu (is_from_webapp, web_id) atilir + host normalize edilir.
       let temizUrl = (_plat === 'fb') ? xFbCanonical(tab.url)
                    : (_plat === 'tt') ? xTtCanonical(tab.url)
+                   : (_plat === 'yt') ? xYtCanonical(tab.url)   // Faz YT-1: kimlik SORGUDA
                    : tab.url.split('?')[0];
       let urlObj;
       try {
@@ -309,7 +362,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       let isInstagramPost = /^https?:\/\/(?:www\.)?instagram\.com\/(?:p|reel)\/[^/]+/i.test(temizUrl);
       let isFacebookPost = xIsFbPostUrl(temizUrl);   // Faz FB-1
       let isTiktokPost = xIsTtPostUrl(temizUrl);     // Faz TT-1
-      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost;
+      let isYoutubePost = xIsYtPostUrl(temizUrl);    // Faz YT-1
+      let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost || isYoutubePost;
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
 
       let storageKey = `x_profil_gorevi_${tabId}`;
@@ -426,7 +480,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                   // gorev NE iptal edilir NE ilerler, SONSUZA KADAR asili kalir.
                   // Faz TT-1: tiktok EKLENMEZSE her TikTok gezinmesi 'gecici sayfa' sayilir ->
                   // gorev NE iptal edilir NE ilerler, SONSUZA KADAR asili kalir (FB'de yasandi).
-                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com') || xIsFbHost(urlObj.hostname) || xIsTtHost(urlObj.hostname);
+                  const isTargetHost = urlObj.hostname.includes('x.com') || urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('instagram.com') || xIsFbHost(urlObj.hostname) || xIsTtHost(urlObj.hostname) || xIsYtHost(urlObj.hostname);
                   if (!isTargetHost) {
                     isTransient = true;
                   } else {
@@ -1027,7 +1081,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         let isTargetSocial = host === "x.com" || host.endsWith(".x.com") ||
                              host === "twitter.com" || host.endsWith(".twitter.com") ||
                              host === "instagram.com" || host.endsWith(".instagram.com") ||
-                             xIsFbHost(host) || xIsTtHost(host);   // Faz TT-1
+                             xIsFbHost(host) || xIsTtHost(host) || xIsYtHost(host);   // Faz TT-1/YT-1
         if (!isTargetSocial) {
           // Map to Flask API port 3012. YETKILI kaynak registerPanel'dir; setUserAuth yalnizca
           // server_origin HENUZ BOSSA (bootstrap) yazar. Boylece rastgele bir http sekmesi
@@ -1685,6 +1739,15 @@ function processServerJob(job, origin) {
             // Faz TT-1: TikTok dali da X regex'lerinden ONCE. Yoksa link null doner ve
             // `if (!username) return;` ile SESSIZCE DUSER -> kuyruk bos kalir (FB'de yasandi).
             // Sunucudaki pool_group_key ile AYNI 'tt:' oneki.
+            // Faz YT-1: X regex'lerinden ONCE. Kanal kapsamdaki formlarda URL'de YOK ->
+            // yer tutucu ver ki gonderi kuyruga GIRSIN (null donersek sessizce duser).
+            if (xPlatformOf(url) === 'yt') {
+              const u = xUrlOf(xYtCanonical(url));
+              const p = u ? String(u.pathname || '').replace(/\/+$/, '') : '';
+              const m = p.match(/^\/@([^/]+)/i);
+              if (m) return 'yt:' + m[1].toLowerCase();
+              return 'yt:@youtube_user';
+            }
             if (xPlatformOf(url) === 'tt') {
               const u = xUrlOf(xTtCanonical(url));
               const p = u ? String(u.pathname || '').replace(/\/+$/, '') : '';
@@ -1728,8 +1791,9 @@ function processServerJob(job, origin) {
             // /@user/photo/123 linki '/p/' iceriyor gibi gorunmez ama kisa linkler ve
             // ileride /photo/ formu yanlis gorev tipine dusebilir.
             const isTiktokPost = xIsTtPostUrl(absUrl);
-            const isInstagramPost = !isFacebookPost && !isTiktokPost && (absUrl.includes('/p/') || absUrl.includes('/reel/'));
-            if (isTweet || isInstagramPost || isFacebookPost || isTiktokPost) {
+            const isYoutubePost = xIsYtPostUrl(absUrl);   // Faz YT-1
+            const isInstagramPost = !isFacebookPost && !isTiktokPost && !isYoutubePost && (absUrl.includes('/p/') || absUrl.includes('/reel/'));
+            if (isTweet || isInstagramPost || isFacebookPost || isTiktokPost || isYoutubePost) {
               if (groups[username].tweets.indexOf(absUrl) === -1) {
                 groups[username].tweets.push(absUrl);
               }

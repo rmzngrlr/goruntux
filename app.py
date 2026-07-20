@@ -180,6 +180,14 @@ def normalize_link_key(link):
     # JS ikizi xNormLink AYNI kurali uygular; IKISINI BIRDEN degistir.
     if detect_platform(link) == "tt":
         return tt_canonical_link(link).split("#")[0].rstrip("/").lower()
+    # --- Faz YT-1: YouTube'da /watch?v=ID kimligi SORGUDA -> '?' ile KESMEK YASAK
+    # (FB'deki tuzagin aynisi). Kesilirse TUM izleme linkleri tek anahtara duser ve
+    # IndexedDB'de goruntuler birbirini EZER: rapor dogru link + YANLIS gorselle cikar.
+    # yt_canonical_link IDEMPOTENT + youtu.be/live/embed formlarini watch?v=ID'ye
+    # indiriyor -> ayni video hangi bicimde yapistirilirsa yapistirilsin TEK anahtar.
+    # JS ikizi xNormLink AYNI kurali uygular; IKISINI BIRDEN degistir.
+    if detect_platform(link) == "yt":
+        return yt_canonical_link(link).split("#")[0].rstrip("/").lower()
     l = link.split("?")[0].split("#")[0].strip()
     l = re.sub(r'/embed/?$', '', l, flags=re.IGNORECASE)
     l = l.rstrip('/')
@@ -207,6 +215,11 @@ def x_temizle_link(link):
         # --- Faz FB-1: Facebook (SALT EKLEME — X/IG dallari degismedi) ---
         if detect_platform(link) == "fb":
             return fb_canonical_link(link)
+        # --- Faz YT-1: YouTube (SALT EKLEME) ---
+        # Sorgu copu atilir (?t=42s zaman damgasi, ?list=PL... oynatma listesi,
+        # ?si=/?pp= paylasim izleme kodu) ve youtu.be/live/embed -> watch?v=ID'ye iner.
+        if detect_platform(link) == "yt":
+            return yt_canonical_link(link)
         # --- Faz TT-1: TikTok (SALT EKLEME) ---
         # Havuza/rapora giren GORUNUR link. Sorgu atilir: ?is_from_webapp=1&web_id=...
         # web_id TARAYICI izleme kimligidir — raporda durmasi hem cirkin hem anlamsiz,
@@ -236,6 +249,13 @@ def _is_tt_host(h):
     h = (h or "").lower()
     return h == "tiktok.com" or h.endswith(".tiktok.com")
 
+def _is_yt_host(h):
+    # Faz YT-1. Ayni host-hassas desen.
+    # youtu.be AYRI bir alan adidir (youtube.com altinda DEGIL) -> ayrica yazilmali.
+    h = (h or "").lower()
+    return (h == "youtube.com" or h.endswith(".youtube.com")
+            or h == "youtu.be" or h.endswith(".youtu.be"))
+
 def _url_host(link):
     try:
         s = (link or "").strip()
@@ -252,8 +272,10 @@ def detect_platform(link):
     _h = _url_host(link)
     if _is_fb_host(_h):               # host-hassas. 'evil.com/?u=facebook.com' KACMAZ,
         return "fb"                   # cunku substring degil gercek host'a bakiyoruz.
-    if _is_tt_host(_h):               # Faz TT-1 (yeni)
+    if _is_tt_host(_h):               # Faz TT-1
         return "tt"
+    if _is_yt_host(_h):               # Faz YT-1 (yeni)
+        return "yt"
     return "x"                        # MEVCUT VARSAYILAN
     # NOT: varsayilan 'x' oldugu icin TANINMAYAN her link sessizce X sayilir. TikTok
     # eklenmeden once bir tiktok linki X basligi altinda rapora giriyordu — FB'de de
@@ -400,6 +422,88 @@ def tt_canonical_link(link):
     except Exception:
         return link
 
+# --- Faz YT-1: YouTube kanonik link ---
+# UC AYRI KIMLIK YERI (kapsam kullanici karari: video + Shorts + topluluk gonderisi):
+#   /watch?v=ID   -> kimlik SORGUDA (FB'deki tuzagin aynisi: '?' ile kesmek YASAK)
+#   /shorts/ID    -> kimlik YOLDA
+#   /post/ID      -> kimlik YOLDA
+#
+# AYNI VIDEO, FARKLI BICIMLER -> hepsi AYNI kanonige inmeli, yoksa ayni videoyu iki
+# bicimde yapistirinca havuzda IKI oge olur ve iki kez ekran goruntusu alinir:
+#   youtu.be/ID          (olculdu: www.youtube.com/watch?v=ID'ye YONLENIYOR)
+#   /live/ID, /embed/ID, /v/ID
+# Shorts BILEREK AYRI birakildi: /shorts/ID ile /watch?v=ID ayni videoyu gosterse de
+# YERLESIMLERI tamamen farkli (dikey oynatici vs normal) -> ayni kanonige indirmek
+# yanlis yerlesimde yakalama yapardi.
+#
+# ATILAN sorgu parametreleri: t/start (zaman damgasi), list/index (oynatma listesi),
+# pp/si/feature/ab_channel (izleme/paylasim copu). BEYAZ LISTE degil, yalnizca 'v'
+# korunuyor -> bilinmeyen yeni parametreler de kendiliginden atilir.
+_YT_KISA_HOSTLAR = ("youtu.be", "www.youtu.be")
+
+def yt_canonical_link(link):
+    try:
+        s = (link or "").strip()
+        if not s:
+            return ""
+        if not re.match(r'^https?://', s, re.I):
+            s = "https://" + s.lstrip("/")
+        u = urlparse(s)
+        host = (u.hostname or "").lower()
+        if not _is_yt_host(host):
+            return link
+        path = (u.path or "/").rstrip("/")
+        q = parse_qs(u.query or "")
+        def vid(x):
+            return x if re.match(r'^[A-Za-z0-9_-]{5,20}$', x or "") else None
+        # 1) youtu.be/ID -> watch?v=ID (olculdu: gercekten oraya yonleniyor)
+        if host in _YT_KISA_HOSTLAR:
+            m = re.match(r'^/([^/]+)$', path)
+            v = vid(m.group(1)) if m else None
+            return ("https://www.youtube.com/watch?v=" + v) if v else ("https://www.youtube.com" + (path or "/"))
+        # 2) /watch?v=ID  (kimlik SORGUDA)
+        if path.lower() == "/watch":
+            v = vid((q.get("v") or [None])[0])
+            if v:
+                return "https://www.youtube.com/watch?v=" + v
+            return "https://www.youtube.com/watch"
+        # 3) /live/ID, /embed/ID, /v/ID -> normal izleme sayfasi (ayni video, ayni yerlesim)
+        m = re.match(r'^/(?:live|embed|v)/([^/]+)$', path, re.I)
+        if m:
+            v = vid(m.group(1))
+            if v:
+                return "https://www.youtube.com/watch?v=" + v
+        # 4) /shorts/ID -> AYRI tutulur (yerlesim farkli)
+        m = re.match(r'^/shorts/([^/]+)$', path, re.I)
+        if m:
+            v = vid(m.group(1))
+            if v:
+                return "https://www.youtube.com/shorts/" + v
+        # 5) /post/ID -> topluluk gonderisi
+        m = re.match(r'^/post/([^/]+)$', path, re.I)
+        if m:
+            return "https://www.youtube.com/post/" + m.group(1)
+        # 6) Taninmayan (kanal sayfasi vb.): host normalize + sorguyu at.
+        return "https://www.youtube.com" + (path or "/")
+    except Exception:
+        return link
+
+def yt_kanal_oku(link):
+    """YouTube kanal adi — YALNIZCA URL'de varsa.
+
+    /@kanal/... formunda vardir; ama KAPSAMDAKI formlarin hicbirinde (watch?v=,
+    /shorts/, /post/) kanal URL'de YOKTUR -> None doner ve gruplama, yakalamadan
+    gelen kanal adina duser (FB'deki /share/ durumunun aynisi).
+    """
+    try:
+        if not link or detect_platform(link) != "yt":
+            return None
+        u = urlparse(yt_canonical_link(link))
+        m = re.match(r'^/@([^/]+)', u.path or "", re.I)
+        return m.group(1).lower() if m else None
+    except Exception:
+        return None
+
 def tt_kullanici_adi_oku(link):
     """TikTok kullanici adi — YOLDAN. /@rtedijital/video/123 -> 'rtedijital'.
 
@@ -421,7 +525,8 @@ def tt_kullanici_adi_oku(link):
 # Bunlar gerçek bir kullanıcı adı geldiğinde üzerine yazılabilir kabul edilir.
 _GENERIC_TITLES = {"@instagram_user", "instagram_user", "instagram gönderisi", "instagram gonderisi",
                    "@facebook_user", "facebook_user", "facebook gönderisi", "facebook gonderisi",
-                   "@tiktok_user", "tiktok_user", "tiktok gönderisi", "tiktok gonderisi"}
+                   "@tiktok_user", "tiktok_user", "tiktok gönderisi", "tiktok gonderisi",
+                   "@youtube_user", "youtube_user", "youtube videosu", "youtube gönderisi", "youtube gonderisi"}
 
 def is_generic_title(t):
     if not t:
@@ -466,6 +571,19 @@ def pool_group_key(item):
             # yakalamadan gelir ve is_generic_title uzerinden yer tutucunun ustune yazilir.
             t = (item.get("title", "") or "").strip()
             username = ("tt:" + t.lower()) if (t and not is_generic_title(t)) else "tt:@tiktok_user"
+    # --- Faz YT-1 (SALT EKLEME) ---
+    # 'yt:' oneki FB/TT ile AYNI gerekce: YouTube kanali 'ntvspor' ile X hesabi
+    # '@ntvspor' ayni anahtara duser ve TEK Baslik 2 altinda birlesirdi.
+    # KAPSAMDAKI formlarda (watch?v=, /shorts/, /post/) kanal URL'de YOK -> gercek ad
+    # yakalamadan gelir ve is_generic_title uzerinden yer tutucunun ustune yazilir
+    # (FB'nin /share/ durumunun aynisi).
+    if not username and link and detect_platform(link) == "yt":
+        kanal = yt_kanal_oku(link)
+        if kanal:
+            username = "yt:" + kanal
+        else:
+            t = (item.get("title", "") or "").strip()
+            username = ("yt:" + t.lower()) if (t and not is_generic_title(t)) else "yt:@youtube_user"
     return username if username else None
 
 def iter_paragraphs_with_hyperlinks(paragraph):
@@ -3154,6 +3272,17 @@ HTML_TEMPLATE = """
         //   /@kullanici/video/{id}  -> id
         //   /@kullanici/photo/{id}  -> id   (kapsam disi ama link yapistirilirsa dogru etiketlensin)
         //   vm./vt./t/{kod}         -> kod  (kisa link; hedef ancak yonlenmeyle bilinir)
+        // Faz YT-1: YouTube icerik kodu (onizleme etiketi).
+        // watch?v=ID -> ID (SORGUDAN), /shorts/ID ve /post/ID -> ID (YOLDAN).
+        function ytPostCode(url) {
+            try {
+                var u = new URL(XPlat.ytCanonical(url));
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                if (p.toLowerCase() === '/watch') return u.searchParams.get('v') || '';
+                var m = p.match(/^\\/(?:shorts|post)\\/([^/]+)$/i);
+                return m ? m[1] : (p.replace(/^\\//, '') || '');
+            } catch (e) { return ''; }
+        }
         function ttPostCode(url) {
             try {
                 var u = new URL(XPlat.ttCanonical(url));
@@ -3222,6 +3351,20 @@ HTML_TEMPLATE = """
                 return false;
             } catch (e) { return false; }
         }
+        // Faz YT-1: YouTube ICERIK url'i mi (ALIM KAPISI).
+        // Bu dal olmazsa YouTube linki panelde SESSIZCE REDDEDILIR (FB'de yasandi).
+        // Kapsam kullanici karari: video + Shorts + topluluk gonderisi.
+        function isYtPostUrl(url) {
+            try {
+                if (!window.XPlat || XPlat.platform(url) !== 'yt') return false;
+                var u = new URL(XPlat.ytCanonical(url));
+                var p = String(u.pathname || '').replace(/\\/+$/, '');
+                if (p.toLowerCase() === '/watch') return !!u.searchParams.get('v');
+                if (/^\\/shorts\\/[^/]+$/i.test(p)) return true;
+                if (/^\\/post\\/[^/]+$/i.test(p)) return true;
+                return false;
+            } catch (e) { return false; }
+        }
         function isProfileUrl(url) {
             var clean = url.trim().replace(/^https?:\\/\\//, '').replace(/^www\\./, '').split('?')[0].split('#')[0];
             var match = clean.match(/^(x|twitter)\\.com\\/([a-zA-Z0-9_]{1,15})\\/?$/i);
@@ -3272,6 +3415,8 @@ HTML_TEMPLATE = """
                 if (window.XPlat && XPlat.platform(s) === 'fb') return XPlat.fbCanonical(s);
                 // Faz TT-1: sorgu tamamen atilir (is_from_webapp, web_id = izleme copu).
                 if (window.XPlat && XPlat.platform(s) === 'tt') return XPlat.ttCanonical(s);
+                // Faz YT-1: ?t= zaman damgasi, ?list= oynatma listesi, ?si=/?pp= izleme copu atilir.
+                if (window.XPlat && XPlat.platform(s) === 'yt') return XPlat.ytCanonical(s);
                 if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com' || host.endsWith('.twitter.com')) {
                     return s.split('#')[0].split('?')[0];
                 }
@@ -3294,7 +3439,8 @@ HTML_TEMPLATE = """
                 var isInstagram = lineLow.includes('instagram.com/p/') || lineLow.includes('instagram.com/reel/') || lineLow.includes('instagram.com/reels/') || lineLow.includes('instagram.com/tv/');
                 var isFacebook = isFbPostUrl(line);   // Faz FB-1
                 var isTiktok = isTtPostUrl(line);     // Faz TT-1
-                if (isStatus || isProfile || isInstagram || isFacebook || isTiktok) {
+                var isYoutube = isYtPostUrl(line);    // Faz YT-1
+                if (isStatus || isProfile || isInstagram || isFacebook || isTiktok || isYoutube) {
                     validLinks.push(line);
                 } else {
                     remainingLines.push(line);
@@ -3345,6 +3491,7 @@ HTML_TEMPLATE = """
                 var isStatus = link.includes('/status/');
                 var isFacebook = (window.XPlat && XPlat.platform(link) === 'fb');   // Faz FB-1
                 var isTiktok   = (window.XPlat && XPlat.platform(link) === 'tt');   // Faz TT-1
+                var isYoutube  = (window.XPlat && XPlat.platform(link) === 'yt');   // Faz YT-1
                 if (isInstagram) {
                     var username = "instagram";
                     if (!groups[username]) {
@@ -3372,6 +3519,12 @@ HTML_TEMPLATE = """
                     if (groups[username].tweets.indexOf(link) === -1) {
                         groups[username].tweets.push(link);
                     }
+                } else if (isYoutube) {
+                    // Faz YT-1: FB/TT ile ayni TEK BLOK deseni. Kanal adi kapsamdaki
+                    // formlarda URL'de YOK (watch?v=/shorts/post) -> bloklara bolemeyiz.
+                    var username = 'yt';
+                    if (!groups[username]) { groups[username] = { profile_url: null, tweets: [] }; }
+                    if (groups[username].tweets.indexOf(link) === -1) { groups[username].tweets.push(link); }
                 } else if (isTiktok) {
                     // Faz TT-1: FB dali gibi, isStatus/else'ten ONCE. TEK BLOK — FB'de
                     // kullanicinin istedigi bicimin aynisi ("hepsi TikTok, bir tutulsun").
@@ -3415,12 +3568,14 @@ HTML_TEMPLATE = """
                 // toplaniyor -> tek blok, tek baslik.
                 var isFbGroup = (username === 'fb');
                 var isTtGroup = (username === 'tt');   // Faz TT-1: FB ile ayni tek-blok deseni
+                var isYtGroup = (username === 'yt');   // Faz YT-1
                 var groupIcon = username === 'instagram' ? '📸'
-                              : (isFbGroup ? '📘' : (isTtGroup ? '🎵' : '👤'));
+                              : (isFbGroup ? '📘' : (isTtGroup ? '🎵' : (isYtGroup ? '▶️' : '👤')));
                 var displayName = username === 'instagram' ? 'Instagram Gönderileri'
                                 : (isFbGroup ? 'Facebook Gönderileri'
                                 : (isTtGroup ? 'TikTok Gönderileri'
-                                             : '@' + username));
+                                : (isYtGroup ? 'YouTube Videoları'
+                                             : '@' + username)));
                 html += '  <span style="font-weight:bold; color:var(--twitter-color); font-size: 13px;">' + groupIcon + ' ' + displayName + '</span>';
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),
                 // başlığın sağında. Gri=kapalı, yeşil=açık. Açıkken tweet linkinden türetilen
@@ -3452,6 +3607,8 @@ HTML_TEMPLATE = """
                             // Instagram dalindaki bicimin ayni: "<Platform> Gönderi Kodu: <kod>"
                             var fbKod = fbPostCode(tweetUrl);
                             label = "&#128279; Facebook Gönderi Kodu: " + (fbKod || 'bilinmiyor');
+                        } else if (window.XPlat && XPlat.platform(tweetUrl) === 'yt') {
+                            label = "&#128279; YouTube Gönderi Kodu: " + (ytPostCode(tweetUrl) || 'bilinmiyor');
                         } else if (window.XPlat && XPlat.platform(tweetUrl) === 'tt') {
                             // Faz TT-1: ayni bicim. Kod = video id (kimlik YOLDA).
                             label = "&#128279; TikTok Gönderi Kodu: " + (ttPostCode(tweetUrl) || 'bilinmiyor');
@@ -3556,7 +3713,7 @@ HTML_TEMPLATE = """
             // KENDILIGINDEN asamaz; savePoolOrderFromDom da DOM sirasini okudugu icin
             // bolum sirasi dogrudan havuz sirasina, oradan da Word'deki Baslik 1 sirasina
             // yansir. Bolum sirasi: havuzda ILK gorunen platform once (Word ile AYNI kural).
-            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok' };
+            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok', yt: 'YouTube' };
             var sections = [], bySec = {};
             for (var si = 0; si < blocks.length; si++) {
                 var sPlat = poolPlatformOf(blocks[si].items[0]);
@@ -4216,6 +4373,12 @@ X_PLATFORM_JS = r'''
     h = String(h||'').toLowerCase();
     return h === 'tiktok.com' || /\.tiktok\.com$/.test(h);
   }
+  function isYtHost(h){   // Faz YT-1 (Python: _is_yt_host)
+    h = String(h||'').toLowerCase();
+    // youtu.be AYRI alan adi (youtube.com altinda DEGIL) -> ayrica yazilmali.
+    return h === 'youtube.com' || /\.youtube\.com$/.test(h)
+        || h === 'youtu.be'    || /\.youtu\.be$/.test(h);
+  }
   function urlOf(link){
     // Python _url_host ile ayni: protokol yoksa https:// ekle.
     var s = String(link==null?'':link).trim();
@@ -4234,6 +4397,7 @@ X_PLATFORM_JS = r'''
     var h = hostOf(link);
     if(isFbHost(h)) return 'fb';                           // host-hassas
     if(isTtHost(h)) return 'tt';                           // Faz TT-1
+    if(isYtHost(h)) return 'yt';                           // Faz YT-1
     return 'x';                                            // MEVCUT VARSAYILAN
   }
 
@@ -4252,6 +4416,48 @@ X_PLATFORM_JS = r'''
       if(TT_KISA_HOSTLAR.indexOf(host) !== -1) return 'https://' + host + (path || '/');
       return 'https://www.tiktok.com' + (path || '/');
     } catch(e){ return link; }
+  }
+
+  // --- YouTube kanonik link (Python: yt_canonical_link) ---
+  // UC kimlik yeri: /watch?v=ID SORGUDA, /shorts/ID ve /post/ID YOLDA.
+  // youtu.be/live/embed -> watch?v=ID (ayni video, ayni yerlesim). Shorts AYRI kalir
+  // (yerlesim farkli). Yalnizca 'v' korunur -> bilinmeyen parametreler kendiliginden atilir.
+  var YT_KISA_HOSTLAR = ['youtu.be','www.youtu.be'];
+  function ytVid(x){ return /^[A-Za-z0-9_-]{5,20}$/.test(x||'') ? x : null; }
+  function ytCanonical(link){
+    try {
+      var u = urlOf(link);
+      if(!u || !isYtHost(u.hostname)) return link;   // YouTube DEGIL -> DOKUNMA
+      var host = String(u.hostname).toLowerCase();
+      var path = String(u.pathname || '/').replace(/\/+$/, '');
+      var m;
+      if(YT_KISA_HOSTLAR.indexOf(host) !== -1){
+        m = path.match(/^\/([^/]+)$/);
+        var v0 = m ? ytVid(m[1]) : null;
+        return v0 ? ('https://www.youtube.com/watch?v=' + v0) : ('https://www.youtube.com' + (path || '/'));
+      }
+      if(path.toLowerCase() === '/watch'){
+        var v1 = ytVid(u.searchParams.get('v'));
+        return v1 ? ('https://www.youtube.com/watch?v=' + v1) : 'https://www.youtube.com/watch';
+      }
+      m = path.match(/^\/(?:live|embed|v)\/([^/]+)$/i);
+      if(m){ var v2 = ytVid(m[1]); if(v2) return 'https://www.youtube.com/watch?v=' + v2; }
+      m = path.match(/^\/shorts\/([^/]+)$/i);
+      if(m){ var v3 = ytVid(m[1]); if(v3) return 'https://www.youtube.com/shorts/' + v3; }
+      m = path.match(/^\/post\/([^/]+)$/i);
+      if(m) return 'https://www.youtube.com/post/' + m[1];
+      return 'https://www.youtube.com' + (path || '/');
+    } catch(e){ return link; }
+  }
+  // Kanal adi YALNIZCA /@kanal/... formunda URL'de vardir; kapsamdaki formlarda YOK -> null.
+  function ytChannel(link){
+    try {
+      if(platform(link) !== 'yt') return null;
+      var u = urlOf(ytCanonical(link));
+      if(!u) return null;
+      var m = String(u.pathname||'').match(/^\/@([^/]+)/i);
+      return m ? m[1].toLowerCase() : null;
+    } catch(e){ return null; }
   }
 
   // --- TikTok kullanici adi (Python: tt_kullanici_adi_oku) ---
@@ -4346,7 +4552,8 @@ X_PLATFORM_JS = r'''
   // Gercek bir ad geldiginde uzerine yazilabilir kabul edilen basliklar.
   var GENERIC_TITLES = ['@instagram_user','instagram_user','instagram gönderisi','instagram gonderisi',
                         '@facebook_user','facebook_user','facebook gönderisi','facebook gonderisi',
-                        '@tiktok_user','tiktok_user','tiktok gönderisi','tiktok gonderisi'];
+                        '@tiktok_user','tiktok_user','tiktok gönderisi','tiktok gonderisi',
+                        '@youtube_user','youtube_user','youtube videosu','youtube gönderisi','youtube gonderisi'];
   function isGenericTitle(t){
     if(!t) return true;
     return GENERIC_TITLES.indexOf(String(t).trim().toLowerCase()) !== -1;
@@ -4365,6 +4572,11 @@ X_PLATFORM_JS = r'''
     }
     // Faz TT-1: 'tt:' oneki de soyulur. TikTok'ta ekranda kullanici adi '@' ile
     // gosterilir (@rtedijital) -> X/IG ifadesiyle ayni bicime dusuyoruz.
+    if(v.indexOf('yt:') === 0){
+      var r3 = v.slice(3);
+      if(!r3 || r3 === '@youtube_user') return 'YouTube Videoları';
+      return r3;   // kanal adi (yakalamadan gelir) — X/IG'deki gibi '@' EKLENMEZ
+    }
     if(v.indexOf('tt:') === 0){
       var r2 = v.slice(3);
       if(!r2 || r2 === '@tiktok_user') return 'TikTok Gönderileri';
@@ -4379,10 +4591,13 @@ X_PLATFORM_JS = r'''
     fbPageSlug: fbPageSlug,
     ttCanonical: ttCanonical,
     ttUsername: ttUsername,
+    ytCanonical: ytCanonical,
+    ytChannel: ytChannel,
     groupFallbackTitle: groupFallbackTitle,
     isGenericTitle: isGenericTitle,
     isFbHost: isFbHost,
-    isTtHost: isTtHost
+    isTtHost: isTtHost,
+    isYtHost: isYtHost
   };
 })();
 '''
@@ -4536,6 +4751,18 @@ LOCAL_DOCX_JS = r'''
           username = (tt2 && !XPlat.isGenericTitle(tt2)) ? ('tt:' + tt2.toLowerCase()) : 'tt:@tiktok_user';
         }
       }
+      // Faz YT-1: sunucudaki pool_group_key 'yt:' dalinin IKIZI.
+      // (TikTok'ta bu ikizi ATLAMISTIM -> Word'de her gonderi AYRI Baslik 2 almisti.
+      //  Ayni hatayi tekrarlamamak icin bu sefer AYNI commit'te.)
+      if(!username && link && window.XPlat && XPlat.platform(link)==='yt'){
+        var ytK = XPlat.ytChannel(link);
+        if(ytK){ username = 'yt:' + ytK; }
+        else {
+          // watch?v= / shorts / post -> kanal URL'de YOK; gercek ad yakalamadan gelir.
+          var yt2=(item.title||'').trim();
+          username = (yt2 && !XPlat.isGenericTitle(yt2)) ? ('yt:' + yt2.toLowerCase()) : 'yt:@youtube_user';
+        }
+      }
       if(username){
         if(!groups[username]){ groups[username]={items:[]}; order.push(['group',username]); }
         groups[username].items.push(item);
@@ -4625,7 +4852,7 @@ LOCAL_DOCX_JS = r'''
     // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
     // Faz FB-1: kural artik UCLU ve XPlat'a (sunucudaki detect_platform ikizi) delege edilir.
     // Eskiden 'instagram.com degilse X' idi -> Facebook linki SESSIZCE X sayilirdi.
-    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook', tt:'TikTok' };
+    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook', tt:'TikTok', yt:'YouTube' };
     function entryPlatform(entry){
       var it = (entry[0]==='group') ? groups[entry[1]].items[0] : entry[1];
       var lk = ((it && it.link)||'');
@@ -4930,6 +5157,12 @@ LOCAL_IMAGES_JS = r'''
     // ayrisirlardi -> gorsel SESSIZCE kaybolurdu. Python normalize_link_key ile AYNI.
     if(window.XPlat && XPlat.platform(link)==='tt'){
       return XPlat.ttCanonical(link).split('#')[0].replace(/\/+$/,'').toLowerCase();
+    }
+    // Faz YT-1: /watch?v=ID kimligi SORGUDA -> '?' ile KESMEK YASAK (FB tuzagi).
+    // ytCanonical youtu.be/live/embed'i de watch?v=ID'ye indiriyor -> ayni video hangi
+    // bicimde gelirse gelsin TEK anahtar. Python normalize_link_key ile AYNI.
+    if(window.XPlat && XPlat.platform(link)==='yt'){
+      return XPlat.ytCanonical(link).split('#')[0].replace(/\/+$/,'').toLowerCase();
     }
     var s=String(link).split('#')[0].split('?')[0].trim().toLowerCase();
     s=s.replace(/\/embed$/,'');
