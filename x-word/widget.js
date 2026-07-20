@@ -4710,11 +4710,18 @@
 
                     // 4) Kadraja BINEBILECEK katmanlari gizle (tiklama YOK — onay/abonelik
                     //    durumu degistirmeyiz; FB cerez bandi kararinin aynisi).
+                    // OYNATICI KONTROLLERI de gizlenir: pause() YouTube'a kontrolleri
+                    // GOSTERTIYOR (duraklat dugmesi, ilerleme cubugu, "0:00 / 2:14", ayarlar).
+                    // Kullanicinin istedigi cerceve KONTROLSUZ videoydu; kare sabitlemenin
+                    // yan etkisi olarak kadraja giriyorlardi.
                     ['ytd-consent-bump-v2-lightbox',
                      'ytd-popup-container tp-yt-paper-dialog',
                      'tp-yt-iron-overlay-backdrop',
                      'ytd-mealbar-promo-renderer',
-                     '#masthead-container'].forEach(function (sel) {
+                     '#masthead-container',
+                     '.ytp-chrome-top', '.ytp-chrome-bottom',
+                     '.ytp-gradient-top', '.ytp-gradient-bottom',
+                     '.ytp-large-play-button', '.ytp-play-button-overlay'].forEach(function (sel) {
                         document.querySelectorAll(sel).forEach(function (el) {
                             const r = el.getBoundingClientRect();
                             if (r.width < 1 || r.height < 1) return;
@@ -4770,7 +4777,17 @@
                     // (daralinca alta kayiyor); kullanicinin penceresinde ise SAGDA duruyor.
                     // Alt sinirin (yorumlar) tam karsiligi: sag sinir = onerilerin SOL kenari.
                     // #primary-inner'a kirpMIYORUZ — o, full-bleed videonun kenarlarini keserdi.
+                    // v3.55'te #secondary.left kullanilmisti ve YETMEDI: o sutun bazi
+                    // genisliklerde 0x0 oluyor (daralinca alta kayiyor) -> guvenilir sinir DEGIL.
+                    // #primary (icerik sutunu) her zaman var ve olculdu (960x760):
+                    // sag kenari oynaticiyla AYNI (945) -> videoyu KESMEZ ama onerileri disarida tutar.
+                    // Ek olarak #secondary gorunurse onun solu da uygulanir (ikisinin KUCUGU).
                     try {
+                        const _pri = document.querySelector('#primary');
+                        if (_pri) {
+                            const _pr = _pri.getBoundingClientRect();
+                            if (_pr.width > 1 && _pr.height > 1) R2 = Math.min(R2, _pr.right);
+                        }
                         const _sec = document.querySelector('#secondary');
                         if (_sec) {
                             const _sr = _sec.getBoundingClientRect();
@@ -4835,12 +4852,47 @@
                             } else if (_gercek > _delta + 20) {
                                 printLog(`kaydirma ASIRI (istendi=${_delta}, oldu=${_gercek}) -> tek kareye dusuluyor`);
                             } else {
-                                const alt = await _capture(window.innerHeight - _gercek, _gercek);
-                                if (ust === alt) {
-                                    printLog("iki dilim AYNI -> birlestirme iptal, tek kareye dusuluyor");
+                                // KAYDIRMADAN SONRA YENIDEN OLC — tahmin ETME.
+                                // v3.55'te 2. dilimin YUKSEKLIGI 'gerceklesen kaydirma' kadar
+                                // aliniyordu; gereken ise TASAN miktar. Ikisi tutmayinca arada
+                                // BOSLUK kaliyor ve birlestirme yerinde icerik KESILIYORDU
+                                // (kullanici ciktisi: kanal satiri ortadan ikiye bolunmus).
+                                // Ray'im bunu goremiyordu: yalnizca "hic kaymadi mi" diye bakiyordu.
+                                // Yeniden olcmek hem bu farki hem de kaydirma sirasinda olusan
+                                // yerlesim kaymalarini KENDILIGINDEN duzeltir.
+                                let _B2 = 0;
+                                const _yenidenOlc = function () {
+                                    const p2 = [];
+                                    ['#movie_player', 'h1.ytd-watch-metadata', '#owner',
+                                     '#top-level-buttons-computed', '#bottom-row'].forEach(function (sel) {
+                                        const e2 = document.querySelector(sel);
+                                        if (!e2) return;
+                                        const r2 = e2.getBoundingClientRect();
+                                        if (r2.width > 1 && r2.height > 1) p2.push(r2);
+                                    });
+                                    if (!p2.length) return 0;
+                                    let b2 = Math.max.apply(null, p2.map(r => r.bottom)) + PAY;
+                                    const ym2 = document.querySelector('#comments');
+                                    if (ym2) {
+                                        const yr2 = ym2.getBoundingClientRect();
+                                        if (yr2.height > 0) b2 = Math.min(b2, yr2.top);
+                                    }
+                                    return Math.min(window.innerHeight, Math.round(b2));
+                                };
+                                _B2 = _yenidenOlc();
+                                const _altUst = Math.max(0, window.innerHeight - _gercek);
+                                const _altYuk = Math.round(_B2 - _altUst);
+                                if (_altYuk < 4) {
+                                    printLog(`2. dilim yuksekligi gecersiz (${_altYuk}) -> tek kareye dusuluyor`);
                                 } else {
-                                    _ham = await igVerticalStitch([ust, alt]);
-                                    _yol = 'kaydir-birlestir'; _parca = 2;
+                                    const alt = await _capture(_altUst, _altYuk);
+                                    if (ust === alt) {
+                                        printLog("iki dilim AYNI -> birlestirme iptal, tek kareye dusuluyor");
+                                    } else {
+                                        _ham = await igVerticalStitch([ust, alt]);
+                                        _yol = 'kaydir-birlestir'; _parca = 2;
+                                        _delta = _altYuk;   // loga GERCEK birlesen yukseklik yazilsin
+                                    }
                                 }
                             }
                         } catch (e) {
