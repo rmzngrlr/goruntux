@@ -910,6 +910,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const windowId = sender.tab ? sender.tab.windowId : null;
     const rect     = message.rect;
     const dpr      = message.dpr || 1;
+    const vw       = message.vw || 0;   // Faz YT: olcek dpr'den DEGIL, yakalanan goruntuden turetilir
 
     function doCaptureAndCrop() {
       logToServer(`[captureAndCrop] Yakalıyor. rect=${JSON.stringify(rect)} dpr=${dpr}`);
@@ -922,7 +923,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         logToServer(`[captureAndCrop] Yakalandı (${dataUrl.length}). Kırpılıyor...`);
         try {
-          const croppedDataUrl = await cropImageInBackground(dataUrl, rect, dpr);
+          const croppedDataUrl = await cropImageInBackground(dataUrl, rect, dpr, vw);
           logToServer(`[captureAndCrop] Kırpma başarılı. Sonuç boyutu: ${croppedDataUrl.length}`);
           sendResponse({ status: "success", dataUrl: croppedDataUrl });
         } catch (cropErr) {
@@ -2059,7 +2060,7 @@ function parseDateToMs(dateStr, timeStr) {
   }
 }
 
-async function cropImageInBackground(dataUrl, rect, dpr) {
+async function cropImageInBackground(dataUrl, rect, dpr, vw) {
   try {
     const parts = dataUrl.split(',');
     const mime = parts[0].match(/:(.*?);/)[1];
@@ -2074,11 +2075,35 @@ async function cropImageInBackground(dataUrl, rect, dpr) {
     
     const srcW = imageBitmap.width;
     const srcH = imageBitmap.height;
-    
-    let cropX = Math.round(rect.left * dpr);
-    let cropY = Math.round(rect.top * dpr);
-    let cropW = Math.round(rect.width * dpr);
-    let cropH = Math.round(rect.height * dpr);
+
+    // OLCEK: dpr'ye GUVENME, yakalanan goruntuden TURET.
+    //
+    // SAHA HATASI (2026-07-20, YouTube): CSS px -> goruntu px cevirimi dpr ile yapiliyordu,
+    // ama gercek olcek srcW/viewportGenisligi'dir. Ikisi AYNI DEGIL — en yaygin sebep
+    // KAYDIRMA CUBUGU: window.innerWidth cubugu ICERIR, yakalanan goruntu ise icerik
+    // alanidir (olculdu: innerWidth=1280, documentElement.clientWidth=1265 -> %1.2 fark).
+    // Etkisi CARPANSAL, dolayisiyla hata neredeyse TAMAMEN SAG kenarda birikir:
+    //     sag kenar = R2 * (dpr/s),  sol kenar = L * (dpr/s)
+    // YouTube'da L~8, R2~803 -> solda 0.1px (gorunmez), sagda ~10px -> tam olarak
+    // kullanicinin bildirdigi "ince, tum yukseklikte SAG SERIT" (oneri kucuk resimleri).
+    // Ayrica bu, R2'yi kucultmenin neden ise yaramadigini aciklar: serit = R2*(d-1),
+    // R2 953->859 seridi 11.3px'ten 10.2px'e indirir (BIR piksel).
+    // Olcegi olcerek turetmek kaydirma cubugu / tarayici yakinlastirmasi / kesirli dpr
+    // durumlarinin HEPSINI birden cozer.
+    let olcek = dpr;
+    if (vw > 0 && srcW > 0) {
+        const s2 = srcW / vw;
+        // Akil sagligi: makul araligin disindaysa dpr'ye don (bozuk yakalama vb.)
+        if (s2 > 0.2 && s2 < 8) olcek = s2;
+    }
+    if (Math.abs(olcek - dpr) > 0.005) {
+        logToServer(`[crop] OLCEK duzeltildi: dpr=${dpr} -> olcek=${olcek.toFixed(4)} (srcW=${srcW}, vw=${vw})`);
+    }
+
+    let cropX = Math.round(rect.left * olcek);
+    let cropY = Math.round(rect.top * olcek);
+    let cropW = Math.round(rect.width * olcek);
+    let cropH = Math.round(rect.height * olcek);
     
     // Sınırları kaynağa göre sınırla (out-of-bounds hatalarını engelle)
     if (cropX < 0) cropX = 0;

@@ -1213,7 +1213,7 @@
                                 const sliceH = Math.round(Math.min(vH, fullH - y));
                                 if (sliceH <= 2) break;
                                 const segRes = await new Promise(resolve => {
-                                    swSendReliable({ action: "captureAndCrop", rect: { top: 0, left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
+                                    swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: 0, left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
                                 });
                                 if (!segRes || segRes.status !== "success" || !segRes.dataUrl) break;
                                 segs.push(segRes.dataUrl);
@@ -4417,7 +4417,7 @@
                         const top = Math.max(0, Math.round(kr.top));
                         const h = Math.round(Math.min(window.innerHeight - top, fullH));
                         const res = await new Promise(resolve => {
-                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve);
+                            swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve);
                         });
                         if (res && res.status === "success" && res.dataUrl) segs.push(res.dataUrl);
                     } else {
@@ -4451,7 +4451,7 @@
                             const sliceH = Math.round(Math.min(pencere - ofset, fullH - y));
                             if (sliceH <= 2) break;
                             const res = await new Promise(resolve => {
-                                swSendReliable({ action: "captureAndCrop", rect: { top: Math.max(0, Math.round(kr.top + ofset)), left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
+                                swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: Math.max(0, Math.round(kr.top + ofset)), left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve);
                             });
                             if (!res || res.status !== "success" || !res.dataUrl) break;
                             // AYNI DILIM korumasi: kaydirma calismiyorsa her dilim AYNI cikar.
@@ -4734,11 +4734,21 @@
                     // 5) KADRAJ = oynatici + baslik + kanal + istatistik birlesimi.
                     //    SABIT KOORDINAT YOK: yerlesim pencere genisligine gore degisiyor.
                     const parcalar = [];
+                    // TUM eslesmeleri tara, ILK GORUNUR olani al.
+                    // SAHA HATASI (2026-07-20, canli olcum): querySelector ILK eslesmeyi verir
+                    // ve YouTube'da o cogu zaman 0x0 bir ikiz oluyor:
+                    //   querySelectorAll('#top-level-buttons-computed') -> 3 adet: 0x0, 254x40, 0x0
+                    // Eski kod ilkini (0x0) alip gorunurluk kapisinda ELIYORDU -> begeni/paylas
+                    // satiri kadraja HIC girmiyordu (sessiz: hata yok, sadece eksik cerceve).
+                    // Ayni tuzak Facebook'ta da yasanmisti (gizli 0x0 bildirim dialog'u modal
+                    // secimini kaciriyordu) -> gorunurluk secimin PARCASI olmali, sonradan
+                    // gelen bir filtre degil.
                     const ekle = function (sel) {
-                        const e = document.querySelector(sel);
-                        if (!e) return;
-                        const r = e.getBoundingClientRect();
-                        if (r.width > 1 && r.height > 1) parcalar.push(r);
+                        const hepsi = document.querySelectorAll(sel);
+                        for (let qi = 0; qi < hepsi.length; qi++) {
+                            const r = hepsi[qi].getBoundingClientRect();
+                            if (r.width > 1 && r.height > 1) { parcalar.push(r); return; }
+                        }
                     };
                     ekle('#movie_player');
                     ekle('h1.ytd-watch-metadata');
@@ -4782,17 +4792,22 @@
                     // #primary (icerik sutunu) her zaman var ve olculdu (960x760):
                     // sag kenari oynaticiyla AYNI (945) -> videoyu KESMEZ ama onerileri disarida tutar.
                     // Ek olarak #secondary gorunurse onun solu da uygulanir (ikisinin KUCUGU).
+                    // Ayni "ilk eslesme 0x0" tuzagi burada da vardi: canli olcumde
+                    // querySelector('#secondary') 0x0 donuyordu -> v3.55 kirpmasi SESSIZCE
+                    // hic calismamis. Artik ilk GORUNUR eslesme aranir.
+                    const _ilkGorunur = function (sel) {
+                        const hepsi = document.querySelectorAll(sel);
+                        for (let qi = 0; qi < hepsi.length; qi++) {
+                            const r = hepsi[qi].getBoundingClientRect();
+                            if (r.width > 1 && r.height > 1) return r;
+                        }
+                        return null;
+                    };
                     try {
-                        const _pri = document.querySelector('#primary');
-                        if (_pri) {
-                            const _pr = _pri.getBoundingClientRect();
-                            if (_pr.width > 1 && _pr.height > 1) R2 = Math.min(R2, _pr.right);
-                        }
-                        const _sec = document.querySelector('#secondary');
-                        if (_sec) {
-                            const _sr = _sec.getBoundingClientRect();
-                            if (_sr.width > 1 && _sr.height > 1) R2 = Math.min(R2, _sr.left);
-                        }
+                        const _pr = _ilkGorunur('#primary');
+                        if (_pr) R2 = Math.min(R2, _pr.right);
+                        const _sr = _ilkGorunur('#secondary');
+                        if (_sr) R2 = Math.min(R2, _sr.left);
                     } catch (e) {}
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
                     R2 = Math.min(window.innerWidth, Math.round(R2));
@@ -4831,7 +4846,7 @@
                     const dpr = window.devicePixelRatio || 1;
                     const _capture = async function (top, h) {
                         const rr = await new Promise(resolve => {
-                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
+                            swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
                         });
                         if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
                         return rr.dataUrl;
@@ -5202,7 +5217,7 @@
                     const dpr = window.devicePixelRatio || 1;
                     const _capture = async function (top, h) {
                         const rr = await new Promise(resolve => {
-                            swSendReliable({ action: "captureAndCrop", rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
+                            swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve);
                         });
                         if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
                         return rr.dataUrl;
