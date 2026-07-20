@@ -4843,6 +4843,27 @@
                     // scrollBy(250) sonrasi oynatici y 68 -> -182, mini YOK.
                     // Raylar TikTok'takiyle ayni: hareket dogrulanir, tutmazsa/asiri olursa
                     // ya da iki dilim AYNI cikarsa TEK KAREYE dusulur (bugunku davranis).
+                    // --- TANI (2026-07-20): sag serit UC duzeltmeye ragmen surdu. Gelistirici
+                    // penceresindeki olcumler kullanicininkiyle uyusmuyor -> KULLANICININ
+                    // tarayicisindaki GERCEK sayilari tek satirda dok. Tahmin etmeyi birak.
+                    try {
+                        const _d = function (sel) {
+                            const hepsi = document.querySelectorAll(sel);
+                            for (let qi = 0; qi < hepsi.length; qi++) {
+                                const r = hepsi[qi].getBoundingClientRect();
+                                if (r.width > 1 && r.height > 1)
+                                    return Math.round(r.left) + '..' + Math.round(r.right);
+                            }
+                            return 'YOK(' + hepsi.length + ')';
+                        };
+                        printLog(`[TANI] kadraj L=${L} R2=${R2} cw=${cw} T=${T} B=${B} B_tam=${B_tam}`
+                            + ` | vw=${window.innerWidth} clientW=${document.documentElement.clientWidth}`
+                            + ` dpr=${window.devicePixelRatio}`
+                            + ` | player=${_d('#movie_player')} primary=${_d('#primary')}`
+                            + ` secondary=${_d('#secondary')} bottomRow=${_d('#bottom-row')}`
+                            + ` columns=${_d('#columns')}`);
+                    } catch (e) {}
+
                     const dpr = window.devicePixelRatio || 1;
                     const _capture = async function (top, h) {
                         const rr = await new Promise(resolve => {
