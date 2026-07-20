@@ -151,36 +151,19 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
   });
 }
 
-// CustomEvent listener for fetching x.com cookies specifically for the admin panel bridge
-document.addEventListener('xrapor_request_cookies', (event) => {
-    const targetUsername = event.detail.target_username;
-    const origin = window.location.origin;
-    const confirmed = event.detail.confirmed;
-
-    // Güvenlik: Çerezlerin gönderileceği hedef adresi kullanıcıya açıkça sorup onay almak zorundayız,
-    // aksi halde kötü niyetli bir sayfa DOM üzerinden bu eventi tetikleyip çerezleri çalabilir.
-    // Eğer istek yapan sayfa SweetAlert2 ile önceden onay aldıysa (confirmed: true), confirm pencerisini atlarız.
-    if (!confirmed) {
-        if (!confirm(`DİKKAT: "${origin}" adresindeki sunucu, X.com (Twitter) çerezlerinize erişim istiyor.\n\nBu işlem, sunucunun sizin hesabınızla ("@${targetUsername}") işlem yapmasına olanak tanır.\n\nBu siteye GÜVENİYOR MUSUNUZ ve çerezlerinizin gönderilmesini onaylıyor musunuz?`)) {
-            document.dispatchEvent(new CustomEvent('xrapor_cookies_response', {
-                detail: { success: false, message: "Kullanıcı çerez erişimini reddetti." }
-            }));
-            return;
-        }
-    }
-
-    // Send message to background script to sync cookies securely to backend
-    try {
-        chrome.runtime.sendMessage({ action: "syncTwitterCookies", targetUsername: targetUsername, origin: origin }, (response) => {
-            // Dispatch response status back to the window, avoiding exposing cookies in DOM
-            document.dispatchEvent(new CustomEvent('xrapor_cookies_response', { detail: response }));
-        });
-    } catch (e) {
-        document.dispatchEvent(new CustomEvent('xrapor_cookies_response', {
-            detail: { success: false, message: "Eklenti arka plan servisine ulaşılamadı. Lütfen sayfayı yenileyin." }
-        }));
-    }
-});
+// SILINDI (v3.61): 'xrapor_request_cookies' dinleyicisi — X oturum cerezlerini
+// sayfaya veren kod yolu. Bu dosya HER http(s) sayfasinda calistigi icin (manifest
+// content_scripts matches: http://*/*, https://*/*) ziyaret edilen herhangi bir site
+// bu olayi tetikleyebiliyordu. Uc kusur ust uste binmisti:
+//   1) Cagiran 'confirmed: true' gonderdiginde onay penceresi TAMAMEN atlaniyordu.
+//   2) background.js tarafi cagiranin kim oldugunu HIC dogrulamiyordu.
+//   3) Yanit, cerezler icindeyken sayfanin DOM'una CustomEvent ile birakiliyordu —
+//      hemen ustundeki yorum satiri "avoiding exposing cookies in DOM" diyordu ama
+//      yaptigi tam tersiydi.
+// Sonuc: auth_token dahil X oturumu sizdirilabilirdi (sifre/2FA atlanir).
+// Ozellik ZATEN KULLANILMIYORDU: panel bu olayi hicbir yerde tetiklemiyor ve sunucuda
+// cerez tuketen kod yok — sunucu tarafi Word uretimi tarayiciya tasinirken yol olmus,
+// tesisati sokulmemis. Islev kaybi YOK.
 
 // ----------------- MV3 SERVIS WORKER KEEPALIVE -----------------
 // MV3'te service worker boşta kalınca sonlanır; bu yüzden tarama bitip yeni tarama

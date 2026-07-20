@@ -1548,22 +1548,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
   }
 
-  if (message.action === "syncTwitterCookies") {
-    chrome.cookies.getAll({ domain: ".x.com" }, (cookies) => {
-        if (!cookies || cookies.length === 0) {
-            chrome.cookies.getAll({ domain: ".twitter.com" }, (twCookies) => {
-                if (!twCookies || twCookies.length === 0) {
-                    sendResponse({ success: false, message: "X.com (Twitter) üzerinde aktif bir oturum (çerez) bulunamadı." });
-                } else {
-                    sendResponse({ success: true, cookies: twCookies });
-                }
-            });
-            return;
-        }
-        sendResponse({ success: true, cookies: cookies });
-    });
-    return true;
-  }
+  // SILINDI (v3.61): "syncTwitterCookies" isleyicisi. X oturum cerezlerini okuyup
+  // CAGIRANI HIC DOGRULAMADAN geri donduruyordu (bu blokta 'origin' kelimesi bile
+  // gecmiyordu). Cifti olan bridge.js dinleyicisi de her http(s) sayfasinda calisiyordu
+  // -> ziyaret edilen herhangi bir site cerezleri isteyip sizdirabilirdi.
+  // Ozellik ZATEN OLUYDU: panel bu olayi hicbir yerde tetiklemiyor (sunucu tarafi Word
+  // uretimi tarayiciya tasinirken yol olmus, tesisati sokulmemis). Manifest'teki
+  // "cookies" izni de kaldirildi — chrome.cookies'in tek kullanimi buydu.
 });
 
 // Extension icon click action: focus existing tab or open in a new tab
