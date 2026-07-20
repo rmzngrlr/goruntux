@@ -4778,23 +4778,37 @@
                             if (_yr.height > 0) B_tam = Math.min(B_tam, _yr.top);
                         }
                     } catch (e) {}
-                    // SINIR: ONERILER SUTUNU (#secondary). Kullanici ciktisinda kadrajin
-                    // SAGINDA oneri kucuk resimlerinden bir serit vardi. Sebep: alt sinir
-                    // (yorumlar) konmustu ama SAG sinir yoktu ve #movie_player "full-bleed"
-                    // modda icerik sutunundan DAHA GENIS oluyor (olculdu 960x760:
-                    // movie_player sag=945, #primary-inner sag=929).
-                    // Benim testimde gorunmemisti cunku o genislikte #secondary 0x0'di
-                    // (daralinca alta kayiyor); kullanicinin penceresinde ise SAGDA duruyor.
-                    // Alt sinirin (yorumlar) tam karsiligi: sag sinir = onerilerin SOL kenari.
-                    // #primary-inner'a kirpMIYORUZ — o, full-bleed videonun kenarlarini keserdi.
-                    // v3.55'te #secondary.left kullanilmisti ve YETMEDI: o sutun bazi
-                    // genisliklerde 0x0 oluyor (daralinca alta kayiyor) -> guvenilir sinir DEGIL.
-                    // #primary (icerik sutunu) her zaman var ve olculdu (960x760):
-                    // sag kenari oynaticiyla AYNI (945) -> videoyu KESMEZ ama onerileri disarida tutar.
-                    // Ek olarak #secondary gorunurse onun solu da uygulanir (ikisinin KUCUGU).
-                    // Ayni "ilk eslesme 0x0" tuzagi burada da vardi: canli olcumde
-                    // querySelector('#secondary') 0x0 donuyordu -> v3.55 kirpmasi SESSIZCE
-                    // hic calismamis. Artik ilk GORUNUR eslesme aranir.
+                    // SINIR: SAG KENAR = OYNATICININ SAG KENARI (v3.60, olculerek bulundu).
+                    //
+                    // Kullanici ciktisinda kadrajin saginda ~16px'lik bir serit vardi ve
+                    // v3.55/v3.56/v3.57/v3.58'de yaptigim dort duzeltmenin hicbiri onu
+                    // kaldirmadi. Sebebi 1280x593'te birebir olculdu:
+                    //
+                    //   #movie_player          sag = 814
+                    //   h1.ytd-watch-metadata  sag = 814
+                    //   div#description        sag = 814   <- kutunun GERCEK kenari
+                    //   #below                 sag = 814
+                    //   #bottom-row            sag = 826   <- 12px OLU dolgu
+                    //   #primary               sag = 830
+                    //   #secondary             sol = 830   <- primary'nin bittigi yerde BASLIYOR
+                    //
+                    // Iki sonuc cikiyor:
+                    // 1) Kadraji sisiren sey #bottom-row: kendi tek gorunur cocugundan
+                    //    (#description, 814) 12px GENIS. Ustune +PAY binince primary'nin
+                    //    kenarina dayaniyor.
+                    // 2) #primary.right'a kirpmak (v3.56) TANIM GEREGI ise yaramaz, cunku
+                    //    #secondary tam orada basliyor — iki sinir ayni sayi.
+                    //
+                    // Pencere kisayken 16:9 oynatici yuksekligine sikisip daraliyor ve
+                    // sutunun saginda bos bir sut kaliyor; serit iste o bosluk (ve onun
+                    // hemen saginda baslayan oneriler).
+                    // Gercek icerik kenari OYNATICININ sag kenari — baslik, aciklama ve
+                    // #below hepsi tam orada bitiyor. Sol taraftaki PAY ile bakisik olsun
+                    // diye ayni PAY sagda da birakiliyor (o bolge zaten bos zemin).
+                    //
+                    // #primary/#secondary kirpmalari GERIDE BIRAKILIYOR: full-bleed modda
+                    // oynatici sutundan genis olabiliyor, o zaman ust sinir onlardan gelir.
+                    // "Ilk eslesme 0x0" tuzagi (v3.58) icin ilk GORUNUR eslesme aranir.
                     const _ilkGorunur = function (sel) {
                         const hepsi = document.querySelectorAll(sel);
                         for (let qi = 0; qi < hepsi.length; qi++) {
@@ -4804,6 +4818,8 @@
                         return null;
                     };
                     try {
+                        const _ply = _ilkGorunur('#movie_player');
+                        if (_ply) R2 = Math.min(R2, _ply.right + PAY);
                         const _pr = _ilkGorunur('#primary');
                         if (_pr) R2 = Math.min(R2, _pr.right);
                         const _sr = _ilkGorunur('#secondary');
@@ -4843,26 +4859,6 @@
                     // scrollBy(250) sonrasi oynatici y 68 -> -182, mini YOK.
                     // Raylar TikTok'takiyle ayni: hareket dogrulanir, tutmazsa/asiri olursa
                     // ya da iki dilim AYNI cikarsa TEK KAREYE dusulur (bugunku davranis).
-                    // --- TANI (2026-07-20): sag serit UC duzeltmeye ragmen surdu. Gelistirici
-                    // penceresindeki olcumler kullanicininkiyle uyusmuyor -> KULLANICININ
-                    // tarayicisindaki GERCEK sayilari tek satirda dok. Tahmin etmeyi birak.
-                    try {
-                        const _d = function (sel) {
-                            const hepsi = document.querySelectorAll(sel);
-                            for (let qi = 0; qi < hepsi.length; qi++) {
-                                const r = hepsi[qi].getBoundingClientRect();
-                                if (r.width > 1 && r.height > 1)
-                                    return Math.round(r.left) + '..' + Math.round(r.right);
-                            }
-                            return 'YOK(' + hepsi.length + ')';
-                        };
-                        printLog(`[TANI] kadraj L=${L} R2=${R2} cw=${cw} T=${T} B=${B} B_tam=${B_tam}`
-                            + ` | vw=${window.innerWidth} clientW=${document.documentElement.clientWidth}`
-                            + ` dpr=${window.devicePixelRatio}`
-                            + ` | player=${_d('#movie_player')} primary=${_d('#primary')}`
-                            + ` secondary=${_d('#secondary')} bottomRow=${_d('#bottom-row')}`
-                            + ` columns=${_d('#columns')}`);
-                    } catch (e) {}
 
                     const dpr = window.devicePixelRatio || 1;
                     const _capture = async function (top, h) {

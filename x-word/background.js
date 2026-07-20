@@ -2096,16 +2096,10 @@ async function cropImageInBackground(dataUrl, rect, dpr, vw) {
         // Akil sagligi: makul araligin disindaysa dpr'ye don (bozuk yakalama vb.)
         if (s2 > 0.2 && s2 < 8) olcek = s2;
     }
-    // KOSULSUZ TANI: srcW'yi DORT turdur cikarsiyordum, hic GORMEDIM. Artik basiliyor.
-    // 'sagCss' = kirpmanin sag kenarinin GERCEK CSS karsiligi; istenen deger rect.left+rect.width.
-    // Ikisi arasindaki fark = seridin CSS px cinsinden genisligi.
-    try {
-        const _sagCss = (Math.round(rect.left * olcek) + Math.round(rect.width * olcek)) / (vw > 0 ? (srcW / vw) : olcek);
-        const _istenen = rect.left + rect.width;
-        logToServer(`[crop TANI] srcW=${srcW} srcH=${srcH} vw=${vw} dpr=${dpr} olcek=${olcek.toFixed(4)}`
-            + ` | rect=${rect.left}+${rect.width} -> sagCss=${_sagCss.toFixed(1)} istenen=${_istenen}`
-            + ` FARK=${(_sagCss - _istenen).toFixed(1)}px`);
-    } catch (e) {}
+    // NOT (v3.60): burada bir "[crop TANI]" satiri vardi ve DAIRESELDI — vw>0 iken
+    // olcek ZATEN srcW/vw'ye esit oldugu icin hesaplanan fark tanim geregi ~0 cikiyordu,
+    // yani hicbir olcek uyusmazligini yakalayamazdi. Silindi. Gercek sorun kirpmada
+    // degil kadraj dikdortgeninde cikti (widget.js, YouTube sag kenar siniri).
     if (Math.abs(olcek - dpr) > 0.005) {
         logToServer(`[crop] OLCEK duzeltildi: dpr=${dpr} -> olcek=${olcek.toFixed(4)} (srcW=${srcW}, vw=${vw})`);
     }
