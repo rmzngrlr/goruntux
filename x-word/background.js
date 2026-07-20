@@ -321,27 +321,12 @@ function logToServer(message) {
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   try {
     if ((changeInfo.status === 'complete' || changeInfo.url) && tab.url) {
-      if (tab.url.includes('config_role.html')) {
-        try {
-          let urlParsed = new URL(tab.url);
-          let roleParam = urlParsed.searchParams.get('role');
-          let originParam = urlParsed.origin;
-          if (roleParam === 'link_only' || roleParam === 'stats') {
-            let serverToken = urlParsed.searchParams.get('server_token');
-            let isServer = (serverToken === 'secret_server_bypass_token_2026');
-            chrome.storage.local.set({ 
-              browser_role: roleParam, 
-              server_origin: originParam,
-              is_server: isServer
-            }, () => {
-              console.log("[X-Rapor] Browser role configured to: " + roleParam + " and origin to: " + originParam);
-              logToServer("[X-Rapor] Browser role configured to: " + roleParam + " and origin to: " + originParam);
-            });
-          }
-        } catch (e) {
-          console.error("[X-Rapor] Failed to parse role config URL: ", e);
-        }
-      }
+      // SILINDI (v3.62): 'config_role.html' URL koklayicisi. HERHANGI bir sayfa
+      // ?role=link_only&server_token=... ile acildiginda server_origin'i KENDI origin'ine
+      // yaziyordu — yani ziyaret edilen bir site eklentinin "is sunucusunu" ele gecirebilirdi.
+      // Kapisi da koda gomulu tek bir dizeydi ('secret_server_bypass_token_2026').
+      // config_role.html bu depoda YOK; onceki programin rol/yetki tesisatindan kalma.
+      // Yerine gecen dogrulanmis yol registerPanel'dir (meta[name=x-rapor-panel] kapisi).
 
       // Faz FB-1: FB'de kimlik SORGUDA olabilir -> '?' ile kesersek permalink.php/photo.php/
       // watch gonderileri ayirt edilemez. FB icin sorguyu KORU (kanonik forma indirgeyerek).
@@ -634,39 +619,13 @@ chrome.runtime.onConnect.addListener((port) => {
   });
 });
 
-function configureStartupRole() {
-  chrome.tabs.query({}, (tabs) => {
-    if (tabs) {
-      tabs.forEach(tab => {
-        if (tab.url && tab.url.includes('config_role.html')) {
-          try {
-            let urlParsed = new URL(tab.url);
-            let roleParam = urlParsed.searchParams.get('role');
-            let originParam = urlParsed.origin;
-            if (roleParam === 'link_only' || roleParam === 'stats') {
-              let serverToken = urlParsed.searchParams.get('server_token');
-              let isServer = (serverToken === 'secret_server_bypass_token_2026');
-              chrome.storage.local.set({ 
-                browser_role: roleParam, 
-                server_origin: originParam,
-                is_server: isServer
-              }, () => {
-                console.log("[X-Rapor Startup] Browser role configured to: " + roleParam + " and origin to: " + originParam);
-              });
-            }
-          } catch (e) {
-            console.error("[X-Rapor Startup] Failed to parse role config URL: ", e);
-          }
-        }
-      });
-    }
-  });
-}
+// SILINDI (v3.62): configureStartupRole(). Acilista tum sekmeleri tarayip config_role.html
+// arayan, bulursa server_origin'i o sayfanin origin'ine yazan fonksiyon. config_role.html
+// bu depoda YOK -> islev olu, saldiri yuzeyi canliydi. Uc cagri yeri de asagida kaldirildi.
 
 // Clear all tasks on startup or install to ensure a fresh session
 chrome.runtime.onStartup.addListener(() => {
   temizleTumGorevler();
-  configureStartupRole();
   startPolling();
 });
 chrome.runtime.onInstalled.addListener(() => {
@@ -675,10 +634,8 @@ chrome.runtime.onInstalled.addListener(() => {
     const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3012";
     chrome.storage.local.set({
       browser_role: "word",
-      server_origin: origin,
-      is_server: true
+      server_origin: origin
     }, () => {
-      configureStartupRole();
       startPolling();
     });
   });
@@ -689,15 +646,13 @@ chrome.storage.session.get(["initialized"], (sessionRes) => {
   if (!sessionRes.initialized) {
     logToServer("[x-word] Fresh browser session detected. Initializing...");
     temizleTumGorevler();
-    closeRestoredTabs();
+    // SILINDI (v3.62): closeRestoredTabs() cagrisi — asagidaki nota bak.
     chrome.storage.local.get(['server_origin'], (res) => {
       const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3012";
       chrome.storage.local.set({
         browser_role: "word",
-        server_origin: origin,
-        is_server: true
+        server_origin: origin
       }, () => {
-        configureStartupRole();
         chrome.storage.session.set({ initialized: true }, () => {
           startPolling();
         });
@@ -718,21 +673,12 @@ function temizleTumGorevler() {
   });
 }
 
-function closeRestoredTabs() {
-  try {
-    chrome.tabs.query({}, (tabs) => {
-      if (tabs && tabs.length > 0) {
-        tabs.forEach(tab => {
-          if (tab.url && !tab.url.includes('config_role.html') && !tab.url.includes('chrome://')) {
-            chrome.tabs.remove(tab.id);
-          }
-        });
-      }
-    });
-  } catch (e) {
-    logToServer(`[closeRestoredTabs error] ${e.message || e}`);
-  }
-}
+// SILINDI (v3.62): closeRestoredTabs(). Taze tarayici oturumu algilandiginda
+// chrome.tabs.query({}) ile TUM sekmeleri dolasip chrome:// disindaki HEPSINI kapatiyordu.
+// Onceki urunun "adanmis sunucu tarayicisi" modelinden kalma: orada makine yalnizca is
+// yapar, acilista temiz baslamasi mantiklidir. Kullanicinin GUNLUK tarayicisinda ise bu,
+// Chrome her acildiginda geri yuklenen sekmelerin kaybi demekti.
+// Yanindaki `is_server: true` varsayilanlari da ayni modelden geliyordu, onlar da kaldirildi.
 
 let savedWindowStates = {};
 
@@ -805,50 +751,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // kanalı açık tut: worker processServerJob çalışana kadar canlı kalsın
   }
 
-  if (message.action === "navigateTab") {
-    // Instagram gibi SPA'larda window.location.href değişimi onUpdated'ı tetiklemez.
-    // Zorla tam sayfa yüklemesi için background'dan chrome.tabs.update kullanıyoruz.
-    const tabId = sender.tab ? sender.tab.id : null;
-    if (!tabId || !message.url) {
-      sendResponse({ status: "error", message: "Tab ID veya URL eksik" });
-      return false;
-    }
-    chrome.tabs.update(tabId, { url: message.url }, () => {
-      if (chrome.runtime.lastError) {
-        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
-      } else {
-        sendResponse({ status: "success" });
-      }
-    });
-    return true;
-  }
-
-  if (message.action === "setTabZoom") {
-
-    const tabId = sender.tab ? sender.tab.id : null;
-    if (!tabId) {
-      sendResponse({ status: "error", message: "Tab ID bulunamadı" });
-      return false;
-    }
-    chrome.tabs.setZoom(tabId, message.zoomFactor, () => {
-      sendResponse({ status: "success" });
-    });
-    return true;
-  }
-
-  if (message.action === "cropImage") {
-    logToServer(`[cropImage] rect: ${JSON.stringify(message.rect)}, dpr: ${message.dpr}, dataUrl length: ${message.dataUrl ? message.dataUrl.length : 0}`);
-    cropImageInBackground(message.dataUrl, message.rect, message.dpr)
-      .then(croppedDataUrl => {
-        logToServer(`[cropImage] success. result length: ${croppedDataUrl.length}`);
-        sendResponse({ status: "success", dataUrl: croppedDataUrl });
-      })
-      .catch(err => {
-        logToServer(`[cropImage] error: ${err.message || err}`);
-        sendResponse({ status: "error", message: err.toString() });
-      });
-    return true;
-  }
+  // SILINDI (v3.62) — ucu de widget.js'te SIFIR cagriya sahipti (grep ile dogrulandi):
+  //   navigateTab : URL dogrulamasi olmayan zorla sekme yonlendirme. Canli bir gonderen
+  //                 eklenirse dogrudan "keyfi yonlendirme" primitifi olurdu.
+  //   setTabZoom  : v3.40'ta bilerek terk edilen IG zoom yolunun geride kalan ucu
+  //                 (@0d9ca43 temizliginde widget tarafi silinmis, isleyici kalmis).
+  //   cropImage   : captureAndCrop ile yer degistirmis eski iki-mesajli kirpma yolu.
+  //                 DIKKAT: cropImageInBackground FONKSIYONU duruyor — canli yol onu kullaniyor.
 
   if (message.action === "captureTab") {
     const tabId    = sender.tab ? sender.tab.id     : null;
@@ -1069,45 +978,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open
   }
 
-  if (message.action === "setUserAuth") {
-    if (sender.tab && sender.tab.url) {
-      try {
-        let urlObj = new URL(sender.tab.url);
-        let origin = urlObj.origin;
-        let host = urlObj.hostname;
-        // Is-sekmesi host'larindan (x/twitter/instagram) GELEN setUserAuth server_origin'i
-        // KIRLETMESIN; yalnizca gercek panel gibi sayfalardan guncelle.
-        // Faz FB-1: FB is-sekmesi de haric tutulmali; aksi halde bir FB sekmesi
-        // server_origin'i "https://www.facebook.com:3012" olarak bootstrap edip KIRLETIR.
-        let isTargetSocial = host === "x.com" || host.endsWith(".x.com") ||
-                             host === "twitter.com" || host.endsWith(".twitter.com") ||
-                             host === "instagram.com" || host.endsWith(".instagram.com") ||
-                             xIsFbHost(host) || xIsTtHost(host) || xIsYtHost(host);   // Faz TT-1/YT-1
-        if (!isTargetSocial) {
-          // Map to Flask API port 3012. YETKILI kaynak registerPanel'dir; setUserAuth yalnizca
-          // server_origin HENUZ BOSSA (bootstrap) yazar. Boylece rastgele bir http sekmesi
-          // dogru server_origin'i uzerine yazip KIRLETEMEZ.
-          let apiOrigin = urlObj.protocol + "//" + urlObj.hostname + ":3012";
-          chrome.storage.local.get(['server_origin'], (r) => {
-            if (!r || !r.server_origin) {
-              chrome.storage.local.set({ server_origin: apiOrigin });
-              console.log("[x-word] server_origin bootstrap:", apiOrigin);
-            }
-          });
-        }
-      } catch(e){}
-    }
-
-    chrome.storage.local.set({
-      is_authenticated: message.loggedIn,
-      last_auth_time: Date.now(),
-      auth_username: message.username
-    }, () => {
-      console.log(`[X-Rapor] Auth status updated. loggedIn=${message.loggedIn}, username=${message.username}`);
-    });
-    sendResponse({ status: "success" });
-    return false;
-  }
+  // SILINDI (v3.62): "setUserAuth" isleyicisi. Cagirani (bridge.js) HER http(s) sayfasindan
+  // kosulsuz gonderiyordu; isleyici de server_origin'i sayfanin origin'inden "bootstrap"
+  // ediyordu. Sosyal medya host'lari haric tutulmustu ama kalan TUM internet haric DEGILDI.
+  // Bootstrap'a gerek yok: yetkili kaynak registerPanel ve o zaten server_origin'i yaziyor
+  // (meta[name=x-rapor-panel] kapisiyla). Tasidigi kimlik de sahteydi — username sabit "user".
+  // Yazdigi is_authenticated / last_auth_time anahtarlarini HICBIR yer okumuyordu.
 
   if (message.action === "logToServer") {
     logToServer(message.message);
@@ -1143,42 +1019,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async yanit
   }
 
-  if (message.action === "savePanelOrigin") {
-    // Panel sayfası yüklendiğinde bridge.js bu mesajı gönderir.
-    const newOrigin = message.origin;
-    const clientId = message.client_id;
-    const senderTabId = sender.tab ? sender.tab.id : null;
-    if (newOrigin && (newOrigin.startsWith('http://') || newOrigin.startsWith('https://'))) {
-      chrome.storage.local.get(['server_origin', 'panel_tab_id', 'client_id'], (result) => {
-        const stored = result.server_origin || "";
-        const storedTabId = result.panel_tab_id || null;
-        const storedClientId = result.client_id || "";
-        let updateData = {};
-        let needsUpdate = false;
-        
-        if (stored !== newOrigin) {
-          updateData.server_origin = newOrigin;
-          needsUpdate = true;
-        }
-        if (senderTabId && storedTabId !== senderTabId) {
-          updateData.panel_tab_id = senderTabId;
-          needsUpdate = true;
-        }
-        if (clientId && storedClientId !== clientId) {
-          updateData.client_id = clientId;
-          needsUpdate = true;
-        }
-        
-        if (needsUpdate) {
-          chrome.storage.local.set(updateData, () => {
-            logToServer(`[savePanelOrigin] Güncellendi: Origin=${newOrigin}, TabID=${senderTabId}, ClientID=${clientId}`);
-          });
-        }
-      });
-    }
-    sendResponse({ status: "success" });
-    return false;
-  }
+  // SILINDI (v3.62): "savePanelOrigin" isleyicisi — registerPanel'in DOGRULAMASIZ atasi.
+  // server_origin + panel_tab_id + client_id'yi meta[name=x-rapor-panel] kapisi OLMADAN
+  // yaziyordu, yani herhangi bir sayfa kendini "panel" ilan edebilirdi. panel_tab_id
+  // "panel kapaninca iptal" ve "tek panel" davranislarini surdugu icin bu ciddi bir saptir.
+  // Cagirani yok; yerini registerPanel almis durumda.
 
   if (message.action === "registerPanel") {
     // SADECE gercek panel (meta-isaretli sayfa) buraya gelir. Iki is:
@@ -1298,94 +1143,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  if (message.action === "detectActiveProfile") {
-    chrome.tabs.query({}, (tabs) => {
-      const nonUsernames = [
-        'home', 'explore', 'notifications', 'messages', 'settings', 'i', 'search',
-        'tos', 'privacy', 'rules', 'personalization', 'account', 'about', 'help',
-        'jobs', 'developer', 'download', 'press', 'business', 'marketing', 'advertising',
-        'intent', 'share', 'hashtag', 'items', 'contacts', 'logo'
-      ];
-      let foundUsername = null;
-      
-      // Prioritize active tabs first
-      const sortedTabs = [...tabs].sort((a, b) => (b.active ? 1 : 0) - (a.active ? 1 : 0));
-      
-      for (const tab of sortedTabs) {
-        if (!tab.url) continue;
-        try {
-          const urlObj = new URL(tab.url);
-          if (urlObj.hostname === 'x.com' || urlObj.hostname === 'twitter.com' || urlObj.hostname.endsWith('.x.com') || urlObj.hostname.endsWith('.twitter.com')) {
-            const pathSegments = urlObj.pathname.split('/').filter(s => s.length > 0);
-            if (pathSegments.length >= 1) {
-              const segment = pathSegments[0].toLowerCase();
-              if (!nonUsernames.includes(segment) && /^[a-zA-Z0-9_]{1,15}$/.test(segment)) {
-                foundUsername = pathSegments[0];
-                break;
-              }
-            }
-          }
-        } catch (e) {}
-      }
-      sendResponse({ username: foundUsername });
-    });
-    return true; // Keep message channel open
-  }
+  // SILINDI (v3.62): "detectActiveProfile" isleyicisi. TUM sekmeleri tarayip acik bir X
+  // profilinden kullanici adini cikariyor ve cagirana donduruyordu. Cagirani bridge.js'teki
+  // (yine silinen) X_RAPOR_DETECT_ACTIVE_PROFILE daliydi ve o dal her sayfada dinleniyordu
+  // -> herhangi bir site kurbanin X kullanici adini sorabilirdi. Panel bu yolu kullanmiyordu.
 
-  if (message.action === "startScan") {
-    const job = message.job;
-    let targetUrl = "https://x.com";
-    if (job.asama === "profil_taramasi") {
-      targetUrl = `https://x.com/${job.profilAdi}`;
-    } else if (job.asama === "detayli_tarama" && job.kuyruk && job.kuyruk.length > 0) {
-      targetUrl = job.kuyruk[0];
-    } else if (job.asama === "arama_taramasi") {
-      const q = encodeURIComponent(job.searchQuery);
-      if (job.populerSayisi > 0) {
-        targetUrl = `https://x.com/search?q=${q}&f=top`;
-      } else {
-        targetUrl = `https://x.com/search?q=${q}&f=live`;
-      }
-    }
-
-    chrome.tabs.create({ url: targetUrl }, (tab) => {
-      const storageKey = `x_profil_gorevi_${tab.id}`;
-      const saveData = {};
-      
-      saveData[storageKey] = {
-        aktif: true,
-        profilAdi: job.profilAdi || "",
-        baslangicMs: job.baslangicMs || 0,
-        bitisMs: job.bitisMs || 0,
-        asama: job.asama,
-        kuyruk: job.kuyruk || [],
-        aktifTivitUrl: job.asama === "detayli_tarama" ? targetUrl : "",
-        tivitAdimi: job.asama === "detayli_tarama" ? "basla" : "",
-        ayarlar: job.ayarlar,
-        gecerliVeri: {
-          ozet: null,
-          yorumlar: [],
-          retweets: [],
-          quotes: [],
-          likes: []
-        },
-        searchQuery: job.searchQuery || "",
-        populerSayisi: job.populerSayisi || 0,
-        enSonSayisi: job.enSonSayisi || 0,
-        targetType: job.targetType || "",
-        aktifAsama: job.aktifAsama,
-        auth_username: job.auth_username || "",
-        target_id: job.target_id || null
-      };
-
-      if (job.ayarlar && job.ayarlar.otoWidgetAc !== undefined) {
-        saveData["otoWidgetAc"] = job.ayarlar.otoWidgetAc;
-      }
-
-      chrome.storage.local.set(saveData);
-    });
-    return false;
-  }
+  // SILINDI (v3.62): "startScan" isleyicisi. Cagiranin verdigi job'a gore x.com'da sekme
+  // aciyordu (profil/detayli/arama asamalari). Tek cagirani bridge.js'teki X_RAPOR_START_SCAN
+  // daliydi; panel o olayi HIC gondermiyor (app.py grep'i ile dogrulandi). Kurdugu
+  // gecerliVeri{retweets,quotes,likes} yapisi zaten onceki urunun kazima motoruna aitti.
 
   if (message.action === "updateServerStatus") {
     let origin = message.origin;

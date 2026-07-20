@@ -63,36 +63,34 @@ if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sen
     } else {
       xRaporRegisterPanel();
     }
-    // setUserAuth (kimlik durumu) — mevcut davranis korunuyor.
-    chrome.runtime.sendMessage({
-      action: "setUserAuth",
-      loggedIn: true,
-      username: "user"
-    }, () => {
-      if (chrome.runtime.lastError) { /* ignore */ }
-    });
+    // SILINDI (v3.62): setUserAuth cagrisi. Bu dosya HER http(s) sayfasinda calistigi icin
+    // her ziyaret edilen siteden KOSULSUZ gonderiliyordu ve isleyicisi server_origin'i
+    // sayfanin origin'inden yazabiliyordu. Ustelik username sabit "user" idi — yani hicbir
+    // gercek kimlik tasimyordu. Onceki urunun oturum tesisatindan kalma.
   } catch (e) {
     // Safe to ignore
   }
 }
 
-// 2. Listen to postMessage events from the web app
+// 2. Panelden gelen postMessage olaylari.
+//
+// GUVENLIK KAPISI (v3.62). Bu dosya HER http(s) sayfasinda calisiyor (manifest
+// content_scripts matches: http://*/*, https://*/*). Eskiden tek kontrol
+// `event.source !== window` idi — ama o, sayfanin KENDI JS'ini engellemez; yalnizca
+// iframe/baska pencere kaynaklarini eler. Yani ZIYARET EDILEN HERHANGI BIR SITE
+// asagidaki dallari tetikleyebiliyordu (silinen cerez koprusuyle ayni sinif).
+//
+// Artik xRaporRegisterPanel ile AYNI kapi kullaniliyor: yalnizca <meta name="x-rapor-panel">
+// isaretini tasiyan GERCEK panel sayfasi bu olaylari gonderebilir. Isaret app.py:780'de
+// <head> icinde basiliyor, yani her script'ten ONCE hazir — panel islevi etkilenmez.
+//
+// SILINEN DALLAR (panelde HIC gondericisi yoktu, app.py grep'i ile dogrulandi):
+//   X_RAPOR_PING/PONG            -> varlik tespiti zaten data-x-rapor-installed ile yapiliyor
+//   X_RAPOR_START_SCAN           -> sayfanin verdigi URL'i sekmede aciyordu
+//   X_RAPOR_DETECT_ACTIVE_PROFILE-> kurbanin X kullanici adini sayfaya donduruyordu
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
-
-  // Handle Ping requests
-  if (event.data && event.data.type === "X_RAPOR_PING") {
-    window.postMessage({ type: "X_RAPOR_PONG" }, "*");
-  }
-
-  // Handle Start Scan requests
-  if (event.data && event.data.type === "X_RAPOR_START_SCAN") {
-    try {
-      chrome.runtime.sendMessage({ action: "startScan", job: event.data.job }, () => {
-        if (chrome.runtime.lastError) { /* ignore */ }
-      });
-    } catch(e) {}
-  }
+  if (!document.querySelector('meta[name="x-rapor-panel"]')) return;   // yalnizca GERCEK panel
 
   // Handle Force Poll requests
   if (event.data && event.data.type === "X_RAPOR_FORCE_POLL") {
@@ -122,19 +120,6 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
-  // Handle Active Profile Detection requests
-  if (event.data && event.data.type === "X_RAPOR_DETECT_ACTIVE_PROFILE") {
-    try {
-      chrome.runtime.sendMessage({ action: "detectActiveProfile" }, (response) => {
-        window.postMessage({ 
-          type: "X_RAPOR_ACTIVE_PROFILE_RESPONSE", 
-          username: response ? response.username : null 
-        }, "*");
-      });
-    } catch (e) {
-      // Background worker might be inactive
-    }
-  }
 });
 
 // Faz #1-A: SW'den gelen yerel goruntuyu panel sayfasina aktar (SW -> bridge -> panel).
