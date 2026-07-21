@@ -1639,7 +1639,14 @@
     // aralikla silinmesin.
 
     // Stop and clear helper
-    function durdurVeTemizle(storageKey, interval, serverOrigin) {
+    // 'sebep' (v3.66, istege bagli): tarama NEDEN durdu. Bos birakilirsa NORMAL bitis /
+    // kullanicinin elle durdurmasi demektir ve panel her zamanki gibi davranir.
+    // Doldurulursa panelde uyari gosterilir. Buna ihtiyac vardi cunku bu fonksiyon HEM
+    // normal bitiste HEM de captcha/checkpoint iptalinde cagriliyor ve ikisi de panele
+    // ayni "completeJobAndFocusPanel" mesajini gonderiyordu -> panel acisindan AYIRT
+    // EDILEMEZ oluyordu. Sebep yalnizca Docker loguna yaziliyordu, kullanici gormuyordu.
+    // (Sahada goruldu: TikTok captcha cikti, tarama durdu, panel "bitti" gibi davrandi.)
+    function durdurVeTemizle(storageKey, interval, serverOrigin, sebep) {
         if (interval) clearInterval(interval);
         chrome.storage.local.get({ server_origin: "http://localhost:3012", client_id: "" }, (res) => {
             const origin = serverOrigin || res.server_origin;
@@ -1648,9 +1655,10 @@
             // Storage'ı temizle ve panele geç - sunucu yanıtından BAĞIMSIZ çalışır
             function doCleanup() {
                 chrome.storage.local.remove(storageKey, () => {
-                    chrome.runtime.sendMessage({ 
-                        action: "completeJobAndFocusPanel", 
-                        origin: origin 
+                    chrome.runtime.sendMessage({
+                        action: "completeJobAndFocusPanel",
+                        origin: origin,
+                        sebep: sebep || ""
                     });
                 });
             }
@@ -2994,7 +3002,9 @@
                                 <span style="color:#f4212e; font-size:13px; font-weight:bold;">🛑 Doğrulama bulmacası</span><br>
                                 <span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · tarama durduruldu. Bulmacayı çözüp yeniden başlatın.</span>
                             </div>`;
-                        durdurVeTemizle(storageKey, null, gorev.server_origin);
+                        durdurVeTemizle(storageKey, null, gorev.server_origin,
+                            "TikTok doğrulama bulmacası (captcha) çıktı — tarama durduruldu. "
+                            + "tiktok.com'da bulmacayı çözüp taramayı yeniden başlatın.");
                         return;
                     }
 

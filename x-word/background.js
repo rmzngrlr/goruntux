@@ -367,6 +367,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             logToServer(`[Facebook] DOGRULAMA EKRANI ALGILANDI (${path}) — tarama DURDURULUYOR. `
                       + `Devam etmek hesap riskini artirir. Lutfen facebook.com'da dogrulamayi `
                       + `tamamlayip taramayi yeniden baslatin.`);
+            // v3.66: sebebi PANELE de bildir. Onceden yalnizca logToServer'a yaziliyordu,
+            // yani sebep Docker logunda kaliyordu ve kullanici panelde "tarama bitti"
+            // gibi bir sonuc goruyordu. TikTok captcha'sinda ayni kusur sahada yasandi.
+            taramaDurduBildir(null, "Facebook doğrulama ekranı çıktı — tarama durduruldu. "
+                                  + "facebook.com'da doğrulamayı tamamlayıp taramayı yeniden başlatın.");
             chrome.storage.local.remove(storageKey, () => {
               chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (cfg) => {
                 resetServerJobReliable(cfg.server_origin);
@@ -559,6 +564,25 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     logToServer(`[onUpdated outer error] ${outerErr.stack || outerErr}`);
   }
 });
+
+// v3.66: "tarama NEDEN durdu" bilgisini panele ilet (captcha / checkpoint).
+// MODUL SEVIYESINDE tanimli olmasi ZORUNLU: iki ayri kapsamdan cagriliyor —
+// onMessage dinleyicisi (TikTok captcha, widget uzerinden) ve tabs.onUpdated
+// dinleyicisi (Facebook checkpoint, widget hic enjekte edilmeden).
+// Kanal, localImage'in kullandigi yolun aynisi: SW -> bridge.js -> postMessage -> panel.
+// panelTabId verilmezse depodaki panel_tab_id kullanilir (FB checkpoint yolu boyle cagirir).
+function taramaDurduBildir(panelTabId, sebep) {
+  const gonder = (tid) => {
+    if (!tid) return;
+    try {
+      chrome.tabs.sendMessage(tid, { action: "taramaDurdu", sebep: sebep }, () => {
+        if (chrome.runtime.lastError) { /* panel dinlemiyorsa sessiz gec */ }
+      });
+    } catch (e) { /* ignore */ }
+  };
+  if (panelTabId) { gonder(panelTabId); return; }
+  chrome.storage.local.get(['panel_tab_id'], (r) => gonder(r && r.panel_tab_id));
+}
 
 function widgetiFirlat(tabId) {
   logToServer(`[widgetiFirlat] Başlatılıyor: tabId=${tabId}`);
@@ -1104,6 +1128,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // Sekmeyi aktif et ve pencereyi öne al
         chrome.tabs.update(panelTab.id, { active: true }, () => {
           chrome.windows.update(panelTab.windowId, { focused: true }, () => {
+            // v3.66: tarama bir SEBEPLE durduysa panele bildir (captcha/checkpoint).
+            // Sebep bossa normal bitis/elle durdurma -> hicbir sey gonderilmez.
+            if (message.sebep) taramaDurduBildir(panelTab.id, message.sebep);
             // Sonrasında otomasyon yapılan tivit sekmesini kapat
             if (sender.tab && sender.tab.id) {
               chrome.tabs.remove(sender.tab.id);

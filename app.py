@@ -2893,6 +2893,36 @@ HTML_TEMPLATE = """
             });
         }
 
+        // v3.66: Tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)
+        // eklenti bunu bize bildirir. ONCEDEN: sebep yalnizca Docker loguna yaziliyordu,
+        // panel ise normal bitisle iptali ayirt edemedigi icin "is bitti" gibi davraniyordu.
+        // Sahada yasandi: TikTok captcha cikti, tarama durdu, kullanici nedenini goremedi.
+        // TOAST DEGIL MODAL: toast 3.5 sn sonra kayboluyor; kullanici tarama sirasinda
+        // baska yere bakiyor olabilir ve bu mesaj EYLEM gerektiriyor (git bulmacayi coz).
+        window.addEventListener('message', function (ev) {
+            if (ev.source !== window) return;
+            var d = ev.data;
+            if (!d || d.type !== 'X_RAPOR_TARAMA_DURDU' || !d.sebep) return;
+            try {
+                Swal.fire({
+                    title: 'Tarama durduruldu',
+                    text: String(d.sebep),
+                    icon: 'warning',
+                    confirmButtonText: 'Anladım',
+                    customClass: {
+                        popup: 'swal2-dark-theme',
+                        title: 'swal2-title',
+                        htmlContainer: 'swal2-html-container',
+                        confirmButton: 'swal2-confirm'
+                    },
+                    buttonsStyling: false,
+                    iconColor: '#f0883e'
+                });
+            } catch (e) {
+                alert('Tarama durduruldu: ' + d.sebep);
+            }
+        });
+
         // Beautiful custom confirm overlay using SweetAlert2
         function stopAutomation() {
             Swal.fire({

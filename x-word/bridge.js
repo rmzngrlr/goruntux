@@ -131,6 +131,13 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
         window.postMessage({ type: "X_RAPOR_LOCAL_IMAGE", link: msg.link, dataUrl: msg.dataUrl, mime: msg.mime || "" }, "*");
         sendResponse && sendResponse({ status: "ok" });
       }
+      // v3.66: tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)
+      // paneli haberdar et. Yon SW -> panel oldugu icin meta kapisi GEREKMEZ: bu mesaj
+      // sayfadan gelmiyor, eklentinin kendi service worker'indan geliyor.
+      if (msg && msg.action === "taramaDurdu" && msg.sebep) {
+        window.postMessage({ type: "X_RAPOR_TARAMA_DURDU", sebep: msg.sebep }, "*");
+        sendResponse && sendResponse({ status: "ok" });
+      }
     } catch (e) {}
     return false;
   });
