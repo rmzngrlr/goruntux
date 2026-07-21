@@ -383,33 +383,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
           if (gorev && gorev.aktif) {
             let eslesiyor = false;
 
-            if (gorev.asama === "profil_taramasi") {
-              let expectedPath = "";
-              if (gorev.is_list_scrape) {
-                try {
-                  expectedPath = new URL(gorev.profilAdi).pathname.toLowerCase();
-                } catch(e) {
-                  expectedPath = gorev.profilAdi.toLowerCase();
-                  if (!expectedPath.startsWith("/")) {
-                    expectedPath = "/" + expectedPath;
-                  }
-                }
-              } else {
-                expectedPath = "/" + gorev.profilAdi.toLowerCase();
-                if (gorev.content_filter === "only_replies") {
-                  expectedPath += "/with_replies";
-                }
-              }
-              if (path.toLowerCase() === expectedPath) {
-                eslesiyor = true;
-              }
-            } else if (gorev.asama === "detayli_tarama") {
-              let normTemiz = normalizeUrl(temizUrl);
-              let normAktif = normalizeUrl(gorev.aktifTivitUrl);
-              if (normTemiz.startsWith(normAktif)) {
-                eslesiyor = true;
-              }
-            } else if (gorev.asama === "word_taramasi") {
+            // SILINDI (v3.67): "profil_taramasi" ve "detayli_tarama" dallari. Karsiliklari
+            // widget.js'te v3.65'te silindi, isi kuran processServerJob dallari da bu commit'te.
+            if (gorev.asama === "word_taramasi") {
               // word_taramasi: kuyrukta sıradaki URL ile karşılaştır
               let normTemiz = normalizeUrl(temizUrl);
               let hedefUrl = (gorev.kuyruk && gorev.kuyruk.length > 0) ? (gorev.kuyruk[0].url || gorev.kuyruk[0]) : (gorev.aktifTivitUrl || "");
@@ -446,12 +422,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                   logToServer(`[onUpdated] FB /share/ yonlendirmesi kabul edildi (share_url yok). hedef=${normHedef} -> gercek=${normTemiz}`);
                 }
               }
-            } else if (gorev.asama === "arama_taramasi") {
-              if (path.toLowerCase() === "/search") {
-                eslesiyor = true;
-              }
             }
-            
             if (eslesiyor) {
               logToServer(`[onUpdated] URL eşleşti, widget fırlatılıyor. tabId=${tabId}, url=${temizUrl}`);
               widgetiFirlat(tabId);
@@ -488,26 +459,20 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
               
               if (isHomeOrRoot) {
                 // Kullanıcı giriş yaptı veya anasayfaya yönlendi. Hedef URL'ye tekrar yönlendir.
+                // SILINDI (v3.67): profil_taramasi / detayli_tarama / arama_taramasi
+                // yonlendirme dallari. Ucu de olu asamalara aitti.
+                //
+                // BILINCLI OLARAK BOS BIRAKILDI, blok KALDIRILMADI. Sebep: bu 'isHomeOrRoot'
+                // dali, /home'a dusen bir gorevin ASAGIDAKI iptal/asili-kalma mantigina
+                // dusmesini ENGELLIYOR. Blogu komple silmek DAVRANIS DEGISTIRIRDI.
+                //
+                // ACIK BOSLUK: canli yol olan "word_taramasi" icin burada bir yonlendirme
+                // HIC YOKTU (eski kodda da yoktu) -> targetUrl bos kalir, hicbir sey olmaz.
+                // Yani bir Word taramasi sirasinda sekme /home'a duserse gorev kendini
+                // toparlamaz. Bu bir REGRESYON DEGIL, onceden beri boyle; ama artik gorunur.
+                // Duzeltmek isterse: targetUrl = kuyrugun basindaki URL. Ayri bir is olarak
+                // ele alinmali (sonsuz yonlendirme dongusu riski olculmeden eklenmemeli).
                 let targetUrl = "";
-                if (gorev.asama === "profil_taramasi") {
-                  if (gorev.is_list_scrape) {
-                    targetUrl = gorev.profilAdi;
-                  } else {
-                    targetUrl = `https://x.com/${gorev.profilAdi}`;
-                    if (gorev.content_filter === "only_replies") {
-                      targetUrl += "/with_replies";
-                    }
-                  }
-                } else if (gorev.asama === "detayli_tarama") {
-                  targetUrl = gorev.aktifTivitUrl;
-                } else if (gorev.asama === "arama_taramasi") {
-                  const q = encodeURIComponent(gorev.searchQuery);
-                  if (gorev.aktifAsama === "enson") {
-                    targetUrl = `https://x.com/search?q=${q}&f=live`;
-                  } else {
-                    targetUrl = `https://x.com/search?q=${q}&f=top`;
-                  }
-                }
                 if (targetUrl) {
                   logToServer(`[onUpdated] Anasayfadan hedef URL'ye yönlendiriliyor: ${targetUrl}`);
                   chrome.tabs.update(tabId, { url: targetUrl });
@@ -1472,135 +1437,21 @@ function processServerJob(job, origin) {
             total_count: structuredQueue.length
           };
           logToServer(`[processServerJob] Word tarama görevi oluşturuldu. Toplam kuyruk uzunluğu: ${structuredQueue.length}. İlk URL: ${targetUrl}`);
-        } else if (job.scrape_mode === 'list' && job.tweet_urls && job.tweet_urls.length > 0) {
-          targetUrl = job.tweet_urls[0];
-          jobDetails = {
-            aktif: true,
-            job_id: job.job_id,
-            asama: "detayli_tarama",
-            kuyruk: job.tweet_urls,
-            aktifTivitUrl: targetUrl,
-            tivitAdimi: "basla",
-            ayarlar: {
-              rt: job.collect_retweets == 1,
-              alinti: job.collect_quotes == 1,
-              begeni: job.collect_likes == 1,
-              sadeceSayisalBegeni: job.sadece_sayisal_begeni == 1,
-              yorum: job.collect_replies == 1
-            },
-            collect_views: job.collect_views || 0,
-            collect_likes: job.collect_likes || 0,
-            collect_retweets: job.collect_retweets || 0,
-            collect_quotes: job.collect_quotes || 0,
-            collect_replies: job.collect_replies || 0,
-            collect_text: job.collect_text || 0,
-            is_server_job: true,
-            server_origin: origin,
-            combinedData: [],
-            gecerliVeri: {
-              ozet: null,
-              yorumlar: [],
-              retweets: [],
-              quotes: [],
-              likes: []
-            }
-          };
-          logToServer(`[processServerJob] Liste detaylı tarama görevi oluşturuldu. İlk URL: ${targetUrl}, Yorum: ${jobDetails.ayarlar.yorum}, RT: ${jobDetails.ayarlar.rt}, Alıntı: ${jobDetails.ayarlar.alinti}, Beğeni: ${jobDetails.ayarlar.begeni}`);
-        } else if (job.scrape_mode === 'list') {
-          // Twitter List Scrape Modu
-          let rawTargetUrl = job.target_username;
-          if (!rawTargetUrl.startsWith('http')) {
-            if (/^\d+$/.test(rawTargetUrl)) {
-              rawTargetUrl = `https://x.com/i/lists/${rawTargetUrl}`;
-            } else if (rawTargetUrl.startsWith('/')) {
-              rawTargetUrl = `https://x.com${rawTargetUrl}`;
-            } else {
-              rawTargetUrl = `https://x.com/${rawTargetUrl}`;
-            }
-          }
-          targetUrl = rawTargetUrl;
-          jobDetails = {
-            aktif: true,
-            job_id: job.job_id,
-            targetList: [targetUrl],
-            targetIndex: 0,
-            profilAdi: targetUrl,
-            is_list_scrape: true,
-            baslangicMs: parseDateToMs(job.start_date, job.start_time),
-            bitisMs: parseDateToMs(job.end_date, job.end_time),
-            asama: "profil_taramasi",
-            collect_views: job.collect_views || 0,
-            collect_likes: job.collect_likes || 0,
-            collect_retweets: job.collect_retweets || 0,
-            collect_quotes: job.collect_quotes || 0,
-            collect_replies: job.collect_replies || 0,
-            collect_text: job.collect_text || 0,
-            is_server_job: true,
-            server_origin: origin,
-            combinedData: [],
-            gecerliVeri: {
-              ozet: null,
-              yorumlar: [],
-              retweets: [],
-              quotes: [],
-              likes: []
-            }
-          };
-          logToServer(`[processServerJob] Twitter Listesi tarama görevi oluşturuldu. Hedef URL: ${targetUrl}`);
         } else {
-          // Çoklu hedefleri virgüllerden temizle
-          let targetList = job.target_username.split(',').map(t => t.trim().replace('@', '')).filter(Boolean);
-          if (targetList.length === 0) {
-            logToServer(`[processServerJob] Hata: Geçersiz hedef kullanıcı adı. Görev iptal ediliyor. ID: ${job.job_id}`);
-            // Görevi başarısız yap
-            let submitUrl = `${origin}/api/extension/submit_result`;
-            fetch(submitUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                job_id: job.job_id,
-                status: "failed",
-                error: "Geçersiz hedef kullanıcı adı."
-              })
-            }).catch(e => {});
-            return;
-          }
-
-          let targetProfile = targetList[0];
-          targetUrl = `https://x.com/${targetProfile}`;
-          if (job.content_filter === "only_replies") {
-            targetUrl = `https://x.com/${targetProfile}/with_replies`;
-          }
-
-          jobDetails = {
-            aktif: true,
-            job_id: job.job_id,
-            targetList: targetList,
-            targetIndex: 0,
-            profilAdi: targetProfile,
-            baslangicMs: parseDateToMs(job.start_date, job.start_time),
-            bitisMs: parseDateToMs(job.end_date, job.end_time),
-            asama: "profil_taramasi",
-            content_filter: job.content_filter,
-            search_keyword: job.search_keyword,
-            collect_views: job.collect_views || 0,
-            collect_likes: job.collect_likes || 0,
-            collect_retweets: job.collect_retweets || 0,
-            collect_quotes: job.collect_quotes || 0,
-            collect_replies: job.collect_replies || 0,
-            collect_text: job.collect_text || 0,
-            is_server_job: true,
-            server_origin: origin,
-            combinedData: [],
-            gecerliVeri: {
-              ozet: null,
-              yorumlar: [],
-              retweets: [],
-              quotes: [],
-              likes: []
-            }
-          };
-          logToServer(`[processServerJob] Profil modu görevi oluşturuldu. Profil: @${targetProfile}`);
+          // SILINDI (v3.67): 'list' modunun iki dali + isimsiz else dali. Ucu de onceki X
+          // otomasyon programinin tarama tiplerini kuruyordu (detayli_tarama /
+          // profil_taramasi) ve karsiliklari widget.js'te v3.65'te ZATEN silinmisti.
+          // app.py scrape_mode'u UC yerde de "word" olarak gonderiyor; 'list' hic uretilmiyor.
+          //
+          // ONEMLI: eski 'else' dali ULASILABILIRDI — "word isi ama tweet_urls bos" durumu
+          // oraya dusuyor ve sessizce bir PROFIL TARAMASI kuruyordu. Yani hatali bir is,
+          // istenmeyen bir taramaya donusebiliyordu. Artik is birakiliyor ve sunucu serbest
+          // birakiliyor; aksi halde gorev sunucuda "calisiyor" gorunup asili kalirdi.
+          logToServer(`[processServerJob] Desteklenmeyen/eksik is atlandi. `
+                    + `job_id=${job.job_id} scrape_mode=${job.scrape_mode} `
+                    + `tweet_urls=${(job.tweet_urls || []).length} -> gorev birakiliyor.`);
+          resetServerJobReliable(origin);
+          return;
         }
 
         // Tüm gönderiler (X ve Instagram) doğrudan normal sayfada açılır; embed kullanılmaz.
@@ -1671,23 +1522,9 @@ function processServerJob(job, origin) {
   }
 }
 
-function parseDateToMs(dateStr, timeStr) {
-  try {
-    let parts = dateStr.split('-');
-    let day = parseInt(parts[0]);
-    let month = parseInt(parts[1]) - 1;
-    let year = parseInt(parts[2]);
-    
-    let timeParts = timeStr.split(':');
-    let hour = parseInt(timeParts[0]);
-    let minute = parseInt(timeParts[1]);
-    
-    let d = new Date(year, month, day, hour, minute);
-    return d.getTime();
-  } catch(e) {
-    return Date.now();
-  }
-}
+// SILINDI (v3.67): parseDateToMs. Onceki urunun "tarih araligi filtresi" tesisatiydi
+// (start_date/end_date/start_time/end_time -> baslangicMs/bitisMs). Tek cagiranlari bu
+// commit'te silinen olu processServerJob dallarindaydi. GorunuX'te tarih filtresi YOK.
 
 async function cropImageInBackground(dataUrl, rect, dpr, vw) {
   try {
