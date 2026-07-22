@@ -1893,6 +1893,77 @@
     }
 
     // STATE MACHINE: Word Report scraping management
+    // Limit / yükleme engeli uyarısı — TEK KAYNAK (v3.68).
+    // Hem tivit (CASE 2) hem profil (CASE 1) yakalama yolu bunu kullanır. Eskiden yalnızca
+    // tivit yolunda vardı; profil yüklenemezse SESSİZCE atlanıp kuyruktan düşüyordu, yani X
+    // seni profil kartı çekerken kısıtladığında o profil rapordan kayboluyordu. Kopya çıkıp
+    // ikizi ayrışmasın diye ortak fonksiyon. sebepMetni: "Tivit yüklenemedi." / "Profil
+    // yüklenemedi." gibi tek satırlık açıklama.
+    // Davranış: 120 sn geri sayım -> aynı URL'yi yeniden dener (location.reload). "Şimdi
+    // Yenile" beklemeden dener; "Atla" bu öğeyi kuyruktan çıkarıp sonrakine geçer (profil
+    // yolunun ESKİ davranışı artık bu butonun arkasında, tek tık uzakta).
+    function limitEngeliGoster(gorev, storageKey, sebepMetni) {
+        gorev.retry_count = (gorev.retry_count || 0) + 1;
+        printLog(`Hata: ${sebepMetni} Yeniden deneme adımı: ${gorev.retry_count}`);
+
+        let saniyeKalan = 120;
+        durumText.innerHTML = `
+            <div style="text-align:center;">
+                <span style="color:#e0245e; font-size:14px; font-weight:bold;">⚠️ Limit / Yükleme Engeli!</span><br>
+                <span style="font-size:12px; color:var(--w-text-muted);">${sebepMetni} (Deneme ${gorev.retry_count})</span><br>
+                <span id="limit-countdown" style="font-size:13px; font-weight:bold; color:#f7ba14; display:block; margin:8px 0;">120 saniye sonra tekrar denenecek...</span>
+                <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+                    <button id="btn-limit-retry" style="background:#1d9bf0; color:#fff; border:none; border-radius:12px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold;">🔄 Şimdi Yenile</button>
+                    <button id="btn-limit-skip" style="background:#38444d; color:#fff; border:none; border-radius:12px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold;">Atla ⏭️</button>
+                </div>
+            </div>
+        `;
+
+        let limitInterval = setInterval(() => {
+            saniyeKalan--;
+            const countdownEl = document.getElementById('limit-countdown');
+            if (countdownEl) {
+                countdownEl.innerText = `${saniyeKalan} saniye sonra tekrar denenecek...`;
+            }
+            if (saniyeKalan <= 0) {
+                clearInterval(limitInterval);
+                let updateObj = {}; updateObj[storageKey] = gorev;
+                chrome.storage.local.set(updateObj, () => {
+                    location.reload();
+                });
+            }
+        }, 1000);
+
+        const btnRetry = document.getElementById('btn-limit-retry');
+        if (btnRetry) {
+            btnRetry.onclick = () => {
+                clearInterval(limitInterval);
+                let updateObj = {}; updateObj[storageKey] = gorev;
+                chrome.storage.local.set(updateObj, () => {
+                    location.reload();
+                });
+            };
+        }
+
+        const btnSkip = document.getElementById('btn-limit-skip');
+        if (btnSkip) {
+            btnSkip.onclick = () => {
+                clearInterval(limitInterval);
+                gorev.retry_count = 0;
+                gorev.kuyruk.shift();
+                let updateObj = {}; updateObj[storageKey] = gorev;
+                chrome.storage.local.set(updateObj, () => {
+                    if (gorev.kuyruk.length > 0) {
+                        const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
+                        setTimeout(() => { window.location.href = nextUrl; }, 100);
+                    } else {
+                        location.reload();
+                    }
+                });
+            };
+        }
+    }
+
     async function wordTaramaYonetimi(gorev, storageKey) {
         try {
             let hamUrl = window.location.href.split('?')[0];
@@ -1990,26 +2061,15 @@
                 }
                 
                 if (!profileLoaded) {
-                    printLog("Hata: Profil yüklenemedi! Bir sonrakine geçiliyor...");
-                    gorev.kuyruk.shift();
-                    let updateObj = {}; updateObj[storageKey] = gorev;
-                    chrome.storage.local.set(updateObj, () => {
-                        if (gorev.kuyruk.length > 0) {
-                            const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
-                            let isNextUrlInstagram = nextUrl.includes('instagram.com');
-                            if (isNextUrlInstagram) {
-                                // Instagram dahil tüm gönderiler doğrudan (embed olmadan) normal sayfada açılır.
-                                setTimeout(() => { window.location.href = nextUrl; }, 100);
-                            } else {
-                                setTimeout(() => { window.location.href = nextUrl; }, 100);
-                            }
-                        } else {
-                            location.reload();
-                        }
-                    });
+                    // v3.68: Eskiden burada profil SESSİZCE atlanıp kuyruktan düşüyordu.
+                    // Artık tivit yolundaki (CASE 2) limit uyarısının AYNISI gösteriliyor:
+                    // X kısıtlamasında profil kaybolmaz, 120 sn sonra tekrar denenir.
+                    limitEngeliGoster(gorev, storageKey, "Profil yüklenemedi.");
                     return;
                 }
-                
+                // Profil yüklendi -> sayacı sıfırla (bir sonraki profile sızmasın).
+                if (gorev.retry_count) gorev.retry_count = 0;
+
                 let primaryCol = null;
                 if (isInstagram) {
                     primaryCol = document.querySelector('.Embed') || document.querySelector('article') || document.querySelector('main[role="main"]') || document.querySelector('main') || document.body;
@@ -3347,72 +3407,9 @@
             }
             
             if (!articleLoaded) {
-                gorev.retry_count = (gorev.retry_count || 0) + 1;
-                printLog(`Hata: Tweet yüklenemedi! Yeniden deneme adımı: ${gorev.retry_count}`);
-
-                let saniyeKalan = 120;
-                
-                durumText.innerHTML = `
-                    <div style="text-align:center;">
-                        <span style="color:#e0245e; font-size:14px; font-weight:bold;">⚠️ Limit / Yükleme Engeli!</span><br>
-                        <span style="font-size:12px; color:var(--w-text-muted);">Tivit yüklenemedi. (Deneme ${gorev.retry_count})</span><br>
-                        <span id="limit-countdown" style="font-size:13px; font-weight:bold; color:#f7ba14; display:block; margin:8px 0;">120 saniye sonra tekrar denenecek...</span>
-                        <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
-                            <button id="btn-limit-retry" style="background:#1d9bf0; color:#fff; border:none; border-radius:12px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold;">🔄 Şimdi Yenile</button>
-                            <button id="btn-limit-skip" style="background:#38444d; color:#fff; border:none; border-radius:12px; padding:6px 12px; font-size:11px; cursor:pointer; font-weight:bold;">Atla ⏭️</button>
-                        </div>
-                    </div>
-                `;
-
-                let limitInterval = setInterval(() => {
-                    saniyeKalan--;
-                    const countdownEl = document.getElementById('limit-countdown');
-                    if (countdownEl) {
-                        countdownEl.innerText = `${saniyeKalan} saniye sonra tekrar denenecek...`;
-                    }
-                    if (saniyeKalan <= 0) {
-                        clearInterval(limitInterval);
-                        let updateObj = {}; updateObj[storageKey] = gorev;
-                        chrome.storage.local.set(updateObj, () => {
-                            location.reload();
-                        });
-                    }
-                }, 1000);
-
-                const btnRetry = document.getElementById('btn-limit-retry');
-                if (btnRetry) {
-                    btnRetry.onclick = () => {
-                        clearInterval(limitInterval);
-                        let updateObj = {}; updateObj[storageKey] = gorev;
-                        chrome.storage.local.set(updateObj, () => {
-                            location.reload();
-                        });
-                    };
-                }
-
-                const btnSkip = document.getElementById('btn-limit-skip');
-                if (btnSkip) {
-                    btnSkip.onclick = () => {
-                        clearInterval(limitInterval);
-                        gorev.retry_count = 0;
-                        gorev.kuyruk.shift();
-                        let updateObj = {}; updateObj[storageKey] = gorev;
-                        chrome.storage.local.set(updateObj, () => {
-                            if (gorev.kuyruk.length > 0) {
-                                const nextUrl = gorev.kuyruk[0].url || gorev.kuyruk[0];
-                                let isNextUrlInstagram = nextUrl.includes('instagram.com');
-                            if (isNextUrlInstagram) {
-                                // Instagram dahil tüm gönderiler doğrudan (embed olmadan) normal sayfada açılır.
-                                setTimeout(() => { window.location.href = nextUrl; }, 100);
-                            } else {
-                                setTimeout(() => { window.location.href = nextUrl; }, 100);
-                            }
-                            } else {
-                                location.reload();
-                            }
-                        });
-                    };
-                }
+                // v3.68: mantık limitEngeliGoster ortak yardımcısına tasindi (profil yolu da
+                // ayni sistemi kullaniyor artik). Davranis birebir korundu.
+                limitEngeliGoster(gorev, storageKey, "Tivit yüklenemedi.");
                 return;
             }
 
