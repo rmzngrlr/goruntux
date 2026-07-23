@@ -2123,7 +2123,11 @@
                 let gorunenAd = "";
                 if (!isInstagram) {
                     // 1) document.title: X profilinde "Ad (@kullanıcı) / X" — en kararli kaynak.
-                    const tm = (document.title || "").match(/^(.+?)\s*\(@[^)]+\)/);
+                    //    DIKKAT: X, okunmamis bildirim varsa basliga "(3) " gibi bir SAYAC
+                    //    onekliyor -> "(1) NTV Spor (@NTVSpor) / X". Onu ONCE temizle, yoksa
+                    //    gorunen ad "(1) NTV Spor" cikip basliga "(1)" siziyor (saha, v3.69).
+                    const _baslik = (document.title || "").replace(/^\(\d+\)\s*/, '');
+                    const tm = _baslik.match(/^(.+?)\s*\(@[^)]+\)/);
                     if (tm && tm[1]) gorunenAd = tm[1].trim();
                     // 2) Yedek: profil basligi DOM'u (title henuz guncellenmemisse).
                     if (!gorunenAd) {
