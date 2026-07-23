@@ -2254,7 +2254,18 @@
                     //    Bu yuzden KART + ETKILESIM ikisini birden bekle.
                     let card = null, _engBekledi = 0;
                     const _engOut = {};
-                    for (let w = 0; w < 15; w++) {
+                    // v3.71 (saha): reel'de ray (stats sutunu) 3sn'den GEC geliyor ve sure
+                    // dolunca _engOut.list BOS kaliyor. Sonucu ZINCIRLEME:
+                    //   liste bos -> fbFindPost'un "medya + etkilesim ortak atasi" dali ATLANIR
+                    //             -> yedege duser: media.parentElement = DAR video sarmalayici
+                    //             -> kart ~695px (olculdu; dogru kart 767px, stats 783..831'de)
+                    //   liste bos -> kadraj GENISLETMESI de calismaz (o da ayni listeye bakar)
+                    // Yani stats'i kurtaracak IKI mekanizma da ayni sarta bagli. Bekleme 8sn'ye
+                    // cikarildi; ray gelir gelmez zaten break ediliyor -> normal durumda EK
+                    // GECIKME YOK, yalnizca gec gelen durumda bekliyoruz.
+                    const _isReel = location.pathname.indexOf('/reel/') === 0;
+                    const _maxBekle = _isReel ? 40 : 15;
+                    for (let w = 0; w < _maxBekle; w++) {
                         card = fbFindPost(_engOut);
                         const _kartHazir = card && card.getBoundingClientRect().height > 100;
                         if (_kartHazir) {
@@ -2267,7 +2278,7 @@
                             // ciktisi: video var, sag sutun YOK).
                             // Artik reel de rayi BEKLIYOR. Gelmezse 3sn sonra eskisi gibi devam
                             // eder -> bugunkunden kotu olamaz.
-                            if (location.pathname.indexOf('/reel/') === 0) {
+                            if (_isReel) {
                                 // Reel'de ray kartin ALT AGACINDA olmayabilir (ayri sutun) ->
                                 // card.querySelector DEGIL, fbFindPost'un topladigi GORUNUR liste.
                                 if (_engOut.list && _engOut.list.length) break;
@@ -2515,7 +2526,7 @@
                         `, bitis=${_bitis === null ? '-' : _bitis + '+' + _bitisPay}${_bitisTani.el ? ' <- ' + _bitisTani.el : ''}, kesilen=${_kesildi}px` +
                         `, sticky=${_fbStil.filter(function (p) { return p[1] === 'position'; }).length}` +
                         (_dilimLog.length ? `, dilimler=[${_dilimLog.join(' | ')}]` : '') +
-                        `, engBekle=${_engBekledi}` +
+                        `, engBekle=${_engBekledi}, engListe=${_engOut.list ? _engOut.list.length : 0}` +
                         `, sure=${Date.now() - _t0}ms`
                     );
                     // Kirpma yapilamadiysa SEBEBINI yaz (yorum kutusu kadraja girer -> onemli).
