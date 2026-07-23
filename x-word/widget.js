@@ -2114,10 +2114,43 @@
                         extractedUser = "@instagram_user";
                     }
                 }
+                // v3.69 (kullanici istegi): SADECE profil linki verilse bile baslik
+                // "Görünen Ad (@kullanıcı)" olsun. Eskiden profil yolunda yalnizca URL'den
+                // gelen kullanici adi vardi -> baslik duz "ntvspor" cikiyordu. Simdi gorunen
+                // adi da cekiyoruz. Bulamazsak ESKI davranisa duseriz (regresyon YOK).
+                // Gruplama LINK'ten geldigi icin (pool_group_key -> tweet_kullanici_adi_oku)
+                // username'i @'li yapmak profil+tweet grubunu BOZMAZ.
+                let gorunenAd = "";
+                if (!isInstagram) {
+                    // 1) document.title: X profilinde "Ad (@kullanıcı) / X" — en kararli kaynak.
+                    const tm = (document.title || "").match(/^(.+?)\s*\(@[^)]+\)/);
+                    if (tm && tm[1]) gorunenAd = tm[1].trim();
+                    // 2) Yedek: profil basligi DOM'u (title henuz guncellenmemisse).
+                    if (!gorunenAd) {
+                        try {
+                            const unEl = document.querySelector('[data-testid="UserName"]');
+                            if (unEl) {
+                                const ilk = (unEl.innerText || "").split('\n')[0].split('@')[0].trim();
+                                if (ilk) gorunenAd = ilk;
+                            }
+                        } catch (e) {}
+                    }
+                }
+                // account_name = gorunen ad (varsa), username = @kullanıcı.
+                // Gorunen ad yoksa VEYA kullanici adiyla ayniysa: eski davranis (ikisi de duz handle).
+                const _handleSade = (extractedUser || "").replace(/^@+/, '');
+                let _acc, _usr;
+                if (gorunenAd && gorunenAd.toLowerCase() !== _handleSade.toLowerCase()) {
+                    _acc = gorunenAd;
+                    _usr = extractedUser.startsWith('@') ? extractedUser : ('@' + extractedUser);
+                } else {
+                    _acc = extractedUser;
+                    _usr = extractedUser;
+                }
                 let resItem = {
                     link: activeUrl,
-                    account_name: extractedUser,
-                    username: extractedUser,
+                    account_name: _acc,
+                    username: _usr,
                     screenshot: screenshotData,
                     is_profile: true
                 };
