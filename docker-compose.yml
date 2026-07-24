@@ -6,5 +6,4 @@ services:
     container_name: goruntux_sunucu
     ports:
       - "3011:3011"
-      - "3012:3012"
     restart: always

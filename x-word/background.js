@@ -40,13 +40,14 @@ chrome.runtime.onInstalled.addListener(() => {
   startPolling();
 });
 
-// Sunucu gorevini GUVENILIR sekilde iptal et (status=idle). :3011 -> :3012 esler,
+// Sunucu gorevini GUVENILIR sekilde iptal et (status=idle). API panelin portunda (tek port),
 // client_id'yi global fetch sarmalayicisi ekler, "Failed to fetch" olursa retry eder.
 // Boylece panel kapaninca gorev gercekten iptal olur ve panel yeniden acilinca DEVAM ETMEZ.
 function resetServerJobReliable(rawOrigin, attempt) {
   attempt = attempt || 1;
-  let origin = rawOrigin || "http://localhost:3012";
-  if (origin.includes(":3011")) origin = origin.replace(":3011", ":3012");
+  // v3.78: TEK PORT. Eskiden :3011 -> :3012 esleniyordu (API ayri porttaydi). Artik API de
+  // panelin portunda (server_origin) -> donusum KALDIRILDI, origin oldugu gibi kullanilir.
+  let origin = rawOrigin || "http://localhost:3011";
   const url = `${origin}/api/auto/reset`; // client_id'yi sarmalayici ekler
   fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
     .then(r => r.json())
@@ -304,8 +305,8 @@ function isValidOrigin(origin) {
 
 function logToServer(message) {
   try {
-    chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
-      const origin = res.server_origin || "http://localhost:3012";
+    chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+      const origin = res.server_origin || "http://localhost:3011";
       if (isValidOrigin(origin)) {
         const data = JSON.stringify({ message: message });
         fetch(`${origin}/api/extension/log`, {
@@ -373,7 +374,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             taramaDurduBildir(null, "Facebook doğrulama ekranı çıktı — tarama durduruldu. "
                                   + "facebook.com'da doğrulamayı tamamlayıp taramayı yeniden başlatın.");
             chrome.storage.local.remove(storageKey, () => {
-              chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (cfg) => {
+              chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (cfg) => {
                 resetServerJobReliable(cfg.server_origin);
               });
             });
@@ -598,8 +599,7 @@ function flushPendingLocalImages(origin) {
 // Paneli ARKA PLANDA ac (active:false -> kullanici X'te kalir). Zaten bir panel sekmesi
 // (3011) aciksa/yukleniyorsa YENISINI ACMA (birden cok tiklamada coklu sekme olmasin).
 function openPanelBackground(origin) {
-  let panelUrl = (origin || "http://localhost:3012");
-  if (panelUrl.includes(":3012")) panelUrl = panelUrl.replace(":3012", ":3011");
+  let panelUrl = (origin || "http://localhost:3011");
   let panelHost = ""; try { panelHost = new URL(panelUrl).hostname; } catch (e) {}
   chrome.tabs.query({}, (tabs) => {
     const varOlan = tabs.find(t => {
@@ -678,7 +678,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
   temizleTumGorevler();
   chrome.storage.local.get(['server_origin'], (res) => {
-    const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3012";
+    const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3011";
     chrome.storage.local.set({
       browser_role: "word",
       server_origin: origin
@@ -695,7 +695,7 @@ chrome.storage.session.get(["initialized"], (sessionRes) => {
     temizleTumGorevler();
     // SILINDI (v3.62): closeRestoredTabs() cagrisi — asagidaki nota bak.
     chrome.storage.local.get(['server_origin'], (res) => {
-      const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3012";
+      const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3011";
       chrome.storage.local.set({
         browser_role: "word",
         server_origin: origin
@@ -784,9 +784,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Çözüm: return true ile kanalı açık tut → worker, işi bitirene kadar askıya ALINMAZ;
     // sendResponse'u async iş bitince çağır. Ayrıca yedek olarak yoklama döngüsünü yeniden
     // kur (worker askıya alınınca setInterval ölüyor) — doğrudan yol kaçarsa görev yakalanır.
-    chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
-      let raw = res.server_origin || "http://localhost:3012";
-      let origin = (raw.startsWith("http://") || raw.startsWith("https://")) ? raw : "http://localhost:3012";
+    chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+      let raw = res.server_origin || "http://localhost:3011";
+      let origin = (raw.startsWith("http://") || raw.startsWith("https://")) ? raw : "http://localhost:3011";
       try {
         if (typeof processServerJob === "function") processServerJob(job, origin);
       } catch (e) {
@@ -936,7 +936,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "submitWordResult") {
-    let origin = message.origin || "http://localhost:3012";
+    let origin = message.origin || "http://localhost:3011";
     let url = `${origin}/api/extension/submit_word_result`;
     fetch(url, {
       method: 'POST',
@@ -961,7 +961,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "resetServerJob") {
-    let origin = message.origin || "http://localhost:3012";
+    let origin = message.origin || "http://localhost:3011";
     let clientId = message.client_id || "";
     let resetUrl = `${origin}/api/auto/reset`;
     if (clientId) {
@@ -983,7 +983,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "updateWordProgress") {
-    let origin = message.origin || "http://localhost:3012";
+    let origin = message.origin || "http://localhost:3011";
     let url = `${origin}/api/extension/update_progress`;
     fetch(url, {
       method: 'POST',
@@ -1009,7 +1009,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // zaten varsa sunucu "duplicate" doner. (Eski generateSingleWord + generate_single yolu
   // ZATEN 410 ile emekliydi; kullanici karariyla buton havuza-ekleme oldu.)
   if (message.action === "addToPool") {
-    let origin = message.origin || "http://localhost:3012";
+    let origin = message.origin || "http://localhost:3011";
     let url = `${origin}/api/manual/add`;
     // v3.75: YEREL MOD. Sunucuya yalnizca META gider (baslik+link+group_override, GORSELSIZ);
     // gorsel tarayicidaki IndexedDB'ye (panel sayfasi) birakilir -> tikaniklik geri gelmez,
@@ -1104,8 +1104,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const clientId = message.client_id || "";
     const senderTabId = sender.tab ? sender.tab.id : null;
     if (!rawOrigin || !senderTabId) { sendResponse({ status: "error", message: "origin/tab yok" }); return false; }
+    // v3.78: API adresi = panelin ACILDIGI origin (portu DAHIL). Eskiden ":3012" zorlaniyordu
+    // (panel :3011, API :3012 ayrimi). Artik TEK PORT: panel hangi porttaysa (3011) eklenti de
+    // API'yi ORADAN cagirir. Boylece 3011 hem paneli acar hem eklenti isini yapar. Port-bagimsiz:
+    // panel :8080'de acilsa API de :8080. (Sunucu ayni app'i her iki portta sundugu icin calisir.)
     let apiOrigin = rawOrigin;
-    try { const u = new URL(rawOrigin); apiOrigin = u.protocol + "//" + u.hostname + ":3012"; } catch (e) {}
+    try { const u = new URL(rawOrigin); apiOrigin = u.protocol + "//" + u.host; } catch (e) {}
 
     chrome.storage.local.get(['panel_tab_id'], (res) => {
       const storedPanelTabId = res.panel_tab_id || null;
@@ -1152,7 +1156,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "completeJobAndFocusPanel") {
-    const targetOrigin = message.origin || "http://localhost:3012";
+    const targetOrigin = message.origin || "http://localhost:3011";
     logToServer(`[completeJobAndFocusPanel] Otomasyon tamamlandı. Panel aranıyor: ${targetOrigin}`);
     
     let targetHost = "";
@@ -1192,10 +1196,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
       } else {
         // Bulunamazsa yeni bir sekmede paneli aç
-        let fallbackUrl = targetOrigin;
-        if (fallbackUrl.includes(":3012")) {
-          fallbackUrl = fallbackUrl.replace(":3012", ":3011");
-        }
+        let fallbackUrl = targetOrigin;   // v3.78: tek port -> donusum yok
         chrome.tabs.create({ url: fallbackUrl, active: true }, (newTab) => {
           if (chrome.runtime.lastError) return;
           chrome.windows.update(newTab.windowId, { focused: true }, () => {
@@ -1282,8 +1283,8 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
-  chrome.storage.local.get({ server_origin: "http://localhost:3012", panel_tab_id: null }, (res) => {
-    let panelUrl = (res.server_origin || "http://localhost:3012").replace(':3012', ':3011') + '/';
+  chrome.storage.local.get({ server_origin: "http://localhost:3011", panel_tab_id: null }, (res) => {
+    let panelUrl = (res.server_origin || "http://localhost:3011") + '/';
     const focusTab = (t) => {
       chrome.tabs.update(t.id, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
       if (t.windowId != null) chrome.windows.update(t.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
@@ -1313,10 +1314,10 @@ function checkServerJobs() {
   try {
     chrome.storage.local.get(null, (allStorage) => {
       try {
-        let rawOrigin = allStorage.server_origin || "http://localhost:3012";
+        let rawOrigin = allStorage.server_origin || "http://localhost:3011";
         let origin = (rawOrigin.startsWith('http://') || rawOrigin.startsWith('https://'))
           ? rawOrigin
-          : "http://localhost:3012";
+          : "http://localhost:3011";
         let role = allStorage.browser_role || "word";
 
         let activeJobFound = false;

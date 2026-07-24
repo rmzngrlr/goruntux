@@ -1648,7 +1648,7 @@
     // (Sahada goruldu: TikTok captcha cikti, tarama durdu, panel "bitti" gibi davrandi.)
     function durdurVeTemizle(storageKey, interval, serverOrigin, sebep) {
         if (interval) clearInterval(interval);
-        chrome.storage.local.get({ server_origin: "http://localhost:3012", client_id: "" }, (res) => {
+        chrome.storage.local.get({ server_origin: "http://localhost:3011", client_id: "" }, (res) => {
             const origin = serverOrigin || res.server_origin;
             const clientId = res.client_id || "";
             
@@ -1722,7 +1722,7 @@
             buton.disabled = false;
             
             buton.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
                     window.open(`${res.server_origin}/user/login`, "_blank");
                 });
             };
@@ -1740,7 +1740,7 @@
             if (oldCb) oldCb.remove();
             
             chrome.storage.local.get({
-                server_origin: "http://localhost:3012"
+                server_origin: "http://localhost:3011"
             }, (res) => {
                 let hostIP = "localhost";
                 try {
@@ -1935,7 +1935,7 @@
             buton.disabled = false;
             
             buton.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3012" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
                     window.open(`${res.server_origin}/x-rapor-arti`, "_blank");
                 });
             };
@@ -2059,7 +2059,7 @@
                         } else {
                             swSendReliable({
                                 action: "submitWordResult",
-                                origin: gorev.server_origin || "http://localhost:3012",
+                                origin: gorev.server_origin || "http://localhost:3011",
                                 job_id: gorev.job_id, results: [], final: true
                             }, () => {
                                 chrome.storage.local.remove(storageKey, () => {
@@ -2221,14 +2221,14 @@
                     
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: false
                     }, (response) => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             current: progress,
                             total: totalCount
@@ -2245,14 +2245,14 @@
                     
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: true
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             current: progress,
                             total: progress
@@ -2631,14 +2631,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -2690,7 +2690,7 @@
                         // Kuyruk bitti -> taramayi DUZGUN kapat (reload dongusu YOK).
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             results: [],
                             final: true
@@ -3035,14 +3035,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -3089,7 +3089,7 @@
                     } else {
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id, results: [], final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
@@ -3396,14 +3396,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -3445,7 +3445,7 @@
                     } else {
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3012",
+                            origin: gorev.server_origin || "http://localhost:3011",
                             job_id: gorev.job_id,
                             results: [],
                             final: true
@@ -3879,7 +3879,7 @@
 
                 swSendReliable({
                     action: "submitWordResult",
-                    origin: gorev.server_origin || "http://localhost:3012",
+                    origin: gorev.server_origin || "http://localhost:3011",
                     job_id: gorev.job_id,
                     results: [xStripForServer(resItem, gorev)],
                     final: false
@@ -3892,7 +3892,7 @@
                     }
                     swSendReliable({
                         action: "updateWordProgress",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         current: progress,
                         total: totalCount
@@ -3917,14 +3917,14 @@
                 
                 swSendReliable({
                     action: "submitWordResult",
-                    origin: gorev.server_origin || "http://localhost:3012",
+                    origin: gorev.server_origin || "http://localhost:3011",
                     job_id: gorev.job_id,
                     results: [xStripForServer(resItem, gorev)],
                     final: true
                 }, () => {
                     swSendReliable({
                         action: "updateWordProgress",
-                        origin: gorev.server_origin || "http://localhost:3012",
+                        origin: gorev.server_origin || "http://localhost:3011",
                         job_id: gorev.job_id,
                         current: progress,
                         total: progress

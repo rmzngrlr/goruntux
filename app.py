@@ -1,7 +1,6 @@
 import time
 import requests
 from flask import Flask, request, jsonify, render_template_string, send_file
-from threading import Thread
 import docx
 from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -6182,25 +6181,13 @@ def extension_log():
 
 
 # ----------------- MAIN RUNNER -----------------
-def run_port_3011():
-    print("Flask UI Paneli 3011 portunda başlatılıyor...", flush=True)
-    app.run(host='0.0.0.0', port=3011, debug=False, threaded=True)
-
-def run_port_3012():
-    print("Flask API Sunucusu 3012 portunda başlatılıyor...", flush=True)
-    app.run(host='0.0.0.0', port=3012, debug=False, threaded=True)
-
+# v3.78: TEK PORT (3011). Eskiden ayni app 3011 (panel) + 3012 (eklenti API) diye IKI portta
+# calisiyordu; ayrim islevsel degil GELENEKti (her iki port da tum route'lari sunuyordu).
+# Kullanici karari: sunucu her iki portu SUNMASIN. Eklenti de artik API'yi panelin portundan
+# (3011) cagiriyor -> hem panel hem eklenti isi TEK PORTTA. 3012 tamamen kaldirildi.
 if __name__ == '__main__':
-    t1 = Thread(target=run_port_3011)
-    t2 = Thread(target=run_port_3012)
-    t1.daemon = True
-    t2.daemon = True
-    
-    t1.start()
-    t2.start()
-    
+    print("GörüntüX 3011 portunda başlatılıyor (tek port: panel + eklenti API)...", flush=True)
     try:
-        while True:
-            time.sleep(1)
+        app.run(host='0.0.0.0', port=3011, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("Sunucu kapatılıyor...")

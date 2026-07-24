@@ -13,6 +13,6 @@ COPY app.py /app/app.py
 COPY api_server.py /app/api_server.py
 COPY x-word /app/x-word
 
-EXPOSE 3011 3012
+EXPOSE 3011
 
 ENTRYPOINT ["python", "app.py"]
