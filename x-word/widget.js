@@ -1753,14 +1753,14 @@
                 
                 // v3.72: buton artik TEKIL WORD URETMEZ (o yol zaten 410 ile emekliydi);
                 // yakalanan icerigi PANELIN HAVUZUNA ekler. Tweet + profil sayfalarinda calisir.
-                buton.innerText = "Panele Ekle";
+                buton.innerText = "Rapora Ekle";
                 buton.style.backgroundColor = '#1d9bf0'; // X Blue color
                 buton.disabled = false;
 
                 buton.onclick = async () => {
                     buton.disabled = true;
                     buton.innerText = "⏳ Yakalanıyor...";
-                    const _sifirla = () => { buton.disabled = false; buton.innerText = "Panele Ekle"; };
+                    const _sifirla = () => { buton.disabled = false; buton.innerText = "Rapora Ekle"; };
 
                     const _urlSade = window.location.href.split('?')[0];
                     const _profilMi = !/\/status\/\d+/.test(_urlSade);
@@ -1838,7 +1838,7 @@
                         is_profile: _profilMi
                     }, (addRes) => {
                         if (addRes && addRes.status === "success") {
-                            buton.innerText = "✔️ Panele eklendi";
+                            buton.innerText = "✔️ Rapora eklendi";
                             // Paneli one al / yeni sekmede ac — MEVCUT SEKME KAPANMAZ.
                             chrome.runtime.sendMessage({ action: "focusOrOpenPanel", origin: res.server_origin });
                             setTimeout(_sifirla, 1500);
@@ -1846,7 +1846,7 @@
                             buton.innerText = "⚠️ Zaten havuzda";
                             setTimeout(_sifirla, 1800);
                         } else {
-                            alert("Panele eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                            alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
                             _sifirla();
                         }
                     });
@@ -3941,7 +3941,7 @@
                 }
             } else {
                 printLog("Aktif görev yok. Tekil tivit kontrolü yapılıyor...");
-                // Idle Mod: tekil tweet sayfasi VEYA profil sayfasi -> "Panele Ekle" butonu.
+                // Idle Mod: tekil tweet sayfasi VEYA profil sayfasi -> "Rapora Ekle" butonu.
                 let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl);
                 let rtSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
                 // Profil sayfasi: x.com/{ad} (tek segment) ve {ad} rezerve yol DEGIL.
