@@ -1742,14 +1742,10 @@
             chrome.storage.local.get({
                 server_origin: "http://localhost:3011"
             }, (res) => {
-                let hostIP = "localhost";
-                try {
-                    hostIP = new URL(res.server_origin).hostname;
-                } catch(e){}
-                
+                // v3.79: sunucu adresi widget'ta GOSTERILMEZ (kullanici istegi). res.server_origin
+                // asagidaki buton onclick'inde hala kullaniliyor, o yuzden storage okumasi kaliyor.
                 durumText.innerHTML = `🛡️ <b>GörüntüX</b><br>
-                                       Durum: <b>Bağlantı Hazır ✔️</b><br>
-                                       Sunucu: <b>${hostIP}</b>`;
+                                       Durum: <b>Bağlantı Hazır ✔️</b>`;
                 
                 // v3.72: buton artik TEKIL WORD URETMEZ (o yol zaten 410 ile emekliydi);
                 // yakalanan icerigi PANELIN HAVUZUNA ekler. Tweet + profil sayfalarinda calisir.
