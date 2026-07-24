@@ -3790,8 +3790,14 @@ HTML_TEMPLATE = """
                         '<button type="button" class="pool-move-btn" title="Aşağı taşı"' + downDis + ' onclick="movePoolBlock(this,\\\'down\\\')">&#9660;</button>' +
                         '</span></div>';
                 html += '<div class="pool-block-items">';
-                for (var j = 0; j < blk.items.length; j++) {
-                    var x = blk.items[j];
+                // v3.77: PROFIL KARTI grubun EN USTUNDE (Word ile AYNI kural). data-pool-index
+                // gercek havuz indeksini tasidigi icin display sirasini degistirmek surukleme/
+                // sil/reorder'i BOZMAZ (islemler indekse gore, ekran sirasina gore DEGIL).
+                var _bp=[], _br=[];
+                for (var _bi=0;_bi<blk.items.length;_bi++){ (blk.items[_bi].is_profile?_bp:_br).push(blk.items[_bi]); }
+                var _blkItems=_bp.concat(_br);
+                for (var j = 0; j < _blkItems.length; j++) {
+                    var x = _blkItems[j];
                     var poolIdx = x.index - 1;
                     var thumb;
                     if (xLocalImagesEnabled() && window.XLocalImages && window.XLocalImages.hasImage(x.link)) {
@@ -5000,7 +5006,13 @@ LOCAL_DOCX_JS = r'''
                                           : ((val.charAt(0)==='@') ? val : '@'+val);
         headerIndex++;
         if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
-        var ordered=group.items; // grup içi sıra: havuz sırası (kullanıcı sürükleyerek düzenler)
+        // v3.77: PROFIL KARTI HER ZAMAN grubun EN USTUNDE (kullanici istegi). Havuz surukleme
+        // sirasi ne olursa olsun profil kartlari basa alinir; geri kalanlar havuz sirasinda.
+        // Kararli bolme (sort degil) -> profiller ve digerleri kendi ic sirasini korur.
+        // h2 (hesap basligi) zaten k===0'a konuyor -> profil kartinin uzerine oturur, dogru.
+        var _prof=[], _rest=[];
+        for(var _gi=0;_gi<group.items.length;_gi++){ (group.items[_gi].is_profile?_prof:_rest).push(group.items[_gi]); }
+        var ordered=_prof.concat(_rest);
         var k;
         for(k=0;k<ordered.length;k++){
           // h2 YALNIZCA grubun ILK gonderisinde: bir hesabin basligi belgede BIR KEZ
