@@ -609,8 +609,27 @@
                 width: 100%; color: #fff; border: none; padding: 11px; font-weight: bold; 
                 font-size: 13px; border-radius: 99px; cursor: pointer; transition: background 0.2s; box-sizing: border-box;
             `; 
-            widget.appendChild(buton); 
-            document.body.appendChild(widget); 
+            widget.appendChild(buton);
+
+            // v3.81: "Panele Git" butonu — her durumda gorunur, kullanici panele gecebilsin.
+            // Paneli one alir / yeni sekmede acar; MEVCUT sekmeyi kapatmaz (X'te gezinme surer,
+            // panel ayri/ustune gelir). Ana butonun (Rapora Ekle/progress) durumlarindan bagimsiz.
+            const panelButon = document.createElement('button');
+            panelButon.id = 'w-panel-buton';
+            panelButon.innerText = '🔗 Panele Git';
+            panelButon.style.cssText = `
+                width: 100%; margin-top: 8px; background: transparent; color: var(--w-text-muted);
+                border: 1px solid var(--w-border); padding: 8px; font-weight: 600; font-size: 12px;
+                border-radius: 99px; cursor: pointer; transition: background 0.2s; box-sizing: border-box;
+            `;
+            panelButon.onclick = () => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                    chrome.runtime.sendMessage({ action: "goToPanel", origin: res.server_origin });
+                });
+            };
+            widget.appendChild(panelButon);
+
+            document.body.appendChild(widget);
 
             function cropScreenshot(dataUrl, rect) {
                 return new Promise((resolve, reject) => {

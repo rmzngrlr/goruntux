@@ -1054,10 +1054,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open
   }
 
-  // SILINDI (v3.74): "focusOrOpenPanel" isleyicisi. "Rapora Ekle" sonrasi paneli one
-  // aliyordu; kullanici YONLENDIRME ISTEMEDI ("istersem kendim giderim"). Icerik zaten
-  // sunucudaki havuza ekleniyor ve panele girildiginde gorunuyor -> paneli acmaya gerek yok.
-  // Tek cagirani widget.js'teki addToPool basari daliydi, o da kaldirildi.
+  // v3.81: Widget'taki "Panele Git" butonu. Paneli ONE ALIR; acik degilse yeni sekmede acar.
+  // v3.74'te kaldirilan focusOrOpenPanel'in aksine bu EXPLICIT bir kullanici eylemi -> panele
+  // GECMEK isteniyor (odaklanir/acilir). MEVCUT X sekmesini KAPATMAZ (gezinme kaybolmasin).
+  if (message.action === "goToPanel") {
+    const targetOrigin = message.origin || "http://localhost:3011";
+    let targetHost = "";
+    try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
+    chrome.tabs.query({}, (tabs) => {
+      try {
+        let panelTab = tabs.find(t => {
+          if (!t.url) return false;
+          let tabHost = "";
+          try { tabHost = new URL(t.url).hostname; } catch (e) {}
+          const hostMatch = targetHost && tabHost && targetHost === tabHost;
+          const cleanTitle = t.title ? t.title.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+          const titleMatch = cleanTitle.includes("xrapor") || cleanTitle.includes("goruntux");
+          return hostMatch || titleMatch;
+        });
+        if (panelTab) {
+          chrome.tabs.update(panelTab.id, { active: true }, () => {
+            if (panelTab.windowId != null) chrome.windows.update(panelTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+          });
+        } else {
+          chrome.tabs.create({ url: targetOrigin, active: true }, (newTab) => {
+            if (chrome.runtime.lastError || !newTab) return;
+            if (newTab.windowId != null) chrome.windows.update(newTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+          });
+        }
+      } catch (err) {
+        logToServer(`[goToPanel] ${err.message || err}`);
+      }
+    });
+    sendResponse({ status: "success" });
+    return false;
+  }
 
   // SILINDI (v3.62): "setUserAuth" isleyicisi. Cagirani (bridge.js) HER http(s) sayfasindan
   // kosulsuz gonderiyordu; isleyici de server_origin'i sayfanin origin'inden "bootstrap"
