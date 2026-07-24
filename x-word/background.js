@@ -351,6 +351,17 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       let isYoutubePost = xIsYtPostUrl(temizUrl);    // Faz YT-1
       let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost || isYoutubePost;
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
+      // v3.80: X PROFIL sayfasi. "Rapora Ekle" idle widget'i profilde de gorunsun diye
+      // (v3.72'de widget.js icine eklenmisti ama background widget.js'i PROFILE enjekte
+      // etmiyordu -> profilde hic acilmiyordu). Tespit widget.js'teki profilMi ile AYNI.
+      let profilMi = false;
+      try {
+        const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?$/i);
+        const _rez = ["home","explore","notifications","messages","search","i","settings",
+                      "compose","hashtag","login","logout","signup","share","intent",
+                      "tos","privacy","about","download","jobs","developer"];
+        if (_pm && _pm[1] && _rez.indexOf(_pm[1].toLowerCase()) === -1) profilMi = true;
+      } catch (e) {}
 
       let storageKey = `x_profil_gorevi_${tabId}`;
 
@@ -511,9 +522,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
               }
             }
           } else {
-            // Normal zamanda X anasayfa veya profil sayfasındayken widget otomatik ÇIKMASIN.
-            // Sadece tekil tweet detay sayfalarındayken çıksın.
-            if (tivitMi && !retweetSayfasiMi) {
+            // Idle modda widget: tekil tweet sayfasi VEYA X profil sayfasi (v3.80).
+            // "Rapora Ekle" ikisinde de calisir; RT/quotes/likes gibi alt sayfalar HARIC.
+            // (Eskiden yalniz tweet sayfasiydi -> profilde widget hic acilmıyordu.)
+            if ((tivitMi && !retweetSayfasiMi) || profilMi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
                   widgetiFirlat(tabId);
