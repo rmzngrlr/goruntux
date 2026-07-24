@@ -3897,7 +3897,23 @@ HTML_TEMPLATE = """
             if (item && item.classList) { item.classList.remove('dragging'); }
             try { document.body.style.userSelect = ''; } catch (e) {}
             if (moved && container) { savePoolOrderFromDom(container); }
-            else { window.poolDragging = false; }
+            else {
+                window.poolDragging = false;
+                // v3.82 (Feature 2): HAREKET YOK -> TIK. Onizlemeyi ac ve TIKLANAN ogeye kaydir.
+                // Onizleme mammoth ile .docx->HTML uretiliyor; K'inci <img> = gruplu siradaki
+                // K'inci oge. Havuz DOM'u da ayni sirada (renderPoolGrouped + .docx AYNI gruplama/
+                // profil-once) -> tiklanan .pool-item'in DOM indexi = onizlemedeki img indexi.
+                try {
+                    if (item && container) {
+                        var _tumOgeler = Array.prototype.slice.call(container.querySelectorAll('.pool-item'));
+                        var _k = _tumOgeler.indexOf(item);
+                        if (_k >= 0 && typeof generateManualWord === 'function') {
+                            window.__previewScrollToIndex = _k;
+                            generateManualWord(true);   // previewMode -> showDocxPreview
+                        }
+                    }
+                } catch (e) {}
+            }
         }
         function attachItemDnd(container) {
             // Belge seviyesindeki dinleyicileri yalnızca BİR KEZ bağla.
@@ -4356,6 +4372,25 @@ HTML_TEMPLATE = """
                             </html>
                         `);
                         iframeDoc.close();
+
+                        // v3.82 (Feature 2): bir HAVUZ OGESINE tiklanarak acildiysa o ogenin
+                        // resmine kaydir. __previewScrollToIndex yalnizca oge tiklamasinda set
+                        // edilir; "Onizle" butonuyla acilista set DEGIL -> ustten baslar (eski davranis).
+                        // Resimler data-URI oldugu icin yerlesim otursun diye kisa gecikme.
+                        try {
+                            if (window.__previewScrollToIndex != null) {
+                                var _hedefIdx = window.__previewScrollToIndex;
+                                window.__previewScrollToIndex = null;
+                                setTimeout(function () {
+                                    try {
+                                        var _imgs = iframeDoc.querySelectorAll('img');
+                                        if (_imgs && _imgs[_hedefIdx]) {
+                                            _imgs[_hedefIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        }
+                                    } catch (e) {}
+                                }, 300);
+                            }
+                        } catch (e) {}
                     })
                     .catch(function(err) {
                         showToast('Önizleme oluşturulamadı: ' + err.message, 'danger');
