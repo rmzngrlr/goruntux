@@ -969,43 +969,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open
   }
 
-  // v3.72: "Panele Ekle" sonrasi paneli one al / yeni sekmede ac.
-  // completeJobAndFocusPanel'in AKSINE mevcut sekmeyi KAPATMAZ — kullanici tweet/profilde
-  // geziniyor, o sekme kalmali. Panel bulma mantigi completeJobAndFocusPanel ile ayni
-  // (host ya da baslik eslesmesi); yalnizca tab kapatma cikarildi.
-  if (message.action === "focusOrOpenPanel") {
-    const targetOrigin = message.origin || "http://localhost:3012";
-    let targetHost = "";
-    try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
-    chrome.tabs.query({}, (tabs) => {
-      try {
-        let panelTab = tabs.find(t => {
-          if (!t.url) return false;
-          let tabHost = "";
-          try { tabHost = new URL(t.url).hostname; } catch (e) {}
-          const hostMatch = targetHost && tabHost && targetHost === tabHost;
-          const cleanTitle = t.title ? t.title.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-          const titleMatch = cleanTitle.includes("xrapor");
-          return hostMatch || titleMatch;
-        });
-        if (panelTab) {
-          chrome.tabs.update(panelTab.id, { active: true }, () => {
-            if (panelTab.windowId != null) chrome.windows.update(panelTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
-          });
-        } else {
-          let fallbackUrl = targetOrigin.includes(":3012") ? targetOrigin.replace(":3012", ":3011") : targetOrigin;
-          chrome.tabs.create({ url: fallbackUrl, active: true }, (newTab) => {
-            if (chrome.runtime.lastError || !newTab) return;
-            if (newTab.windowId != null) chrome.windows.update(newTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
-          });
-        }
-      } catch (err) {
-        logToServer(`[focusOrOpenPanel] ${err.message || err}`);
-      }
-    });
-    sendResponse({ status: "success" });
-    return false;
-  }
+  // SILINDI (v3.74): "focusOrOpenPanel" isleyicisi. "Rapora Ekle" sonrasi paneli one
+  // aliyordu; kullanici YONLENDIRME ISTEMEDI ("istersem kendim giderim"). Icerik zaten
+  // sunucudaki havuza ekleniyor ve panele girildiginde gorunuyor -> paneli acmaya gerek yok.
+  // Tek cagirani widget.js'teki addToPool basari daliydi, o da kaldirildi.
 
   // SILINDI (v3.62): "setUserAuth" isleyicisi. Cagirani (bridge.js) HER http(s) sayfasindan
   // kosulsuz gonderiyordu; isleyici de server_origin'i sayfanin origin'inden "bootstrap"

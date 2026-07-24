@@ -1839,8 +1839,9 @@
                     }, (addRes) => {
                         if (addRes && addRes.status === "success") {
                             buton.innerText = "✔️ Rapora eklendi";
-                            // Paneli one al / yeni sekmede ac — MEVCUT SEKME KAPANMAZ.
-                            chrome.runtime.sendMessage({ action: "focusOrOpenPanel", origin: res.server_origin });
+                            // v3.74 (kullanici istegi): panele YONLENDIRME YOK. Icerik sunucudaki
+                            // havuza eklendi; kullanici panele kendisi gidince orada gorunur.
+                            // (Eskiden burada focusOrOpenPanel cagriliyordu.)
                             setTimeout(_sifirla, 1500);
                         } else if (addRes && addRes.status === "duplicate") {
                             buton.innerText = "⚠️ Zaten havuzda";
