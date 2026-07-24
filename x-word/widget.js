@@ -1764,7 +1764,7 @@
 
                     const _urlSade = window.location.href.split('?')[0];
                     const _profilMi = !/\/status\/\d+/.test(_urlSade);
-                    let ekranGoruntusu = "", baslik = "";
+                    let ekranGoruntusu = "", baslik = "", groupOverride = "";
                     const link = _urlSade;
 
                     if (_profilMi) {
@@ -1818,6 +1818,32 @@
                         else
                             baslik = accountName || username;
 
+                        // RT TESPITI (kullanici karari): tweet RT edilmisse RT YAPANIN basligi
+                        // altinda gruplansin. socialContext ("X gönderiyi yeniden yayınladı")
+                        // RT yapani gosterir; onun @kullanici adini href'ten, gorunen adini
+                        // metinden al. Bulunamazsa SAHIP basligi kalir (regresyon yok).
+                        // NOT: tweet SAHIBI zaten gorselde (article basligi) gorunur; ayrica
+                        //      RT eden de socialContext ile gorselde -> bilgi kaybi yok.
+                        try {
+                            const sc = article.querySelector('[data-testid="socialContext"]');
+                            if (sc) {
+                                const a = sc.closest('a') || sc.querySelector('a');
+                                let rtHandle = "";
+                                if (a) {
+                                    const hm = (a.getAttribute('href') || "").match(/^\/([^/?#]+)/);
+                                    const rez = ["i","home","search","notifications","messages","explore","settings"];
+                                    if (hm && hm[1] && rez.indexOf(hm[1].toLowerCase()) === -1) rtHandle = hm[1];
+                                }
+                                let rtAd = (sc.textContent || "")
+                                    .replace(/\s*(gönderiyi\s+yeniden\s+yayınladı|yeniden\s+yayınladı|Retweetledi|reposted|Retweeted).*$/i, "")
+                                    .trim();
+                                if (rtHandle) {
+                                    groupOverride = rtHandle.toLowerCase();
+                                    baslik = rtAd ? (rtAd + " (@" + rtHandle + ")") : ("@" + rtHandle);
+                                }
+                            }
+                        } catch (e) {}
+
                         article.scrollIntoView({ block: 'start', behavior: 'instant' });
                         await new Promise(r => setTimeout(r, 600));
                         ekranGoruntusu = await captureArticle(article) || "";
@@ -1835,7 +1861,8 @@
                         title: baslik,
                         link: link,
                         image: ekranGoruntusu,
-                        is_profile: _profilMi
+                        is_profile: _profilMi,
+                        group_override: groupOverride
                     }, (addRes) => {
                         if (addRes && addRes.status === "success") {
                             buton.innerText = "✔️ Rapora eklendi";

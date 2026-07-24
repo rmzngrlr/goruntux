@@ -549,6 +549,68 @@ function taramaDurduBildir(panelTabId, sebep) {
   chrome.storage.local.get(['panel_tab_id'], (r) => gonder(r && r.panel_tab_id));
 }
 
+// v3.75: "Rapora Ekle" YEREL GORSEL kuyrugu. Gorseller SUNUCUYA GITMEZ; tarayicidaki
+// IndexedDB'de (panel sayfasi) tutulur. Yerel depo panel sayfasinda yasadigi icin:
+//  - Panel ACIKSA gorsel hemen teslim edilir.
+//  - Panel KAPALIYSA gorsel burada (chrome.storage.local) BEKLETILIR ve panel ARKA PLANDA
+//    acilir (kullanici X'te kalir, active:false); panel yuklenip registerPanel'e gelince
+//    flushPendingLocalImages ile teslim edilir. (unlimitedStorage izni var -> boyut sorunu yok.)
+function queueLocalImage(link, dataUrl, origin) {
+  chrome.storage.local.get(['pending_local_images'], (r) => {
+    let q = (r && r.pending_local_images) || [];
+    q = q.filter(x => x.link !== link);   // ayni link -> guncelle
+    q.push({ link: link, dataUrl: dataUrl });
+    chrome.storage.local.set({ pending_local_images: q }, () => {
+      flushPendingLocalImages(origin);
+    });
+  });
+}
+
+function flushPendingLocalImages(origin) {
+  chrome.storage.local.get(['pending_local_images', 'panel_tab_id', 'server_origin'], (r) => {
+    const q = (r && r.pending_local_images) || [];
+    if (!q.length) return;
+    const panelTabId = r.panel_tab_id;
+    const teslim = (tid) => {
+      let kalan = [], bekleyen = q.length;
+      const bitir = () => { chrome.storage.local.set({ pending_local_images: kalan }); };
+      q.forEach(item => {
+        try {
+          chrome.tabs.sendMessage(tid, { action: "localImage", link: item.link, dataUrl: item.dataUrl, mime: "" }, () => {
+            const err = chrome.runtime.lastError;
+            if (err) kalan.push(item);   // teslim olmadi -> kuyrukta kalsin
+            if (--bekleyen === 0) bitir();
+          });
+        } catch (e) { kalan.push(item); if (--bekleyen === 0) bitir(); }
+      });
+    };
+    if (panelTabId) {
+      chrome.tabs.get(panelTabId, (t) => {
+        if (chrome.runtime.lastError || !t) { openPanelBackground(origin || r.server_origin); }
+        else { teslim(panelTabId); }
+      });
+    } else {
+      openPanelBackground(origin || r.server_origin);
+    }
+  });
+}
+
+// Paneli ARKA PLANDA ac (active:false -> kullanici X'te kalir). Zaten bir panel sekmesi
+// (3011) aciksa/yukleniyorsa YENISINI ACMA (birden cok tiklamada coklu sekme olmasin).
+function openPanelBackground(origin) {
+  let panelUrl = (origin || "http://localhost:3012");
+  if (panelUrl.includes(":3012")) panelUrl = panelUrl.replace(":3012", ":3011");
+  let panelHost = ""; try { panelHost = new URL(panelUrl).hostname; } catch (e) {}
+  chrome.tabs.query({}, (tabs) => {
+    const varOlan = tabs.find(t => {
+      try { const u = new URL(t.url || ""); return u.hostname === panelHost && u.port === "3011"; }
+      catch (e) { return false; }
+    });
+    if (varOlan) return;   // panel zaten var/yukleniyor
+    chrome.tabs.create({ url: panelUrl, active: false }, () => { if (chrome.runtime.lastError) {} });
+  });
+}
+
 function widgetiFirlat(tabId) {
   logToServer(`[widgetiFirlat] Başlatılıyor: tabId=${tabId}`);
   chrome.scripting.executeScript({
@@ -949,19 +1011,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "addToPool") {
     let origin = message.origin || "http://localhost:3012";
     let url = `${origin}/api/manual/add`;
+    // v3.75: YEREL MOD. Sunucuya yalnizca META gider (baslik+link+group_override, GORSELSIZ);
+    // gorsel tarayicidaki IndexedDB'ye (panel sayfasi) birakilir -> tikaniklik geri gelmez,
+    // word taramasinin xStripForServer yolunun ayni felsefesi. client_id'yi global fetch
+    // sarmalayicisi ekler -> DOGRU istemcinin havuzuna duser.
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title: message.title || "",
         link: message.link || "",
-        image: message.image || "",
         is_profile: !!message.is_profile,
+        group_override: message.group_override || "",
+        local: true,
         dedup: true
       })
     })
     .then(r => r.json())
-    .then(res => sendResponse(res))
+    .then(res => {
+      // Meta eklendiyse gorseli YERELE teslim et. duplicate ise gorsel gonderme (zaten var).
+      if (res && res.status === "success" && message.image && message.link) {
+        queueLocalImage(message.link, message.image, origin);
+      }
+      sendResponse(res);
+    })
     .catch(err => {
       logToServer("[addToPool] hata: " + (err.message || err));
       sendResponse({ status: "error", message: err.toString() });
@@ -1041,6 +1114,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (clientId) updateData.client_id = clientId;
         chrome.storage.local.set(updateData, () => {
           logToServer(`[registerPanel] Panel kaydedildi. TabID=${senderTabId}, Origin=${apiOrigin}`);
+          // v3.75: Panel yeni acildi/kaydedildi -> bekleyen YEREL "Rapora Ekle" gorsellerini
+          // simdi teslim et (panel kapaliyken eklenip kuyrukta bekleyenler). Panel sayfasinin
+          // bridge.js'i localImage mesajini alip IndexedDB'ye yazar.
+          try { flushPendingLocalImages(apiOrigin); } catch (e) {}
         });
         try { sendResponse({ status: "success", duplicate: false }); } catch (_) {}
       };

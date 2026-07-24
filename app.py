@@ -536,6 +536,13 @@ def is_generic_title(t):
 def pool_group_key(item):
     # manual_generate ile AYNI gruplama anahtarı: profil kartı ve tweetler aynı hesapta
     # birleşsin diye. X için kullanıcı adı, Instagram için başlık; ikisi de yoksa None (standalone).
+    # v3.75: group_override EN YUKSEK oncelik. RT'li tweet "Rapora Ekle" ile eklendiginde
+    # widget RT YAPANIN @kullanici adini group_override olarak gonderir; link'ten turetilen
+    # tweet SAHIBI yerine RT yapan kullanilir (kullanici karari). Yalnizca X reposttan gelir,
+    # bare handle -> X ad uzayi (fb:/tt:/yt: onekleriyle cakismaz).
+    _go = (item.get("group_override") or "").strip().lstrip("@").lower()
+    if _go:
+        return _go
     link = item.get("link", "") or ""
     username = tweet_kullanici_adi_oku(link)
     if not username and link and "instagram.com" in link.lower():
@@ -4751,7 +4758,12 @@ LOCAL_DOCX_JS = r'''
     for(idx=0; idx<items.length; idx++){
       var item=items[idx];
       var link=item.link||'';
-      var username=tweetKullaniciAdiOku(link);
+      // v3.75: group_override EN YUKSEK oncelik — sunucudaki pool_group_key'in IKIZI.
+      // RT'li tweet "Rapora Ekle" ile RT YAPANIN altinda gruplanir (widget socialContext'ten
+      // @kullanici gonderir). Word TARAYICIDA uretildigi icin Baslik 2 gruplamasini belirleyen
+      // yer BURASI; yalniz Python'u degistirmek yetmez (FB/TT/YT yorumlarindaki uyari).
+      var _go = ((item.group_override||'')+'').trim().replace(/^@+/, '').toLowerCase();
+      var username = _go ? _go : tweetKullaniciAdiOku(link);
       if(!username && link && link.toLowerCase().indexOf('instagram.com')!==-1){
         var t0=(item.title||'').trim();
         username = t0 ? t0.toLowerCase() : '@instagram_user';
@@ -5352,6 +5364,9 @@ def pool_data():
             "title": item.get("title", "") or "",
             "link": item.get("link", "") or "",
             "is_profile": bool(item.get("is_profile", False)),
+            # v3.75: RT'li tweet grubu icin. Tarayici .docx ureticisi (LOCAL_DOCX_JS gruplama
+            # dongusu) bunu link'ten turetilen sahibe TERCIH eder -> RT yapanin altinda gruplar.
+            "group_override": item.get("group_override", "") or "",
             "image_b64": img_b64,
             "image_mime": img_mime
         })
@@ -5365,13 +5380,12 @@ def manual_add():
         link = x_temizle_link(data.get("link", "").strip())
         image_data = data.get("image", "")
         is_profile = bool(data.get("is_profile", False))
-
-        if not image_data or not image_data.startswith("data:image/"):
-            return jsonify({"status": "error", "message": "Geçersiz görsel verisi."})
+        is_local = bool(data.get("local", False))
+        group_override = (data.get("group_override") or "").strip()
 
         pool = get_client_pool()
 
-        # Eklentideki "Panele Ekle" butonu dedup ister (dedup=True gonderir). Ayni link
+        # Eklentideki "Rapora Ekle" butonu dedup ister (dedup=True gonderir). Ayni link
         # havuzda zaten varsa IKINCI KEZ EKLEME -> "duplicate" doner, kullaniciya "zaten
         # havuzda" uyarisi gosterilir. Panelin elle ekleme yolu (addManualContent) dedup
         # GONDERMEZ -> davranisi birebir korunur.
@@ -5381,12 +5395,21 @@ def manual_add():
                 if it.get("link") and normalize_link_key(it["link"]) == norm:
                     return jsonify({"status": "duplicate", "message": "Bu içerik zaten havuzda."})
 
-        # Extract bytes from base64
-        base64_str = image_data.split(",")[1]
-        gorsel_bytes = base64.b64decode(base64_str)
+        # v3.75: YEREL MOD. "Rapora Ekle" gorselleri SUNUCUYA GELMEZ; eklenti tarayicidaki
+        # IndexedDB'ye birakir (word taramasinin xStripForServer yolunun aynisi -> tikanikligi
+        # geri getirmemek icin). local=True ise gorsel beklenmez; havuz ogesi yalnizca
+        # baslik+link tasir, gorsel panelde link'e gore IndexedDB'den cozulur.
+        filepath = None
+        if is_local:
+            pass
+        else:
+            if not image_data or not image_data.startswith("data:image/"):
+                return jsonify({"status": "error", "message": "Geçersiz görsel verisi."})
+            base64_str = image_data.split(",")[1]
+            gorsel_bytes = base64.b64decode(base64_str)
+            filepath = save_temp_image(gorsel_bytes)
 
         title_formatted = baslik_formatla(title)
-        filepath = save_temp_image(gorsel_bytes)
         item = {
             "title": title_formatted if title_formatted else "",
             "image": filepath,
@@ -5394,6 +5417,11 @@ def manual_add():
         }
         if is_profile:
             item["is_profile"] = True
+        # RT'li tweet: RT YAPAN hesabin altinda gruplansin (kullanici karari). Widget
+        # socialContext'ten RT yapanin @kullanici adini cikarip gonderir. pool_group_key
+        # bunu link'ten turetilen sahibe TERCIH eder.
+        if group_override:
+            item["group_override"] = group_override
         pool.append(item)
         return jsonify({"status": "success"})
     except Exception as e:
