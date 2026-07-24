@@ -1751,92 +1751,103 @@
                                        Durum: <b>Bağlantı Hazır ✔️</b><br>
                                        Sunucu: <b>${hostIP}</b>`;
                 
-                buton.innerText = "Tekil Word Raporu Üret";
+                // v3.72: buton artik TEKIL WORD URETMEZ (o yol zaten 410 ile emekliydi);
+                // yakalanan icerigi PANELIN HAVUZUNA ekler. Tweet + profil sayfalarinda calisir.
+                buton.innerText = "Panele Ekle";
                 buton.style.backgroundColor = '#1d9bf0'; // X Blue color
                 buton.disabled = false;
-                
+
                 buton.onclick = async () => {
                     buton.disabled = true;
-                    buton.innerText = "⏳ Hazırlanıyor...";
-                    
-                    const urlMatch = window.location.href.split('?')[0].match(/status\/(\d+)/);
-                    const tweetId = urlMatch ? urlMatch[1] : null;
-                    let article = null;
-                    const articles = document.querySelectorAll('article[data-testid="tweet"]');
-                    if (tweetId) {
-                        for (const art of articles) {
-                            if (art.querySelector(`a[href*="/status/${tweetId}"]`)) {
-                                article = art;
-                                break;
-                            }
-                        }
-                        if (!article) {
+                    buton.innerText = "⏳ Yakalanıyor...";
+                    const _sifirla = () => { buton.disabled = false; buton.innerText = "Panele Ekle"; };
+
+                    const _urlSade = window.location.href.split('?')[0];
+                    const _profilMi = !/\/status\/\d+/.test(_urlSade);
+                    let ekranGoruntusu = "", baslik = "";
+                    const link = _urlSade;
+
+                    if (_profilMi) {
+                        // PROFIL: primaryColumn'u yakala. captureArticle URL'den isProfile'i
+                        // algilayip yuksekligi profil kartina sinirliyor (bkz. ~:1278).
+                        const primaryCol = document.querySelector('[data-testid="primaryColumn"]');
+                        if (!primaryCol) { alert("Profil içeriği sayfada bulunamadı!"); _sifirla(); return; }
+                        // Baslik = gorunen ad (@kullanıcı). Gorunen ad document.title'dan
+                        // ("Ad (@kullanıcı) / X"); bildirim sayaci "(3) " onekini temizle (v3.70).
+                        const _handle = (_urlSade.match(/(?:x|twitter)\.com\/([^/?#]+)/i) || [])[1] || "";
+                        const _t = (document.title || "").replace(/^\(\d+\)\s*/, '');
+                        const _m = _t.match(/^(.+?)\s*\(@[^)]+\)/);
+                        const _ad = (_m && _m[1]) ? _m[1].trim() : "";
+                        baslik = _ad ? (_ad + " (@" + _handle + ")") : (_handle ? ("@" + _handle) : "");
+                        primaryCol.scrollIntoView({ block: 'start', behavior: 'instant' });
+                        await new Promise(r => setTimeout(r, 500));
+                        ekranGoruntusu = await captureArticle(primaryCol) || "";
+                    } else {
+                        // TWEET: dogru article'i bul (id ile, yoksa link-siz <time>, yoksa ilk).
+                        const tweetId = (_urlSade.match(/status\/(\d+)/) || [])[1] || null;
+                        let article = null;
+                        const articles = document.querySelectorAll('article[data-testid="tweet"]');
+                        if (tweetId) {
                             for (const art of articles) {
-                                const timeEl = art.querySelector('time');
-                                if (timeEl && !timeEl.closest('a')) {
-                                    article = art;
-                                    break;
+                                if (art.querySelector(`a[href*="/status/${tweetId}"]`)) { article = art; break; }
+                            }
+                            if (!article) {
+                                for (const art of articles) {
+                                    const timeEl = art.querySelector('time');
+                                    if (timeEl && !timeEl.closest('a')) { article = art; break; }
                                 }
                             }
                         }
-                    }
-                    if (!article && articles.length > 0) {
-                        article = articles[0];
-                    }
-                    
-                    if (!article) {
-                        alert("Tweet içeriği sayfada bulunamadı!");
-                        buton.disabled = false;
-                        buton.innerText = "Tekil Word Raporu Üret";
-                        return;
-                    }
-                    
-                    let accountName = article.getAttribute('data-author-name') || "";
-                    let username = article.getAttribute('data-author-username') || "";
-                    
-                    if (!accountName || !username) {
-                        const userNameEl = article.querySelector('[data-testid="User-Name"]');
-                        if (userNameEl) {
-                            const spans = userNameEl.querySelectorAll('span');
-                            if (spans.length > 0) {
-                                accountName = spans[0].innerText;
-                            }
-                            for (let span of spans) {
-                                if (span.innerText.startsWith('@')) {
-                                    username = span.innerText;
-                                    break;
-                                }
+                        if (!article && articles.length > 0) article = articles[0];
+                        if (!article) { alert("Tweet içeriği sayfada bulunamadı!"); _sifirla(); return; }
+
+                        let accountName = article.getAttribute('data-author-name') || "";
+                        let username = article.getAttribute('data-author-username') || "";
+                        if (!accountName || !username) {
+                            const userNameEl = article.querySelector('[data-testid="User-Name"]');
+                            if (userNameEl) {
+                                const spans = userNameEl.querySelectorAll('span');
+                                if (spans.length > 0) accountName = spans[0].innerText;
+                                for (let span of spans) { if (span.innerText.startsWith('@')) { username = span.innerText; break; } }
                             }
                         }
-                    }
-                    
-                    if (username && !username.startsWith('@')) {
-                        username = '@' + username;
-                    }
-                    
-                    // Tweeti viewport tepesine hizala (zoom YOK — yapı bozulmaz)
-                    // captureArticle ile tüm tiviti yakala (kaydır+birleştir; viewport bağımsız).
-                    // NOT: burada eskiden "html2canvas ile" yazıyordu — o kütüphane hiç
-                    // çağrılmıyordu ve v3.64'te paketten çıkarıldı; yorum yanıltıcıydı.
-                    article.scrollIntoView({ block: 'start', behavior: 'instant' });
-                    await new Promise(r => setTimeout(r, 600));
+                        if (username && !username.startsWith('@')) username = '@' + username;
+                        // Baslik "Ad (@kullanıcı)" — app.py'nin submit_word_result mantiginin ayni.
+                        if (username && accountName && username.replace(/^@+/, '').toLowerCase() !== accountName.toLowerCase())
+                            baslik = accountName + " (" + username + ")";
+                        else
+                            baslik = accountName || username;
 
-                    const screenshotData = await captureArticle(article) || "";
+                        article.scrollIntoView({ block: 'start', behavior: 'instant' });
+                        await new Promise(r => setTimeout(r, 600));
+                        ekranGoruntusu = await captureArticle(article) || "";
+                    }
 
+                    if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
+                        alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
+                        _sifirla(); return;
+                    }
+
+                    buton.innerText = "⏳ Ekleniyor...";
                     chrome.runtime.sendMessage({
-                        action: "generateSingleWord",
+                        action: "addToPool",
                         origin: res.server_origin,
-                        tweet_url: window.location.href.split('?')[0],
-                        account_name: accountName,
-                        username: username,
-                        screenshot: screenshotData
-                    }, (genRes) => {
-                        buton.disabled = false;
-                        buton.innerText = "Tekil Word Raporu Üret";
-                        if (genRes && genRes.status === "success" && genRes.download_url) {
-                            window.open(genRes.download_url, '_blank');
+                        title: baslik,
+                        link: link,
+                        image: ekranGoruntusu,
+                        is_profile: _profilMi
+                    }, (addRes) => {
+                        if (addRes && addRes.status === "success") {
+                            buton.innerText = "✔️ Panele eklendi";
+                            // Paneli one al / yeni sekmede ac — MEVCUT SEKME KAPANMAZ.
+                            chrome.runtime.sendMessage({ action: "focusOrOpenPanel", origin: res.server_origin });
+                            setTimeout(_sifirla, 1500);
+                        } else if (addRes && addRes.status === "duplicate") {
+                            buton.innerText = "⚠️ Zaten havuzda";
+                            setTimeout(_sifirla, 1800);
                         } else {
-                            alert("Rapor üretilirken hata oluştu: " + (genRes ? genRes.message : "yanıt yok"));
+                            alert("Panele eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                            _sifirla();
                         }
                     });
                 };
@@ -3930,14 +3941,23 @@
                 }
             } else {
                 printLog("Aktif görev yok. Tekil tivit kontrolü yapılıyor...");
-                // Idle Mod: Check if we are on a detailed Tweet status page
+                // Idle Mod: tekil tweet sayfasi VEYA profil sayfasi -> "Panele Ekle" butonu.
                 let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl);
                 let rtSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
-                
-                printLog(`Sayfa Analizi: tivitMi=${tivitMi}, rtSayfasiMi=${rtSayfasiMi}`);
+                // Profil sayfasi: x.com/{ad} (tek segment) ve {ad} rezerve yol DEGIL.
+                let profilMi = false;
+                {
+                    const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?$/i);
+                    const _rez = ["home","explore","notifications","messages","search","i","settings",
+                                  "compose","hashtag","login","logout","signup","share","intent",
+                                  "tos","privacy","about","download","jobs","developer"];
+                    if (_pm && _pm[1] && _rez.indexOf(_pm[1].toLowerCase()) === -1) profilMi = true;
+                }
 
-                if (tivitMi && !rtSayfasiMi) {
-                    printLog("Tekil tivit sayfası algılandı. Idle widget yükleniyor.");
+                printLog(`Sayfa Analizi: tivitMi=${tivitMi}, rtSayfasiMi=${rtSayfasiMi}, profilMi=${profilMi}`);
+
+                if ((tivitMi && !rtSayfasiMi) || profilMi) {
+                    printLog(`${profilMi ? 'Profil' : 'Tekil tivit'} sayfası algılandı. Idle widget yükleniyor.`);
                     renderIdleWidget(directKey || "x_profil_gorevi_tekil");
                 } else {
                     printLog("Alakasız sayfa. Widget gizleniyor.");

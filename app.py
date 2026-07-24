@@ -5364,22 +5364,37 @@ def manual_add():
         title = data.get("title", "").strip()
         link = x_temizle_link(data.get("link", "").strip())
         image_data = data.get("image", "")
+        is_profile = bool(data.get("is_profile", False))
 
         if not image_data or not image_data.startswith("data:image/"):
             return jsonify({"status": "error", "message": "Geçersiz görsel verisi."})
+
+        pool = get_client_pool()
+
+        # Eklentideki "Panele Ekle" butonu dedup ister (dedup=True gonderir). Ayni link
+        # havuzda zaten varsa IKINCI KEZ EKLEME -> "duplicate" doner, kullaniciya "zaten
+        # havuzda" uyarisi gosterilir. Panelin elle ekleme yolu (addManualContent) dedup
+        # GONDERMEZ -> davranisi birebir korunur.
+        if data.get("dedup") and link:
+            norm = normalize_link_key(link)
+            for it in pool:
+                if it.get("link") and normalize_link_key(it["link"]) == norm:
+                    return jsonify({"status": "duplicate", "message": "Bu içerik zaten havuzda."})
 
         # Extract bytes from base64
         base64_str = image_data.split(",")[1]
         gorsel_bytes = base64.b64decode(base64_str)
 
         title_formatted = baslik_formatla(title)
-        pool = get_client_pool()
         filepath = save_temp_image(gorsel_bytes)
-        pool.append({
+        item = {
             "title": title_formatted if title_formatted else "",
             "image": filepath,
             "link": link if link else None
-        })
+        }
+        if is_profile:
+            item["is_profile"] = True
+        pool.append(item)
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})

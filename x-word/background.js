@@ -941,26 +941,70 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Keep message channel open
   }
 
-  if (message.action === "generateSingleWord") {
+  // v3.72: Widget'taki "Panele Ekle" butonu. Yakalanan gorsel + baslik + linki panelin
+  // havuzuna ekler. client_id'yi ustteki global fetch sarmalayicisi ekledigi icin
+  // (registerPanel'den gelen) DOGRU istemcinin havuzuna duser. dedup=true -> ayni link
+  // zaten varsa sunucu "duplicate" doner. (Eski generateSingleWord + generate_single yolu
+  // ZATEN 410 ile emekliydi; kullanici karariyla buton havuza-ekleme oldu.)
+  if (message.action === "addToPool") {
     let origin = message.origin || "http://localhost:3012";
-    let url = `${origin}/api/extension/generate_single`;
+    let url = `${origin}/api/manual/add`;
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        tweet_url: message.tweet_url,
-        account_name: message.account_name,
-        username: message.username,
-        screenshot: message.screenshot
+        title: message.title || "",
+        link: message.link || "",
+        image: message.image || "",
+        is_profile: !!message.is_profile,
+        dedup: true
       })
     })
     .then(r => r.json())
     .then(res => sendResponse(res))
     .catch(err => {
-      console.log("generateSingleWord error:", err);
+      logToServer("[addToPool] hata: " + (err.message || err));
       sendResponse({ status: "error", message: err.toString() });
     });
     return true; // Keep message channel open
+  }
+
+  // v3.72: "Panele Ekle" sonrasi paneli one al / yeni sekmede ac.
+  // completeJobAndFocusPanel'in AKSINE mevcut sekmeyi KAPATMAZ — kullanici tweet/profilde
+  // geziniyor, o sekme kalmali. Panel bulma mantigi completeJobAndFocusPanel ile ayni
+  // (host ya da baslik eslesmesi); yalnizca tab kapatma cikarildi.
+  if (message.action === "focusOrOpenPanel") {
+    const targetOrigin = message.origin || "http://localhost:3012";
+    let targetHost = "";
+    try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
+    chrome.tabs.query({}, (tabs) => {
+      try {
+        let panelTab = tabs.find(t => {
+          if (!t.url) return false;
+          let tabHost = "";
+          try { tabHost = new URL(t.url).hostname; } catch (e) {}
+          const hostMatch = targetHost && tabHost && targetHost === tabHost;
+          const cleanTitle = t.title ? t.title.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+          const titleMatch = cleanTitle.includes("xrapor");
+          return hostMatch || titleMatch;
+        });
+        if (panelTab) {
+          chrome.tabs.update(panelTab.id, { active: true }, () => {
+            if (panelTab.windowId != null) chrome.windows.update(panelTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+          });
+        } else {
+          let fallbackUrl = targetOrigin.includes(":3012") ? targetOrigin.replace(":3012", ":3011") : targetOrigin;
+          chrome.tabs.create({ url: fallbackUrl, active: true }, (newTab) => {
+            if (chrome.runtime.lastError || !newTab) return;
+            if (newTab.windowId != null) chrome.windows.update(newTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+          });
+        }
+      } catch (err) {
+        logToServer(`[focusOrOpenPanel] ${err.message || err}`);
+      }
+    });
+    sendResponse({ status: "success" });
+    return false;
   }
 
   // SILINDI (v3.62): "setUserAuth" isleyicisi. Cagirani (bridge.js) HER http(s) sayfasindan
