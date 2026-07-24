@@ -1765,7 +1765,7 @@
                     const _urlSade = window.location.href.split('?')[0];
                     const _profilMi = !/\/status\/\d+/.test(_urlSade);
                     let ekranGoruntusu = "", baslik = "", groupOverride = "";
-                    const link = _urlSade;
+                    let link = _urlSade;   // RT'li tweette asagida sentetik benzersiz anahtara donusur
 
                     if (_profilMi) {
                         // PROFIL: primaryColumn'u yakala. captureArticle URL'den isProfile'i
@@ -1840,6 +1840,19 @@
                                 if (rtHandle) {
                                     groupOverride = rtHandle.toLowerCase();
                                     baslik = rtAd ? (rtAd + " (@" + rtHandle + ")") : ("@" + rtHandle);
+                                    // KIMLIK = RT YAPAN + TWEET (link DEGIL). Sebep: ayni tweet'i
+                                    // birden cok hesap RT edebilir (A ve C, B'nin tweet'i). Link
+                                    // ikisinde de AYNI (x.com/B/status/ID) -> dedup ikinciyi
+                                    // reddeder VE gorseller birbirini ezer. Bu yuzden RT'li ogeye
+                                    // SENTETIK benzersiz anahtar veriyoruz: "rt:{rt_yapan}:{tweet_id}".
+                                    // Bu anahtar x_temizle_link + normalize_link_key + xNormLink
+                                    // uclusunden DEGISMEDEN gecer (X olmayan dize) ve detect_platform
+                                    // 'x' doner -> X bolumu. Raporda/onizlemede GIZLENIR ("rt:" oneki).
+                                    let _tid = "";
+                                    const _stA = article.querySelector('a[href*="/status/"]');
+                                    if (_stA) { const _sm = (_stA.getAttribute('href') || "").match(/\/status\/(\d+)/); if (_sm) _tid = _sm[1]; }
+                                    if (!_tid) { const _um = _urlSade.match(/\/status\/(\d+)/); if (_um) _tid = _um[1]; }
+                                    if (_tid) link = "rt:" + rtHandle.toLowerCase() + ":" + _tid;
                                 }
                             }
                         } catch (e) {}

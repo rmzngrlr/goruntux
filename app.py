@@ -3806,7 +3806,7 @@ HTML_TEMPLATE = """
                             '<span class="pool-grip">⠿</span>' +
                             thumb +
                             '<div class="item-text"><div class="item-title">' + poolEscapeHtml(x.title || '') + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
-                            '<div class="item-link">' + poolEscapeHtml(x.link || 'Link yok') + '</div></div>' +
+                            '<div class="item-link">' + ((x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok' : poolEscapeHtml(x.link || 'Link yok')) + '</div></div>' +
                             '<button class="btn btn-danger-action btn-sm" draggable="false" onclick="deleteManualItem(' + x.index + ')" style="background: rgba(224, 36, 94, 0.1); border: 1px solid rgba(224, 36, 94, 0.2); color: var(--danger-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;">Sil</button>' +
                             '</div>';
                 }
@@ -4891,6 +4891,15 @@ LOCAL_DOCX_JS = r'''
       return '<w:p><w:pPr>'+pPr+'</w:pPr>'+inner+'</w:p>';
     }
 
+    // v3.75: RT'li ogenin linki SENTETIK ic anahtardir ("rt:{rt_yapan}:{tweet_id}") -> raporda
+    // GOSTERILMEZ (kullanici karari: RT'de link koymaya gerek yok). Anahtar yalnizca gorsel
+    // eslesmesi + dedup icin var; RT'nin kendine ait gercek bir URL'si zaten yok. entryPlatform
+    // GERCEK item.link'i kullandigi icin ('rt:...' -> XPlat.platform -> 'x') X bolumu etkilenmez.
+    function xRaporLinkGoster(it){
+      var lk = (it && it.link) || '';
+      return (String(lk).indexOf('rt:') === 0) ? '' : lk;
+    }
+
     // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
     // Faz FB-1: kural artik UCLU ve XPlat'a (sunucudaki detect_platform ikizi) delege edilir.
     // Eskiden 'instagram.com degilse X' idi -> Facebook linki SESSIZCE X sayilirdi.
@@ -4999,13 +5008,13 @@ LOCAL_DOCX_JS = r'''
           // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
           // gorur (kullanici istegi 2026-07-17).
           birimler.push({ h1:(k===0?h1:null), h2:(k===0?baslikFormatla(baslik):null),
-                          item:ordered[k], link:(ordered[k].link||''), son:(k===ordered.length-1) });
+                          item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
         }
       } else {
         var item2=val, b2=(item2.title||'').trim();
         if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; }
         birimler.push({ h1:h1, h2:(b2?baslikFormatla(b2):null),
-                        item:item2, link:(item2.link||''), son:true });
+                        item:item2, link:xRaporLinkGoster(item2), son:true });
       }
     }
     if(multiPlatform){
