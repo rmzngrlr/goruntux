@@ -4384,9 +4384,18 @@ HTML_TEMPLATE = """
                                 setTimeout(function () {
                                     try {
                                         var _imgs = iframeDoc.querySelectorAll('img');
-                                        if (_imgs && _imgs[_hedefIdx]) {
-                                            _imgs[_hedefIdx].scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                        var _hedef = _imgs && _imgs[_hedefIdx];
+                                        if (!_hedef) return;
+                                        // v3.83: resmin DEGIL, o icerigin BASLIGI (Baslik 2) ustte
+                                        // gorunsun. Resmin ONUNDEKI en yakin h1/h2'yi bul, ona kaydir;
+                                        // yoksa (standalone, basliksiz) resme kaydir.
+                                        var _basliklar = iframeDoc.body ? iframeDoc.body.querySelectorAll('h1, h2') : [];
+                                        var _enYakinBaslik = null;
+                                        for (var _bi = 0; _bi < _basliklar.length; _bi++) {
+                                            // 2 = DOCUMENT_POSITION_PRECEDING: _basliklar[_bi], _hedef'ten ONCE mi?
+                                            if (_hedef.compareDocumentPosition(_basliklar[_bi]) & 2) _enYakinBaslik = _basliklar[_bi];
                                         }
+                                        (_enYakinBaslik || _hedef).scrollIntoView({ behavior: 'smooth', block: 'start' });
                                     } catch (e) {}
                                 }, 300);
                             }
