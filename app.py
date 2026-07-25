@@ -2650,6 +2650,36 @@ HTML_TEMPLATE = """
             });
         }
 
+        // v3.84: ONIZLEMEDEN oge silme. K = onizlemedeki resmin sirasi; __previewItemIndices[K]
+        // o resmin FLAT havuz pozisyonu (1-tabanli, /api/pool/data + .docx gruplama sirasindan).
+        // Silme = gorsel + link birlikte (ayni havuz ogesi). Grup basligi hesap basina BIR KEZ
+        // basildigi icin, bir baslik altinda TEK oge kaldiysa o silinince grup bosalir ve baslik
+        // da otomatik kaybolur (ayrica islem gerekmez). Silme sonrasi onizleme yeniden uretilir.
+        function deleteFromPreview(K) {
+            try {
+                var _idxler = window.__previewItemIndices || [];
+                var _idx = _idxler[K];
+                if (!_idx) { showToast('Öğe eşleştirilemedi, sayfayı yenileyin.', 'danger'); return; }
+                fetch('/api/manual/delete/' + _idx, { method: 'POST' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data && data.status === 'success') {
+                        showToast('İçerik silindi.', 'success');
+                        window.lastManuelListJson = null;   // havuz DOM'u yeniden cizilsin
+                        refreshStatus();                     // havuz gorunumu guncelle
+                        // Onizlemeyi yeniden uret (silinen oge + bosalan baslik gitsin). Bos kaldiysa
+                        // generateManualWord zaten bos onizleme uretir; modal acik kalir.
+                        if (typeof generateManualWord === 'function') {
+                            setTimeout(function () { generateManualWord(true); }, 250);
+                        }
+                    } else {
+                        showToast('Silme hatası: ' + (data && data.message || ''), 'danger');
+                    }
+                })
+                .catch(function () { showToast('Silme hatası.', 'danger'); });
+            } catch (e) {}
+        }
+
         // Generate manual word / Preview
         // --- İstemci-taraflı (tarayıcıda) Word üretimi (deneysel anahtar; varsayılan KAPALI) ---
         function xLocalGenEnabled() {
@@ -4373,6 +4403,29 @@ HTML_TEMPLATE = """
                         `);
                         iframeDoc.close();
 
+                        // v3.84: her onizleme resmine "✕ Sil" butonu. K'inci <img> =
+                        // __previewItemIndices[K] havuz ogesi. iframe same-origin (parent'ca
+                        // yazildi) -> buton window.parent.deleteFromPreview(K) cagirir.
+                        try {
+                            var _pimgs = iframeDoc.querySelectorAll('img');
+                            for (var _pk = 0; _pk < _pimgs.length; _pk++) {
+                                (function (K) {
+                                    var _img = _pimgs[K];
+                                    if (!_img || !_img.parentNode) return;
+                                    var _wrap = iframeDoc.createElement('span');
+                                    _wrap.style.cssText = 'position:relative; display:inline-block; max-width:100%;';
+                                    _img.parentNode.insertBefore(_wrap, _img);
+                                    _wrap.appendChild(_img);
+                                    var _del = iframeDoc.createElement('button');
+                                    _del.setAttribute('type', 'button');
+                                    _del.textContent = '✕ Sil';
+                                    _del.style.cssText = 'position:absolute; top:10px; right:10px; background:rgba(224,36,94,0.94); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:13px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 1px 4px rgba(0,0,0,0.35);';
+                                    _del.onclick = function (ev) { try { ev.preventDefault(); ev.stopPropagation(); window.parent.deleteFromPreview(K); } catch (e) {} };
+                                    _wrap.appendChild(_del);
+                                })(_pk);
+                            }
+                        } catch (e) {}
+
                         // v3.82 (Feature 2): bir HAVUZ OGESINE tiklanarak acildiysa o ogenin
                         // resmine kaydir. __previewScrollToIndex yalnizca oge tiklamasinda set
                         // edilir; "Onizle" butonuyla acilista set DEGIL -> ustten baslar (eski davranis).
@@ -5091,6 +5144,12 @@ LOCAL_DOCX_JS = r'''
       for(oi2=0; oi2<order.length; oi2++){ toplaEntry(order[oi2], null); }
     }
 
+    // v3.84: onizlemede oge silme icin -> her onizleme pozisyonunun (K) FLAT havuz indexi.
+    // birimler GRUPLU sirada (onizlemedeki <img> sirasiyla ayni); her birimin item.index
+    // (/api/pool/data'dan, 1-tabanli) flat havuz pozisyonu. showDocxPreview'daki silme
+    // butonu K -> __previewItemIndices[K] ile dogru ogeyi siler (pool DOM'a bagimli DEGIL).
+    try { window.__previewItemIndices = birimler.map(function(b){ return (b.item && b.item.index) || null; }); } catch(e){}
+
     // ---- 2. GECIS: en-boy oranlarini oku (tek async adim; boyutlama buna dayanir)
     var bi2;
     for(bi2=0; bi2<birimler.length; bi2++){
@@ -5406,7 +5465,7 @@ def pool_data():
     # tarafı /api/*/generate ile AYNI havuzu okumayı garanti eder (birebir aynı çıktı).
     pool = get_client_pool()
     items = []
-    for item in pool:
+    for _pi, item in enumerate(pool):
         img_b64 = ""
         img_mime = ""
         fp = item.get("image")
@@ -5425,6 +5484,9 @@ def pool_data():
             except Exception:
                 pass
         items.append({
+            # v3.84: FLAT havuz pozisyonu (1-tabanli) — onizlemede oge silme icin. manual_delete
+            # pool[index-1] ile pozisyona gore siliyor; onizleme silme butonu bunu kullanir.
+            "index": _pi + 1,
             "title": item.get("title", "") or "",
             "link": item.get("link", "") or "",
             "is_profile": bool(item.get("is_profile", False)),
