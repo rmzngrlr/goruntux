@@ -21,6 +21,19 @@ fetch = function(url, options = {}) {
   return originalFetch(url, options);
 };
 
+// v3.85: TEK-PORT GECIS ONARIMI. v3.78 oncesi (iki portlu) surumde kurulu server_origin
+// ":3012" (eski API portu) olabilir. Artik sunucu YALNIZ :3011'de. Bayat :3012 kalirsa eklenti
+// var olmayan porta vurup "yanit yok" ile takilir (addToPool/tarama). SW her acildiginda bayat
+// :3012'yi :3011'e cevir -> panel yeniden yuklenmese bile eklenti sunucuya ulasir.
+try {
+  chrome.storage.local.get(['server_origin'], (r) => {
+    const so = r && r.server_origin;
+    if (so && so.indexOf(':3012') !== -1) {
+      chrome.storage.local.set({ server_origin: so.replace(':3012', ':3011') });
+    }
+  });
+} catch (e) {}
+
 let pollIntervalId = null;
 
 chrome.runtime.onInstalled.addListener(() => {
