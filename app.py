@@ -4778,11 +4778,11 @@ HTML_TEMPLATE = """
                                         color: ${l_color};
                                         text-decoration: ${l_underline ? 'underline' : 'none'};
                                     }
-                                    /* Divider under links */
+                                    /* Link paragraflari arasi bosluk. Alt cizgi ARTIK burada DEGIL
+                                       (blanket her-linke border kaldirildi); grup-SONU link'e JS ile
+                                       eklenir -> Word ciktisiyla ayni (v3.98). */
                                     p:has(a) {
-                                        border-bottom: 1px solid #D0D0D0;
-                                        padding-bottom: 15px;
-                                        margin-bottom: 20px;
+                                        margin-bottom: 18px;
                                     }
                                     /* Horizontal line divider */
                                     hr, div.divider {
@@ -4829,6 +4829,29 @@ HTML_TEMPLATE = """
                             for (var _li = 0; _li < _plinks.length; _li++) {
                                 _plinks[_li].setAttribute('target', '_blank');
                                 _plinks[_li].setAttribute('rel', 'noopener noreferrer');
+                            }
+                        } catch (e) {}
+
+                        // Alt cizgi: HER link altina DEGIL, her baslik grubunun SON link paragrafina
+                        // (Word ciktisiyla ayni; v3.97/98). Blanket p:has(a) border CSS'i kaldirildi ->
+                        // grup-sonu link burada isaretlenir. Grup = bir h1/h2 basligindan digerine.
+                        try {
+                            var _kids = iframeDoc.body ? iframeDoc.body.children : [];
+                            var _sonLinkP = null, _grupSon = [];
+                            for (var _ci = 0; _ci < _kids.length; _ci++) {
+                                var _el = _kids[_ci];
+                                var _tag = (_el.tagName || '').toLowerCase();
+                                if (_tag === 'h1' || _tag === 'h2') {
+                                    if (_sonLinkP) { _grupSon.push(_sonLinkP); _sonLinkP = null; }
+                                } else if (_el.querySelector && _el.querySelector('a[href]')) {
+                                    _sonLinkP = _el;   // bu gruptaki (simdilik) son link paragrafi
+                                }
+                            }
+                            if (_sonLinkP) { _grupSon.push(_sonLinkP); }   // son grup
+                            for (var _gj = 0; _gj < _grupSon.length; _gj++) {
+                                _grupSon[_gj].style.borderBottom = '1px solid #D0D0D0';
+                                _grupSon[_gj].style.paddingBottom = '15px';
+                                _grupSon[_gj].style.marginBottom = '20px';
                             }
                         } catch (e) {}
 
