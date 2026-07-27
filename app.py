@@ -2410,25 +2410,7 @@ HTML_TEMPLATE = """
                 return;
             }
             
-            const formData = new FormData();
-            for (let i = 0; i < fileInput.files.length; i++) {
-                formData.append('doc_file', fileInput.files[i]);
-            }
-            
-            // Append styling from sidebar
-            formData.append('b_font', document.getElementById('b_font').value);
-            formData.append('b_size', document.getElementById('b_size').value);
-            formData.append('b_color', document.getElementById('b_color').value);
-            formData.append('b_numbered', document.getElementById('b_numbered').checked ? 'true' : 'false');
-            formData.append('b_bold', document.getElementById('b_bold').checked ? 'true' : 'false');
-            formData.append('b_italic', document.getElementById('b_italic').checked ? 'true' : 'false');
-            formData.append('b_underline', document.getElementById('b_underline').checked ? 'true' : 'false');
-            
-            formData.append('l_font', document.getElementById('l_font').value);
-            formData.append('l_size', document.getElementById('l_size').value);
-            formData.append('l_color', document.getElementById('l_color').value);
-            formData.append('l_underline', document.getElementById('l_underline').checked ? 'true' : 'false');
-            
+            // v3.99: Word Düzenle TARAYICIDA. Dosyalar sunucuya YÜKLENMEZ; stil xBuildStyleOpts()'tan gelir.
             startFormatProgress();
             
             // Reset stats container on start
@@ -2438,34 +2420,20 @@ HTML_TEMPLATE = """
                 statsContainer.innerHTML = '';
             }
 
-            let totalLinks = null;
-            let outputLinks = null;
-            let fileStatsB64 = null;
-            
-            fetch('/api/upload/format', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Bicimlendirme hatasi olustu.');
-                totalLinks = response.headers.get('X-Merge-Total-Links');
-                outputLinks = response.headers.get('X-Merge-Output-Links');
-                fileStatsB64 = response.headers.get('X-Merge-File-Stats');
-                return response.blob();
-            })
-            .then(blob => {
+            if (!window.XLocalDocx || !window.XLocalDocx.clientWordDuzenle) {
+                stopFormatProgress(false);
+                showToast('Word bileşeni yüklenemedi (sayfayı yenileyin).', 'danger');
+                return;
+            }
+            window.XLocalDocx.clientWordDuzenle(fileInput.files, xBuildStyleOpts())
+            .then(function (result) {
+                const blob = result.blob;
                 const filename = fileInput.files.length > 1 ? "GörüntüX_Birlesik.docx" : "GörüntüX_Duzenlenmis.docx";
-                
-                // Show stats panel if headers are received
-                if (totalLinks && outputLinks && fileStatsB64) {
-                    try {
-                        const fileStats = JSON.parse(atob(fileStatsB64));
-                        renderMergeStats(totalLinks, outputLinks, fileStats);
-                    } catch (e) {
-                        console.error("Stats parse error:", e);
-                    }
+                // Istatistik ARTIK client'tan (sunucu header'lari yerine).
+                if (result.totalLinks != null && result.outputLinks != null && result.fileStats) {
+                    try { renderMergeStats(String(result.totalLinks), String(result.outputLinks), result.fileStats); }
+                    catch (e) { console.error("Stats render error:", e); }
                 }
-
                 if (previewMode) {
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = filename;
@@ -2478,13 +2446,14 @@ HTML_TEMPLATE = """
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
-                    showToast('Dosya basariyla duzenlendi ve indirildi!', 'success');
+                    showToast('Dosya başarıyla düzenlendi ve indirildi!', 'success');
                 }
                 stopFormatProgress(true);
             })
-            .catch(err => {
+            .catch(function (err) {
                 stopFormatProgress(false);
-                showToast('Hata: ' + err.message, 'danger');
+                console.error('Word Düzenle (client) hatası:', err);
+                showToast('Hata: ' + (err && err.message ? err.message : err), 'danger');
             });
         }
 
@@ -5266,26 +5235,33 @@ LOCAL_DOCX_JS = r'''
     });
   }
 
-  async function generateBlob(opts){
-    var res = await fetch('/api/pool/data');
-    var data = await res.json();
-    var items = (data && data.items) || [];
+  async function generateBlob(opts, providedItems){
+    var items;
+    if (providedItems) {
+      // Word Duzenle (client-side, v3.99): ogeler DISARIDAN gelir (mammoth ile ayristirilmis,
+      // image_b64 gomulu). Havuz fetch'i + XLocalImages enjeksiyonu ATLANIR. Grup+render AYNI.
+      items = providedItems;
+    } else {
+      var res = await fetch('/api/pool/data');
+      var data = await res.json();
+      items = (data && data.items) || [];
 
-    // Faz #1-A: Yerel modda goruntuler sunucuda YOK (image_b64 bos gelir);
-    // tarayicidaki IndexedDB'den link'e gore enjekte et.
-    try {
-      if (window.XLocalImages && window.XLocalImages.isEnabled()) {
-        // IndexedDB->_cache yuklemesi bitene kadar bekle (taze panel yenilemesinde goruntusuz .docx olmasin).
-        if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch(e){} }
-        for (var _i=0; _i<items.length; _i++){
-          var _lk = items[_i].link || '';
-          if (window.XLocalImages.hasImage(_lk)) {
-            items[_i].image_b64 = window.XLocalImages.getBase64(_lk);
-            items[_i].image_mime = window.XLocalImages.getMime(_lk);
+      // Faz #1-A: Yerel modda goruntuler sunucuda YOK (image_b64 bos gelir);
+      // tarayicidaki IndexedDB'den link'e gore enjekte et.
+      try {
+        if (window.XLocalImages && window.XLocalImages.isEnabled()) {
+          // IndexedDB->_cache yuklemesi bitene kadar bekle (taze panel yenilemesinde goruntusuz .docx olmasin).
+          if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch(e){} }
+          for (var _i=0; _i<items.length; _i++){
+            var _lk = items[_i].link || '';
+            if (window.XLocalImages.hasImage(_lk)) {
+              items[_i].image_b64 = window.XLocalImages.getBase64(_lk);
+              items[_i].image_mime = window.XLocalImages.getMime(_lk);
+            }
           }
         }
-      }
-    } catch(e){}
+      } catch(e){}
+    }
 
     var groups={}, order=[], idx;
     for(idx=0; idx<items.length; idx++){
@@ -5714,7 +5690,96 @@ LOCAL_DOCX_JS = r'''
   // (sahada tam bunu yasadik -> rota artik no-store, bkz. _js_yanit). Konsolda hangi
   // surumun calistigi GORULEBILIR olsun diye basiliyor.
   console.log('[GörüntüX] x-local-docx.js — sayfa bazli yerlesim, sabit sayfa sonu YOK (2026-07-17)');
-  window.XLocalDocx = { generateBlob: generateBlob };
+  // ---- Word Duzenle (client-side, v3.99): yuklenen .docx'i mammoth ile oku -> ogeler -> generateBlob ----
+  // Dosya sunucuya GITMEZ. mammoth (CDN, onizlemede zaten yuklu) .docx->HTML verir: h2 baslik,
+  // <p><img data-uri>, <p><a href>. Rapor yapisini (h2, img, link, img, link) ogelere ceviririz.
+  // Bu blok HAM r-string icinde -> regex ters-bolu kacislari guvenli (HTML_TEMPLATE tuzagi yok).
+  function xParseReportHtml(html){
+    var items = [];
+    try {
+      var doc = new DOMParser().parseFromString(html || '', 'text/html');
+      var blocks = (doc && doc.body) ? doc.body.children : [];
+      var curBaslik = '', curImg = null, curMime = '';
+      for (var i = 0; i < blocks.length; i++){
+        var el = blocks[i];
+        var tag = (el.tagName || '').toLowerCase();
+        if (/^h[1-6]$/.test(tag)) { curBaslik = (el.textContent || '').trim(); continue; }
+        var a = el.querySelector ? el.querySelector('a[href]') : null;
+        var img = el.querySelector ? el.querySelector('img') : null;
+        if (a) {
+          var href = a.getAttribute('href') || '';
+          items.push({ title: curBaslik, link: href, image_b64: curImg, image_mime: curMime });
+          curImg = null; curMime = '';
+        } else if (img) {
+          var src = img.getAttribute('src') || '';
+          var ci = src.indexOf(',');
+          if (src.indexOf('data:') === 0 && ci > 0) {
+            var meta = src.slice(5, ci);            // "image/png;base64"
+            curMime = (meta.split(';')[0] || 'image/jpeg');
+            curImg = src.slice(ci + 1);             // saf base64 govde
+          }
+        }
+      }
+      if (curImg) { items.push({ title: curBaslik, link: '', image_b64: curImg, image_mime: curMime }); }
+    } catch (e) {}
+    return items;
+  }
+  function _wdNaturalKey(s){
+    return String(s == null ? '' : s).split(/(\d+)/).map(function(t){
+      return /^\d+$/.test(t) ? parseInt(t, 10) : t.toLowerCase();
+    });
+  }
+  function _wdNaturalCmp(a, b){
+    var ka = _wdNaturalKey(a), kb = _wdNaturalKey(b), n = Math.max(ka.length, kb.length);
+    for (var i = 0; i < n; i++){
+      var x = ka[i], y = kb[i];
+      if (x === undefined) return -1;
+      if (y === undefined) return 1;
+      if (typeof x === 'number' && typeof y === 'number') { if (x !== y) return x - y; }
+      else { var xs = String(x), ys = String(y); if (xs !== ys) return xs < ys ? -1 : 1; }
+    }
+    return 0;
+  }
+  function _wdNormLink(link){
+    // Sunucu upload_format dedup ikizi: link.strip().lower().split('?')[0].rstrip('/')
+    return String(link == null ? '' : link).trim().toLowerCase().split('?')[0].replace(/\/+$/, '');
+  }
+  async function clientWordDuzenle(files, opts){
+    var arr = Array.prototype.slice.call(files || []).filter(function(f){ return f && f.name; });
+    arr.sort(function(a, b){ return _wdNaturalCmp(a.name || '', b.name || ''); });
+    var allItems = [], fileStats = [], totalLinks = 0;
+    for (var i = 0; i < arr.length; i++){
+      var f = arr[i], items = [];
+      try {
+        var buf = await f.arrayBuffer();
+        // mammoth CDN'den yuklu; erisilemezse hang etmesin diye timeout (onizleme de mammoth'a bagli).
+        var mres = await Promise.race([
+          mammoth.convertToHtml({ arrayBuffer: buf }),
+          new Promise(function (_r, rej) { setTimeout(function () { rej(new Error('Word okuma zaman asimi')); }, 20000); })
+        ]);
+        items = xParseReportHtml((mres || {}).value || '');
+      } catch (e) { items = []; }
+      var lc = 0;
+      for (var j = 0; j < items.length; j++){ if (items[j].link) lc++; }
+      totalLinks += lc;
+      fileStats.push({ filename: f.name, link_count: lc });
+      allItems = allItems.concat(items);
+    }
+    if (allItems.length === 0) {
+      throw new Error('Yuklenen dosyalardan icerik okunamadi (Word bicimi taninmadi veya bos).');
+    }
+    var seen = {}, deduped = [];
+    for (var k = 0; k < allItems.length; k++){
+      var it = allItems[k];
+      if (it.link) { var nk = _wdNormLink(it.link); if (seen[nk]) continue; seen[nk] = true; }
+      deduped.push(it);
+    }
+    var outputLinks = 0; for (var s in seen) { if (seen.hasOwnProperty(s)) outputLinks++; }
+    var blob = await generateBlob(opts, deduped);
+    return { blob: blob, totalLinks: totalLinks, outputLinks: outputLinks, fileStats: fileStats };
+  }
+
+  window.XLocalDocx = { generateBlob: generateBlob, clientWordDuzenle: clientWordDuzenle, parseReportHtml: xParseReportHtml };
 })();
 '''
 
