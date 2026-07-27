@@ -1898,12 +1898,25 @@ HTML_TEMPLATE = """
                         <!-- Dynamically loaded items will go here -->
                     </div>
 
+                    <div class="pool-actions" style="margin-bottom: 8px;">
+                        <button id="save-download-btn" class="btn" style="flex: 1; margin: 0; background: var(--accent-color); color: #fff; font-weight: 600;" onclick="saveAndDownloadReport()">💾 Kaydet ve İndir</button>
+                    </div>
                     <div class="pool-actions">
                         <button class="btn btn-success" style="flex: 2; margin: 0;" onclick="generateManualWord(false)">🏁 Word Üret ve İndir</button>
                         <button class="btn btn-primary" style="flex: 2; margin: 0; background: var(--accent-color);" onclick="generateManualWord(true)">👁️ Önizle</button>
                         <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
+                 havuz boş olsa da eski kayıtlar yönetilebilsin diye AYRI/bağımsız kart. -->
+            <div id="saved-reports-section" class="card" style="display: none; margin-top: 24px;">
+                <h4 style="margin: 0 0 4px 0;">🗂️ Kayıtlı Raporlar</h4>
+                <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
+                    Bu cihazda yerel olarak saklanır (sunucuya gitmez). Son kayıttan <b>1 hafta</b> sonra otomatik silinir.
+                </div>
+                <div id="saved-reports-list"></div>
             </div>
         </div>
     </div>
@@ -2571,6 +2584,9 @@ HTML_TEMPLATE = """
             // Faz #1-A: yerel goruntu bayragini baslat + eklentiyi senkronize et.
             xInitLocalImages();
 
+            // Kayitli Raporlar: suresi dolanlari temizle + listeyi ciz.
+            xInitSavedReports();
+
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -2715,6 +2731,159 @@ HTML_TEMPLATE = """
                 window.addEventListener('x-local-images-ready', function () { refreshStatus(); });
             } catch (e) {}
         }
+
+        // ---------- KAYITLI RAPORLAR (yerel, coklu, 1 hafta) ----------
+        var X_SAVED_REPORT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 1 hafta (son kayittan)
+
+        function xTarihSaatDamgasi() {
+            try {
+                var d = new Date();
+                function _p(n){ return (n < 10 ? '0' : '') + n; }
+                return _p(d.getDate()) + '-' + _p(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' +
+                       _p(d.getHours()) + '-' + _p(d.getMinutes()) + '-' + _p(d.getSeconds());
+            } catch (e) { return 'rapor'; }
+        }
+        function xDosyaAdiTemizle(s) {
+            // Dosya adinda gecersiz karakterleri (: / \ * ? " < > |) sadelestir.
+            return (s == null ? '' : s).toString().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120);
+        }
+        function xRaporDosyaAdi(name) {
+            // Kullanici karari: dosya adi = "rapor adi + tarih-saat" (surumleri ayirt et).
+            return (xDosyaAdiTemizle(name) || 'GörüntüX') + ' ' + xTarihSaatDamgasi() + '.docx';
+        }
+
+        // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet. Havuzu TEMIZLEMEZ
+        // (uzerinde calismaya devam edilebilsin). generateBlob + XSavedReports yeniden kullanilir.
+        async function saveAndDownloadReport() {
+            var btn = document.getElementById('save-download-btn');
+            var _restore = function () { if (btn) { btn.disabled = false; btn.innerHTML = '💾 Kaydet ve İndir'; } };
+            try {
+                if (!window.XLocalDocx) { showToast('Word üretimi kullanılamıyor.', 'danger'); return; }
+                // 1) Havuz bos mu?
+                var res = await fetch('/api/pool/data');
+                var data = await res.json();
+                var items = (data && data.items) || [];
+                if (!items.length) { showToast('Havuz boş — kaydedilecek içerik yok.', 'warning'); return; }
+                // 2) Ad sor (varsayilan: tarih-saat)
+                var def = xTarihSaatDamgasi();
+                var name = prompt('Rapor adı:', def);
+                if (name === null) return;            // iptal
+                name = (name || '').trim() || def;
+
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
+
+                // 3) Gorselleri TOPLA (kendi kendine yeten anlik goruntu; canli havuzdan bagimsiz).
+                var images = {};
+                if (window.XLocalImages) {
+                    if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch (e) {} }
+                    for (var i = 0; i < items.length; i++) {
+                        var lk = items[i].link || '';
+                        if (window.XLocalImages.hasImage(lk)) {
+                            var k = window.XLocalImages.normLink(lk);
+                            images[k] = { dataUrl: window.XLocalImages.getImageUrl(lk), mime: window.XLocalImages.getMime(lk) };
+                        }
+                    }
+                }
+
+                // 4) .docx uret + PC'ye indir (havuz DOKUNULMAZ).
+                var blob = await window.XLocalDocx.generateBlob(xBuildStyleOpts());
+                var filename = xRaporDosyaAdi(name);
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+
+                // 5) Panele YEREL kaydet. Indirme zaten oldu; kayit ayri hata verirse ayirt et.
+                try {
+                    await window.XSavedReports.whenReady();
+                    await window.XSavedReports.save({ name: name, items: items, images: images, blob: blob, filename: filename });
+                    showToast('İndirildi ve panele kaydedildi: ' + name, 'success');
+                } catch (saveErr) {
+                    console.error('Panele kaydetme hatası:', saveErr);
+                    showToast('İndirildi ama panele kaydedilemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr), 'warning');
+                }
+                await renderSavedReports();
+            } catch (err) {
+                console.error('Kaydet ve İndir hatası:', err);
+                showToast('Kaydet ve İndir başarısız: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                _restore();
+            }
+        }
+
+        function xKalanSureMetni(updatedAt) {
+            var kalan = Math.max(0, (updatedAt || 0) + X_SAVED_REPORT_TTL_MS - Date.now());
+            var gun = Math.floor(kalan / (24 * 3600 * 1000));
+            var saat = Math.floor((kalan % (24 * 3600 * 1000)) / (3600 * 1000));
+            if (gun > 0) return gun + ' gün ' + saat + ' saat';
+            if (saat > 0) return saat + ' saat';
+            return '<1 saat';
+        }
+        async function renderSavedReports() {
+            var section = document.getElementById('saved-reports-section');
+            var container = document.getElementById('saved-reports-list');
+            if (!container) return;
+            try { await window.XSavedReports.whenReady(); } catch (e) {}
+            var metas = [];
+            try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
+            if (!metas.length) { if (section) section.style.display = 'none'; container.innerHTML = ''; return; }
+            if (section) section.style.display = '';
+            var html = metas.map(function (m) {
+                var tarih = '';
+                try { tarih = new Date(m.updatedAt || 0).toLocaleString('tr-TR'); } catch (e) { tarih = ''; }
+                var adEsc = escapeHtml(m.name || '(adsız)');
+                return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
+                    '<div style="min-width:0; flex:1;">' +
+                        '<div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📄 ' + adEsc + '</div>' +
+                        '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:6px; flex-shrink:0;">' +
+                        '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" onclick="downloadSavedReport(\'' + m.id + '\')">📥 İndir</button>' +
+                        '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" onclick="deleteSavedReport(\'' + m.id + '\')">🗑️ Sil</button>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+            container.innerHTML = html;
+        }
+        async function downloadSavedReport(id) {
+            try {
+                var rec = await window.XSavedReports.getBlob(id);
+                if (!rec || !rec.blob) { showToast('Kayıtlı dosya bulunamadı.', 'danger'); return; }
+                var url = window.URL.createObjectURL(rec.blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = rec.filename || 'GörüntüX.docx';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+                showToast('İndiriliyor: ' + (rec.filename || ''), 'success');
+            } catch (err) {
+                showToast('İndirme hatası: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+        async function deleteSavedReport(id) {
+            if (!confirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+            try {
+                await window.XSavedReports.remove(id);
+                showToast('Kayıtlı rapor silindi.', 'success');
+                await renderSavedReports();
+            } catch (err) {
+                showToast('Silme hatası: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+        function xInitSavedReports() {
+            try {
+                window.addEventListener('x-saved-reports-ready', function () { renderSavedReports(); });
+                // Acilista once suresi dolanlari (1 haftadan eski) temizle, sonra listeyi ciz.
+                if (window.XSavedReports) {
+                    window.XSavedReports.whenReady()
+                        .then(function () { return window.XSavedReports.purgeExpired(X_SAVED_REPORT_TTL_MS); })
+                        .then(function (n) { if (n) { try { console.log('[KayitliRapor] süresi dolan silindi:', n); } catch (e) {} } })
+                        .then(function () { return renderSavedReports(); })
+                        .catch(function () {});
+                }
+            } catch (e) {}
+        }
+
         function xBuildStyleOpts() {
             return {
                 b1_font: document.getElementById('b1_font').value,
@@ -4498,6 +4667,8 @@ HTML_TEMPLATE = """
     <!-- İstemci-taraflı (tarayıcıda) Word üretimi — sadece "Deneysel" anahtar açıkken kullanılır -->
     <script src="/x-local-docx.js"></script>
     <script src="/x-local-images.js"></script>
+    <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta): "Kaydet ve İndir" + yeniden aç/indir/sil -->
+    <script src="/x-saved-reports.js"></script>
 </body>
 </html>
 """
@@ -5412,6 +5583,154 @@ LOCAL_IMAGES_JS = r'''
 @app.route('/x-local-images.js', methods=['GET'])
 def x_local_images_js():
     return _js_yanit(LOCAL_IMAGES_JS)
+
+
+# ----------------- KAYITLI RAPORLAR (yerel, coklu, 1 hafta) -----------------
+# Kullanici istegi: "Kaydet ve Indir" ile uretilen rapor hem PC'ye iner HEM de panelde
+# yerel olarak saklanir; 24 saat->1 hafta sonra otomatik silinir; tekrar acilip duzenlenebilir.
+# XLocalImages ile AYNI felsefe: gorseller sunucuya ASLA gitmez. Her rapor KENDI KENDINE YETEN
+# bir anlik goruntudur (items + images KOPYASI + .docx blob) -> canli havuz degisse/temizlense
+# de kayitli rapor bozulmaz. AYRI DB (goruntux_saved_reports) -> mevcut goruntu deposu (images)
+# hic etkilenmez, surum bumplamak gerekmez (sifir risk). Iki store: 'meta' (hafif, liste icin)
+# + 'data' (agir: items/images/blob). id ile baglanir; liste yalniz meta okur (hizli).
+X_SAVED_REPORTS_JS = r'''
+(function(){
+  var DB_NAME='goruntux_saved_reports', META='meta', DATA='data', VER=1;
+  var _db=null, _readyPromise=null;
+
+  function openDb(){
+    return new Promise(function(resolve){
+      try{
+        var req=indexedDB.open(DB_NAME, VER);
+        req.onupgradeneeded=function(e){
+          var db=e.target.result;
+          if(!db.objectStoreNames.contains(META)) db.createObjectStore(META,{keyPath:'id'});
+          if(!db.objectStoreNames.contains(DATA)) db.createObjectStore(DATA,{keyPath:'id'});
+        };
+        req.onsuccess=function(e){ resolve(e.target.result); };
+        req.onerror=function(){ resolve(null); };
+      }catch(err){ resolve(null); }
+    });
+  }
+  function _tx(stores, mode){ return _db.transaction(stores, mode); }
+  function _reqP(req){ return new Promise(function(res,rej){ req.onsuccess=function(){res(req.result);}; req.onerror=function(){rej(req.error);}; }); }
+  function _now(){ try{ return Date.now(); }catch(e){ return 0; } }
+  function genId(){
+    try{ if(window.crypto && crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+    return 'r_' + _now() + '_' + Math.floor(Math.random()*1e9).toString(36);
+  }
+  function _norm(s){ return (s==null?'':s).toString().trim().toLowerCase(); }
+
+  function list(){
+    return new Promise(function(resolve){
+      if(!_db){ resolve([]); return; }
+      try{
+        var req=_tx(META,'readonly').objectStore(META).getAll();
+        req.onsuccess=function(){
+          var arr=(req.result||[]).slice();
+          arr.sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+          resolve(arr);
+        };
+        req.onerror=function(){ resolve([]); };
+      }catch(e){ resolve([]); }
+    });
+  }
+  function _findByName(name){
+    return list().then(function(metas){
+      var n=_norm(name);
+      for(var i=0;i<metas.length;i++){ if(_norm(metas[i].name)===n) return metas[i]; }
+      return null;
+    });
+  }
+  // o = {name, items, images, blob, filename}. Ayni isim varsa GUNCELLER (id+createdAt korunur,
+  // updatedAt tazelenir) -> tekrar kaydetme cop kayit uretmez. Yoksa yeni kayit.
+  function saveReport(o){
+    if(!_db) return Promise.reject(new Error('Yerel depo açılamadı'));
+    var now=_now();
+    return _findByName(o.name).then(function(existing){
+      var id = existing ? existing.id : genId();
+      var createdAt = existing ? (existing.createdAt||now) : now;
+      var meta = { id:id, name:(o.name==null?'':o.name).toString().trim(), createdAt:createdAt,
+                   updatedAt:now, itemCount:((o.items&&o.items.length)||0) };
+      var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'' };
+      return new Promise(function(resolve,reject){
+        try{
+          var tx=_tx([META,DATA],'readwrite');
+          tx.objectStore(META).put(meta);
+          tx.objectStore(DATA).put(data);
+          tx.oncomplete=function(){ resolve(meta); };
+          tx.onerror=function(){ reject(tx.error||new Error('kaydetme hatası')); };
+          tx.onabort=function(){ reject(tx.error||new Error('kaydetme iptal (kota?)')); };
+        }catch(e){ reject(e); }
+      });
+    });
+  }
+  function get(id){
+    if(!_db) return Promise.resolve(null);
+    return Promise.all([
+      _reqP(_tx(META,'readonly').objectStore(META).get(id)),
+      _reqP(_tx(DATA,'readonly').objectStore(DATA).get(id))
+    ]).then(function(r){
+      if(!r[0] && !r[1]) return null;
+      return Object.assign({}, r[0]||{}, r[1]||{});
+    }).catch(function(){ return null; });
+  }
+  function getBlob(id){
+    if(!_db) return Promise.resolve(null);
+    return _reqP(_tx(DATA,'readonly').objectStore(DATA).get(id))
+      .then(function(d){ return (d && d.blob) ? {blob:d.blob, filename:d.filename||''} : null; })
+      .catch(function(){ return null; });
+  }
+  function remove(id){
+    if(!_db) return Promise.resolve();
+    return new Promise(function(resolve){
+      try{
+        var tx=_tx([META,DATA],'readwrite');
+        tx.objectStore(META).delete(id); tx.objectStore(DATA).delete(id);
+        tx.oncomplete=function(){ resolve(); }; tx.onerror=function(){ resolve(); };
+      }catch(e){ resolve(); }
+    });
+  }
+  function rename(id, newName){
+    if(!_db) return Promise.resolve();
+    return _reqP(_tx(META,'readonly').objectStore(META).get(id)).then(function(meta){
+      if(!meta) return;
+      meta.name=(newName==null?'':newName).toString().trim(); meta.updatedAt=_now();
+      return new Promise(function(resolve){
+        var tx=_tx(META,'readwrite'); tx.objectStore(META).put(meta);
+        tx.oncomplete=function(){resolve();}; tx.onerror=function(){resolve();};
+      });
+    }).catch(function(){});
+  }
+  // updatedAt (SON kayit) esas alinir -> uzerinde calisip tekrar kaydettikce yasar.
+  function purgeExpired(ttlMs){
+    if(!_db) return Promise.resolve(0);
+    var cutoff=_now()-ttlMs;
+    return list().then(function(metas){
+      var dead=metas.filter(function(m){ return (m.updatedAt||0) < cutoff; }).map(function(m){ return m.id; });
+      if(!dead.length) return 0;
+      return new Promise(function(resolve){
+        try{
+          var tx=_tx([META,DATA],'readwrite');
+          dead.forEach(function(id){ tx.objectStore(META).delete(id); tx.objectStore(DATA).delete(id); });
+          tx.oncomplete=function(){ resolve(dead.length); }; tx.onerror=function(){ resolve(0); };
+        }catch(e){ resolve(0); }
+      });
+    });
+  }
+
+  window.XSavedReports={
+    whenReady:function(){ return _readyPromise||Promise.resolve(); },
+    save:saveReport, list:list, get:get, getBlob:getBlob,
+    remove:remove, rename:rename, purgeExpired:purgeExpired
+  };
+  _readyPromise = openDb().then(function(db){ _db=db; try{ window.dispatchEvent(new CustomEvent('x-saved-reports-ready')); }catch(e){} });
+})();
+'''
+
+@app.route('/x-saved-reports.js', methods=['GET'])
+def x_saved_reports_js():
+    return _js_yanit(X_SAVED_REPORTS_JS)
 
 # ----------------- FLASK FRONTEND ROUTES -----------------
 @app.route('/', methods=['GET'])
