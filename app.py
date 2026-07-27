@@ -1898,10 +1898,8 @@ HTML_TEMPLATE = """
                         <!-- Dynamically loaded items will go here -->
                     </div>
 
-                    <div class="pool-actions" style="margin-bottom: 8px;">
-                        <button id="save-download-btn" class="btn" style="flex: 1; margin: 0; background: var(--accent-color); color: #fff; font-weight: 600;" onclick="saveAndDownloadReport()">💾 Kaydet ve İndir</button>
-                    </div>
                     <div class="pool-actions">
+                        <button id="save-download-btn" class="btn btn-success" style="flex: 2; margin: 0;" onclick="saveAndDownloadReport()">💾 Kaydet ve İndir</button>
                         <button class="btn btn-primary" style="flex: 2; margin: 0; background: var(--accent-color);" onclick="generateManualWord(true)">👁️ Önizle</button>
                         <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
                     </div>
@@ -2751,6 +2749,74 @@ HTML_TEMPLATE = """
             return (xDosyaAdiTemizle(name) || 'GörüntüX') + ' ' + xTarihSaatDamgasi() + '.docx';
         }
 
+        // Panel-ici STILLI dialog (kullanici istegi: native prompt/confirm degil, panelin .modal
+        // gorunumu). xConfirm(msg,opts)->Promise<bool>; xPrompt(msg,def,opts)->Promise<string|null>.
+        // Baslik/mesaj textContent ile konur -> kullanici icerigi (rapor adi) guvenli.
+        function xDialog(opts) {
+            opts = opts || {};
+            return new Promise(function (resolve) {
+                var done = false;
+                var isInput = !!opts.input;
+                var okStyle = opts.danger ? 'background:var(--danger-color); color:#fff;' : 'background:var(--accent-color); color:#fff;';
+                var overlay = document.createElement('div');
+                overlay.className = 'modal active';
+                overlay.style.zIndex = '3000';
+                overlay.innerHTML =
+                    '<div class="modal-content" style="max-width:440px;">' +
+                        '<div class="modal-header"><h2 class="x-dlg-title"></h2>' +
+                            '<span class="close-btn" data-act="cancel">&times;</span></div>' +
+                        '<div class="modal-body">' +
+                            '<div class="x-dlg-msg" style="color:var(--text-primary); line-height:1.5; white-space:pre-wrap;"></div>' +
+                            (isInput ? '<input type="text" class="x-dlg-input" style="width:100%; margin-top:14px; padding:11px 13px; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-input); color:var(--text-primary); font-size:14px; box-sizing:border-box;">' : '') +
+                        '</div>' +
+                        '<div class="modal-footer" style="gap:10px;">' +
+                            '<button type="button" class="btn btn-secondary x-dlg-cancel" data-act="cancel" style="margin:0;"></button>' +
+                            '<button type="button" class="btn x-dlg-ok" data-act="ok" style="margin:0; ' + okStyle + '"></button>' +
+                        '</div>' +
+                    '</div>';
+                document.body.appendChild(overlay);
+                overlay.querySelector('.x-dlg-title').textContent = opts.title || '';
+                overlay.querySelector('.x-dlg-msg').textContent = opts.message || '';
+                overlay.querySelector('.x-dlg-ok').textContent = opts.okText || 'Tamam';
+                overlay.querySelector('.x-dlg-cancel').textContent = opts.cancelText || 'Vazgeç';
+                var inputEl = overlay.querySelector('.x-dlg-input');
+                if (inputEl) { inputEl.value = (opts.defaultValue == null ? '' : opts.defaultValue); }
+                function finish(result) {
+                    if (done) return; done = true;
+                    overlay.classList.remove('active');
+                    setTimeout(function () { try { overlay.remove(); } catch (e) {} }, 200);
+                    resolve(result);
+                }
+                function onOk() { finish(isInput ? (inputEl ? inputEl.value : '') : true); }
+                function onCancel() { finish(isInput ? null : false); }
+                overlay.addEventListener('click', function (ev) {
+                    if (ev.target === overlay) { onCancel(); return; }   // arka plana tikla -> iptal
+                    var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
+                    if (act === 'ok') { onOk(); } else if (act === 'cancel') { onCancel(); }
+                });
+                overlay.addEventListener('keydown', function (ev) {
+                    if (ev.key === 'Enter') { ev.preventDefault(); onOk(); }
+                    else if (ev.key === 'Escape') { ev.preventDefault(); onCancel(); }
+                });
+                setTimeout(function () {
+                    try {
+                        if (inputEl) { inputEl.focus(); inputEl.select(); }
+                        else { var okb = overlay.querySelector('.x-dlg-ok'); if (okb) okb.focus(); }
+                    } catch (e) {}
+                }, 60);
+            });
+        }
+        function xConfirm(message, opts) {
+            opts = opts || {};
+            return xDialog({ title: opts.title || 'Onay', message: message, input: false,
+                okText: opts.okText || 'Evet', cancelText: opts.cancelText || 'Vazgeç', danger: opts.danger });
+        }
+        function xPrompt(message, defaultValue, opts) {
+            opts = opts || {};
+            return xDialog({ title: opts.title || 'Giriş', message: message, input: true, defaultValue: defaultValue,
+                okText: opts.okText || 'Tamam', cancelText: opts.cancelText || 'Vazgeç' });
+        }
+
         // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet. Havuzu TEMIZLEMEZ
         // (uzerinde calismaya devam edilebilsin). generateBlob + XSavedReports yeniden kullanilir.
         async function saveAndDownloadReport() {
@@ -2763,9 +2829,10 @@ HTML_TEMPLATE = """
                 var data = await res.json();
                 var items = (data && data.items) || [];
                 if (!items.length) { showToast('Havuz boş — kaydedilecek içerik yok.', 'warning'); return; }
-                // 2) Ad sor (varsayilan: tarih-saat)
-                var def = xTarihSaatDamgasi();
-                var name = prompt('Rapor adı:', def);
+                // 2) Ad sor. Varsayilan: acik bir rapor duzenleniyorsa ONUN adi (ayni kayit
+                //    guncellenir/upsert); yoksa tarih-saat.
+                var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
                 if (name === null) return;            // iptal
                 name = (name || '').trim() || def;
 
@@ -2797,6 +2864,7 @@ HTML_TEMPLATE = """
                 try {
                     await window.XSavedReports.whenReady();
                     await window.XSavedReports.save({ name: name, items: items, images: images, blob: blob, filename: filename });
+                    window.__openReportName = name;   // bundan sonra bu rapor "acik" sayilir; tekrar kaydet ayni adi onerir/gunceller
                     showToast('İndirildi ve panele kaydedildi: ' + name, 'success');
                 } catch (saveErr) {
                     console.error('Panele kaydetme hatası:', saveErr);
@@ -2832,13 +2900,15 @@ HTML_TEMPLATE = """
                 var tarih = '';
                 try { tarih = new Date(m.updatedAt || 0).toLocaleString('tr-TR'); } catch (e) { tarih = ''; }
                 var adEsc = escapeHtml(m.name || '(adsız)');
-                return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
-                    '<div style="min-width:0; flex:1;">' +
+                return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
+                    '<div style="min-width:160px; flex:1;">' +
                         '<div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📄 ' + adEsc + '</div>' +
                         '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
                     '</div>' +
-                    '<div style="display:flex; gap:6px; flex-shrink:0;">' +
+                    '<div style="display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap;">' +
+                        '<button class="btn" style="padding:6px 12px; font-size:13px; margin:0; background:var(--accent-color); color:#fff;" data-rid="' + m.id + '" onclick="openSavedReport(this.dataset.rid)">📂 Aç</button>' +
                         '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="downloadSavedReport(this.dataset.rid)">📥 İndir</button>' +
+                        '<button class="btn btn-secondary" style="padding:6px 10px; font-size:13px; margin:0;" title="Yeniden adlandır" data-rid="' + m.id + '" onclick="renameSavedReport(this.dataset.rid)">✏️</button>' +
                         '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="deleteSavedReport(this.dataset.rid)">🗑️ Sil</button>' +
                     '</div>' +
                 '</div>';
@@ -2860,13 +2930,76 @@ HTML_TEMPLATE = """
             }
         }
         async function deleteSavedReport(id) {
-            if (!confirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.')) return;
+            if (!(await xConfirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: '🗑️ Raporu Sil', okText: 'Sil', danger: true }))) return;
             try {
                 await window.XSavedReports.remove(id);
                 showToast('Kayıtlı rapor silindi.', 'success');
                 await renderSavedReports();
             } catch (err) {
                 showToast('Silme hatası: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+
+        // Faz B: kayitli raporu CALISMA HAVUZUNA geri yukle -> mevcut arayuzle duzenle -> tekrar kaydet.
+        // Yeni sunucu ucu YOK: mevcut /api/manual/clear + /api/manual/add (local:true) kullanilir;
+        // gorseller X_RAPOR_LOCAL_IMAGE postMessage'iyle XLocalImages'a geri yuklenir (canli havuzun
+        // AYNI mekanizmasi). Sira korunur (ogeler SIRAYLA await edilir). baslik_formatla + x_temizle_link
+        // idempotent oldugu icin snapshot'i manual_add'e geri gondermek guvenli.
+        async function openSavedReport(id) {
+            try {
+                var rec = await window.XSavedReports.get(id);
+                if (!rec || !rec.items || !rec.items.length) { showToast('Kayıtlı rapor bulunamadı veya boş.', 'danger'); return; }
+                // Kaydedilmemis canli havuz varsa uyar (acmak havuzu DEGISTIRIR).
+                var curItems = [];
+                try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
+                if (curItems.length) {
+                    if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '📂 Raporu Aç', okText: 'Aç ve Değiştir', danger: true }))) return;
+                }
+                // 1) Havuzu + yerel gorselleri temizle (temiz "acilis" durumu)
+                await fetch('/api/manual/clear', { method: 'POST' });
+                if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
+                // 2) Gorselleri XLocalImages'a geri yukle (link'e gore; put yolu = postMessage)
+                var imgs = rec.images || {};
+                for (var i = 0; i < rec.items.length; i++) {
+                    var lk = rec.items[i].link || '';
+                    var k = window.XLocalImages ? window.XLocalImages.normLink(lk) : lk;
+                    if (imgs[k] && imgs[k].dataUrl) {
+                        window.postMessage({ type: 'X_RAPOR_LOCAL_IMAGE', link: lk, dataUrl: imgs[k].dataUrl, mime: imgs[k].mime || '' }, '*');
+                    }
+                }
+                // 3) Ogeleri havuza SIRAYLA geri yaz (sira korunsun; local:true -> gorsel sunucuya gitmez)
+                for (var j = 0; j < rec.items.length; j++) {
+                    var it = rec.items[j];
+                    var body = { title: it.title || '', link: it.link || '', local: true };
+                    if (it.is_profile) { body.is_profile = true; }
+                    if (it.group_override) { body.group_override = it.group_override; }
+                    await fetch('/api/manual/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                }
+                // 4) Acik rapor baglami: sonraki "Kaydet ve Indir" AYNI adi gunceller (upsert).
+                window.__openReportName = rec.name || '';
+                refreshStatus();
+                await renderSavedReports();
+                showToast('Rapor açıldı: ' + (rec.name || '') + ' — ' + rec.items.length + ' içerik. Düzenleyip tekrar kaydedebilirsin.', 'success');
+            } catch (err) {
+                console.error('Rapor açma hatası:', err);
+                showToast('Rapor açılamadı: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+        async function renameSavedReport(id) {
+            try {
+                var metas = await window.XSavedReports.list();
+                var m = null; for (var i = 0; i < metas.length; i++) { if (metas[i].id === id) { m = metas[i]; break; } }
+                var cur = (m && m.name) || '';
+                var yeni = await xPrompt('Yeni rapor adı:', cur, { title: '✏️ Yeniden Adlandır', okText: 'Kaydet' });
+                if (yeni === null) return;
+                yeni = (yeni || '').trim();
+                if (!yeni) { showToast('Ad boş olamaz.', 'warning'); return; }
+                await window.XSavedReports.rename(id, yeni);
+                if (window.__openReportName && cur && window.__openReportName === cur) { window.__openReportName = yeni; }
+                showToast('Yeniden adlandırıldı: ' + yeni, 'success');
+                await renderSavedReports();
+            } catch (err) {
+                showToast('Yeniden adlandırma hatası: ' + (err && err.message ? err.message : err), 'danger');
             }
         }
         function xInitSavedReports() {
