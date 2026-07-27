@@ -1305,37 +1305,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // "cookies" izni de kaldirildi — chrome.cookies'in tek kullanimi buydu.
 });
 
-// Extension icon click action: focus existing tab or open in a new tab
-// #1: Panel ZATEN acikken yeni bir sekme panel URL'sine giderse, sayfa RENDER OLMADAN once
-// o sekmeyi kapatip mevcut paneli odakla. Bu, registerPanel'den (DOMContentLoaded) DAHA ERKEN
-// tetiklenir -> yeni panel hic "acilmadan" mevcut olana yonlendirilirsin (flas olmaz).
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  try {
-    const url = changeInfo.url || ((changeInfo.status === 'loading' && tab) ? tab.url : null);
-    if (!url) return;
-    let navHost = null, navPort = null;
-    try { const u = new URL(url); navHost = u.hostname; navPort = u.port; } catch (e) { return; }
-    if (navPort !== '3011') return; // yalnizca panel portu (worker sekmeleri x/instagram :443 -> etkilenmez)
-    chrome.storage.local.get(['server_origin', 'panel_tab_id'], (res) => {
-      const panelTabId = res.panel_tab_id;
-      if (!panelTabId || panelTabId === tabId) return; // acik panel yok ya da bu ZATEN panel (F5 vb.)
-      let panelHost = null;
-      try { panelHost = new URL(res.server_origin || '').hostname; } catch (e) {}
-      if (!panelHost || navHost !== panelHost) return; // farkli host -> dokunma
-      chrome.tabs.get(panelTabId, (existing) => {
-        if (chrome.runtime.lastError || !existing || !existing.url) return; // mevcut panel olu -> yeni sekme panel olsun
-        // SERTLESTIRME: panel_tab_id bayat/cakisan olabilir (restart sonrasi Chrome id'leri yeniden atar).
-        // Sadece "canli" degil, GERCEKTEN ayni-host :3011 paneli oldugunu dogrula; degilse yeni sekmeyi KAPATMA.
-        let exHost = null, exPort = null;
-        try { const eu = new URL(existing.url); exHost = eu.hostname; exPort = eu.port; } catch (e) { return; }
-        if (exHost !== navHost || exPort !== '3011') return; // bayat id, gercek panel degil
-        chrome.tabs.update(panelTabId, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
-        if (existing.windowId != null) chrome.windows.update(existing.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
-        chrome.tabs.remove(tabId, () => { if (chrome.runtime.lastError) { /* ignore */ } });
-      });
-    });
-  } catch (e) { /* ignore */ }
-});
+// SILINDI (v3.85): "render olmadan once panele yonlendir" onUpdated dinleyicisi.
+// SAHADA PATLADI: kullanici AYNI IP'de BASKA PORTTA calisan baska bir program acmaya
+// calisirken ("95..." yazinca) Chrome adres cubugunda paneli otomatik-tamamliyor,
+// dinleyici 'loading' durumunda tab.url'i (henuz gidilmemis panel adresi) yakalayip
+// kullaniciyi acik panele yonlendiriyordu. Iki kok sorun: (1) port ':3011' SABITTI ->
+// panel baska porttaysa hem yanlis hem de host'a (IP) gore eslesince farkli-port navigasyonu
+// yakaliyordu; (2) 'loading' + otomatik-tamamlama = kullanici daha portu YAZMADAN yonlendirme.
+// Tek-panel davranisi ZATEN registerPanel'de var ve GUVENLI: yalnizca <meta name="x-rapor-panel">
+// tasiyan GERCEK panel sayfasi tetikler (baska program tetiklemez) ve ORIGIN (host+PORT)
+// esitligine bakar. Kayip: kucuk bir "flas" (duplike panel DOMContentLoaded'a kadar yuklenir,
+// sonra registerPanel odaklayip kapatir) — false-trigger'a kiyasla kabul edilebilir.
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
