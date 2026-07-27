@@ -2838,8 +2838,8 @@ HTML_TEMPLATE = """
                         '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:6px; flex-shrink:0;">' +
-                        '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" onclick="downloadSavedReport(\'' + m.id + '\')">📥 İndir</button>' +
-                        '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" onclick="deleteSavedReport(\'' + m.id + '\')">🗑️ Sil</button>' +
+                        '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="downloadSavedReport(this.dataset.rid)">📥 İndir</button>' +
+                        '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="deleteSavedReport(this.dataset.rid)">🗑️ Sil</button>' +
                     '</div>' +
                 '</div>';
             }).join('');
