@@ -1913,6 +1913,10 @@ HTML_TEMPLATE = """
                 <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
                     Bu cihazda yerel olarak saklanır (sunucuya gitmez). Son kayıttan <b>1 hafta</b> sonra otomatik silinir.
                 </div>
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button id="merge-selected-btn" class="btn" disabled style="padding: 7px 14px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; opacity: 0.5;" onclick="mergeSelectedReports()">🔗 Seçilenleri Birleştir</button>
+                    <span style="font-size: 12px; color: var(--text-secondary, #8899a6);">Birden çok raporu işaretle → tek rapora birleştir (tekrarlar elenir).</span>
+                </div>
                 <div id="saved-reports-list"></div>
             </div>
         </div>
@@ -2912,7 +2916,8 @@ HTML_TEMPLATE = """
                 try { tarih = new Date(m.updatedAt || 0).toLocaleString('tr-TR'); } catch (e) { tarih = ''; }
                 var adEsc = escapeHtml(m.name || '(adsız)');
                 return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
-                    '<div style="min-width:160px; flex:1;">' +
+                    '<input type="checkbox" class="x-sr-check" data-rid="' + m.id + '" onchange="xUpdateMergeBtn()" style="width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color:var(--accent-color);" title="Birleştirmek için seç">' +
+                    '<div style="min-width:150px; flex:1;">' +
                         '<div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📄 ' + adEsc + '</div>' +
                         '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
                     '</div>' +
@@ -2925,6 +2930,16 @@ HTML_TEMPLATE = """
                 '</div>';
             }).join('');
             container.innerHTML = html;
+            xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, butonu guncelle
+        }
+        // Birlestir butonu: >=2 secili ise etkin; etiket canli sayi gosterir.
+        function xUpdateMergeBtn() {
+            var btn = document.getElementById('merge-selected-btn');
+            if (!btn) return;
+            var n = document.querySelectorAll('.x-sr-check:checked').length;
+            btn.disabled = (n < 2);
+            btn.style.opacity = (n < 2) ? '0.5' : '1';
+            btn.textContent = '🔗 Seçilenleri Birleştir' + (n > 0 ? ' (' + n + ')' : '');
         }
         async function downloadSavedReport(id) {
             try {
@@ -2994,6 +3009,64 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Rapor açma hatası:', err);
                 showToast('Rapor açılamadı: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+
+        // Faz C: SECILI raporlari CALISMA HAVUZUNDA birlestir (openSavedReport'un cok-rapor hali).
+        // Havuz bir kez temizlenir, sonra secili raporlar SIRAYLA havuza eklenir. DEDUP: her oge
+        // manual_add'e dedup:true ile gider -> sunucu normalize_link_key ile onceki raporlardan geleni
+        // atlar (gorsel de yalniz "success"te yuklenir -> atlanan tekrarin gorseli orphan olmaz).
+        // Kullanici karari: yukle+gozden gecir; sonlandirma mevcut "Kaydet ve Indir" ile. Kaynaklar KORUNUR.
+        async function mergeSelectedReports() {
+            try {
+                var checks = document.querySelectorAll('.x-sr-check:checked');
+                var ids = [];
+                for (var c = 0; c < checks.length; c++) { var r = checks[c].getAttribute('data-rid'); if (r) { ids.push(r); } }
+                if (ids.length < 2) { showToast('Birleştirmek için en az 2 rapor seçin.', 'warning'); return; }
+                // Kaydedilmemis canli havuz varsa uyar (birlestirme havuzu DEGISTIRIR).
+                var curItems = [];
+                try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
+                if (curItems.length) {
+                    if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. Seçili ' + ids.length + ' raporu birleştirmek havuzu bunlarla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '🔗 Raporları Birleştir', okText: 'Birleştir', danger: true }))) return;
+                }
+                // Havuzu + yerel gorselleri BIR KEZ temizle
+                await fetch('/api/manual/clear', { method: 'POST' });
+                if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
+                var eklenen = 0, atlanan = 0, raporSay = 0;
+                for (var i = 0; i < ids.length; i++) {
+                    var rec = await window.XSavedReports.get(ids[i]);
+                    if (!rec || !rec.items || !rec.items.length) { continue; }
+                    raporSay++;
+                    var imgs = rec.images || {};
+                    for (var j = 0; j < rec.items.length; j++) {
+                        var it = rec.items[j];
+                        var lk = it.link || '';
+                        var body = { title: it.title || '', link: lk, local: true, dedup: true };
+                        if (it.is_profile) { body.is_profile = true; }
+                        if (it.group_override) { body.group_override = it.group_override; }
+                        var resp = await fetch('/api/manual/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                            .then(function (r) { return r.json(); }).catch(function () { return {}; });
+                        if (resp && resp.status === 'success') {
+                            eklenen++;
+                            var k = window.XLocalImages ? window.XLocalImages.normLink(lk) : lk;
+                            if (imgs[k] && imgs[k].dataUrl) {
+                                window.postMessage({ type: 'X_RAPOR_LOCAL_IMAGE', link: lk, dataUrl: imgs[k].dataUrl, mime: imgs[k].mime || '' }, '*');
+                            }
+                        } else if (resp && resp.status === 'duplicate') {
+                            atlanan++;
+                        }
+                    }
+                }
+                window.__openReportName = '';   // birlesik = YENI rapor (tek kaynaga bagli degil)
+                refreshStatus();
+                await renderSavedReports();
+                var msg = raporSay + ' rapor birleştirildi — ' + eklenen + ' içerik havuza yüklendi';
+                if (atlanan > 0) { msg += ' (' + atlanan + ' tekrar atlandı)'; }
+                msg += '. Gözden geçirip "Kaydet ve İndir" ile kaydedin.';
+                showToast(msg, 'success');
+            } catch (err) {
+                console.error('Birleştirme hatası:', err);
+                showToast('Birleştirme başarısız: ' + (err && err.message ? err.message : err), 'danger');
             }
         }
         async function renameSavedReport(id) {
