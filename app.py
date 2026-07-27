@@ -2736,6 +2736,18 @@ HTML_TEMPLATE = """
                 l_underline: document.getElementById('l_underline').checked
             };
         }
+        // v3.87: indirilen cikti dosyasinin adi = INDIRME ANINDAKI tarih-saat (kullanici istegi).
+        // Her indirme cagrisinda taze hesaplanir (onizlemeden gec indirilse bile o an). ':' dosya
+        // adinda gecersiz -> saat de '-' ile. Bicim: GG-AA-YYYY SS-DD-ss.docx.
+        function xIndirmeDosyaAdi() {
+            try {
+                var d = new Date();
+                function _p(n){ return (n < 10 ? '0' : '') + n; }
+                return _p(d.getDate()) + '-' + _p(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' +
+                       _p(d.getHours()) + '-' + _p(d.getMinutes()) + '-' + _p(d.getSeconds()) + '.docx';
+            } catch (e) { return 'GörüntüX.docx'; }
+        }
+
         function xGenerateLocal(previewMode, mode) {
             var filename = (mode === 'auto') ? 'GörüntüX_Otomatik.docx' : 'GörüntüX_Toplu.docx';
             return window.XLocalDocx.generateBlob(xBuildStyleOpts())
@@ -2749,7 +2761,7 @@ HTML_TEMPLATE = """
                     }
                     var url = window.URL.createObjectURL(blob);
                     var a = document.createElement('a');
-                    a.href = url; a.download = filename;
+                    a.href = url; a.download = xIndirmeDosyaAdi();
                     document.body.appendChild(a); a.click(); a.remove();
                     showToast('Word raporu (tarayıcıda) indirildi!', 'success');
                     // Sunucu üretim yolundaki gibi havuzu temizle, sonra arayüzü sıfırla.
@@ -2813,7 +2825,7 @@ HTML_TEMPLATE = """
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = "GörüntüX_Toplu.docx";
+                    a.download = xIndirmeDosyaAdi();
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
@@ -3030,7 +3042,7 @@ HTML_TEMPLATE = """
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = "GörüntüX_Otomatik.docx";
+                a.download = xIndirmeDosyaAdi();
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -4279,7 +4291,7 @@ HTML_TEMPLATE = """
             const url = window.URL.createObjectURL(window.lastGeneratedBlob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = window.lastGeneratedFilename || "GörüntüX.docx";
+            a.download = xIndirmeDosyaAdi();
             document.body.appendChild(a);
             a.click();
             a.remove();
