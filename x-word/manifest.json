@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GörüntüX",
-  "version": "3.89",
+  "version": "3.90",
   "description": "GörüntüX - X (Twitter), Instagram, Facebook, TikTok ve YouTube gönderilerini ekran görüntüsü ile Word raporuna dönüştürür.",
   "permissions": [
     "activeTab",

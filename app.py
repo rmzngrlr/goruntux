@@ -1902,7 +1902,6 @@ HTML_TEMPLATE = """
                         <button id="save-download-btn" class="btn" style="flex: 1; margin: 0; background: var(--accent-color); color: #fff; font-weight: 600;" onclick="saveAndDownloadReport()">💾 Kaydet ve İndir</button>
                     </div>
                     <div class="pool-actions">
-                        <button class="btn btn-success" style="flex: 2; margin: 0;" onclick="generateManualWord(false)">🏁 Word Üret ve İndir</button>
                         <button class="btn btn-primary" style="flex: 2; margin: 0; background: var(--accent-color);" onclick="generateManualWord(true)">👁️ Önizle</button>
                         <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
                     </div>
