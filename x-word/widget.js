@@ -1778,6 +1778,25 @@
                     const _sifirla = () => { buton.disabled = false; buton.innerText = "Rapora Ekle"; };
 
                     const _urlSade = window.location.href.split('?')[0];
+
+                    // v3.88: GECERSIZ sayfada EKLEME YAPMA. Widget bir an takili kalsa bile
+                    // (SPA gezinme gecisi) anasayfada "Rapora Ekle" HOME TIMELINE'ini yakalamasin
+                    // (kullanici: "anasayfada rapor ekle deyince eklememeli"). _profilMi asagida
+                    // "/status/ yoksa profil" varsaydigi icin home'u profil sanip yakaliyordu.
+                    {
+                        const _tw = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(_urlSade);
+                        const _foto = /\/status\/\d+\/(?:photo|media|video)(?:\/|$)/i.test(_urlSade);
+                        const _pmG = _urlSade.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?$/i);
+                        const _rezG = ["home","explore","notifications","messages","search","i","settings",
+                                       "compose","hashtag","login","logout","signup","share","intent",
+                                       "tos","privacy","about","download","jobs","developer"];
+                        const _prof = !!(_pmG && _pmG[1] && _rezG.indexOf(_pmG[1].toLowerCase()) === -1);
+                        if (_foto || !(_tw || _prof)) {
+                            alert("Bu sayfada rapora ekleme yapılamaz. Bir tweet ya da profil sayfasına gidin.");
+                            _sifirla(); return;
+                        }
+                    }
+
                     const _profilMi = !/\/status\/\d+/.test(_urlSade);
                     let ekranGoruntusu = "", baslik = "", groupOverride = "";
                     let link = _urlSade;   // RT'li tweette asagida sentetik benzersiz anahtara donusur
@@ -4000,6 +4019,9 @@
                 // Idle Mod: tekil tweet sayfasi VEYA profil sayfasi -> "Rapora Ekle" butonu.
                 let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl);
                 let rtSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
+                // v3.88: fotograf/medya alt sayfasi (/status/123/photo/1, /media) -> widget YOK
+                // (background ile AYNI kontrol). tivitMi regex'i onek eslestigi icin ayrica dislanir.
+                let fotografMi = /\/status\/\d+\/(?:photo|media|video)(?:\/|$)/i.test(temizUrl);
                 // Profil sayfasi: x.com/{ad} (tek segment) ve {ad} rezerve yol DEGIL.
                 let profilMi = false;
                 {
@@ -4010,13 +4032,13 @@
                     if (_pm && _pm[1] && _rez.indexOf(_pm[1].toLowerCase()) === -1) profilMi = true;
                 }
 
-                printLog(`Sayfa Analizi: tivitMi=${tivitMi}, rtSayfasiMi=${rtSayfasiMi}, profilMi=${profilMi}`);
+                printLog(`Sayfa Analizi: tivitMi=${tivitMi}, rtSayfasiMi=${rtSayfasiMi}, profilMi=${profilMi}, fotografMi=${fotografMi}`);
 
-                if ((tivitMi && !rtSayfasiMi) || profilMi) {
+                if ((((tivitMi && !rtSayfasiMi) || profilMi) && !fotografMi)) {
                     printLog(`${profilMi ? 'Profil' : 'Tekil tivit'} sayfası algılandı. Idle widget yükleniyor.`);
                     renderIdleWidget(directKey || "x_profil_gorevi_tekil");
                 } else {
-                    printLog("Alakasız sayfa. Widget gizleniyor.");
+                    printLog("Alakasız/foto sayfası. Widget gizleniyor.");
                     widget.style.display = 'none';
                 }
             }

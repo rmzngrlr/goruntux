@@ -364,6 +364,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       let isYoutubePost = xIsYtPostUrl(temizUrl);    // Faz YT-1
       let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost || isYoutubePost;
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
+      // v3.88: FOTOGRAF/medya alt sayfasi (x.com/user/status/123/photo/1, /media). tivitMi
+      // regex'i ONEK eslestigi icin bunlari da yakaliyor -> widget aciliyordu; kullanici
+      // istemedi. Widget bu sayfalarda ACILMAZ (asagida gecerlilik kontrolunde disliyoruz).
+      let fotografMi = /\/status\/\d+\/(?:photo|media|video)(?:\/|$)/i.test(temizUrl);
       // v3.80: X PROFIL sayfasi. "Rapora Ekle" idle widget'i profilde de gorunsun diye
       // (v3.72'de widget.js icine eklenmisti ama background widget.js'i PROFILE enjekte
       // etmiyordu -> profilde hic acilmiyordu). Tespit widget.js'teki profilMi ile AYNI.
@@ -538,12 +542,18 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // Idle modda widget: tekil tweet sayfasi VEYA X profil sayfasi (v3.80).
             // "Rapora Ekle" ikisinde de calisir; RT/quotes/likes gibi alt sayfalar HARIC.
             // (Eskiden yalniz tweet sayfasiydi -> profilde widget hic acilmıyordu.)
-            if ((tivitMi && !retweetSayfasiMi) || profilMi) {
+            // v3.88: fotograf/medya alt sayfalari HARIC. Ayrica GECERSIZ sayfaya (anasayfa,
+            // foto, alakasiz) gidilince mevcut widget KALDIRILIR -> SPA gezinmede widget
+            // yanlis sayfada kalmaz (kullanici: profil/tweet widget'i baska sayfaya gidince kapansin).
+            const _gecerliWidgetSayfasi = (((tivitMi && !retweetSayfasiMi) || profilMi) && !fotografMi);
+            if (_gecerliWidgetSayfasi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
                   widgetiFirlat(tabId);
                 }
               });
+            } else {
+              widgetiGizle(tabId);   // gecersiz sayfa -> varsa widget'i kaldir
             }
           }
         } catch (innerErr) {
@@ -634,6 +644,23 @@ function openPanelBackground(origin) {
     if (varOlan) return;   // panel zaten var/yukleniyor
     chrome.tabs.create({ url: panelUrl, active: false }, () => { if (chrome.runtime.lastError) {} });
   });
+}
+
+// v3.88: GECERSIZ sayfada (anasayfa, foto, alakasiz) widget'i KALDIR. SPA gezinmede
+// widget.js yeniden calismadigi icin eski widget kalabiliyordu; onUpdated her gezinmede
+// tetiklendiginden burada temizliyoruz. xRaporLastUrl sifirlanir ki GECERLI sayfaya (hatta
+// ayni tweet'e geri) donunce widget YENIDEN kurulabilsin (guard URL'e gore atlamasin).
+function widgetiGizle(tabId) {
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    func: () => {
+      try {
+        var w = document.getElementById('x-downloader-widget'); if (w) w.remove();
+        var cb = document.getElementById('w-cb-container'); if (cb) cb.remove();
+        window.xRaporLastUrl = null;
+      } catch (e) {}
+    }
+  }).catch(() => {});
 }
 
 function widgetiFirlat(tabId) {
