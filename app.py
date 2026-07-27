@@ -2918,13 +2918,12 @@ HTML_TEMPLATE = """
                 return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
                     '<input type="checkbox" class="x-sr-check" data-rid="' + m.id + '" onchange="xUpdateMergeBtn()" style="width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color:var(--accent-color);" title="Birleştirmek için seç">' +
                     '<div style="min-width:150px; flex:1;">' +
-                        '<div style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📄 ' + adEsc + '</div>' +
+                        '<div data-rid="' + m.id + '" ondblclick="renameSavedReport(this.dataset.rid)" title="Yeniden adlandırmak için çift tıkla" style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; user-select:none;">📄 ' + adEsc + '</div>' +
                         '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap;">' +
                         '<button class="btn" style="padding:6px 12px; font-size:13px; margin:0; background:var(--accent-color); color:#fff;" data-rid="' + m.id + '" onclick="openSavedReport(this.dataset.rid)">📂 Aç</button>' +
                         '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="downloadSavedReport(this.dataset.rid)">📥 İndir</button>' +
-                        '<button class="btn btn-secondary" style="padding:6px 10px; font-size:13px; margin:0;" title="Yeniden adlandır" data-rid="' + m.id + '" onclick="renameSavedReport(this.dataset.rid)">✏️</button>' +
                         '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="deleteSavedReport(this.dataset.rid)">🗑️ Sil</button>' +
                     '</div>' +
                 '</div>';
