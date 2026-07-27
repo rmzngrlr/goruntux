@@ -6541,7 +6541,7 @@ def upload_format():
         output_link_count = len(seen_links)
 
         header_index = 0
-        for oge in unique_items:
+        for i, oge in enumerate(unique_items):
             baslik_raw = oge["baslik"].strip() if oge["baslik"] else ""
             
             if baslik_raw:
@@ -6563,7 +6563,14 @@ def upload_format():
             p_link.paragraph_format.space_after = Pt(18)
             if oge["link"]:
                 link_ekle_hyperlink(p_link, oge["link"], oge["link"], l_font, l_size, l_color, underline=l_underline)
-            cizgi_ekle(p_link)
+            # Alt cizgi (divider) YALNIZ bir baslik grubunun SON ogesine konur -> tarayici ureticisiyle
+            # (LOCAL_DOCX_JS 'son' bayragi: son:(k===ordered.length-1)) AYNI davranis. Grup biter:
+            # sonraki oge YENI bir baslik baslatiyorsa VEYA bu son oge ise. Eskiden HER link altina
+            # konuyordu (bug: cok gonderili yazarda her posta cizgi; kullanici bildirdi).
+            sonraki_yeni_baslik = (i + 1 < len(unique_items)) and bool(
+                unique_items[i + 1]["baslik"] and unique_items[i + 1]["baslik"].strip())
+            if (i + 1 == len(unique_items)) or sonraki_yeni_baslik:
+                cizgi_ekle(p_link)
 
         output = io.BytesIO()
         yeni_doc.save(output)
