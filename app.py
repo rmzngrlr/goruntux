@@ -4822,6 +4822,16 @@ HTML_TEMPLATE = """
                             }
                         } catch (e) {}
 
+                        // Onizlemede linke tiklaninca IFRAME'de degil YENI SEKMEDE acilsin (kullanici
+                        // istegi). target=_blank + rel=noopener/noreferrer (yeni sekme window.opener'a erisemesin).
+                        try {
+                            var _plinks = iframeDoc.querySelectorAll('a[href]');
+                            for (var _li = 0; _li < _plinks.length; _li++) {
+                                _plinks[_li].setAttribute('target', '_blank');
+                                _plinks[_li].setAttribute('rel', 'noopener noreferrer');
+                            }
+                        } catch (e) {}
+
                         // v3.82 (Feature 2): bir HAVUZ OGESINE tiklanarak acildiysa o ogenin
                         // resmine kaydir. __previewScrollToIndex yalnizca oge tiklamasinda set
                         // edilir; "Onizle" butonuyla acilista set DEGIL -> ustten baslar (eski davranis).
