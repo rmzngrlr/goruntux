@@ -2817,8 +2817,9 @@ HTML_TEMPLATE = """
                 okText: opts.okText || 'Tamam', cancelText: opts.cancelText || 'Vazgeç' });
         }
 
-        // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet. Havuzu TEMIZLEMEZ
-        // (uzerinde calismaya devam edilebilsin). generateBlob + XSavedReports yeniden kullanilir.
+        // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet -> havuzu SIFIRLA
+        // (kullanici istegi: eski "Word Uret ve Indir" gibi uret->indir->temizle). Kayit BASARISIZSA
+        // havuz KORUNUR (snapshot yok, kaybolmasin). Duzenlemeye devam icin rapor "Ac" ile geri yuklenir.
         async function saveAndDownloadReport() {
             var btn = document.getElementById('save-download-btn');
             var _restore = function () { if (btn) { btn.disabled = false; btn.innerHTML = '💾 Kaydet ve İndir'; } };
@@ -2851,7 +2852,7 @@ HTML_TEMPLATE = """
                     }
                 }
 
-                // 4) .docx uret + PC'ye indir (havuz DOKUNULMAZ).
+                // 4) .docx uret + PC'ye indir. (Havuz asagida, BASARILI kayittan sonra sifirlanir.)
                 var blob = await window.XLocalDocx.generateBlob(xBuildStyleOpts());
                 var filename = xRaporDosyaAdi(name);
                 var url = window.URL.createObjectURL(blob);
@@ -2861,16 +2862,26 @@ HTML_TEMPLATE = """
                 setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
 
                 // 5) Panele YEREL kaydet. Indirme zaten oldu; kayit ayri hata verirse ayirt et.
+                var _kayitOk = false;
                 try {
                     await window.XSavedReports.whenReady();
                     await window.XSavedReports.save({ name: name, items: items, images: images, blob: blob, filename: filename });
-                    window.__openReportName = name;   // bundan sonra bu rapor "acik" sayilir; tekrar kaydet ayni adi onerir/gunceller
-                    showToast('İndirildi ve panele kaydedildi: ' + name, 'success');
+                    _kayitOk = true;
+                    showToast('İndirildi, panele kaydedildi ve havuz temizlendi: ' + name, 'success');
                 } catch (saveErr) {
                     console.error('Panele kaydetme hatası:', saveErr);
-                    showToast('İndirildi ama panele kaydedilemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr), 'warning');
+                    showToast('İndirildi ama panele kaydedilemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr) + ' — havuz korundu.', 'warning');
                 }
                 await renderSavedReports();
+                // 6) BASARILI kayitta havuzu SIFIRLA (eski "Word Uret ve Indir" gibi). resetAutomationUIAndBackend
+                //    sunucu havuzu + XLocalImages'i + arayuzu temizler (snapshot gorselleri zaten kopyalandi).
+                //    Kayit BASARISIZSA havuz KORUNUR -> kullanici yeniden deneyebilir.
+                if (_kayitOk) {
+                    window.__openReportName = '';   // acik rapor baglami bitti
+                    fetch('/api/manual/clear', { method: 'POST' })
+                        .then(function () { resetAutomationUIAndBackend(); })
+                        .catch(function () { resetAutomationUIAndBackend(); });
+                }
             } catch (err) {
                 console.error('Kaydet ve İndir hatası:', err);
                 showToast('Kaydet ve İndir başarısız: ' + (err && err.message ? err.message : err), 'danger');
