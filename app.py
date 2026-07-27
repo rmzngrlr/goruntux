@@ -1041,6 +1041,24 @@ HTML_TEMPLATE = """
             background: rgba(29, 155, 240, 0.05);
         }
 
+        /* Sekme adindaki kayitli-rapor sayaci (yuvarlak rozet) */
+        .tab-count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            margin-left: 7px;
+            border-radius: 9px;
+            background: var(--accent-color);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            vertical-align: middle;
+        }
+
         .tab-btn.active::after {
             content: '';
             position: absolute;
@@ -1737,11 +1755,25 @@ HTML_TEMPLATE = """
             <div class="tabs">
                 <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')">🤖 Otomatik Rapor Hazırla</button>
                 <button class="tab-btn" data-tab="tab-manual" onclick="switchTab('tab-manual')">✍️ Manuel Rapor Hazırla</button>
-                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">📂 Word Düzenle</button>
+                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">🗂️ Kayıtlı Raporlar<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
             </div>
 
             <!-- Tab 1: Format Docx -->
             <div id="tab-format" class="tab-content">
+                <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
+                     kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
+                <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
+                    <h4 style="margin: 0 0 4px 0;">🗂️ Kayıtlı Raporlar</h4>
+                    <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
+                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). Son kayıttan <b>1 hafta</b> sonra otomatik silinir.
+                    </div>
+                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <button id="merge-selected-btn" class="btn" disabled style="padding: 7px 14px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; opacity: 0.5;" onclick="mergeSelectedReports()">🔗 Seçilenleri Birleştir</button>
+                        <span style="font-size: 12px; color: var(--text-secondary, #8899a6);">Birden çok raporu işaretle → tek rapora birleştir (tekrarlar elenir).</span>
+                    </div>
+                    <div id="saved-reports-list"></div>
+                </div>
+
                 <div class="card">
                     <h3>Mevcut Bir Word Dosyasını Yeniden Biçimlendirin</h3>
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
@@ -1759,7 +1791,7 @@ HTML_TEMPLATE = """
                     <input type="file" id="doc_file" accept=".docx" onchange="fileSelected(this)" multiple style="display: none;">
 
                     <div style="display: flex; gap: 15px; margin-top: 20px;">
-                        <button class="btn btn-block" style="flex: 1; margin: 0;" onclick="submitMod1(false)">⚙️ Biçimlendir ve İndir</button>
+                        <button class="btn btn-block" style="flex: 1; margin: 0;" onclick="submitMod1(false)">💾 Kaydet ve İndir</button>
                         <button class="btn btn-block btn-success" style="flex: 1; margin: 0; background: var(--accent-color);" onclick="submitMod1(true)">👁️ Önizle</button>
                     </div>
 
@@ -1906,19 +1938,7 @@ HTML_TEMPLATE = """
                 </div>
             </div>
 
-            <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
-                 havuz boş olsa da eski kayıtlar yönetilebilsin diye AYRI/bağımsız kart. -->
-            <div id="saved-reports-section" class="card" style="display: none; margin-top: 24px;">
-                <h4 style="margin: 0 0 4px 0;">🗂️ Kayıtlı Raporlar</h4>
-                <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
-                    Bu cihazda yerel olarak saklanır (sunucuya gitmez). Son kayıttan <b>1 hafta</b> sonra otomatik silinir.
-                </div>
-                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <button id="merge-selected-btn" class="btn" disabled style="padding: 7px 14px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; opacity: 0.5;" onclick="mergeSelectedReports()">🔗 Seçilenleri Birleştir</button>
-                    <span style="font-size: 12px; color: var(--text-secondary, #8899a6);">Birden çok raporu işaretle → tek rapora birleştir (tekrarlar elenir).</span>
-                </div>
-                <div id="saved-reports-list"></div>
-            </div>
+            <!-- Kayıtlı Raporlar bölümü "Kayıtlı Raporlar" sekmesinin (tab-format) İÇİNE taşındı (v4.0). -->
         </div>
     </div>
 
@@ -2426,29 +2446,51 @@ HTML_TEMPLATE = """
                 return;
             }
             window.XLocalDocx.clientWordDuzenle(fileInput.files, xBuildStyleOpts())
-            .then(function (result) {
+            .then(async function (result) {
                 const blob = result.blob;
-                const filename = fileInput.files.length > 1 ? "GörüntüX_Birlesik.docx" : "GörüntüX_Duzenlenmis.docx";
                 // Istatistik ARTIK client'tan (sunucu header'lari yerine).
                 if (result.totalLinks != null && result.outputLinks != null && result.fileStats) {
                     try { renderMergeStats(String(result.totalLinks), String(result.outputLinks), result.fileStats); }
                     catch (e) { console.error("Stats render error:", e); }
                 }
+                stopFormatProgress(true);
                 if (previewMode) {
+                    const filename = fileInput.files.length > 1 ? "GörüntüX_Birlesik.docx" : "GörüntüX_Duzenlenmis.docx";
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = filename;
                     showDocxPreview(blob);
-                } else {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    showToast('Dosya başarıyla düzenlendi ve indirildi!', 'success');
+                    return;
                 }
-                stopFormatProgress(true);
+                // "Kaydet ve Indir": ad sor -> indir -> KAYITLI RAPOR olarak da kaydet (sekmedeki sayac artar).
+                var def = xTarihSaatDamgasi();
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
+                if (name === null) { showToast('İptal edildi.', 'info'); return; }
+                name = (name || '').trim() || def;
+                var filename = xRaporDosyaAdi(name);
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+                // Birlesik ogeler + gomulu gorseller (image_b64) + blob -> XSavedReports.save.
+                try {
+                    var images = {};
+                    var its = result.items || [];
+                    for (var i = 0; i < its.length; i++) {
+                        var lk = its[i].link || '';
+                        if (lk && its[i].image_b64 && window.XLocalImages) {
+                            var mime = its[i].image_mime || 'image/jpeg';
+                            images[window.XLocalImages.normLink(lk)] = { dataUrl: 'data:' + mime + ';base64,' + its[i].image_b64, mime: mime };
+                        }
+                    }
+                    await window.XSavedReports.whenReady();
+                    await window.XSavedReports.save({ name: name, items: its, images: images, blob: blob, filename: filename });
+                    showToast("İndirildi ve Kayıtlı Raporlar'a eklendi: " + name, 'success');
+                } catch (saveErr) {
+                    console.error('Kayıtlı rapora kaydetme hatası:', saveErr);
+                    showToast('İndirildi ama kayıtlı raporlara eklenemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr), 'warning');
+                }
+                await renderSavedReports();
             })
             .catch(function (err) {
                 stopFormatProgress(false);
@@ -2871,6 +2913,13 @@ HTML_TEMPLATE = """
             if (saat > 0) return saat + ' saat';
             return '<1 saat';
         }
+        // Sekme adindaki kayitli-rapor sayaci: n>0 ise yuvarlak rozette goster, 0'da gizle.
+        function xUpdateSavedBadge(n) {
+            var b = document.getElementById('saved-count-badge');
+            if (!b) return;
+            if (n > 0) { b.textContent = String(n); b.style.display = ''; }
+            else { b.style.display = 'none'; }
+        }
         async function renderSavedReports() {
             var section = document.getElementById('saved-reports-section');
             var container = document.getElementById('saved-reports-list');
@@ -2878,6 +2927,7 @@ HTML_TEMPLATE = """
             try { await window.XSavedReports.whenReady(); } catch (e) {}
             var metas = [];
             try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
+            xUpdateSavedBadge(metas.length);   // sekme adindaki sayaci guncelle (0'da gizli)
             if (!metas.length) { if (section) section.style.display = 'none'; container.innerHTML = ''; return; }
             if (section) section.style.display = '';
             var html = metas.map(function (m) {
@@ -5776,7 +5826,8 @@ LOCAL_DOCX_JS = r'''
     }
     var outputLinks = 0; for (var s in seen) { if (seen.hasOwnProperty(s)) outputLinks++; }
     var blob = await generateBlob(opts, deduped);
-    return { blob: blob, totalLinks: totalLinks, outputLinks: outputLinks, fileStats: fileStats };
+    // items: Kayitli Rapor olarak kaydetmek icin (submitMod1 'Kaydet ve Indir' yolu).
+    return { blob: blob, items: deduped, totalLinks: totalLinks, outputLinks: outputLinks, fileStats: fileStats };
   }
 
   window.XLocalDocx = { generateBlob: generateBlob, clientWordDuzenle: clientWordDuzenle, parseReportHtml: xParseReportHtml };
