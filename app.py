@@ -1775,7 +1775,11 @@ HTML_TEMPLATE = """
                 </div>
 
                 <div class="card">
-                    <h3>Mevcut Bir Word Dosyasını Yeniden Biçimlendirin</h3>
+                    <h3 id="word-arac-baslik" onclick="xToggleWordArac()" style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;">
+                        <span id="word-arac-ok" style="display: inline-block; transition: transform 0.2s ease; font-size: 14px;">▸</span>
+                        Mevcut Bir Word Dosyasını Yeniden Biçimlendirin
+                    </h3>
+                    <div id="word-arac-govde" style="display: none; margin-top: 14px;">
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
                         Taranan tweetlerin bulunduğu .docx dosyasını buraya yükleyin. Tasarım ayarları dosyadaki tüm tweet başlıklarına ve linklerine otomatik uygulanacaktır.
                     </p>
@@ -1808,6 +1812,7 @@ HTML_TEMPLATE = """
                             <span id="format-timer">⏱ 00:00</span>
                         </div>
                     </div>
+                    </div><!-- /word-arac-govde -->
                 </div>
                 <div id="format-stats-container" style="display: none; margin-top: 24px;"></div>
             </div>
@@ -2921,6 +2926,15 @@ HTML_TEMPLATE = """
                     if (hv && hv.style.display !== 'none') { hv.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
                 } catch (e) {}
             }, 500);
+        }
+        // "Mevcut Bir Word Dosyasını Yeniden Biçimlendirin" aracı açılır-kapanır (accordion, varsayılan KAPALI).
+        function xToggleWordArac() {
+            var g = document.getElementById('word-arac-govde');
+            var ok = document.getElementById('word-arac-ok');
+            if (!g) return;
+            var acik = g.style.display !== 'none';
+            g.style.display = acik ? 'none' : 'block';
+            if (ok) { ok.style.transform = acik ? 'rotate(0deg)' : 'rotate(90deg)'; }
         }
         // Sekme adindaki kayitli-rapor sayaci: n>0 ise yuvarlak rozette goster, 0'da gizle.
         function xUpdateSavedBadge(n) {
