@@ -2103,6 +2103,8 @@ HTML_TEMPLATE = """
                 <span class="close-btn" onclick="closeExtModal()">&times;</span>
             </div>
             <div class="modal-body">
+                <!-- Eklenti ESKI iken (sarı durum) gösterilir; openExtModal doldurur. -->
+                <div id="ext-modal-warning" style="display: none; background: rgba(255, 176, 32, 0.12); border: 1px solid rgba(255, 176, 32, 0.35); color: #ffb020; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; font-weight: 600;"></div>
                 <div style="text-align: center; margin-bottom: 22px;">
                     <a href="/api/extension/download_zip" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">📥 Eklentiyi İndir (.zip)</a>
                 </div>
@@ -2203,7 +2205,24 @@ HTML_TEMPLATE = """
         }
         function openExtModal() {
             const m = document.getElementById('extModal');
-            if (m) { m.classList.add('active'); }
+            if (!m) { return; }
+            // Eklenti ESKI ise (sarı durum) dinamik güncelleme uyarısını göster (eski ext-version-warning
+            // metninin karşılığı). KIRMIZI (kurulu değil) durumda güncelleme değil kurulum söz konusu -> gizle.
+            const uyari = document.getElementById('ext-modal-warning');
+            if (uyari) {
+                if (window.extensionOutdated) {
+                    const kur = window.extensionInstalledVersion || '?';
+                    const son = window.extensionLatestVersion || '?';
+                    uyari.innerHTML = '&#9888;&#65039; Eklentiniz güncel değil — kurulu <b>v' + kur
+                        + '</b>, en güncel <b>v' + son + '</b>. Tarama bu sürümle başlatılamaz. '
+                        + 'Aşağıdaki <b>Güncelle</b> adımıyla yeni sürüme geçin (.zip\\'i indir → aynı klasörün '
+                        + 'üzerine aç → <code>chrome://extensions</code>\\'ta &#8635; yenile → X sekmesini F5).';
+                    uyari.style.display = 'block';
+                } else {
+                    uyari.style.display = 'none';
+                }
+            }
+            m.classList.add('active');
         }
         function closeExtModal() {
             const m = document.getElementById('extModal');
