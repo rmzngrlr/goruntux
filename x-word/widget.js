@@ -2000,66 +2000,11 @@
         }
     }
 
-    // Kullanıcı isteği (v4.2, v4.9 sağlam): "Rapora Ekle"de içerik + link'i PANOYA kopyala (Ctrl+V ile
-    // başka yere yapıştır). Görüntü PNG data URL -> base64->Blob DOĞRUDAN (fetch/canvas YOK, x.com CSP).
-    // v4.11: Linki GÖRSELİN İÇİNE göm. WhatsApp gibi uygulamalar panoda görsel varken metni (linki)
-    // asla almadığı için tek yapıştırmada ikisini birden vermek ancak link görsele gömülünce mümkün.
-    // Yalnız PANOYA kopyalanan görsele uygulanır; havuza/rapora giden ekran görüntüsü TEMİZ kalır.
-    // Hata olursa orijinal dataUrl'i aynen döndürür (panoya kopyalama asla engellenmez).
-    function xLinkStripEkle(dataUrl, link) {
-        return new Promise(function (resolve) {
-            try {
-                if (!link) { resolve(dataUrl); return; }
-                var img = new Image();
-                img.onload = function () {
-                    try {
-                        var W = img.naturalWidth || img.width;
-                        var H = img.naturalHeight || img.height;
-                        if (!W || !H) { resolve(dataUrl); return; }
-                        var pad = Math.max(10, Math.round(W / 60));
-                        var fs = Math.max(15, Math.round(W / 42));
-                        var lh = Math.round(fs * 1.35);
-                        var olcCnv = document.createElement('canvas');
-                        var olcCtx = olcCnv.getContext('2d');
-                        olcCtx.font = fs + 'px Arial, Helvetica, sans-serif';
-                        var maxW = W - pad * 2;
-                        // Linkte boşluk yoktur; karakter bazlı sar (uzun linkler taşmasın)
-                        var s = String(link);
-                        var satirlar = [];
-                        var cur = '';
-                        for (var i = 0; i < s.length; i++) {
-                            var dene = cur + s.charAt(i);
-                            if (olcCtx.measureText(dene).width > maxW && cur) {
-                                satirlar.push(cur); cur = s.charAt(i);
-                            } else { cur = dene; }
-                        }
-                        if (cur) { satirlar.push(cur); }
-                        if (!satirlar.length) { satirlar = [s]; }
-                        var stripH = pad * 2 + lh * satirlar.length;
-                        var cnv = document.createElement('canvas');
-                        cnv.width = W; cnv.height = H + stripH;
-                        var ctx = cnv.getContext('2d');
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, W, H + stripH);
-                        ctx.drawImage(img, 0, 0, W, H);
-                        ctx.strokeStyle = '#cfd9de'; ctx.lineWidth = 1;
-                        ctx.beginPath(); ctx.moveTo(0, H + 0.5); ctx.lineTo(W, H + 0.5); ctx.stroke();
-                        ctx.fillStyle = '#1d9bf0';
-                        ctx.font = fs + 'px Arial, Helvetica, sans-serif';
-                        ctx.textBaseline = 'top';
-                        for (var j = 0; j < satirlar.length; j++) {
-                            ctx.fillText(satirlar[j], pad, H + pad + j * lh);
-                        }
-                        resolve(cnv.toDataURL('image/png'));
-                    } catch (e) { resolve(dataUrl); }
-                };
-                img.onerror = function () { resolve(dataUrl); };
-                img.src = dataUrl;
-            } catch (e) { resolve(dataUrl); }
-        });
-    }
-
-    // image/png + text/plain TEK ClipboardItem: resim-uygulamasına GÖRSEL, metin alanına LINK gelir.
+    // Kullanıcı isteği (v4.2): "Rapora Ekle"de içeriği PANOYA kopyala (Ctrl+V ile başka yere yapıştır).
+    // Görüntü PNG data URL -> base64->Blob DOĞRUDAN (fetch/canvas YOK, x.com CSP).
+    // v4.12 KULLANICI KARARI: panoya YALNIZ temiz görsel; link panoya HİÇ konmaz (rapordaki link zaten
+    // ayrı köprü). v4.11'in link-şeridi gömme yolu (xLinkStripEkle) + v4.10 text/plain GERİ ALINDI.
+    // Neden: WhatsApp panoda görsel varken metni almıyor; kullanıcı görselde şerit-link istemedi.
     //
     // v4.9 SAĞLAM YÖNTEM (user-activation tuzağı): navigator.clipboard.write kullanıcı-etkileşimi ister
     // ve ~5sn'de dolar; yakalama birkaç sn sürdüğü için ESKİDEN yazım engelleniyordu. Çözüm: write'ı
@@ -2070,11 +2015,9 @@
         if (!navigator.clipboard || !window.ClipboardItem || !navigator.clipboard.write) { return _bos; }
         var _res = null, _rej = null;
         var imgPromise = new Promise(function (r, j) { _res = r; _rej = j; });
+        // v4.12 KULLANICI KARARI: panoya YALNIZ temiz görsel — link/text/plain panoya HİÇ konmaz
+        // (rapordaki link zaten ayrı köprü). `link` parametresi artık kullanılmıyor (uyumluluk için duruyor).
         var parcalar = { 'image/png': imgPromise };
-        // v4.10: text/plain'i de PROMISE olarak ver. Karışık (bir tür Promise, öbürü düz Blob) ClipboardItem'da
-        // bazı Chrome sürümleri Promise-olmayan türü (linki) SESSİZCE düşürüyordu → "sadece görsel yapışıyor".
-        // Her iki türü de Promise yapmak Chromium'un desteklediği güvenli desen; link güvenilir şekilde panoda kalır.
-        if (link) { parcalar['text/plain'] = Promise.resolve(new Blob([String(link)], { type: 'text/plain' })); }
         var yazma = null;
         try {
             yazma = navigator.clipboard.write([new ClipboardItem(parcalar)]);
@@ -2083,8 +2026,6 @@
         return {
             gorseliVer: async function (dataUrl) {
                 try {
-                    // v4.11: panoya giden görsele linki göm (tek yapıştırmada görsel + link).
-                    if (link) { try { dataUrl = await xLinkStripEkle(dataUrl, link); } catch (e) {} }
                     var virgul = String(dataUrl).indexOf(',');
                     if (String(dataUrl).indexOf('data:') !== 0 || virgul < 0) { _rej(new Error('gecersiz')); return false; }
                     var bin = atob(dataUrl.slice(virgul + 1));
