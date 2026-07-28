@@ -3733,7 +3733,9 @@ HTML_TEMPLATE = """
                     // Show and restore links input group
                     const inputGroup = document.getElementById('links-input-group');
                     if (inputGroup) {
-                        inputGroup.style.display = 'block';
+                        // .form-group = display:flex; 'block' yapmak flex'i bozup gap:14px'i iptal ederdi
+                        // (etiket input'a yapisir, acilista flicker). 'flex' ile boslugu koru.
+                        inputGroup.style.display = 'flex';
                     }
                     const inputEl = document.getElementById('tweet_links_input');
                     if (inputEl) {
@@ -3771,7 +3773,9 @@ HTML_TEMPLATE = """
                     // Show and restore links input group
                     const inputGroup = document.getElementById('links-input-group');
                     if (inputGroup) {
-                        inputGroup.style.display = 'block';
+                        // .form-group = display:flex; 'block' yapmak flex'i bozup gap:14px'i iptal ederdi
+                        // (etiket input'a yapisir, acilista flicker). 'flex' ile boslugu koru.
+                        inputGroup.style.display = 'flex';
                     }
                     const inputEl = document.getElementById('tweet_links_input');
                     if (inputEl) {
