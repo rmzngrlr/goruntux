@@ -2014,7 +2014,10 @@
         var _res = null, _rej = null;
         var imgPromise = new Promise(function (r, j) { _res = r; _rej = j; });
         var parcalar = { 'image/png': imgPromise };
-        if (link) { parcalar['text/plain'] = new Blob([String(link)], { type: 'text/plain' }); }
+        // v4.10: text/plain'i de PROMISE olarak ver. Karışık (bir tür Promise, öbürü düz Blob) ClipboardItem'da
+        // bazı Chrome sürümleri Promise-olmayan türü (linki) SESSİZCE düşürüyordu → "sadece görsel yapışıyor".
+        // Her iki türü de Promise yapmak Chromium'un desteklediği güvenli desen; link güvenilir şekilde panoda kalır.
+        if (link) { parcalar['text/plain'] = Promise.resolve(new Blob([String(link)], { type: 'text/plain' })); }
         var yazma = null;
         try {
             yazma = navigator.clipboard.write([new ClipboardItem(parcalar)]);

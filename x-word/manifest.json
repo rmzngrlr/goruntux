@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GörüntüX",
-  "version": "4.9",
+  "version": "4.10",
   "description": "GörüntüX - X (Twitter), Instagram, Facebook, TikTok ve YouTube gönderilerini ekran görüntüsü ile Word raporuna dönüştürür.",
   "permissions": [
     "activeTab",
@@ -23,7 +23,9 @@
         "http://*/*",
         "https://*/*"
       ],
-      "js": ["bridge.js"],
+      "js": [
+        "bridge.js"
+      ],
       "run_at": "document_start"
     },
     {
@@ -33,13 +35,14 @@
         "https://twitter.com/*",
         "https://*.twitter.com/*"
       ],
-      "js": ["inject.js"],
+      "js": [
+        "inject.js"
+      ],
       "world": "MAIN",
       "run_at": "document_start"
     }
   ],
   "browser_specific_settings": {
-
     "gecko": {
       "id": "x-rapor@rmzngrlr.com",
       "strict_min_version": "109.0"
