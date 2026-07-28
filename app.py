@@ -2884,6 +2884,7 @@ HTML_TEMPLATE = """
                         '<div class="modal-body">' +
                             '<div class="x-dlg-msg" style="color:var(--text-primary); line-height:1.5; white-space:pre-wrap;"></div>' +
                             (isInput ? '<input type="text" class="x-dlg-input" style="width:100%; margin-top:14px; padding:11px 13px; border:1px solid var(--border-color); border-radius:10px; background:var(--bg-input); color:var(--text-primary); font-size:14px; box-sizing:border-box;">' : '') +
+                            (opts.checkbox ? '<label class="x-dlg-check-row" style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--text-secondary); cursor:pointer; user-select:none;"><input type="checkbox" class="x-dlg-check" style="width:16px; height:16px; cursor:pointer; margin:0;"><span class="x-dlg-check-label"></span></label>' : '') +
                         '</div>' +
                         '<div class="modal-footer" style="gap:10px;">' +
                             '<button type="button" class="btn btn-secondary x-dlg-cancel" data-act="cancel" style="margin:0;"></button>' +
@@ -2895,6 +2896,7 @@ HTML_TEMPLATE = """
                 overlay.querySelector('.x-dlg-msg').textContent = opts.message || '';
                 overlay.querySelector('.x-dlg-ok').textContent = opts.okText || 'Tamam';
                 overlay.querySelector('.x-dlg-cancel').textContent = opts.cancelText || 'Vazgeç';
+                if (opts.checkbox) { var _clbl = overlay.querySelector('.x-dlg-check-label'); if (_clbl) { _clbl.textContent = opts.checkbox; } }
                 var inputEl = overlay.querySelector('.x-dlg-input');
                 if (inputEl) { inputEl.value = (opts.defaultValue == null ? '' : opts.defaultValue); }
                 function finish(result) {
@@ -2903,7 +2905,15 @@ HTML_TEMPLATE = """
                     setTimeout(function () { try { overlay.remove(); } catch (e) {} }, 200);
                     resolve(result);
                 }
-                function onOk() { finish(isInput ? (inputEl ? inputEl.value : '') : true); }
+                function onOk() {
+                    var _val = isInput ? (inputEl ? inputEl.value : '') : true;
+                    if (opts.checkbox) {
+                        var _cb = overlay.querySelector('.x-dlg-check');
+                        finish({ value: _val, checked: !!(_cb && _cb.checked) });
+                    } else {
+                        finish(_val);
+                    }
+                }
                 function onCancel() { finish(isInput ? null : false); }
                 overlay.addEventListener('click', function (ev) {
                     if (ev.target === overlay) { onCancel(); return; }   // arka plana tikla -> iptal
@@ -2930,7 +2940,7 @@ HTML_TEMPLATE = """
         function xPrompt(message, defaultValue, opts) {
             opts = opts || {};
             return xDialog({ title: opts.title || 'Giriş', message: message, input: true, defaultValue: defaultValue,
-                okText: opts.okText || 'Tamam', cancelText: opts.cancelText || 'Vazgeç' });
+                okText: opts.okText || 'Tamam', cancelText: opts.cancelText || 'Vazgeç', checkbox: opts.checkbox });
         }
 
         // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet -> havuzu SIFIRLA
@@ -2949,9 +2959,10 @@ HTML_TEMPLATE = """
                 // 2) Ad sor. Varsayilan: acik bir rapor duzenleniyorsa ONUN adi (ayni kayit
                 //    guncellenir/upsert); yoksa tarih-saat.
                 var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
-                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
-                if (name === null) return;            // iptal
-                name = (name || '').trim() || def;
+                var _cevap = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet', checkbox: 'Başlıksız' });
+                if (_cevap === null) return;          // iptal
+                var name = (_cevap.value || '').trim() || def;
+                var basliksiz = !!_cevap.checked;     // "Başlıksız" işaretliyse Word'de Başlık 2 basılmaz
 
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
 
@@ -2969,7 +2980,9 @@ HTML_TEMPLATE = """
                 }
 
                 // 4) .docx uret + PC'ye indir. (Havuz asagida, BASARILI kayittan sonra sifirlanir.)
-                var blob = await window.XLocalDocx.generateBlob(xBuildStyleOpts());
+                var _wopts = xBuildStyleOpts();
+                if (basliksiz) { _wopts.basliksiz = true; }   // "Başlıksız": Başlık 2'ler basılmaz
+                var blob = await window.XLocalDocx.generateBlob(_wopts);
                 var filename = xRaporDosyaAdi(name);
                 var url = window.URL.createObjectURL(blob);
                 var a = document.createElement('a');
@@ -5684,13 +5697,13 @@ LOCAL_DOCX_JS = r'''
           // gorunur, gonderileri altinda akar (kac sayfaya yayildigi farketmez).
           // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
           // gorur (kullanici istegi 2026-07-17).
-          birimler.push({ h1:(k===0?h1:null), h2:(k===0?baslikFormatla(baslik):null),
+          birimler.push({ h1:(k===0?h1:null), h2:((!opts.basliksiz && k===0)?baslikFormatla(baslik):null),
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
         }
       } else {
         var item2=val, b2=(item2.title||'').trim();
         if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; }
-        birimler.push({ h1:h1, h2:(b2?baslikFormatla(b2):null),
+        birimler.push({ h1:h1, h2:((!opts.basliksiz && b2)?baslikFormatla(b2):null),
                         item:item2, link:xRaporLinkGoster(item2), son:true });
       }
     }
