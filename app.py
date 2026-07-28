@@ -1919,7 +1919,7 @@ HTML_TEMPLATE = """
                         Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
                     </p>
 
-                    <div class="form-group" id="links-input-group" style="gap: 14px;">
+                    <div class="form-group" id="links-input-group">
                         <label for="tweet_links_input">Taranacak Gönderi Linkleri (Her Satıra Bir Link):</label>
                         <textarea id="tweet_links_input" style="height: 38px; min-height: 38px; max-height: 38px; resize: none; overflow-y: hidden; line-height: 24px; padding: 6px 12px;" placeholder="X, Instagram veya Facebook linklerini buraya yapıştırın (Her satıra bir link)..."></textarea>
                     </div>
