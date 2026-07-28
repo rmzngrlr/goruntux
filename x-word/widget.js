@@ -1857,6 +1857,12 @@
                     let ekranGoruntusu = "", baslik = "", groupOverride = "";
                     let link = _urlSade;   // RT'li tweette asagida sentetik benzersiz anahtara donusur
 
+                    // v4.9: PANOYA yazmayı TIKLAMA ANINDA (yakalamadan ÖNCE, gesture taze) başlat.
+                    // Görsel bir SÖZ olarak verilir; yakalama bitince doldurulur. Böylece yakalama
+                    // uzun sürse de (yanıt tweetinde 2 yakalama dahil) pano yazımı engellenmez.
+                    // Link = _urlSade (gerçek içerik URL'si; RT sentetik anahtarı değil).
+                    var _pano = xPanoHazirla(_urlSade);
+
                     if (_profilMi) {
                         // PROFIL: primaryColumn'u yakala. captureArticle URL'den isProfile'i
                         // algilayip yuksekligi profil kartina sinirliyor (bkz. ~:1278).
@@ -1955,16 +1961,13 @@
 
                     if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
                         alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
+                        _pano.iptal();   // v4.9: yakalama başarısız -> tıklamada başlatılan pano yazımını iptal et
                         _sifirla(); return;
                     }
 
-                    // v4.2 (kullanıcı isteği): içerik VARSA görsel + link'i PANOYA da kopyala
-                    // (Ctrl+V ile başka yere yapıştır). Bu noktada ekranGoruntusu kesin var.
-                    // _urlSade = gerçek içerik linki (RT sentetik link'i değil). Yakalama uzun sürerse
-                    // kullanıcı-etkileşimi süresi dolup pano yazımı başarısız olabilir -> yumuşak geç.
-                    let _panoOk = false;
-                    try { await xPanoyaKopyala(ekranGoruntusu, _urlSade); _panoOk = true; }
-                    catch (e) { printLog("Panoya kopyalanamadı: " + ((e && e.message) || e)); }
+                    // v4.9: görsel hazır -> pano SÖZÜNÜ çöz. Yazım tıklama anında (gesture taze) başlamıştı;
+                    // burada görseli doldururuz -> yakalama uzun sürse bile pano yazımı engellenmez.
+                    var _panoOk = await _pano.gorseliVer(ekranGoruntusu);
 
                     buton.innerText = "⏳ Ekleniyor...";
                     chrome.runtime.sendMessage({
@@ -1997,27 +2000,41 @@
         }
     }
 
-    // Kullanıcı isteği (v4.2): "Rapora Ekle"de içerik + link'i PANOYA kopyala (Ctrl+V ile başka yere
-    // yapıştır). Görüntü ZATEN PNG data URL (toDataURL('image/png')) -> fetch/canvas YOK (x.com CSP'sine
-    // takılmasın diye base64->Blob doğrudan). image/png + text/plain TEK ClipboardItem: resim-uygulamasına
-    // yapıştırınca GÖRSEL, metin alanına yapıştırınca LINK gelir.
-    async function xPanoyaKopyala(dataUrl, link) {
-        if (!navigator.clipboard || !window.ClipboardItem || !navigator.clipboard.write) {
-            throw new Error("Clipboard API desteklenmiyor");
-        }
-        var virgul = String(dataUrl).indexOf(',');
-        if (String(dataUrl).indexOf('data:') !== 0 || virgul < 0) {
-            throw new Error("Geçersiz görsel verisi (data URL değil)");
-        }
-        var mimeMatch = dataUrl.slice(0, virgul).match(/data:([^;]+)/);
-        var mime = (mimeMatch && mimeMatch[1]) || 'image/png';
-        var bin = atob(dataUrl.slice(virgul + 1));
-        var arr = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) { arr[i] = bin.charCodeAt(i); }
-        var parcalar = {};
-        parcalar[mime] = new Blob([arr], { type: mime });   // pano image/png ister; görüntü PNG
+    // Kullanıcı isteği (v4.2, v4.9 sağlam): "Rapora Ekle"de içerik + link'i PANOYA kopyala (Ctrl+V ile
+    // başka yere yapıştır). Görüntü PNG data URL -> base64->Blob DOĞRUDAN (fetch/canvas YOK, x.com CSP).
+    // image/png + text/plain TEK ClipboardItem: resim-uygulamasına GÖRSEL, metin alanına LINK gelir.
+    //
+    // v4.9 SAĞLAM YÖNTEM (user-activation tuzağı): navigator.clipboard.write kullanıcı-etkileşimi ister
+    // ve ~5sn'de dolar; yakalama birkaç sn sürdüğü için ESKİDEN yazım engelleniyordu. Çözüm: write'ı
+    // TIKLAMA ANINDA (yakalamadan önce) çağır; görseli SÖZ (Promise) olarak ver, yakalama bitince çöz.
+    // Döner: { gorseliVer(dataUrl)->Promise<bool>, iptal() }.
+    function xPanoHazirla(link) {
+        var _bos = { gorseliVer: function () { return Promise.resolve(false); }, iptal: function () {} };
+        if (!navigator.clipboard || !window.ClipboardItem || !navigator.clipboard.write) { return _bos; }
+        var _res = null, _rej = null;
+        var imgPromise = new Promise(function (r, j) { _res = r; _rej = j; });
+        var parcalar = { 'image/png': imgPromise };
         if (link) { parcalar['text/plain'] = new Blob([String(link)], { type: 'text/plain' }); }
-        await navigator.clipboard.write([new ClipboardItem(parcalar)]);
+        var yazma = null;
+        try {
+            yazma = navigator.clipboard.write([new ClipboardItem(parcalar)]);
+            yazma.catch(function () {});   // reject/iptal sessiz (asagida ele alinir)
+        } catch (e) { return _bos; }
+        return {
+            gorseliVer: async function (dataUrl) {
+                try {
+                    var virgul = String(dataUrl).indexOf(',');
+                    if (String(dataUrl).indexOf('data:') !== 0 || virgul < 0) { _rej(new Error('gecersiz')); return false; }
+                    var bin = atob(dataUrl.slice(virgul + 1));
+                    var arr = new Uint8Array(bin.length);
+                    for (var i = 0; i < bin.length; i++) { arr[i] = bin.charCodeAt(i); }
+                    _res(new Blob([arr], { type: 'image/png' }));   // görseller PNG; ClipboardItem anahtarı da image/png
+                    if (yazma) { await yazma; return true; }
+                    return false;
+                } catch (e) { try { _rej(e); } catch (x) {} printLog("Panoya yazma hatası: " + ((e && e.message) || e)); return false; }
+            },
+            iptal: function () { try { _rej(new Error('iptal')); } catch (e) {} }
+        };
     }
 
     function isVersionOlder(local, latest) {
