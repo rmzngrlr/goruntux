@@ -1044,10 +1044,10 @@
             // HEMEN ÖNCESİndeki article (X detay sayfasında atalar üstte, yanıtlar altta). Odak ilk
             // article ise -> yanıt değil (standalone) -> tek yakala (ESKİ davranış, sıfır regresyon).
             async function xYakalaTweetVeYanit(focusedArticle, articles) {
-                async function _yakala(el) {
+                async function _yakala(el, opts) {
                     el.scrollIntoView({ block: 'start', behavior: 'instant' });
                     await new Promise(r => setTimeout(r, 600));
-                    return await captureArticle(el) || "";
+                    return await captureArticle(el, opts) || "";
                 }
                 var parentArticle = null;
                 try {
@@ -1056,7 +1056,8 @@
                     if (idx > 0) { parentArticle = arr[idx - 1]; }
                 } catch (e) {}
                 if (!parentArticle) { return await _yakala(focusedArticle); }
-                var parentImg = await _yakala(parentArticle);
+                // Parent (yanıt verilen) TAM yükseklikte + footer-gizlemesiz (saat başlıkta -> v4.3 hatası).
+                var parentImg = await _yakala(parentArticle, { tamYukseklik: true });
                 var focusedImg = await _yakala(focusedArticle);
                 if (parentImg && parentImg.length > 100 && focusedImg && focusedImg.length > 100) {
                     try { return await xDikeyBirlestir(parentImg, focusedImg); }
@@ -1072,7 +1073,8 @@
             // 4) Yapışkan (sticky/fixed) barları ve eklenti widget'ını gizle
             // 5) Tweeti en üste kaydır, Screenshot 1'i al
             // 6) Eğer tweet viewport'a sığıyorsa tek ekran görüntüsü kırp, sığmıyorsa aşağı kaydırıp Screenshot 2'yi al ve birleştir (Stitch)
-            async function captureArticle(element) {
+            async function captureArticle(element, opts) {
+                opts = opts || {};   // v4.5: opts.tamYukseklik -> parent (saat başlıkta) için footer-gizleme + saat-kırpması ATLA
                 // Disable smooth scrolling temporarily to prevent animation delays
                 const disableSmoothScrollStyles = document.createElement('style');
                 disableSmoothScrollStyles.innerHTML = '* { scroll-behavior: auto !important; }';
@@ -1196,7 +1198,9 @@
                                 dateTimeRow = dateTimeRow.parentElement;
                             }
                             
-                            if (dateTimeRow) {
+                            // v4.5: tamYukseklik (parent tweet) -> footer-gizlemeyi ATLA. Parent'ta saat
+                            // BAŞLIKTA; "saatten sonrasını gizle" TÜM içeriği silerdi (v4.3 absürt çıktı).
+                            if (dateTimeRow && !opts.tamYukseklik) {
                                 let next = dateTimeRow.nextElementSibling;
                                 while (next) {
                                     hiddenFooterElements.push({ el: next, origDisplay: next.style.display });
@@ -1368,6 +1372,9 @@
                         // Faz IG-1 (sade no-zoom): tam yüksekliği ölç; X yolu kaydırıp birleştirerek tamamını alır.
                         articleHeight = r.height;
                     }
+                    // v4.5: parent (yanıt verilen) tweet -> saat BAŞLIKTA olduğundan saat-satırı kırpması
+                    // header'a keserdi; TAM article yüksekliğini kullan (footer-gizleme de yukarıda atlandı).
+                    if (opts.tamYukseklik) { articleHeight = r.height; }
 
                     const measuredRect = {
                         top: r.top,
@@ -1940,13 +1947,10 @@
                             }
                         } catch (e) {}
 
-                        // v4.4: GERİ ALINDI — yanıt+parent birleştirme captureArticle'ın "saatten
-                        // sonrasını gizle" mantığıyla çakışıyordu (parent'ta saat BAŞLIKTA -> içerik
-                        // siliniyordu, absürt çıktı). DOM diagnostiği sonrası doğru kurulacak (Faz 1b).
-                        // Şimdilik ESKİ davranış: yalnız odak (yanıt) tweetini yakala.
-                        article.scrollIntoView({ block: 'start', behavior: 'instant' });
-                        await new Promise(r => setTimeout(r, 600));
-                        ekranGoruntusu = await captureArticle(article) || "";
+                        // v4.5: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de kat.
+                        // Parent TAM yükseklikte + footer-gizlemesiz yakalanır (tamYukseklik) -> v4.3'teki
+                        // "parent'ın sadece başlığı" hatası düzeltildi. Link/başlık YANIT tweetine ait.
+                        ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
                     }
 
                     if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
