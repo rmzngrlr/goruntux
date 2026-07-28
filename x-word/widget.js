@@ -3898,14 +3898,24 @@
                 durumText.innerHTML = `🤖 <b>Görsel alınıyor…</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${_alinan2}/${_toplam2}</span>`;
             }
 
+            // v4.6 (Faz 2): X tweeti ise YANIT+PARENT yakala (tekil ise tek). DİĞER platformlar
+            // (IG/FB/TT/YT) AYNEN captureArticle -> X-korumalı, additive, sıfır regresyon.
+            const _yakalaHedef = async function () {
+                try {
+                    if (article && article.getAttribute && article.getAttribute('data-testid') === 'tweet') {
+                        return await xYakalaTweetVeYanit(article, document.querySelectorAll('article[data-testid="tweet"]')) || "";
+                    }
+                } catch (e) { printLog("Yanıt+parent yakalama hatası, tekile dönülüyor: " + ((e && e.message) || e)); }
+                return await captureArticle(article) || "";
+            };
             let screenshotData = "";
             try {
-                screenshotData = await captureArticle(article) || "";
+                screenshotData = await _yakalaHedef();
             } catch (captureErr) {
                 printLog("Yakalama hatası oluştu: " + captureErr.message);
                 await new Promise(r => setTimeout(r, 1000));
                 try {
-                    screenshotData = await captureArticle(article) || "";
+                    screenshotData = await _yakalaHedef();
                 } catch (secondErr) {
                     printLog("Kritik yakalama hatası: " + secondErr.message);
                 }
