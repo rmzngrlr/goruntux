@@ -971,6 +971,8 @@ HTML_TEMPLATE = """
 
         .header {
             margin-bottom: 30px;
+            position: relative;   /* header-controls buna göre konumlansın -> mobil uyarı şeridi header'ı
+                                     aşağı itince sağ-üst kontroller de onunla insin (çakışma olmasın) */
         }
 
         .header h1 {
@@ -1515,8 +1517,8 @@ HTML_TEMPLATE = """
         /* Üst-sağ kontrol sırası: Tema -> Stil Ayarları -> (en sağda) eklenti durum kutusu */
         .header-controls {
             position: absolute;
-            top: 40px;
-            right: 40px;
+            top: 0;
+            right: 0;
             z-index: 10;
             display: flex;
             align-items: center;
@@ -1787,6 +1789,15 @@ HTML_TEMPLATE = """
     <div class="container">
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
+            <!-- Mobil uyarısı: eklenti YALNIZ masaüstünde çalışır. xInitMobileWarning() UA'ya göre gösterir;
+                 kapatınca localStorage'a yazılır (tekrar rahatsız etmez). main-content flex-column olduğu için
+                 banner EN ÜSTTE, tam genişlik; flex-shrink:0 -> sıkışmaz. (container flex-row'a KOYULMAZ,
+                 orada dikey stretch olup yan sütuna dönüşüyordu.) -->
+            <div id="mobile-warning" style="display:none; flex-shrink:0; background: rgba(255,176,32,0.12); border:1px solid rgba(255,176,32,0.35); color:#ffb020; border-radius:12px; padding:13px 46px 13px 16px; margin-bottom:18px; font-size:13px; line-height:1.5; font-weight:600; position:relative;">
+                ⚠️ Bu araç masaüstü bir tarayıcı ve <b>GörüntüX eklentisi</b> gerektirir. Mobil cihazlarda eklenti çalışmaz — otomatik tarama ve X'te <b>Rapora Ekle</b> kullanılamaz. Lütfen bilgisayardan (Chrome/Edge) açın.
+                <span onclick="dismissMobileWarning()" title="Kapat" style="position:absolute; top:8px; right:12px; cursor:pointer; font-size:22px; line-height:1; color:#ffb020;">&times;</span>
+            </div>
+
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
@@ -2700,6 +2711,9 @@ HTML_TEMPLATE = """
             // Kayitli Raporlar: suresi dolanlari temizle + listeyi ciz.
             xInitSavedReports();
 
+            // Mobil cihazdan acildiysa ustte uyari ser/idi goster (eklenti mobilde calismaz).
+            xInitMobileWarning();
+
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -3243,6 +3257,32 @@ HTML_TEMPLATE = """
             } catch (err) {
                 showToast('Yeniden adlandırma hatası: ' + (err && err.message ? err.message : err), 'danger');
             }
+        }
+        // Mobil uyarısı (kullanıcı isteği): eklenti YALNIZ masaüstünde çalışır; mobilde panel açılınca
+        // üstte kapatılabilir şerit göster. Tespit: user-agent (iPadOS Safari 'masaüstü' UA verdiği için
+        // dokunmatik + Mac kalıbıyla ayrıca yakalanır). Kapatınca localStorage'a yazılır, tekrar gösterilmez.
+        function xIsMobile() {
+            try {
+                var ua = navigator.userAgent || '';
+                if (/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS/i.test(ua)) { return true; }
+                if (/Macintosh/.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) { return true; }
+                return false;
+            } catch (e) { return false; }
+        }
+        function dismissMobileWarning() {
+            try {
+                var el = document.getElementById('mobile-warning');
+                if (el) { el.style.display = 'none'; }
+                localStorage.setItem('x_mobile_warn_dismissed', '1');
+            } catch (e) {}
+        }
+        function xInitMobileWarning() {
+            try {
+                if (!xIsMobile()) { return; }
+                if (localStorage.getItem('x_mobile_warn_dismissed') === '1') { return; }
+                var el = document.getElementById('mobile-warning');
+                if (el) { el.style.display = 'block'; }
+            } catch (e) {}
         }
         function xInitSavedReports() {
             try {
