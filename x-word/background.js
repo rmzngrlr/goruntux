@@ -1303,6 +1303,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // v4.13: Widget'ın sürüm-kilidi için. KURULU eklenti sürümü (getManifest) + sunucunun
+  // bildirdigi EN GUNCEL surum (ext_latest_version, /api/status). Widget bunlari kiyaslayip
+  // eskiyse "Rapora Ekle" yerine kilit ekrani gosterir (panelin startAutomation kilidinin ikizi).
+  // Cross-origin fetch: background host_permissions <all_urls> ile CORS'a takilmaz.
+  // FAIL-OPEN: sunucuya ulasilamaz/latest bossa latestVersion="" doner -> widget KILITLEMEZ.
+  if (message.action === "getVersionStatus") {
+    const localVersion = chrome.runtime.getManifest().version;
+    const origin = message.origin || "http://localhost:3011";
+    const zamanAsimi = new Promise((resolve) => setTimeout(() => resolve(""), 3000));
+    const guncelGetir = fetch(`${origin}/api/status`)
+      .then((r) => r.json())
+      .then((data) => (data && data.ext_latest_version) || "")
+      .catch(() => "");
+    Promise.race([guncelGetir, zamanAsimi]).then((latestVersion) => {
+      sendResponse({ localVersion: localVersion, latestVersion: latestVersion });
+    });
+    return true;   // async sendResponse
+  }
+
   // SILINDI (v3.62): "detectActiveProfile" isleyicisi. TUM sekmeleri tarayip acik bir X
   // profilinden kullanici adini cikariyor ve cagirana donduruyordu. Cagirani bridge.js'teki
   // (yine silinen) X_RAPOR_DETECT_ACTIVE_PROFILE daliydi ve o dal her sayfada dinleniyordu

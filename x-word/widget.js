@@ -1817,6 +1817,19 @@
             chrome.storage.local.get({
                 server_origin: "http://localhost:3011"
             }, (res) => {
+                // v4.13: PANELLE TUTARLILIK — widget da ESKI surumde is yaptirmasin ("Rapora Ekle").
+                // Kendi (kurulu) surumunu sunucunun ext_latest_version'iyla kiyasla; eskiyse buton
+                // yerine KILIT ekrani goster (panelin startAutomation kilidinin ikizi).
+                // FAIL-OPEN: sunucuya ulasilamaz/latest bossa (eski panel/cevrimdisi) KILITLEME —
+                // panelin xSurumKiyas mantigi gibi YALNIZ ikisi de doluysa kilitle.
+                chrome.runtime.sendMessage({ action: "getVersionStatus", origin: res.server_origin }, (vres) => {
+                    if (chrome.runtime.lastError) { /* mesaj ulasmadi -> fail-open */ }
+                    var _yerel = (vres && vres.localVersion) || "";
+                    var _guncel = (vres && vres.latestVersion) || "";
+                    if (_yerel && _guncel && isVersionOlder(_yerel, _guncel)) {
+                        renderVersionLockedWidget(_yerel, _guncel);
+                        return;
+                    }
                 // v3.79: sunucu adresi widget'ta GOSTERILMEZ (kullanici istegi). res.server_origin
                 // asagidaki buton onclick'inde hala kullaniliyor, o yuzden storage okumasi kaliyor.
                 durumText.innerHTML = `🛡️ <b>GörüntüX</b><br>
@@ -1994,6 +2007,7 @@
                         }
                     });
                 };
+                });   // v4.13: getVersionStatus callback kapanışı
             });
         } catch (e) {
             showError(e);
