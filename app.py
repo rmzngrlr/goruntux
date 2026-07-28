@@ -4976,9 +4976,14 @@ HTML_TEMPLATE = """
                             }
                         } catch (e) {}
 
-                        // Alt cizgi: HER link altina DEGIL, her baslik grubunun SON link paragrafina
+                        // Alt cizgi: HER link altina DEGIL, her baslik grubunun SON ICERIK blogu altina
                         // (Word ciktisiyla ayni; v3.97/98). Blanket p:has(a) border CSS'i kaldirildi ->
-                        // grup-sonu link burada isaretlenir. Grup = bir h1/h2 basligindan digerine.
+                        // grup-sonu icerik burada isaretlenir. Grup = bir h1/h2 basligindan digerine.
+                        // SON ICERIK = link YA DA gorsel iceren blok. NEDEN gorsel de: bir hesabin
+                        // linkli tweetlerinden SONRA gelen RT ss'i (RT'lenen tweetin linki raporda GIZLI ->
+                        // o blokta <a href> YOK, yalniz <img>) grubun son ogesiyse, yalniz-link izlense
+                        // cizgi bir onceki linkin altina (RT ss'in USTUNE) dusuyordu. Gorseli de sayinca
+                        // cizgi gercek son oge olan RT ss'inin ALTINA gelir (Word ile ayni).
                         try {
                             var _kids = iframeDoc.body ? iframeDoc.body.children : [];
                             var _sonLinkP = null, _grupSon = [];
@@ -4987,8 +4992,8 @@ HTML_TEMPLATE = """
                                 var _tag = (_el.tagName || '').toLowerCase();
                                 if (_tag === 'h1' || _tag === 'h2') {
                                     if (_sonLinkP) { _grupSon.push(_sonLinkP); _sonLinkP = null; }
-                                } else if (_el.querySelector && _el.querySelector('a[href]')) {
-                                    _sonLinkP = _el;   // bu gruptaki (simdilik) son link paragrafi
+                                } else if (_el.querySelector && (_el.querySelector('a[href]') || _el.querySelector('img'))) {
+                                    _sonLinkP = _el;   // bu gruptaki (simdilik) son ICERIK blogu (link ya da gorsel)
                                 }
                             }
                             if (_sonLinkP) { _grupSon.push(_sonLinkP); }   // son grup
