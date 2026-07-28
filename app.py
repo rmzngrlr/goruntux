@@ -1528,6 +1528,18 @@ HTML_TEMPLATE = """
         html.x-mobile #auto-desktop-content { display: none !important; }
         html.x-mobile #auto-mobile-block { display: block !important; }
 
+        /* Mobil header: sağ-üst kontroller (absolute) dar ekranda başlıkla ÇAKIŞIYORDU. Mobilde header'ı
+           dikey akışa al -> başlık + alt yazı önce, kontroller (Tema/Stil/Eklenti) EN ALTTA (order:3),
+           sığmazsa alt satıra sarar (flex-wrap). Masaüstü etkilenmez (yalnız html.x-mobile). */
+        html.x-mobile .header { display: flex; flex-direction: column; }
+        html.x-mobile .header-controls {
+            position: static;
+            order: 3;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
         /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
            Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
         .ext-status-box {
