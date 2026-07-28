@@ -2793,13 +2793,19 @@ HTML_TEMPLATE = """
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (data && data.status === 'success') {
-                        showToast('İçerik silindi.', 'success');
                         window.lastManuelListJson = null;   // havuz DOM'u yeniden cizilsin
                         refreshStatus();                     // havuz gorunumu guncelle
-                        // Onizlemeyi yeniden uret (silinen oge + bosalan baslik gitsin). Bos kaldiysa
-                        // generateManualWord zaten bos onizleme uretir; modal acik kalir.
-                        if (typeof generateManualWord === 'function') {
-                            setTimeout(function () { generateManualWord(true); }, 250);
+                        // Son icerik de silindiyse (havuz BOS) onizlemeyi KAPAT (kullanici istegi).
+                        // Aksi halde silinen oge + bosalan basligi yansitmak icin onizlemeyi yeniden uret.
+                        // NOT: data.remaining eski sunucuda YOK -> undefined !== 0 -> eski davranis (yeniden uret).
+                        if (data.remaining === 0) {
+                            showToast('Son içerik silindi, havuz boş — önizleme kapatıldı.', 'success');
+                            closePreviewModal();
+                        } else {
+                            showToast('İçerik silindi.', 'success');
+                            if (typeof generateManualWord === 'function') {
+                                setTimeout(function () { generateManualWord(true); }, 250);
+                            }
                         }
                     } else {
                         showToast('Silme hatası: ' + (data && data.message || ''), 'danger');
@@ -6432,7 +6438,7 @@ def manual_delete(index):
                 except:
                     pass
             pool.pop(list_idx)
-            return jsonify({"status": "success", "message": "Icerik silindi."})
+            return jsonify({"status": "success", "message": "Icerik silindi.", "remaining": len(pool)})
         return jsonify({"status": "error", "message": "Gecersiz dizin."})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
