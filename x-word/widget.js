@@ -1940,9 +1940,13 @@
                             }
                         } catch (e) {}
 
-                        // v4.3: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de
-                        // görüntüye kat (link/başlık yukarıda YANIT tweetine göre ayarlandı).
-                        ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
+                        // v4.4: GERİ ALINDI — yanıt+parent birleştirme captureArticle'ın "saatten
+                        // sonrasını gizle" mantığıyla çakışıyordu (parent'ta saat BAŞLIKTA -> içerik
+                        // siliniyordu, absürt çıktı). DOM diagnostiği sonrası doğru kurulacak (Faz 1b).
+                        // Şimdilik ESKİ davranış: yalnız odak (yanıt) tweetini yakala.
+                        article.scrollIntoView({ block: 'start', behavior: 'instant' });
+                        await new Promise(r => setTimeout(r, 600));
+                        ekranGoruntusu = await captureArticle(article) || "";
                     }
 
                     if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
