@@ -971,8 +971,6 @@ HTML_TEMPLATE = """
 
         .header {
             margin-bottom: 30px;
-            position: relative;   /* header-controls buna göre konumlansın -> mobil uyarı şeridi header'ı
-                                     aşağı itince sağ-üst kontroller de onunla insin (çakışma olmasın) */
         }
 
         .header h1 {
@@ -1517,13 +1515,18 @@ HTML_TEMPLATE = """
         /* Üst-sağ kontrol sırası: Tema -> Stil Ayarları -> (en sağda) eklenti durum kutusu */
         .header-controls {
             position: absolute;
-            top: 0;
-            right: 0;
+            top: 40px;
+            right: 40px;
             z-index: 10;
             display: flex;
             align-items: center;
             gap: 12px;
         }
+
+        /* Mobil (x-mobile, UA ile <html>'e eklenir): YALNIZ Otomatik(eklenti) sekmesinde tarama içeriğini
+           gizle, "Masaüstü Gerekli" bloğunu göster. Diğer sekmeler etkilenmez. */
+        html.x-mobile #auto-desktop-content { display: none !important; }
+        html.x-mobile #auto-mobile-block { display: block !important; }
 
         /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
            Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
@@ -1786,18 +1789,12 @@ HTML_TEMPLATE = """
     </style>
 </head>
 <body>
+    <!-- Mobil tespiti: <html>'e x-mobile sınıfı ekle (UA; iPadOS 'masaüstü' UA -> dokunmatik+Mac kalıbı).
+         Body'den ÖNCE çalışır -> CSS anında uygular, FLASH olmaz. YALNIZ Otomatik(eklenti) sekmesini etkiler. -->
+    <script>(function(){try{var ua=navigator.userAgent||'';if(/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints&&navigator.maxTouchPoints>1)){document.documentElement.classList.add('x-mobile');}}catch(e){}})();</script>
     <div class="container">
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
-            <!-- Mobil uyarısı: eklenti YALNIZ masaüstünde çalışır. xInitMobileWarning() UA'ya göre gösterir;
-                 kapatınca localStorage'a yazılır (tekrar rahatsız etmez). main-content flex-column olduğu için
-                 banner EN ÜSTTE, tam genişlik; flex-shrink:0 -> sıkışmaz. (container flex-row'a KOYULMAZ,
-                 orada dikey stretch olup yan sütuna dönüşüyordu.) -->
-            <div id="mobile-warning" style="display:none; flex-shrink:0; background: rgba(255,176,32,0.12); border:1px solid rgba(255,176,32,0.35); color:#ffb020; border-radius:12px; padding:13px 46px 13px 16px; margin-bottom:18px; font-size:13px; line-height:1.5; font-weight:600; position:relative;">
-                ⚠️ Bu araç masaüstü bir tarayıcı ve <b>GörüntüX eklentisi</b> gerektirir. Mobil cihazlarda eklenti çalışmaz — otomatik tarama ve X'te <b>Rapora Ekle</b> kullanılamaz. Lütfen bilgisayardan (Chrome/Edge) açın.
-                <span onclick="dismissMobileWarning()" title="Kapat" style="position:absolute; top:8px; right:12px; cursor:pointer; font-size:22px; line-height:1; color:#ffb020;">&times;</span>
-            </div>
-
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
@@ -1924,7 +1921,18 @@ HTML_TEMPLATE = """
 
             <!-- Tab 3: Automation -->
             <div id="tab-auto" class="tab-content active">
-                <div class="card">
+                <!-- Mobilde eklenti çalışmadığından YALNIZ bu sekme "Masaüstü Gerekli" gösterir; gerçek
+                     tarama içeriği (#auto-desktop-content) html.x-mobile CSS'iyle gizlenir. Diğer sekmeler
+                     mobilde çalışır. xrapor.com/x-rapor-arti tarzı. -->
+                <div id="auto-mobile-block" style="display:none; text-align:center; padding:56px 24px;">
+                    <div style="font-size:66px; line-height:1; margin-bottom:22px;">💻</div>
+                    <h3 style="font-size:22px; font-weight:700; color:var(--text-primary); margin:0 0 16px;">Masaüstü Bilgisayar Gerekli</h3>
+                    <p style="max-width:470px; margin:0 auto; font-size:14px; line-height:1.75; color:var(--text-secondary);">
+                        <b>GörüntüX</b>'in otomatik tarama işlemleri bir <b>tarayıcı eklentisine</b> ihtiyaç duyar. Mobil cihazlar eklenti desteğine sahip olmadığından, bu bölümü yalnızca bilgisayarınızdaki bir masaüstü tarayıcıdan (Chrome, Edge, Brave vb.) kullanabilirsiniz.<br><br>
+                        <b>Manuel Rapor Hazırla</b> ve <b>Kayıtlı Raporlar</b> sekmeleri mobilde de çalışır.
+                    </p>
+                </div>
+                <div class="card" id="auto-desktop-content">
                     <h3>🤖 Eklenti ile Otomatik Rapor Üretme</h3>
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
                         Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
@@ -2711,9 +2719,6 @@ HTML_TEMPLATE = """
             // Kayitli Raporlar: suresi dolanlari temizle + listeyi ciz.
             xInitSavedReports();
 
-            // Mobil cihazdan acildiysa ustte uyari ser/idi goster (eklenti mobilde calismaz).
-            xInitMobileWarning();
-
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -3257,32 +3262,6 @@ HTML_TEMPLATE = """
             } catch (err) {
                 showToast('Yeniden adlandırma hatası: ' + (err && err.message ? err.message : err), 'danger');
             }
-        }
-        // Mobil uyarısı (kullanıcı isteği): eklenti YALNIZ masaüstünde çalışır; mobilde panel açılınca
-        // üstte kapatılabilir şerit göster. Tespit: user-agent (iPadOS Safari 'masaüstü' UA verdiği için
-        // dokunmatik + Mac kalıbıyla ayrıca yakalanır). Kapatınca localStorage'a yazılır, tekrar gösterilmez.
-        function xIsMobile() {
-            try {
-                var ua = navigator.userAgent || '';
-                if (/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS/i.test(ua)) { return true; }
-                if (/Macintosh/.test(ua) && navigator.maxTouchPoints && navigator.maxTouchPoints > 1) { return true; }
-                return false;
-            } catch (e) { return false; }
-        }
-        function dismissMobileWarning() {
-            try {
-                var el = document.getElementById('mobile-warning');
-                if (el) { el.style.display = 'none'; }
-                localStorage.setItem('x_mobile_warn_dismissed', '1');
-            } catch (e) {}
-        }
-        function xInitMobileWarning() {
-            try {
-                if (!xIsMobile()) { return; }
-                if (localStorage.getItem('x_mobile_warn_dismissed') === '1') { return; }
-                var el = document.getElementById('mobile-warning');
-                if (el) { el.style.display = 'block'; }
-            } catch (e) {}
         }
         function xInitSavedReports() {
             try {
