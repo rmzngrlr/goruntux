@@ -2913,6 +2913,15 @@ HTML_TEMPLATE = """
             if (saat > 0) return saat + ' saat';
             return '<1 saat';
         }
+        // Havuz (manual-list-section) goruntusune yumusak kaydir (Ac/Birlestir sonrasi kullaniciyi havuza goturur).
+        function xHavuzaKaydir() {
+            setTimeout(function () {
+                try {
+                    var hv = document.getElementById('manual-list-section');
+                    if (hv && hv.style.display !== 'none') { hv.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                } catch (e) {}
+            }, 500);
+        }
         // Sekme adindaki kayitli-rapor sayaci: n>0 ise yuvarlak rozette goster, 0'da gizle.
         function xUpdateSavedBadge(n) {
             var b = document.getElementById('saved-count-badge');
@@ -3023,6 +3032,7 @@ HTML_TEMPLATE = """
                 window.__openReportName = rec.name || '';
                 refreshStatus();
                 await renderSavedReports();
+                xHavuzaKaydir();   // havuz bu sekmede acildi -> kullaniciyi ona goturur
                 showToast('Rapor açıldı: ' + (rec.name || '') + ' — ' + rec.items.length + ' içerik. Düzenleyip tekrar kaydedebilirsin.', 'success');
             } catch (err) {
                 console.error('Rapor açma hatası:', err);
@@ -3078,6 +3088,7 @@ HTML_TEMPLATE = """
                 window.__openReportName = '';   // birlesik = YENI rapor (tek kaynaga bagli degil)
                 refreshStatus();
                 await renderSavedReports();
+                xHavuzaKaydir();   // birlesik havuz bu sekmede acildi -> kullaniciyi ona goturur
                 var msg = raporSay + ' rapor birleştirildi — ' + eklenen + ' içerik havuza yüklendi';
                 if (atlanan > 0) { msg += ' (' + atlanan + ' tekrar atlandı)'; }
                 msg += '. Gözden geçirip "Kaydet ve İndir" ile kaydedin.';
@@ -3562,13 +3573,10 @@ HTML_TEMPLATE = """
                     if (titleEl) {
                         titleEl.innerText = `📋 Havuzda Bekleyen Rapor İçerikleri (${data.manuel_count} Adet)`;
                     }
-                    const activeTabEl = document.querySelector('.tab-btn.active');
-                    const activeTab = activeTabEl ? activeTabEl.getAttribute('data-tab') : 'tab-auto';
-                    if (activeTab !== 'tab-format') {
-                        manualListSec.style.display = 'block';
-                    } else {
-                        manualListSec.style.display = 'none';
-                    }
+                    // v4.1: Havuz TÜM sekmelerde görünür. Eskiden tab-format'ta gizliydi ("Word Düzenle"
+                    // sekmesiydi, havuz alakasızdı); artık "Kayıtlı Raporlar" -> Aç/Birleştir sonrası havuz
+                    // BURADA da görünüp işlenebilmeli (kullanıcı isteği).
+                    manualListSec.style.display = 'block';
                     
                     // İSTEK 2: havuzu hesap-bloklarına gruplayıp sürükle-bırakla sıralanabilir çiz.
                     // Sürükleme sürerken yeniden çizme (drop'u bozmasın).
