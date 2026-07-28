@@ -1470,10 +1470,6 @@ HTML_TEMPLATE = """
         /* Settings Modal & Toggle Button */
         /* Theme Toggle Button Styles */
         .theme-toggle-btn {
-            position: absolute;
-            top: 40px;
-            right: 170px;
-            z-index: 10;
             border: 1px solid var(--border-color);
             background: var(--bg-btn-secondary);
             color: var(--text-primary);
@@ -1496,10 +1492,6 @@ HTML_TEMPLATE = """
         }
 
         .settings-toggle-btn {
-            position: absolute;
-            top: 40px;
-            right: 40px;
-            z-index: 10;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -1518,6 +1510,57 @@ HTML_TEMPLATE = """
             background: var(--accent-glow);
             transform: translateY(-2px);
             box-shadow: 0 0 15px rgba(29, 155, 240, 0.4);
+        }
+
+        /* Üst-sağ kontrol sırası: Tema -> Stil Ayarları -> (en sağda) eklenti durum kutusu */
+        .header-controls {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
+           Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
+        .ext-status-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            border-radius: 99px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        .ext-status-box.ext-ok {
+            background: rgba(0, 186, 124, 0.1);
+            color: var(--success-color);
+            border: 1px solid rgba(0, 186, 124, 0.2);
+            box-shadow: 0 0 16px var(--success-glow);
+            cursor: default;
+        }
+        .ext-status-box.ext-warn {
+            background: rgba(255, 176, 32, 0.12);
+            color: #ffb020;
+            border: 1px solid rgba(255, 176, 32, 0.3);
+            box-shadow: 0 0 16px rgba(255, 176, 32, 0.15);
+            cursor: pointer;
+        }
+        .ext-status-box.ext-err {
+            background: rgba(224, 36, 94, 0.1);
+            color: var(--danger-color, #e0245e);
+            border: 1px solid rgba(224, 36, 94, 0.25);
+            cursor: pointer;
+        }
+        .ext-status-box.ext-warn:hover,
+        .ext-status-box.ext-err:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(29, 155, 240, 0.25);
         }
 
         /* Word Document Preview Modal Styles */
@@ -1745,8 +1788,11 @@ HTML_TEMPLATE = """
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
             <div class="header">
-                <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
-                <button class="settings-toggle-btn" onclick="toggleStyleModal()">⚙️ Stil Ayarları</button>
+                <div class="header-controls">
+                    <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
+                    <button class="settings-toggle-btn" onclick="toggleStyleModal()">⚙️ Stil Ayarları</button>
+                    <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
+                </div>
                 <h1><span class="emoji">📝</span><span class="title-text">GörüntüX</span></h1>
                 <p>Gönderi tarama, Word çıktısı üretme ve rapor biçimlendirme arayüzü</p>
             </div>
@@ -1872,15 +1918,6 @@ HTML_TEMPLATE = """
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
                         Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
                     </p>
-
-                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
-                        <div id="extension-status-container">
-                            <div class="status-badge status-disconnected" id="ext-status-badge">🔴 Eklenti Bekleniyor...</div>
-                            <!-- Eklenti KURULU ama ESKI ise gorunur (bkz. refreshStatus). -->
-                            <div id="ext-version-warning" style="display: none; margin-top: 8px; font-size: 12px; font-weight: 600; line-height: 1.5; color: #ffb020;"></div>
-                        </div>
-                        <a href="/api/extension/download_zip" class="btn btn-secondary">📥 GörüntüX Chrome Eklentisini İndir (.zip)</a>
-                    </div>
 
                     <div class="form-group" id="links-input-group">
                         <label for="tweet_links_input">Taranacak Gönderi Linkleri (Her Satıra Bir Link):</label>
@@ -2058,6 +2095,28 @@ HTML_TEMPLATE = """
         </div>
     </div>
 
+    <!-- Eklenti indirme + kullanma kılavuzu modalı. Yalnız durum kutusu KIRMIZI/SARI iken açılır. -->
+    <div id="extModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🧩 GörüntüX Eklentisi</h2>
+                <span class="close-btn" onclick="closeExtModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin-bottom: 22px;">
+                    <a href="/api/extension/download_zip" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">📥 Eklentiyi İndir (.zip)</a>
+                </div>
+                <h3 style="margin: 0 0 10px;">📖 Kurulum ve Kullanım Kılavuzu</h3>
+                <ol style="font-size: 13px; line-height: 1.75; color: var(--text-secondary); padding-left: 20px; margin: 0;">
+                    <li><b>İndir:</b> Yukarıdaki <b>Eklentiyi İndir</b> ile <code>x-word.zip</code> iner. Sabit bir klasöre çıkar (ör. Masaüstü/GörüntüX). <b>Klasörü taşıma ya da silme</b> — Chrome eklentiyi bu klasör yolundan tanır.</li>
+                    <li><b>Kur (ilk kez):</b> Chrome'da <code>chrome://extensions</code> aç → sağ üstten <b>Geliştirici modu</b>'nu aç → <b>Paketlenmemiş öğe yükle</b> → çıkardığın klasörü seç. GörüntüX listeye eklenir.</li>
+                    <li><b>Güncelle (yeni sürüm çıkınca):</b> Yeni .zip'i <b>aynı klasörün üzerine</b> çıkar → <code>chrome://extensions</code>'ta GörüntüX kartındaki <b>↻ (yenile)</b> düğmesine bas → açık bir X sekmen varsa <b>F5</b> ile yenile.</li>
+                    <li><b>Kullan:</b> Bir gönderi sayfasında (X, Instagram, Facebook, TikTok, YouTube) sağ alttaki <b>Rapora Ekle</b> ile havuza ekle; ya da bu panele link yapıştırıp <b>🚀 Başlat</b> ile otomatik taramayı çalıştır.</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notifications Container -->
     <div id="toast-container" style="position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; max-width: 350px; pointer-events: none;"></div>
 
@@ -2137,6 +2196,20 @@ HTML_TEMPLATE = """
             }
         }
 
+        // Eklenti durum kutusu: yalnız KIRMIZI/SARI (window.extBoxClickable) iken modal açılır.
+        // YEŞİL (hazır) iken tıklanamaz -> indirme butonu/kılavuz gösterilmez.
+        function onExtStatusClick() {
+            if (window.extBoxClickable) { openExtModal(); }
+        }
+        function openExtModal() {
+            const m = document.getElementById('extModal');
+            if (m) { m.classList.add('active'); }
+        }
+        function closeExtModal() {
+            const m = document.getElementById('extModal');
+            if (m) { m.classList.remove('active'); }
+        }
+
         // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
             const styleModal = document.getElementById('styleModal');
@@ -2146,6 +2219,10 @@ HTML_TEMPLATE = """
             const previewModal = document.getElementById('previewModal');
             if (event.target === previewModal) {
                 previewModal.classList.remove('active');
+            }
+            const extModal = document.getElementById('extModal');
+            if (event.target === extModal) {
+                extModal.classList.remove('active');
             }
         });
 
@@ -3530,54 +3607,44 @@ HTML_TEMPLATE = """
                 // worker'ının uykuda/sonlanmış olmasından BAĞIMSIZDIR. Dolayısıyla eklenti bir kez hazır
                 // göründükten sonra, tarama sürsün ya da SW uykuya dalsın, panel "bekleniyor"a DÜŞMEZ;
                 // yalnızca eklenti chrome://extensions'tan kaldırılıp sayfa yenilenince işaret kaybolur.
-                const badge = document.getElementById('ext-status-badge');
                 const extInstalled = document.documentElement.getAttribute('data-x-rapor-installed') === 'true';
                 // Bir kez "kurulu" gördüysek bu sayfa oturumu boyunca hazır kabul et (asla geri düşmesin).
                 if (extInstalled) { window.extReadySticky = true; }
                 const connected = window.extReadySticky || extInstalled || !!data.is_connected;
                 window.extensionConnected = connected;
-                if (connected) {
-                    badge.className = "status-badge status-connected";
-                    badge.innerText = "Eklenti bağlandı (Hazır)";
-                } else {
-                    badge.className = "status-badge status-disconnected";
-                    badge.innerText = "Eklenti bekleniyor...";
-                }
 
-                // --- Eklenti surum uyarisi (kullanici istegi 2026-07-17) ---
-                // Panel bugune kadar yalnizca eklentinin KURULU olup olmadigina bakiyordu;
-                // hangi surum oldugu umurunda degildi -> cok eski bir eklentiyle de yesil
-                // yanıyordu. Kurulu surumu bridge.js ZATEN yaziyor (data-x-rapor-version);
-                // en guncel surumu de sunucu manifest.json'dan okuyup /api/status ile veriyor.
-                //
-                // UC AYRI DURUM, karistirilmamali:
-                //   kurulu degil        -> surum bilinemez, uyari YOK (kirmizi rozet zaten soyluyor)
-                //   kurulu + guncel     -> uyari YOK
-                //   kurulu + ESKI       -> uyari VAR
-                // Kurulu surum sunucudakinden ILERIDE ise (gelistirme makinesi) de susulur.
-                try {
-                    var uyariEl = document.getElementById('ext-version-warning');
-                    var kuruluSurum = document.documentElement.getAttribute('data-x-rapor-version') || '';
-                    var sonSurum = data.ext_latest_version || '';
-                    var eskiMi = !!(kuruluSurum && sonSurum && xSurumKiyas(kuruluSurum, sonSurum) < 0);
-                    // startAutomation bunu okur (kullanici istegi 2026-07-17: eklenti guncel
-                    // degilse bu sekmede islem YAPILAMASIN).
-                    window.extensionOutdated = eskiMi;
-                    window.extensionInstalledVersion = kuruluSurum;
-                    window.extensionLatestVersion = sonSurum;
+                // --- Eklenti surum karsilastirmasi (kurulu vs sunucunun en guncel'i) ---
+                // Kurulu surumu bridge.js yaziyor (data-x-rapor-version); en guncel surumu sunucu
+                // /api/status -> ext_latest_version ile veriyor. startAutomation + girdi kilidi
+                // window.extensionOutdated'e bagli oldugu icin bu globaller AYNEN korunur.
+                var kuruluSurum = document.documentElement.getAttribute('data-x-rapor-version') || '';
+                var sonSurum = data.ext_latest_version || '';
+                var eskiMi = !!(kuruluSurum && sonSurum && xSurumKiyas(kuruluSurum, sonSurum) < 0);
+                window.extensionOutdated = eskiMi;
+                window.extensionInstalledVersion = kuruluSurum;
+                window.extensionLatestVersion = sonSurum;
 
-                    if (uyariEl && eskiMi) {
-                        uyariEl.innerHTML = '&#9888;&#65039; Eklenti güncel değil — kurulu <b>v' + kuruluSurum
-                            + '</b>, en güncel <b>v' + sonSurum + '</b>. Tarama bu sürümle başlatılamaz.<br>'
-                            + '.zip\\'i indirip eklenti klasörünüzün üzerine açın, sonra chrome://extensions '
-                            + 'sayfasında yenile (&#8635;) düğmesine basın.';
-                        uyariEl.style.display = 'block';
-                    } else if (uyariEl) {
-                        uyariEl.style.display = 'none';
+                // --- Sag-ust UC DURUMLU kutu (Stil Ayarlari'nin saginda) ---
+                //   yok/baglanmadi -> KIRMIZI (tiklanabilir: kur)
+                //   kurulu + ESKI  -> SARI   (tiklanabilir: guncelle)
+                //   kurulu + guncel-> YESIL  (tiklanamaz)
+                // Modal (indirme + kilavuz) YALNIZ kirmizi/sari'dan acilir (onExtStatusClick).
+                var kutu = document.getElementById('ext-status-box');
+                if (kutu) {
+                    if (!connected) {
+                        kutu.className = 'ext-status-box ext-err';
+                        kutu.innerHTML = '🔴 Eklenti yok — kur';
+                        window.extBoxClickable = true;
+                    } else if (eskiMi) {
+                        kutu.className = 'ext-status-box ext-warn';
+                        kutu.innerHTML = '🟡 Güncelleme gerekli (v' + kuruluSurum + ' → v' + sonSurum + ')';
+                        window.extBoxClickable = true;
+                    } else {
+                        kutu.className = 'ext-status-box ext-ok';
+                        kutu.innerHTML = '🟢 Eklenti bağlandı (Hazır)';
+                        window.extBoxClickable = false;
                     }
-                    // Kilidin KENDISI burada DEGIL, bu isleyicinin EN SONUNDA uygulanir
-                    // (asagidaki durum dallari inputEl.disabled = false yapiyor).
-                } catch (e) {}
+                }
 
                 // Update manual list section
                 const manualListSec = document.getElementById('manual-list-section');
