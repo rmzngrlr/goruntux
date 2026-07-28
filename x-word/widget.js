@@ -1901,6 +1901,14 @@
                         _sifirla(); return;
                     }
 
+                    // v4.2 (kullanıcı isteği): içerik VARSA görsel + link'i PANOYA da kopyala
+                    // (Ctrl+V ile başka yere yapıştır). Bu noktada ekranGoruntusu kesin var.
+                    // _urlSade = gerçek içerik linki (RT sentetik link'i değil). Yakalama uzun sürerse
+                    // kullanıcı-etkileşimi süresi dolup pano yazımı başarısız olabilir -> yumuşak geç.
+                    let _panoOk = false;
+                    try { await xPanoyaKopyala(ekranGoruntusu, _urlSade); _panoOk = true; }
+                    catch (e) { printLog("Panoya kopyalanamadı: " + ((e && e.message) || e)); }
+
                     buton.innerText = "⏳ Ekleniyor...";
                     chrome.runtime.sendMessage({
                         action: "addToPool",
@@ -1912,7 +1920,7 @@
                         group_override: groupOverride
                     }, (addRes) => {
                         if (addRes && addRes.status === "success") {
-                            buton.innerText = "✔️ Rapora eklendi";
+                            buton.innerText = _panoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
                             // v3.74 (kullanici istegi): panele YONLENDIRME YOK. Icerik sunucudaki
                             // havuza eklendi; kullanici panele kendisi gidince orada gorunur.
                             // (Eskiden burada focusOrOpenPanel cagriliyordu.)
@@ -1930,6 +1938,29 @@
         } catch (e) {
             showError(e);
         }
+    }
+
+    // Kullanıcı isteği (v4.2): "Rapora Ekle"de içerik + link'i PANOYA kopyala (Ctrl+V ile başka yere
+    // yapıştır). Görüntü ZATEN PNG data URL (toDataURL('image/png')) -> fetch/canvas YOK (x.com CSP'sine
+    // takılmasın diye base64->Blob doğrudan). image/png + text/plain TEK ClipboardItem: resim-uygulamasına
+    // yapıştırınca GÖRSEL, metin alanına yapıştırınca LINK gelir.
+    async function xPanoyaKopyala(dataUrl, link) {
+        if (!navigator.clipboard || !window.ClipboardItem || !navigator.clipboard.write) {
+            throw new Error("Clipboard API desteklenmiyor");
+        }
+        var virgul = String(dataUrl).indexOf(',');
+        if (String(dataUrl).indexOf('data:') !== 0 || virgul < 0) {
+            throw new Error("Geçersiz görsel verisi (data URL değil)");
+        }
+        var mimeMatch = dataUrl.slice(0, virgul).match(/data:([^;]+)/);
+        var mime = (mimeMatch && mimeMatch[1]) || 'image/png';
+        var bin = atob(dataUrl.slice(virgul + 1));
+        var arr = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) { arr[i] = bin.charCodeAt(i); }
+        var parcalar = {};
+        parcalar[mime] = new Blob([arr], { type: mime });   // pano image/png ister; görüntü PNG
+        if (link) { parcalar['text/plain'] = new Blob([String(link)], { type: 'text/plain' }); }
+        await navigator.clipboard.write([new ClipboardItem(parcalar)]);
     }
 
     function isVersionOlder(local, latest) {
