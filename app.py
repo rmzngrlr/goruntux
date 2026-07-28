@@ -1539,6 +1539,9 @@ HTML_TEMPLATE = """
             gap: 8px;
             margin-top: 14px;
         }
+        /* Mobilde eklenti kurulamadığı için "Eklenti yok/kur" durum kutusu ANLAMSIZ -> gizle
+           (Tema + Stil Ayarları kalır; onlar Manuel/Kayıtlı Raporlar için mobilde de geçerli). */
+        html.x-mobile #ext-status-box { display: none; }
 
         /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
            Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
