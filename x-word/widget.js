@@ -1016,6 +1016,55 @@
                 });
             }
 
+            // v4.3 (kullanıcı isteği): Yanıt/yorum tweeti ise, DOĞRUDAN yanıt verilen (bir üstteki)
+            // tweeti de görüntüye dahil et. Link/başlık YANIT tweetine ait kalır (çağıran ayarlar).
+            // İki görseli dikey birleştir: 1 ÜSTTE (parent), 2 ALTTA (yanıt). Beyaz zemin.
+            function xDikeyBirlestir(dataUrl1, dataUrl2) {
+                return new Promise(function (resolve, reject) {
+                    var img1 = new Image(), img2 = new Image(), yuklenen = 0;
+                    function tamam() {
+                        try {
+                            var w = Math.max(img1.naturalWidth || img1.width, img2.naturalWidth || img2.width);
+                            var h = (img1.naturalHeight || img1.height) + (img2.naturalHeight || img2.height);
+                            var c = document.createElement('canvas'); c.width = w; c.height = h;
+                            var ctx = c.getContext('2d');
+                            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+                            ctx.drawImage(img1, 0, 0);
+                            ctx.drawImage(img2, 0, (img1.naturalHeight || img1.height));
+                            resolve(c.toDataURL('image/png'));
+                        } catch (e) { reject(e); }
+                    }
+                    img1.onload = function () { if (++yuklenen === 2) tamam(); };
+                    img2.onload = function () { if (++yuklenen === 2) tamam(); };
+                    img1.onerror = img2.onerror = function () { reject(new Error('resim yuklenemedi')); };
+                    img1.src = dataUrl1; img2.src = dataUrl2;
+                });
+            }
+            // Odak (yanıt) tweeti + varsa DOĞRUDAN parent'ı yakala. Parent = odak article'ın DOM'da
+            // HEMEN ÖNCESİndeki article (X detay sayfasında atalar üstte, yanıtlar altta). Odak ilk
+            // article ise -> yanıt değil (standalone) -> tek yakala (ESKİ davranış, sıfır regresyon).
+            async function xYakalaTweetVeYanit(focusedArticle, articles) {
+                async function _yakala(el) {
+                    el.scrollIntoView({ block: 'start', behavior: 'instant' });
+                    await new Promise(r => setTimeout(r, 600));
+                    return await captureArticle(el) || "";
+                }
+                var parentArticle = null;
+                try {
+                    var arr = Array.prototype.slice.call(articles || []);
+                    var idx = arr.indexOf(focusedArticle);
+                    if (idx > 0) { parentArticle = arr[idx - 1]; }
+                } catch (e) {}
+                if (!parentArticle) { return await _yakala(focusedArticle); }
+                var parentImg = await _yakala(parentArticle);
+                var focusedImg = await _yakala(focusedArticle);
+                if (parentImg && parentImg.length > 100 && focusedImg && focusedImg.length > 100) {
+                    try { return await xDikeyBirlestir(parentImg, focusedImg); }
+                    catch (e) { printLog("Dikey birleştirme hatası: " + ((e && e.message) || e)); return focusedImg; }
+                }
+                return focusedImg || parentImg;
+            }
+
             // Tweet elementini yakala (Yerel captureVisibleTab, Scroll Spacer ve Scroll-and-Stitch entegrasyonuyla)
             // 1) Sayfadaki tüm resimlerin yüklenmesini bekle
             // 2) Tweetin tarih/saat satırından sonrasını (beğeni/rt sayıları, butonlar) gizle
@@ -1891,9 +1940,9 @@
                             }
                         } catch (e) {}
 
-                        article.scrollIntoView({ block: 'start', behavior: 'instant' });
-                        await new Promise(r => setTimeout(r, 600));
-                        ekranGoruntusu = await captureArticle(article) || "";
+                        // v4.3: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de
+                        // görüntüye kat (link/başlık yukarıda YANIT tweetine göre ayarlandı).
+                        ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
                     }
 
                     if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
