@@ -5753,6 +5753,22 @@ LOCAL_DOCX_JS = r'''
   // <p><img data-uri>, <p><a href>. Rapor yapisini (h2, img, link, img, link) ogelere ceviririz.
   // Bu blok HAM r-string icinde -> regex ters-bolu kacislari guvenli (HTML_TEMPLATE tuzagi yok).
   function xParseReportHtml(html){
+    // v4.7: her ogeye baslikdaki @handle'i group_override yap. Sebep: RT (repost) ekran goruntusunun
+    // docx'te LINKI GIZLI (xRaporLinkGoster rt:'yi bosaltir) -> linksiz oge generateBlob'da username
+    // turetemeyip STANDALONE oluyor ve AYRI baslik aliyordu (kullanici: MAH'a 2 baslik kondu). Baslik
+    // "Ad (@handle)" -> @handle grup anahtari. generateBlob group_override'i EN yuksek oncelikle
+    // kullanir -> kaynak raporun basligina gore gruplanir (RT dahil dogru birlesir). Normal ogede
+    // title@handle == link-username (davranis ayni); RT'de title@handle = repost yapan -> duzelir.
+    function _grup(baslik){
+      var m = String(baslik || '').match(/@([A-Za-z0-9_]+)/);
+      return m ? m[1].toLowerCase() : '';
+    }
+    function _oge(title, link, img, mime){
+      var o = { title: title, link: link, image_b64: img, image_mime: mime };
+      var g = _grup(title);
+      if (g) { o.group_override = g; }
+      return o;
+    }
     var items = [];
     try {
       var doc = new DOMParser().parseFromString(html || '', 'text/html');
@@ -5761,14 +5777,21 @@ LOCAL_DOCX_JS = r'''
       for (var i = 0; i < blocks.length; i++){
         var el = blocks[i];
         var tag = (el.tagName || '').toLowerCase();
-        if (/^h[1-6]$/.test(tag)) { curBaslik = (el.textContent || '').trim(); continue; }
+        if (/^h[1-6]$/.test(tag)) {
+          // v4.7: yeni baslik -> bekleyen LINKSIZ gorsel (RT vb.) varsa ESKI baslikla ONCE push et.
+          if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); curImg = null; curMime = ''; }
+          curBaslik = (el.textContent || '').trim();
+          continue;
+        }
         var a = el.querySelector ? el.querySelector('a[href]') : null;
         var img = el.querySelector ? el.querySelector('img') : null;
         if (a) {
           var href = a.getAttribute('href') || '';
-          items.push({ title: curBaslik, link: href, image_b64: curImg, image_mime: curMime });
+          items.push(_oge(curBaslik, href, curImg, curMime));
           curImg = null; curMime = '';
         } else if (img) {
+          // v4.7: yeni gorsel -> bekleyen LINKSIZ gorsel varsa ONCE push et (ustune yazma; RT kaybolmasin).
+          if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); curImg = null; curMime = ''; }
           var src = img.getAttribute('src') || '';
           var ci = src.indexOf(',');
           if (src.indexOf('data:') === 0 && ci > 0) {
@@ -5778,7 +5801,7 @@ LOCAL_DOCX_JS = r'''
           }
         }
       }
-      if (curImg) { items.push({ title: curBaslik, link: '', image_b64: curImg, image_mime: curMime }); }
+      if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); }
     } catch (e) {}
     return items;
   }
