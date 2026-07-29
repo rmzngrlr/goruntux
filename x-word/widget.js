@@ -44,7 +44,7 @@
     // Idle "Rapora Ekle" yakalaması GERÇEKTEN yapılmış non-X platformlar. Buton yalnız bunlarda
     // görünür (yarım/bozuk buton olmasın). FB/TT/YT eklendikçe buraya eklenecek.
     function xIdleDestekli(p) {
-        return p === 'ig' || p === 'fb' || p === 'tt';
+        return p === 'ig' || p === 'fb' || p === 'tt' || p === 'yt';
     }
 
     // Instagram gönderi yazarı -> "@kullanici". Idle "Rapora Ekle" başlığı için.
@@ -1757,6 +1757,113 @@
                 }
             }
 
+            // YouTube idle "Rapora Ekle" yakalayıcısı — taramanın YT bloğu (~3266-3547) gorev-BAĞIMSIZ
+            // İKİZİ (captureArticle scope'unda). TARAMAYA DOKUNULMADI. YALNIZ /watch (Shorts/topluluk
+            // tarama gibi kapsam dışı -> net hata). Oynatıcı+başlık bekle, reklam bekle, kareyi sabitle,
+            // örtü katmanlarını gizle, kadraj=oynatıcı+başlık+kanal+istatistik (yorumlara taşmaz, sağ=oynatıcı
+            // kenarı), widget çakışıyorsa gizle, tek-kare (+ taşarsa 2 dilim). Yazar=kanal adı (DOM). {shot,author}|hata.
+            async function xYtIdleYakala() {
+                var _ytGorunur = [], _ytGizli = [];
+                try {
+                    if (location.pathname.toLowerCase() !== '/watch') {
+                        throw new Error("yalniz normal video (/watch) destekleniyor — Shorts/topluluk henuz yok");
+                    }
+                    var ply = null, bas = null;
+                    for (var w = 0; w < 20; w++) {
+                        ply = document.querySelector('#movie_player');
+                        bas = document.querySelector('h1.ytd-watch-metadata, #title h1');
+                        if (ply && bas && ply.getBoundingClientRect().height > 100) break;
+                        await new Promise(function (r) { setTimeout(r, 300); });
+                    }
+                    if (!ply || !bas) throw new Error("oynatici/baslik bulunamadi");
+                    for (var w2 = 0; w2 < 40; w2++) {
+                        if (!/(^|\s)ad-showing(\s|$)/.test(ply.className)) break;
+                        var atla = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button');
+                        if (atla) { try { atla.click(); } catch (e) {} }
+                        await new Promise(function (r) { setTimeout(r, 300); });
+                    }
+                    var vid = document.querySelector('#movie_player video');
+                    if (vid) {
+                        await new Promise(function (res) {
+                            var bitti = false; var fin = function () { if (!bitti) { bitti = true; res(); } };
+                            try { vid.pause(); } catch (e) {}
+                            if (Math.abs(vid.currentTime || 0) < 0.05) { fin(); return; }
+                            try { vid.addEventListener('seeked', fin, { once: true }); } catch (e) {}
+                            try { vid.currentTime = 0; } catch (e) { fin(); }
+                            setTimeout(fin, 1500);
+                        });
+                    }
+                    ['ytd-consent-bump-v2-lightbox', 'ytd-popup-container tp-yt-paper-dialog', 'tp-yt-iron-overlay-backdrop',
+                     'ytd-mealbar-promo-renderer', '#masthead-container', '.ytp-chrome-top', '.ytp-chrome-bottom',
+                     '.ytp-gradient-top', '.ytp-gradient-bottom', '.ytp-large-play-button', '.ytp-play-button-overlay'].forEach(function (sel) {
+                        document.querySelectorAll(sel).forEach(function (el) { var r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return; _ytGizli.push([el, el.style.display]); el.style.setProperty('display', 'none', 'important'); });
+                    });
+                    await new Promise(function (r) { setTimeout(r, 250); });
+                    var parcalar = [];
+                    var ekle = function (sel) { var hepsi = document.querySelectorAll(sel); for (var qi = 0; qi < hepsi.length; qi++) { var r = hepsi[qi].getBoundingClientRect(); if (r.width > 1 && r.height > 1) { parcalar.push(r); return; } } };
+                    ekle('#movie_player'); ekle('h1.ytd-watch-metadata'); ekle('#owner'); ekle('#top-level-buttons-computed'); ekle('#bottom-row');
+                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
+                    var PAY = 8;
+                    var L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - PAY;
+                    var T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
+                    var R2 = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
+                    var B_tam = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
+                    try { var _ym = document.querySelector('#comments'); if (_ym) { var _yr = _ym.getBoundingClientRect(); if (_yr.height > 0) B_tam = Math.min(B_tam, _yr.top); } } catch (e) {}
+                    var _ilkGorunur = function (sel) { var hepsi = document.querySelectorAll(sel); for (var qi = 0; qi < hepsi.length; qi++) { var r = hepsi[qi].getBoundingClientRect(); if (r.width > 1 && r.height > 1) return r; } return null; };
+                    try { var _ply = _ilkGorunur('#movie_player'); if (_ply) R2 = Math.min(R2, _ply.right + PAY); var _pr = _ilkGorunur('#primary'); if (_pr) R2 = Math.min(R2, _pr.right); var _sr = _ilkGorunur('#secondary'); if (_sr) R2 = Math.min(R2, _sr.left); } catch (e) {}
+                    L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
+                    R2 = Math.min(window.innerWidth, Math.round(R2)); B_tam = Math.round(B_tam);
+                    var B = Math.min(window.innerHeight, B_tam);
+                    var cw = R2 - L, ch2 = B - T;
+                    if (cw < 120 || ch2 < 120) throw new Error("kadraj gecersiz (" + cw + "x" + ch2 + ")");
+                    if (cw > window.innerWidth * 0.98 && ch2 > window.innerHeight * 0.98) throw new Error("kadraj TUM SAYFA");
+                    var _biner = function (el) { if (!el) return false; var r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false; return !(r.right <= L || r.left >= R2 || r.bottom <= T || r.top >= B); };
+                    [document.getElementById('x-downloader-widget'), document.getElementById('w-cb-container')].forEach(function (w) { if (_biner(w)) { _ytGorunur.push([w, w.style.visibility]); w.style.setProperty('visibility', 'hidden', 'important'); } });
+                    var dpr = window.devicePixelRatio || 1;
+                    var _capture = async function (top, h) { var rr = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve); }); if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz"); return rr.dataUrl; };
+                    var _delta = Math.max(0, B_tam - window.innerHeight);
+                    var _ham = null;
+                    if (_delta > 0 && _delta <= 700) {
+                        var _oncekiY = window.scrollY, _dav = document.documentElement.style.scrollBehavior;
+                        try {
+                            document.documentElement.style.setProperty('scroll-behavior', 'auto', 'important');
+                            var ust = await _capture(T, window.innerHeight - T);
+                            window.scrollBy(0, _delta);
+                            await new Promise(function (r) { setTimeout(r, 350); });
+                            var _gercek = window.scrollY - _oncekiY;
+                            if (_gercek >= 4 && _gercek <= _delta + 20) {
+                                var _yenidenOlc = function () {
+                                    var p2 = [];
+                                    ['#movie_player', 'h1.ytd-watch-metadata', '#owner', '#top-level-buttons-computed', '#bottom-row'].forEach(function (sel) { var e2 = document.querySelector(sel); if (!e2) return; var r2 = e2.getBoundingClientRect(); if (r2.width > 1 && r2.height > 1) p2.push(r2); });
+                                    if (!p2.length) return 0;
+                                    var b2 = Math.max.apply(null, p2.map(function (r) { return r.bottom; })) + PAY;
+                                    var ym2 = document.querySelector('#comments'); if (ym2) { var yr2 = ym2.getBoundingClientRect(); if (yr2.height > 0) b2 = Math.min(b2, yr2.top); }
+                                    return Math.min(window.innerHeight, Math.round(b2));
+                                };
+                                var _B2 = _yenidenOlc();
+                                var _altUst = Math.max(0, window.innerHeight - _gercek);
+                                var _altYuk = Math.round(_B2 - _altUst);
+                                if (_altYuk >= 4) {
+                                    var alt = await _capture(_altUst, _altYuk);
+                                    if (ust !== alt) { _ham = await igVerticalStitch([ust, alt]); }
+                                }
+                            }
+                        } catch (e) {} finally {
+                            window.scrollTo(0, _oncekiY); document.documentElement.style.scrollBehavior = _dav || '';
+                        }
+                    }
+                    if (!_ham) _ham = await _capture(T, ch2);
+                    var shot = await compressScreenshot(_ham);
+                    if (!shot) throw new Error("sikistirma basarisiz");
+                    var _kanal = '';
+                    try { var k = document.querySelector('#owner ytd-channel-name a, #owner ytd-channel-name yt-formatted-string'); _kanal = k ? String(k.textContent || '').replace(/\s+/g, ' ').trim() : ''; } catch (e) {}
+                    return { shot: shot, author: _kanal };
+                } finally {
+                    try { _ytGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} }); } catch (e) {}
+                    try { _ytGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} }); } catch (e) {}
+                }
+            }
+
             function initWidgetTimer(gorev, storageKey) {
                 if (!gorev || !gorev.aktif) return;
                 
@@ -2207,6 +2314,44 @@
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
                                 buton.innerText = _ttPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                setTimeout(_sifirla, 1500);
+                            } else if (addRes && addRes.status === "duplicate") {
+                                buton.innerText = "⚠️ Zaten havuzda";
+                                setTimeout(_sifirla, 1800);
+                            } else {
+                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                _sifirla();
+                            }
+                        });
+                        return;
+                    }
+
+                    // YouTube: xYtIdleYakala (taramanın gorev-bağımsız ikizi; yalnız /watch). Link = TAM
+                    // URL (kimlik ?v='de; sunucu kanoniklestirir). Başlık = kanal adı (DOM). Profil X'e özel.
+                    if (xPlatform() === 'yt') {
+                        var _ytLink = window.location.href;
+                        var _panoYt = xPanoHazirla(_ytLink);
+                        var _ytRes = null, _ytHata = "";
+                        try { _ytRes = await xYtIdleYakala(); }
+                        catch (e) { _ytHata = (e && e.message) ? e.message : String(e); printLog("YT yakalama hatası: " + _ytHata); }
+                        if (!_ytRes || !_ytRes.shot || _ytRes.shot.length < 100) {
+                            _panoYt.iptal();
+                            alert("Ekran görüntüsü alınamadı" + (_ytHata ? " — sebep: " + _ytHata : "") + ". Tekrar deneyin.");
+                            _sifirla(); return;
+                        }
+                        var _ytPanoOk = await _panoYt.gorseliVer(_ytRes.shot);
+                        buton.innerText = "⏳ Ekleniyor...";
+                        chrome.runtime.sendMessage({
+                            action: "addToPool",
+                            origin: res.server_origin,
+                            title: _ytRes.author || 'YouTube Videosu',
+                            link: _ytLink,
+                            image: _ytRes.shot,
+                            is_profile: false,
+                            group_override: ""
+                        }, (addRes) => {
+                            if (addRes && addRes.status === "success") {
+                                buton.innerText = _ytPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
                                 buton.innerText = "⚠️ Zaten havuzda";
