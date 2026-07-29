@@ -785,9 +785,10 @@ HTML_TEMPLATE = """
     <!-- Eklenti bu isareti gorup SADECE gercek paneli panel olarak kaydeder (guvenilir panel_tab_id) -->
     <meta name="x-rapor-panel" content="1">
     <title>GörüntüX</title>
-    <!-- Favicon = başlık yanındaki logo (📝 emoji). Sekme ikonu başlıkla birebir eşleşir.
-         SVG data-URI: kendi kendine yeten (ayrı route yok); emoji %F0%9F%93%9D ile URL-kodlu. -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext x='16' y='26' font-size='27' text-anchor='middle'%3E%F0%9F%93%9D%3C/text%3E%3C/svg%3E">
+    <!-- Programa özgü favicon (görüntü/ekran-yakalama kadraj köşeleri + X). Data-URI: kendi kendine
+         yeten (ayrı route yok). Renkler #23 ile kodlu; SVG öznitelikleri tek tırnak (href çift tırnak).
+         AYNI logo başlıkta da inline SVG olarak kullanılır (.brand-logo). -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231d9bf0'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 12V9h3'/%3E%3Cpath d='M20 9h3v3'/%3E%3Cpath d='M23 20v3h-3'/%3E%3Cpath d='M12 23H9v-3'/%3E%3Cpath d='M13 13l6 6M19 13l-6 6'/%3E%3C/g%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Mammoth.js library for docx to HTML conversion -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -1819,7 +1820,7 @@ HTML_TEMPLATE = """
                     <button class="settings-toggle-btn" onclick="toggleStyleModal()">⚙️ Stil Ayarları</button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
                 </div>
-                <h1><span class="emoji">📝</span><span class="title-text">GörüntüX</span></h1>
+                <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
                 <p>Gönderi tarama, Word çıktısı üretme ve rapor biçimlendirme arayüzü</p>
             </div>
 
