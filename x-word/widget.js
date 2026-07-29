@@ -41,6 +41,36 @@
              : (p === 'yt' ? 'YouTube' : 'X')));
     }
 
+    // Idle "Rapora Ekle" yakalaması GERÇEKTEN yapılmış non-X platformlar. Buton yalnız bunlarda
+    // görünür (yarım/bozuk buton olmasın). FB/TT/YT eklendikçe buraya eklenecek.
+    function xIdleDestekli(p) {
+        return p === 'ig';
+    }
+
+    // Instagram gönderi yazarı -> "@kullanici". Idle "Rapora Ekle" başlığı için.
+    // Taramanın çok-yedekli türetmesinin (wordTaramaYonetimi) hafif ikizi; gönderi
+    // sayfasındayken og:title en güvenilir kaynak.
+    function xIgYazar() {
+        try {
+            var metaT = document.querySelector('meta[property="og:title"]');
+            var content = (metaT && metaT.getAttribute('content')) || document.title || "";
+            // "kullanici on Instagram: ..." kalıbı
+            var m = content.match(/^\s*([^\s(:]+)\s+on Instagram/i);
+            if (m && m[1]) { return '@' + m[1].replace(/^@+/, ''); }
+            // "Ad (@kullanici)" kalıbı
+            var m2 = content.match(/\(@([A-Za-z0-9._]+)\)/);
+            if (m2 && m2[1]) { return '@' + m2[1]; }
+            // Gönderi kartındaki ilk profil linki (/kullanici/), rezerve yolları ele
+            var _rez = ['p', 'reel', 'reels', 'explore', 'stories', 'direct', 'accounts', 'about'];
+            var a = document.querySelector('article a[href^="/"]') || document.querySelector('a[href^="/"]');
+            if (a) {
+                var seg = ((a.getAttribute('href') || '').split('?')[0].split('/').filter(Boolean)[0] || '').toLowerCase();
+                if (seg && _rez.indexOf(seg) === -1 && /^[a-z0-9._]{1,30}$/.test(seg)) { return '@' + seg; }
+            }
+        } catch (e) {}
+        return 'Instagram Gönderisi';
+    }
+
     // FB gonderi formundaki bir URL mi? (background.js xIsFbPostUrl ikizi)
     function fbGonderiFormuMu(href) {
         try {
@@ -1834,6 +1864,49 @@
                     const _sifirla = () => { buton.disabled = false; buton.innerText = "Rapora Ekle"; };
 
                     const _urlSade = window.location.href.split('?')[0];
+
+                    // ===== PLATFORM DAĞITIMI (idle "Rapora Ekle") =====
+                    // X: aşağıdaki mevcut yol (DOKUNULMADI, sıfır regresyon). Instagram: captureArticle
+                    // IG'yi kendi bulur+yakalar (igFindPost içeride — taramayla AYNI yakalayıcı). Link =
+                    // kanonik gönderi URL'si (?'lı kısım zaten atıldı). Yazar = xIgYazar. Profil X'e özel.
+                    if (xPlatform() === 'ig') {
+                        var _igLink = _urlSade;
+                        var _panoIg = xPanoHazirla(_igLink);   // pano yazımını tıklama anında başlat (gesture taze)
+                        var _igSs = "";
+                        try {
+                            var _igEl = document.querySelector('article') || document.body;
+                            _igSs = await captureArticle(_igEl) || "";
+                        } catch (e) { printLog("IG yakalama hatası: " + ((e && e.message) || e)); }
+                        if (!_igSs || _igSs.length < 100) {
+                            _panoIg.iptal();
+                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
+                            _sifirla(); return;
+                        }
+                        var _igPanoOk = await _panoIg.gorseliVer(_igSs);
+                        var _igBaslik = xIgYazar();
+                        buton.innerText = "⏳ Ekleniyor...";
+                        chrome.runtime.sendMessage({
+                            action: "addToPool",
+                            origin: res.server_origin,
+                            title: _igBaslik,
+                            link: _igLink,
+                            image: _igSs,
+                            is_profile: false,
+                            group_override: ""
+                        }, (addRes) => {
+                            if (addRes && addRes.status === "success") {
+                                buton.innerText = _igPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                setTimeout(_sifirla, 1500);
+                            } else if (addRes && addRes.status === "duplicate") {
+                                buton.innerText = "⚠️ Zaten havuzda";
+                                setTimeout(_sifirla, 1800);
+                            } else {
+                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                _sifirla();
+                            }
+                        });
+                        return;
+                    }
 
                     // v3.88: GECERSIZ sayfada EKLEME YAPMA. Widget bir an takili kalsa bile
                     // (SPA gezinme gecisi) anasayfada "Rapora Ekle" HOME TIMELINE'ini yakalamasin
@@ -4149,7 +4222,15 @@
             } else {
                 printLog("Aktif görev yok. Tekil tivit kontrolü yapılıyor...");
                 // Idle Mod: tekil tweet sayfasi VEYA profil sayfasi -> "Rapora Ekle" butonu.
-                let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl);
+                // X: tekil tweet regex. Non-X: background TEK GEÇİT'tir (widget yalnız onun
+                // executeScript'iyle çalışır) ve non-X'te YALNIZ geçerli gönderide enjekte eder
+                // (onUpdated + _gecerliWidgetSayfasi + widgetiGizle); widget.js SPA'da yeniden çalışmaz.
+                // Ama buton YALNIZ idle-yakalaması GERÇEKTEN yapılmış platformlarda görünmeli (yarım/bozuk
+                // buton olmasın) -> xIdleDestekli kapısı. Platform eklendikçe orası genişler. profil/foto/rt X-özel.
+                let _platform = xPlatform();
+                let tivitMi = (_platform === 'x')
+                    ? /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl)
+                    : xIdleDestekli(_platform);
                 let rtSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
                 // v3.88: fotograf/medya alt sayfasi (/status/123/photo/1, /media) -> widget YOK
                 // (background ile AYNI kontrol). tivitMi regex'i onek eslestigi icin ayrica dislanir.
