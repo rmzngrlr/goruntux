@@ -4226,9 +4226,10 @@ HTML_TEMPLATE = """
                 // İSTEK 1: X hesapları için "profil kartını da al" AÇ/KAPA butonu (hesap-hesap),
                 // başlığın sağında. Gri=kapalı, yeşil=açık. Açıkken tweet linkinden türetilen
                 // x.com/<kullanıcı> profil linki listeye eklenir (profil kartı en üste gelir).
-                // FB gruplari haric: FB'de profil karti yakalama YOK (X'e ozel ozellik) ve
-                // toggleProfileCardLink 'https://x.com/'+username uretir -> FB'de anlamsiz link olurdu.
-                if (username !== 'instagram' && username !== 'bilinmeyen' && !isFbGroup) {
+                // YALNIZ X: profil kartı yakalama X'e ÖZEL özellik. IG/FB/TikTok/YouTube'da profil YOK
+                // ve toggleProfileCardLink 'https://x.com/'+username üretir -> diğer platformlarda anlamsız
+                // link olurdu. (Eskiden yalnız IG+FB dışlanıyordu; TT/YT'de düğme YANLIŞLIKLA görünüyordu.)
+                if (username !== 'instagram' && username !== 'bilinmeyen' && !isFbGroup && !isTtGroup && !isYtGroup) {
                     var pcOn = !!grp.profile_url;
                     var pcBg = pcOn ? 'rgba(0,186,124,0.15)' : 'rgba(255,255,255,0.06)';
                     var pcColor = pcOn ? '#00ba7c' : 'var(--text-secondary)';
