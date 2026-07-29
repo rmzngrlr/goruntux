@@ -1967,7 +1967,7 @@ HTML_TEMPLATE = """
                                 <span id="links-preview-count" style="font-size: 12px; font-weight: bold; background: var(--accent-color, #1d9bf0); color: white; padding: 2px 8px; border-radius: 10px;">0 adet</span>
                             </div>
                         </div>
-                        <div id="links-preview-list" style="max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+                        <div id="links-preview-list" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
                             <!-- JS ile doldurulacak -->
                         </div>
                     </div>
