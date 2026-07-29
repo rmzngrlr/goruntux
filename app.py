@@ -3715,6 +3715,10 @@ HTML_TEMPLATE = """
                         kutu.className = 'ext-status-box ext-ok';
                         kutu.innerHTML = '🟢 Eklenti bağlandı (Hazır)';
                         window.extBoxClickable = false;
+                        // Eklenti (yeni) HAZIR: kırmızı/sarıda açılmış modal artık anlamsız -> otomatik
+                        // kapat. (Kullanıcı güncelleyip panele dönünce açık modal takılı kalmasın.)
+                        // closeExtModal idempotent -> zaten kapalıysa no-op; kırmızı/sarı dallarına dokunulmaz.
+                        closeExtModal();
                     }
                 }
 
