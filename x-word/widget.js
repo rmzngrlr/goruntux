@@ -1643,7 +1643,16 @@
                         if (kart && video && kart.querySelector('[data-e2e="like-count"]')) break;
                         await new Promise(function (r) { setTimeout(r, 200); });
                     }
-                    if (!kart) throw new Error("gonderi karti bulunamadi");
+                    if (!kart) {
+                        // TANI (geçici): hangi TikTok düzeni? (tarama oturum-KAPALI'ya göreydi; giriş
+                        // yapılmışsa kapsayıcı farklı olabilir). Sayıları uyarıya yazıp düzeni öğrenelim.
+                        var _dv = document.querySelectorAll('video').length;
+                        var _drlic = document.querySelectorAll('[data-e2e="recommend-list-item-container"]').length;
+                        var _dlc = document.querySelectorAll('[data-e2e="like-count"]').length;
+                        var _ddesc = document.querySelectorAll('[data-e2e="video-desc"]').length;
+                        throw new Error("gonderi karti bulunamadi [video=" + _dv + " rlic=" + _drlic
+                            + " likeCount=" + _dlc + " desc=" + _ddesc + " path=" + location.pathname + "]");
+                    }
                     if (document.querySelector('#captcha-verify-container-main-page, .captcha-verify-container')) {
                         throw new Error("dogrulama bulmacasi (captcha) cikti — once tiktok.com'da cozun");
                     }
