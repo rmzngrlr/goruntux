@@ -785,6 +785,9 @@ HTML_TEMPLATE = """
     <!-- Eklenti bu isareti gorup SADECE gercek paneli panel olarak kaydeder (guvenilir panel_tab_id) -->
     <meta name="x-rapor-panel" content="1">
     <title>GörüntüX</title>
+    <!-- Programa özgü favicon (görüntü/ekran-yakalama kadraj köşeleri + X). Data-URI: kendi kendine
+         yeten (ayrı route yok). Renkler #23 ile kodlu; SVG öznitelikleri tek tırnak (href çift tırnak). -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231d9bf0'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 12V9h3'/%3E%3Cpath d='M20 9h3v3'/%3E%3Cpath d='M23 20v3h-3'/%3E%3Cpath d='M12 23H9v-3'/%3E%3Cpath d='M13 13l6 6M19 13l-6 6'/%3E%3C/g%3E%3C/svg%3E">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Mammoth.js library for docx to HTML conversion -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
