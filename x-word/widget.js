@@ -1539,7 +1539,13 @@
                     for (var w = 0; w < _maxBekle; w++) {
                         card = fbFindPost(_engOut);
                         if (card && card.getBoundingClientRect().height > 100) {
-                            if (_isReel) { if (_engOut.list && _engOut.list.length) break; }
+                            if (_isReel) {
+                                // Reel: listeye ILK giren genelde KIRLETICI ("...ile paylasiliyor" ~12x12);
+                                // tek basina break etme (video+kirletici ortak atasi TUM SAYFA kadar genis
+                                // kart verir) -> MAKUL BOYUTLU (>=20px) EN AZ 2 gercek ray dugmesi bekle.
+                                var _ray = (_engOut.list || []).filter(function (e) { var r = e.getBoundingClientRect(); return r.width >= 20 && r.height >= 20; }).length;
+                                if (_ray >= 2) break;
+                            }
                             else if (card.querySelector(FB_ENG_SEL)) { break; }
                         }
                         await new Promise(function (r) { setTimeout(r, 200); });
@@ -3008,7 +3014,14 @@
                             if (_isReel) {
                                 // Reel'de ray kartin ALT AGACINDA olmayabilir (ayri sutun) ->
                                 // card.querySelector DEGIL, fbFindPost'un topladigi GORUNUR liste.
-                                if (_engOut.list && _engOut.list.length) break;
+                                // AMA listeye ILK giren genelde KIRLETICI ("...ile paylasiliyor", ~12x12);
+                                // tek basina break edince (video+kirletici) ortak atasi TUM SAYFA kadar
+                                // GENIS kart veriyor (saha log 2026-07-28: 1538x865, engBekle=0, engListe=1
+                                // -> stats sutunu eksik). Cozum: MAKUL BOYUTLU (>=20px, kirletici olmayan)
+                                // EN AZ 2 gercek ray dugmesi gorunene kadar bekle; gelmezse timeout -> eskisi
+                                // gibi devam (bugunkunden kotu degil). WIDGET xFbIdleYakala IKIZI ayni.
+                                var _ray = (_engOut.list || []).filter(function (e) { var r = e.getBoundingClientRect(); return r.width >= 20 && r.height >= 20; }).length;
+                                if (_ray >= 2) break;
                             } else if (card.querySelector(FB_ENG_SEL)) {
                                 break;
                             }
