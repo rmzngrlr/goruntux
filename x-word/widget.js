@@ -1665,16 +1665,7 @@
                         }
                         await new Promise(function (r) { setTimeout(r, 200); });
                     }
-                    if (!kart) {
-                        // TANI (geçici): hangi TikTok düzeni? (tarama oturum-KAPALI'ya göreydi; giriş
-                        // yapılmışsa kapsayıcı farklı olabilir). Sayıları uyarıya yazıp düzeni öğrenelim.
-                        var _dv = document.querySelectorAll('video').length;
-                        var _drlic = document.querySelectorAll('[data-e2e="recommend-list-item-container"]').length;
-                        var _dlc = document.querySelectorAll('[data-e2e="like-count"]').length;
-                        var _ddesc = document.querySelectorAll('[data-e2e="video-desc"]').length;
-                        throw new Error("gonderi karti bulunamadi [video=" + _dv + " rlic=" + _drlic
-                            + " likeCount=" + _dlc + " desc=" + _ddesc + " path=" + location.pathname + "]");
-                    }
+                    if (!kart) throw new Error("gonderi karti bulunamadi");
                     if (document.querySelector('#captcha-verify-container-main-page, .captcha-verify-container')) {
                         throw new Error("dogrulama bulmacasi (captcha) cikti — once tiktok.com'da cozun");
                     }
@@ -2254,13 +2245,12 @@
                     if (xPlatform() === 'fb') {
                         var _fbLink = window.location.href;
                         var _panoFb = xPanoHazirla(_fbLink);
-                        var _fbRes = null, _fbHata = "";
+                        var _fbRes = null;
                         try { _fbRes = await xFbIdleYakala(); }
-                        catch (e) { _fbHata = (e && e.message) ? e.message : String(e); printLog("FB yakalama hatası: " + _fbHata); }
+                        catch (e) { printLog("FB yakalama hatası: " + ((e && e.message) || e)); }
                         if (!_fbRes || !_fbRes.shot || _fbRes.shot.length < 100) {
                             _panoFb.iptal();
-                            // TANI (geçici): kök nedeni görebilmek için sebebi uyarıya da yaz.
-                            alert("Ekran görüntüsü alınamadı" + (_fbHata ? " — sebep: " + _fbHata : "") + ". Tekrar deneyin.");
+                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
                             _sifirla(); return;
                         }
                         var _fbPanoOk = await _panoFb.gorseliVer(_fbRes.shot);
@@ -2293,12 +2283,12 @@
                     if (xPlatform() === 'tt') {
                         var _ttLink = window.location.href;
                         var _panoTt = xPanoHazirla(_ttLink);
-                        var _ttRes = null, _ttHata = "";
+                        var _ttRes = null;
                         try { _ttRes = await xTtIdleYakala(); }
-                        catch (e) { _ttHata = (e && e.message) ? e.message : String(e); printLog("TT yakalama hatası: " + _ttHata); }
+                        catch (e) { printLog("TT yakalama hatası: " + ((e && e.message) || e)); }
                         if (!_ttRes || !_ttRes.shot || _ttRes.shot.length < 100) {
                             _panoTt.iptal();
-                            alert("Ekran görüntüsü alınamadı" + (_ttHata ? " — sebep: " + _ttHata : "") + ". Tekrar deneyin.");
+                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
                             _sifirla(); return;
                         }
                         var _ttPanoOk = await _panoTt.gorseliVer(_ttRes.shot);
@@ -2331,12 +2321,12 @@
                     if (xPlatform() === 'yt') {
                         var _ytLink = window.location.href;
                         var _panoYt = xPanoHazirla(_ytLink);
-                        var _ytRes = null, _ytHata = "";
+                        var _ytRes = null;
                         try { _ytRes = await xYtIdleYakala(); }
-                        catch (e) { _ytHata = (e && e.message) ? e.message : String(e); printLog("YT yakalama hatası: " + _ytHata); }
+                        catch (e) { printLog("YT yakalama hatası: " + ((e && e.message) || e)); }
                         if (!_ytRes || !_ytRes.shot || _ytRes.shot.length < 100) {
                             _panoYt.iptal();
-                            alert("Ekran görüntüsü alınamadı" + (_ytHata ? " — sebep: " + _ytHata : "") + ". Tekrar deneyin.");
+                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
                             _sifirla(); return;
                         }
                         var _ytPanoOk = await _panoYt.gorseliVer(_ytRes.shot);
