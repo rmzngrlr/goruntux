@@ -1638,9 +1638,31 @@
                 try {
                     var kart = null, video = null;
                     for (var w = 0; w < 15; w++) {
+                        // 1) Besleme/paylaşım düzeni (taramanın kullandığı; genelde oturum-KAPALI).
                         kart = document.querySelector('[data-e2e="recommend-list-item-container"]');
                         video = kart ? kart.querySelector('video') : null;
                         if (kart && video && kart.querySelector('[data-e2e="like-count"]')) break;
+                        // 2) YEDEK — GİRİŞ-YAPILMIŞ video-detay düzeni: recommend-list-item-container YOK.
+                        //    En büyük <video>'nun, etkileşim (like-count) + tercihen açıklama (video-desc)
+                        //    içeren EN YAKIN atasını kart say. data-e2e'ler her iki düzende de mevcut.
+                        if (!kart || !video || !kart.querySelector('[data-e2e="like-count"]')) {
+                            var _v = null, _best = 0;
+                            document.querySelectorAll('video').forEach(function (m) {
+                                var r = m.getBoundingClientRect(); var a = r.width * r.height;
+                                if (a > _best && r.width > 150 && r.height > 150) { _best = a; _v = m; }
+                            });
+                            if (_v) {
+                                var _p = _v.parentElement, _bulunan = null;
+                                for (var d = 0; d < 15 && _p && _p !== document.body; d++) {
+                                    if (_p.querySelector('[data-e2e="like-count"]')) {
+                                        _bulunan = _p;
+                                        if (_p.querySelector('[data-e2e="video-desc"]')) break;   // ideal: desc de içersin
+                                    }
+                                    _p = _p.parentElement;
+                                }
+                                if (_bulunan) { kart = _bulunan; video = _v; break; }
+                            }
+                        }
                         await new Promise(function (r) { setTimeout(r, 200); });
                     }
                     if (!kart) {
