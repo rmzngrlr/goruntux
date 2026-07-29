@@ -2018,12 +2018,13 @@
                     if (xPlatform() === 'fb') {
                         var _fbLink = window.location.href;
                         var _panoFb = xPanoHazirla(_fbLink);
-                        var _fbRes = null;
+                        var _fbRes = null, _fbHata = "";
                         try { _fbRes = await xFbIdleYakala(); }
-                        catch (e) { printLog("FB yakalama hatası: " + ((e && e.message) || e)); }
+                        catch (e) { _fbHata = (e && e.message) ? e.message : String(e); printLog("FB yakalama hatası: " + _fbHata); }
                         if (!_fbRes || !_fbRes.shot || _fbRes.shot.length < 100) {
                             _panoFb.iptal();
-                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
+                            // TANI (geçici): kök nedeni görebilmek için sebebi uyarıya da yaz.
+                            alert("Ekran görüntüsü alınamadı" + (_fbHata ? " — sebep: " + _fbHata : "") + ". Tekrar deneyin.");
                             _sifirla(); return;
                         }
                         var _fbPanoOk = await _panoFb.gorseliVer(_fbRes.shot);
