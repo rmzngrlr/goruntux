@@ -4204,7 +4204,24 @@ HTML_TEMPLATE = """
             });
 
             var html = '';
-            Object.keys(groups).forEach(function(username) {
+            // İSTEK: X hesapları "X (Twitter)" ŞEMSİYESİ altında toplansın (IG/FB/TT/YT gibi platform
+            // düzeyinde tek üst-blok); içinde @hesap alt-blokları kalır. Böylece X hesapları üst düzeyde
+            // Instagram/Facebook ile AYNI seviyede durmaz, ayrı sosyal medya aracı gibi görünmez.
+            // X hesapları = 4 platform anahtarı DIŞINDAKI tüm anahtarlar (@kullanıcı + 'bilinmeyen').
+            var _platKeys = ['instagram', 'fb', 'tt', 'yt'];
+            var _xKeys = Object.keys(groups).filter(function (k) { return _platKeys.indexOf(k) === -1; });
+            var _pKeys = Object.keys(groups).filter(function (k) { return _platKeys.indexOf(k) !== -1; });
+            var _xAcik = false;
+            _xKeys.concat(_pKeys).forEach(function(username) {
+                var _isXHesap = (_platKeys.indexOf(username) === -1);
+                if (_isXHesap && !_xAcik) {
+                    html += '<div style="margin-bottom:12px; background:rgba(29,155,240,0.04); border:1px solid rgba(29,155,240,0.18); border-radius:10px; padding:10px;">';
+                    html += '<div style="font-weight:bold; font-size:13px; color:var(--twitter-color); margin:0 0 8px 2px;">𝕏 X (Twitter)</div>';
+                    _xAcik = true;
+                } else if (!_isXHesap && _xAcik) {
+                    html += '</div>';   // X şemsiyesini platform bloklarından ÖNCE kapat
+                    _xAcik = false;
+                }
                 var grp = groups[username];
                 html += '<div style="margin-bottom: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); padding: 12px; border-radius: 8px;">';
                 
@@ -4279,7 +4296,8 @@ HTML_TEMPLATE = """
 
                 html += '</div>';
             });
-            
+            if (_xAcik) { html += '</div>'; }   // X hepsi sonda (platform bloğu yok) ise şemsiyeyi kapat
+
             previewList.innerHTML = html;
         }
 
