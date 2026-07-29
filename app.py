@@ -1956,6 +1956,16 @@ HTML_TEMPLATE = """
                         Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
                     </p>
 
+                    <!-- Oturum hatırlatması (kullanıcı isteği): kapatılabilir; localStorage ile bir kez
+                         kapatılınca çıkmaz (xInitLoginReminder gösterir). Metin HEM tarama HEM eklenti
+                         "Rapora Ekle"yi kapsar. Yalnız Otomatik sekmesinde. -->
+                    <div id="login-reminder" style="display:none; background: rgba(255,176,32,0.1); border:1px solid rgba(255,176,32,0.3); color:#ffb020; border-radius:12px; padding:12px 40px 12px 14px; margin-bottom:18px; font-size:13px; line-height:1.55; position:relative;">
+                        🔐 <b>Oturum hatırlatması:</b> Ekran görüntülerinin eksiksiz ve doğru alınabilmesi için ekleyeceğiniz platformlarda (<b>X, Instagram, Facebook, TikTok</b>) bu tarayıcıda <b>oturumunuz AÇIK</b> olmalıdır (YouTube için gerekmez).<br>
+                        • <b>Başlat (tarama):</b> eklenti linkleri tek tek ziyaret ederken oturum kapalıysa giriş duvarına takılır, görüntü alınamaz.<br>
+                        • <b>Eklenti (&quot;Rapora Ekle&quot;):</b> görüntüsünü aldığınız sosyal medya sayfasında da oturumunuz açık olmalı; kapalıysa gönderi eksik/yanlış kadrajlanabilir.
+                        <span onclick="dismissLoginReminder()" title="Kapat" style="position:absolute; top:8px; right:12px; cursor:pointer; font-size:20px; line-height:1; color:#ffb020;">&times;</span>
+                    </div>
+
                     <div class="form-group" id="links-input-group">
                         <label for="tweet_links_input">Taranacak Gönderi Linkleri (Her Satıra Bir Link):</label>
                         <textarea id="tweet_links_input" style="height: 38px; min-height: 38px; max-height: 38px; resize: none; overflow-y: hidden; line-height: 24px; padding: 6px 12px;" placeholder="X, Instagram veya Facebook linklerini buraya yapıştırın (Her satıra bir link)..."></textarea>
@@ -2737,6 +2747,9 @@ HTML_TEMPLATE = """
             // Kayitli Raporlar: suresi dolanlari temizle + listeyi ciz.
             xInitSavedReports();
 
+            // Oturum hatırlatması bandı (kapatılmadıysa göster).
+            xInitLoginReminder();
+
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -3281,6 +3294,22 @@ HTML_TEMPLATE = """
                 showToast('Yeniden adlandırma hatası: ' + (err && err.message ? err.message : err), 'danger');
             }
         }
+        // Oturum hatırlatması bandı (kullanıcı isteği): kapatılabilir; kapatılınca localStorage'a
+        // yazılır ve bir daha gösterilmez. Yalnız Otomatik sekmesindeki #login-reminder.
+        function dismissLoginReminder() {
+            try {
+                var el = document.getElementById('login-reminder');
+                if (el) { el.style.display = 'none'; }
+                localStorage.setItem('x_login_reminder_dismissed', '1');
+            } catch (e) {}
+        }
+        function xInitLoginReminder() {
+            try {
+                if (localStorage.getItem('x_login_reminder_dismissed') === '1') { return; }
+                var el = document.getElementById('login-reminder');
+                if (el) { el.style.display = 'block'; }
+            } catch (e) {}
+        }
         function xInitSavedReports() {
             try {
                 window.addEventListener('x-saved-reports-ready', function () { renderSavedReports(); });
@@ -3484,6 +3513,9 @@ HTML_TEMPLATE = """
                 showToast('Lutfen en az bir tweet linki girin!', 'danger');
                 return;
             }
+
+            // Oturum hatırlatması (kullanıcı isteği): tarama başlarken sağ-altta anlık toast.
+            showToast('🔐 Tarayacağınız platformlarda (X, Instagram, Facebook, TikTok) oturumunuzun AÇIK olduğundan emin olun.', 'warning');
 
             // Faz #1-A: yeni tarama sunucu havuzunu temizliyor; yerel goruntu deposunu da temizle.
             try { if (window.XLocalImages) window.XLocalImages.clear(); } catch (e) {}
