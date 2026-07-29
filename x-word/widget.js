@@ -44,7 +44,7 @@
     // Idle "Rapora Ekle" yakalaması GERÇEKTEN yapılmış non-X platformlar. Buton yalnız bunlarda
     // görünür (yarım/bozuk buton olmasın). FB/TT/YT eklendikçe buraya eklenecek.
     function xIdleDestekli(p) {
-        return p === 'ig';
+        return p === 'ig' || p === 'fb';
     }
 
     // Instagram gönderi yazarı -> "@kullanici". Idle "Rapora Ekle" başlığı için.
@@ -69,6 +69,110 @@
             }
         } catch (e) {}
         return 'Instagram Gönderisi';
+    }
+
+    // Facebook idle "Rapora Ekle" yakalayıcısı — taramanın (wordTaramaYonetimi isFacebook bloğu,
+    // ~2518-2771) gorev-BAĞIMSIZ İKİZİ. Taramaya DOKUNMAMAK için AYRI tutuldu (scan %100 güvende;
+    // FB yakalaması test edilemediğinden kritik yolu korumak öncelik). Mevcut FB yardımcılarını
+    // (fbFindPost/fbYorumlariGizle/fbMetniAc/fbScroller/fbBitisY/fbAuthor/igVerticalStitch/
+    // compressScreenshot/FB_ENG_SEL) yeniden kullanır. Döner: {shot, author} | hata fırlatır.
+    // Geçici DOM değişiklikleri (yorum gizle, sticky->static, scrollbar gizle, widget gizle) finally'de geri alınır.
+    async function xFbIdleYakala() {
+        var _fbGizli = [], _fbGorunur = [], _fbStil = [], _fbSbStyle = null;
+        try {
+            var _isReel = location.pathname.indexOf('/reel/') === 0;
+            var card = null, _engOut = {};
+            var _maxBekle = _isReel ? 40 : 15;
+            for (var w = 0; w < _maxBekle; w++) {
+                card = fbFindPost(_engOut);
+                if (card && card.getBoundingClientRect().height > 100) {
+                    if (_isReel) { if (_engOut.list && _engOut.list.length) break; }
+                    else if (card.querySelector(FB_ENG_SEL)) { break; }
+                }
+                await new Promise(function (r) { setTimeout(r, 200); });
+            }
+            if (!card) throw new Error("gonderi karti bulunamadi");
+            var _cr = card.getBoundingClientRect();
+            if (_cr.width < 120 || _cr.height < 120) throw new Error("kart olcusu gecersiz");
+            if (_cr.width > window.innerWidth * 0.95 && _cr.height > window.innerHeight * 0.95) throw new Error("kart TUM SAYFA");
+            _fbGizli = fbYorumlariGizle(card);
+            await fbMetniAc(card);
+            await new Promise(function (r) { setTimeout(r, 300); });
+            [document.getElementById('x-downloader-widget'), document.getElementById('w-cb-container')]
+                .forEach(function (el) { if (el) { _fbGorunur.push([el, el.style.visibility]); el.style.visibility = 'hidden'; } });
+            await new Promise(function (r) { setTimeout(r, 120); });
+            var _mode = _isReel ? 'reel' : 'posts';
+            var sc = fbScroller(card);
+            var scIc = !!(sc && card.contains(sc));
+            var kadrajEl = scIc ? sc : card;
+            var dpr = window.devicePixelRatio || 1;
+            if (!document.getElementById('x-fb-sb-hide')) {
+                var _sb = document.createElement('style'); _sb.id = 'x-fb-sb-hide';
+                _sb.textContent = '*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}*{scrollbar-width:none!important;-ms-overflow-style:none!important}';
+                (document.head || document.documentElement).appendChild(_sb); _fbSbStyle = _sb;
+                await new Promise(function (r) { setTimeout(r, 120); });
+            }
+            if (scIc && sc) {
+                _fbStil.push([sc, 'scrollBehavior', sc.style.scrollBehavior]); sc.style.scrollBehavior = 'auto';
+                kadrajEl.querySelectorAll('*').forEach(function (e) {
+                    try { if (getComputedStyle(e).position === 'sticky') { _fbStil.push([e, 'position', e.style.position]); e.style.position = 'static'; } } catch (x) {}
+                });
+                await new Promise(function (r) { setTimeout(r, 200); });
+            }
+            var kr = kadrajEl.getBoundingClientRect();
+            if (!scIc && _engOut.list && _engOut.list.length) {
+                var L = kr.left, T = kr.top, R = kr.right, B = kr.bottom;
+                _engOut.list.forEach(function (e) {
+                    var r = e.getBoundingClientRect(); if (r.width <= 0 || r.height <= 0) return;
+                    if (r.left < kr.left - 300 || r.right > kr.right + 400) return;
+                    if (r.bottom < kr.top - 200 || r.top > kr.bottom + 200) return;
+                    L = Math.min(L, r.left - 8); T = Math.min(T, r.top - 8); R = Math.max(R, r.right + 8); B = Math.max(B, r.bottom + 8);
+                });
+                if (R > kr.right || B > kr.bottom || L < kr.left || T < kr.top) { kr = { left: L, top: T, right: R, bottom: B, width: R - L, height: B - T }; }
+            }
+            var cropLeft = Math.max(0, Math.round(kr.left));
+            var cropWidth = Math.round(Math.min(window.innerWidth - cropLeft, kr.width));
+            var fullH = scIc ? sc.scrollHeight : Math.round(kr.height);
+            var pencere = scIc ? sc.clientHeight : Math.round(kr.height);
+            var _bitis = (_mode !== 'reel') ? fbBitisY(card, sc, scIc, {}) : null;
+            var _bitisPay = 8;
+            if (_bitis && _bitis + _bitisPay < fullH) { fullH = _bitis + _bitisPay; }
+            var segs = [];
+            if (!scIc) {
+                var top = Math.max(0, Math.round(kr.top));
+                var h = Math.round(Math.min(window.innerHeight - top, fullH));
+                var res = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve); });
+                if (res && res.status === "success" && res.dataUrl) { segs.push(res.dataUrl); }
+            } else {
+                var oncekiTop = sc.scrollTop, maxScroll = Math.max(0, fullH - pencere);
+                var y = 0, guard = 0;
+                while (y < fullH && guard < 20) {
+                    guard++;
+                    var hedef = Math.min(y, maxScroll); sc.scrollTop = hedef;
+                    await new Promise(function (r) { setTimeout(r, 320); });
+                    if (Math.abs(sc.scrollTop - hedef) > 4) { segs.length = 0; break; }
+                    kr = kadrajEl.getBoundingClientRect();
+                    var ofset = Math.max(0, y - sc.scrollTop);
+                    var sliceH = Math.round(Math.min(pencere - ofset, fullH - y));
+                    if (sliceH <= 2) break;
+                    var res2 = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: Math.max(0, Math.round(kr.top + ofset)), left: cropLeft, width: cropWidth, height: sliceH }, dpr: dpr }, resolve); });
+                    if (!res2 || res2.status !== "success" || !res2.dataUrl) break;
+                    if (segs.length && segs[segs.length - 1] === res2.dataUrl) { segs.length = 0; break; }
+                    segs.push(res2.dataUrl); y += sliceH;
+                }
+                try { sc.scrollTop = oncekiTop; } catch (e) {}
+            }
+            if (!segs.length) throw new Error("parca alinamadi");
+            var raw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
+            var shot = await compressScreenshot(raw);
+            var a = fbAuthor();
+            return { shot: shot, author: (a && a.ad) || '' };
+        } finally {
+            try { _fbGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} }); } catch (e) {}
+            try { _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} }); } catch (e) {}
+            try { _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} }); } catch (e) {}
+            try { if (_fbSbStyle) { _fbSbStyle.remove(); } } catch (e) {}
+        }
     }
 
     // FB gonderi formundaki bir URL mi? (background.js xIsFbPostUrl ikizi)
@@ -1896,6 +2000,45 @@
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
                                 buton.innerText = _igPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                setTimeout(_sifirla, 1500);
+                            } else if (addRes && addRes.status === "duplicate") {
+                                buton.innerText = "⚠️ Zaten havuzda";
+                                setTimeout(_sifirla, 1800);
+                            } else {
+                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                _sifirla();
+                            }
+                        });
+                        return;
+                    }
+
+                    // Facebook: xFbIdleYakala (taramanın gorev-bağımsız ikizi). Link = TAM URL (FB'de
+                    // kimlik SORGUDA olabilir -> '?' ATMA; sunucu x_temizle_link ile kanoniklestirir).
+                    // Başlık = fbAuthor (düz görünen ad; @slug YOK — tarama kararı). Profil X'e özel.
+                    if (xPlatform() === 'fb') {
+                        var _fbLink = window.location.href;
+                        var _panoFb = xPanoHazirla(_fbLink);
+                        var _fbRes = null;
+                        try { _fbRes = await xFbIdleYakala(); }
+                        catch (e) { printLog("FB yakalama hatası: " + ((e && e.message) || e)); }
+                        if (!_fbRes || !_fbRes.shot || _fbRes.shot.length < 100) {
+                            _panoFb.iptal();
+                            alert("Ekran görüntüsü alınamadı, tekrar deneyin.");
+                            _sifirla(); return;
+                        }
+                        var _fbPanoOk = await _panoFb.gorseliVer(_fbRes.shot);
+                        buton.innerText = "⏳ Ekleniyor...";
+                        chrome.runtime.sendMessage({
+                            action: "addToPool",
+                            origin: res.server_origin,
+                            title: _fbRes.author || 'Facebook Gönderisi',
+                            link: _fbLink,
+                            image: _fbRes.shot,
+                            is_profile: false,
+                            group_override: ""
+                        }, (addRes) => {
+                            if (addRes && addRes.status === "success") {
+                                buton.innerText = _fbPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
                                 buton.innerText = "⚠️ Zaten havuzda";
