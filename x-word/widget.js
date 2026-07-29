@@ -44,7 +44,7 @@
     // Idle "Rapora Ekle" yakalaması GERÇEKTEN yapılmış non-X platformlar. Buton yalnız bunlarda
     // görünür (yarım/bozuk buton olmasın). FB/TT/YT eklendikçe buraya eklenecek.
     function xIdleDestekli(p) {
-        return p === 'ig' || p === 'fb';
+        return p === 'ig' || p === 'fb' || p === 'tt';
     }
 
     // Instagram gönderi yazarı -> "@kullanici". Idle "Rapora Ekle" başlığı için.
@@ -1628,6 +1628,104 @@
                 }
             }
 
+            // TikTok idle "Rapora Ekle" yakalayıcısı — taramanın TT bloğu (~3495-3752) gorev-BAĞIMSIZ
+            // İKİZİ (captureArticle scope'unda: swSendReliable/compressScreenshot/igVerticalStitch burada).
+            // TARAMAYA DOKUNULMADI. TikTok tek-kare (desc açılıp taşarsa 2 dilim). Captcha çıkarsa idle'da
+            // durdurulacak tarama YOK -> hata fırlatır (onclick "sebep"i gösterir). Yazar URL'den (/@user).
+            // Döner: {shot, author} | hata. Çerez bandı + widget geçici gizlenir, finally'de geri alınır.
+            async function xTtIdleYakala() {
+                var _ttGorunur = [], _ttGizli = [];
+                try {
+                    var kart = null, video = null;
+                    for (var w = 0; w < 15; w++) {
+                        kart = document.querySelector('[data-e2e="recommend-list-item-container"]');
+                        video = kart ? kart.querySelector('video') : null;
+                        if (kart && video && kart.querySelector('[data-e2e="like-count"]')) break;
+                        await new Promise(function (r) { setTimeout(r, 200); });
+                    }
+                    if (!kart) throw new Error("gonderi karti bulunamadi");
+                    if (document.querySelector('#captcha-verify-container-main-page, .captcha-verify-container')) {
+                        throw new Error("dogrulama bulmacasi (captcha) cikti — once tiktok.com'da cozun");
+                    }
+                    document.querySelectorAll('tiktok-cookie-banner').forEach(function (b) { _ttGizli.push([b, b.style.display]); b.style.setProperty('display', 'none', 'important'); });
+                    if (video) {
+                        try { video.pause(); } catch (e) {}
+                        await new Promise(function (res) {
+                            var bitti = false; var fin = function () { if (!bitti) { bitti = true; res(); } };
+                            if (Math.abs(video.currentTime || 0) < 0.05) { fin(); return; }
+                            try { video.addEventListener('seeked', fin, { once: true }); } catch (e) {}
+                            try { video.currentTime = 0; } catch (e) { fin(); }
+                            setTimeout(fin, 1200);
+                        });
+                    }
+                    try {
+                        var btn = Array.from(kart.querySelectorAll('button,span,div')).find(function (e) {
+                            var t = (e.textContent || '').trim().toLowerCase();
+                            return (t === 'daha fazlası' || t === 'more' || t === 'daha fazla') && e.getBoundingClientRect().width > 10;
+                        });
+                        if (btn) { ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(function (tip) { btn.dispatchEvent(new MouseEvent(tip, { bubbles: true, cancelable: true, view: window })); }); }
+                    } catch (e) {}
+                    await new Promise(function (r) { setTimeout(r, 350); });
+                    var parcalar = [];
+                    var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width > 1 && r.height > 1) parcalar.push(r); };
+                    ekle('video'); ekle('[data-e2e="video-desc"]'); ekle('[data-e2e="video-author-avatar"]');
+                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
+                    ekle('[data-e2e="video-music"]');
+                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
+                    var PAY = 8;
+                    var L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - PAY;
+                    var T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
+                    var R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
+                    var B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
+                    var _kr = kart.getBoundingClientRect();
+                    L = Math.max(L, _kr.left - PAY); T = Math.max(T, _kr.top - PAY); R = Math.min(R, _kr.right + PAY); B = Math.min(B, _kr.bottom);
+                    L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
+                    R = Math.min(window.innerWidth, Math.round(R)); B = Math.min(window.innerHeight, Math.round(B));
+                    var cw = R - L, ch2 = B - T;
+                    if (cw < 40 || ch2 < 40) throw new Error("kadraj cok kucuk: " + cw + "x" + ch2);
+                    var _binerMi = function (el) { if (!el) return false; var r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return false; return !(r.right <= L || r.left >= R || r.bottom <= T || r.top >= B); };
+                    [document.getElementById('x-downloader-widget'), document.getElementById('w-cb-container')].forEach(function (w) { if (_binerMi(w)) { _ttGorunur.push([w, w.style.visibility]); w.style.setProperty('visibility', 'hidden', 'important'); } });
+                    var dpr = window.devicePixelRatio || 1;
+                    var _capture = async function (top, h) {
+                        var rr = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: L, width: cw, height: h }, dpr: dpr }, resolve); });
+                        if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
+                        return rr.dataUrl;
+                    };
+                    var B_tam = Math.round(Math.min(Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY, _kr.bottom));
+                    var _delta = Math.max(0, B_tam - window.innerHeight);
+                    var _ham = null;
+                    if (_delta > 0 && _delta <= 300) {
+                        var sc = null, el = kart;
+                        while (el && el !== document.body) { var cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 20) { sc = el; break; } el = el.parentElement; }
+                        if (sc) {
+                            var _oncekiTop = sc.scrollTop, _snap = sc.style.scrollSnapType, _dav = sc.style.scrollBehavior;
+                            try {
+                                sc.style.setProperty('scroll-snap-type', 'none', 'important');
+                                sc.style.setProperty('scroll-behavior', 'auto', 'important');
+                                var ust = await _capture(T, window.innerHeight - T);
+                                sc.scrollTop = _oncekiTop + _delta;
+                                await new Promise(function (r) { setTimeout(r, 250); });
+                                var _gercek = sc.scrollTop - _oncekiTop;
+                                if (_gercek >= 4 && _gercek <= _delta + 20) {
+                                    var alt = await _capture(window.innerHeight - _gercek, _gercek);
+                                    if (ust !== alt) { _ham = await igVerticalStitch([ust, alt]); }
+                                }
+                            } catch (e) {} finally {
+                                sc.scrollTop = _oncekiTop; sc.style.scrollSnapType = _snap || ''; sc.style.scrollBehavior = _dav || '';
+                            }
+                        }
+                    }
+                    if (!_ham) _ham = await _capture(T, ch2);
+                    var shot = await compressScreenshot(_ham);
+                    if (!shot) throw new Error("sikistirma basarisiz");
+                    var _ttAd = (location.pathname.match(/^\/@([^/]+)\//) || [])[1] || '';
+                    return { shot: shot, author: _ttAd ? ('@' + _ttAd) : '' };
+                } finally {
+                    try { _ttGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} }); } catch (e) {}
+                    try { _ttGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} }); } catch (e) {}
+                }
+            }
+
             function initWidgetTimer(gorev, storageKey) {
                 if (!gorev || !gorev.aktif) return;
                 
@@ -2040,6 +2138,44 @@
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
                                 buton.innerText = _fbPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                setTimeout(_sifirla, 1500);
+                            } else if (addRes && addRes.status === "duplicate") {
+                                buton.innerText = "⚠️ Zaten havuzda";
+                                setTimeout(_sifirla, 1800);
+                            } else {
+                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                _sifirla();
+                            }
+                        });
+                        return;
+                    }
+
+                    // TikTok: xTtIdleYakala (taramanın gorev-bağımsız ikizi). Link = TAM URL (sunucu
+                    // x_temizle_link kanoniklestirir). Başlık = URL'deki @kullanıcı. Profil X'e özel.
+                    if (xPlatform() === 'tt') {
+                        var _ttLink = window.location.href;
+                        var _panoTt = xPanoHazirla(_ttLink);
+                        var _ttRes = null, _ttHata = "";
+                        try { _ttRes = await xTtIdleYakala(); }
+                        catch (e) { _ttHata = (e && e.message) ? e.message : String(e); printLog("TT yakalama hatası: " + _ttHata); }
+                        if (!_ttRes || !_ttRes.shot || _ttRes.shot.length < 100) {
+                            _panoTt.iptal();
+                            alert("Ekran görüntüsü alınamadı" + (_ttHata ? " — sebep: " + _ttHata : "") + ". Tekrar deneyin.");
+                            _sifirla(); return;
+                        }
+                        var _ttPanoOk = await _panoTt.gorseliVer(_ttRes.shot);
+                        buton.innerText = "⏳ Ekleniyor...";
+                        chrome.runtime.sendMessage({
+                            action: "addToPool",
+                            origin: res.server_origin,
+                            title: _ttRes.author || 'TikTok Gönderisi',
+                            link: _ttLink,
+                            image: _ttRes.shot,
+                            is_profile: false,
+                            group_override: ""
+                        }, (addRes) => {
+                            if (addRes && addRes.status === "success") {
+                                buton.innerText = _ttPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
                                 buton.innerText = "⚠️ Zaten havuzda";
