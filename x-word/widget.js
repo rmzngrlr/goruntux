@@ -595,24 +595,29 @@
                         transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s ease; }
                     #x-downloader-widget .xdock-scan-txt { position: absolute; inset: 0; display: flex; align-items: center;
                         justify-content: center; font-size: 11px; font-weight: 700; color: var(--w-text); }
-                    /* Halka hover pop'u: o an ne oluyor + IPTAL. Grace-timer ile acik kalir (JS). */
+                    /* Halka hover fly-out'u: SEFFAF konteyner; icinde AYRI [durum karti] + [✕ iptal].
+                       Ikisi de metne gore boyutlanir (width:max-content -> 40px kapsayicida cokme yok). */
                     #x-downloader-widget .xdock-scan-pop { display: none; position: absolute; top: 50%; transform: translateY(-50%);
-                        width: 210px; padding: 11px 12px; box-sizing: border-box;
+                        width: max-content; z-index: 6; }
+                    #x-downloader-widget .xdock-scan.xdock-scan-open .xdock-scan-pop { display: flex; align-items: center; gap: 8px; }
+                    /* Dock sag -> fly-out sola acilir, ✕ EN SOLDA (row-reverse). Dock sol -> tersi. */
+                    #x-downloader-widget[data-side="right"] .xdock-scan-pop { right: 46px; flex-direction: row-reverse; }
+                    #x-downloader-widget[data-side="left"]  .xdock-scan-pop { left: 46px; flex-direction: row; }
+                    /* Durum karti: metne gore boyut (uzun metin ~190px'te sarar). */
+                    #x-downloader-widget .xdock-scan-msg { flex: 0 0 auto; width: max-content; max-width: 190px;
+                        padding: 10px 12px; font-size: 12px; line-height: 1.4;
                         background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
-                        border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); z-index: 6; }
-                    #x-downloader-widget .xdock-scan.xdock-scan-open .xdock-scan-pop { display: flex; align-items: center; gap: 9px; }
-                    #x-downloader-widget[data-side="right"] .xdock-scan-pop { right: 46px; }
-                    #x-downloader-widget[data-side="left"]  .xdock-scan-pop { left: 46px; }
-                    /* flex:0 1 auto -> ikon metni ITMEZ, metnin HEMEN ardina gelir (gereksiz bosluk yok). */
-                    #x-downloader-widget .xdock-scan-msg { flex: 0 1 auto; max-width: 165px; font-size: 12px; line-height: 1.4; }
-                    /* IPTAL: SADECE IKON (kucuk kirmizi yuvarlak). Uyari yalnız hover'da. */
-                    #x-downloader-widget .xdock-scan-cancel { position: relative; flex: none; width: 32px; height: 32px; padding: 0;
+                        border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); }
+                    /* IPTAL: bilgi balonunun DISINDA, ayri kirmizi yuvarlak ikon (SADECE ✕). */
+                    #x-downloader-widget .xdock-scan-cancel { position: relative; flex: none; width: 34px; height: 34px; padding: 0;
                         border: none; border-radius: 50%; background: #e0245e; color: #fff; font-size: 15px; cursor: pointer;
-                        display: flex; align-items: center; justify-content: center; }
+                        display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px var(--w-shadow); }
                     #x-downloader-widget .xdock-scan-cancel:hover { background: #c81e4f; }
+                    /* Uyari: metne gore boyut (max-content, cok uzunsa 220px'te sarar). ✕ altinda. */
                     #x-downloader-widget .xdock-cancel-warn { display: none; }
                     #x-downloader-widget .xdock-scan-cancel:hover .xdock-cancel-warn { display: block; position: absolute;
-                        top: calc(100% + 8px); right: 0; width: 190px; padding: 7px 9px; font-size: 11px; font-weight: 600; line-height: 1.3;
+                        top: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+                        width: max-content; max-width: 220px; padding: 7px 9px; font-size: 11px; font-weight: 600; line-height: 1.3;
                         background: var(--w-card-bg); color: #ff5c81; border: 1px solid #e0245e; border-radius: 8px;
                         box-shadow: 0 4px 16px var(--w-shadow); z-index: 7; }
 
@@ -728,9 +733,10 @@
             // ortasinda asama (tamamlanan/toplam). Cember cevresi = 2*pi*16 ≈ 100.53.
             const scanDot = document.createElement('div');
             scanDot.className = 'xdock-scan';
-            scanDot.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle class="xdock-ring-track" cx="20" cy="20" r="16"></circle><circle class="xdock-ring-fill" id="w-scan-ring" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="xdock-scan-txt" id="w-scan-txt">0/0</span><div class="xdock-scan-pop"><div class="xdock-scan-msg" id="w-scan-msg">Taranıyor…</div><button class="xdock-scan-cancel" id="w-scan-cancel" type="button" aria-label="Taramayı iptal et">✕<span class="xdock-cancel-warn">Bu uzun tarama işlemini durdurur ve panele döner.</span></button></div>`;
-            // Halkaya gelince pop acilir: o anki tarama durum metni (durumText, canli) + IPTAL dugmesi.
-            // Grace-timer (250ms) ile halka<->pop gecisinde kapanmaz. Iptal -> xTaramaIptal().
+            scanDot.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle class="xdock-ring-track" cx="20" cy="20" r="16"></circle><circle class="xdock-ring-fill" id="w-scan-ring" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="xdock-scan-txt" id="w-scan-txt">0/0</span><div class="xdock-scan-pop"><div class="xdock-scan-msg" id="w-scan-msg">Taranıyor…</div><button class="xdock-scan-cancel" id="w-scan-cancel" type="button" aria-label="Taramayı iptal et">✕<span class="xdock-cancel-warn">Bu tarama işlemini durdurur ve panele döner.</span></button></div>`;
+            // Halkaya gelince fly-out acilir: AYRI [durum karti] + [✕ iptal]. ✕, bilgi balonunun DISINDA
+            // ve acik tarafta EN DISTA (dock sag -> en solda; dock sol -> en sagda; CSS flex yonu ile).
+            // Ikisi de metne gore boyutlanir. Grace-timer (250ms) ile halka<->fly-out gecisinde kapanmaz.
             (function initScanPop() {
                 let _t = null;
                 const _ac = () => {
@@ -743,8 +749,8 @@
                 const _kapatYakinda = () => { if (_t) clearTimeout(_t); _t = setTimeout(() => scanDot.classList.remove('xdock-scan-open'), 250); };
                 scanDot.addEventListener('mouseenter', _ac);
                 scanDot.addEventListener('mouseleave', _kapatYakinda);
-                const _iptalBtn = scanDot.querySelector('#w-scan-cancel');
-                if (_iptalBtn) _iptalBtn.addEventListener('click', (e) => { e.stopPropagation(); xTaramaIptal(); });
+                const _iptal = scanDot.querySelector('#w-scan-cancel');
+                if (_iptal) _iptal.addEventListener('click', (e) => { e.stopPropagation(); xTaramaIptal(); });
             })();
             rail.appendChild(scanDot);
 
