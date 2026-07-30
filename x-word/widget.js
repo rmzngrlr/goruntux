@@ -604,10 +604,11 @@
                     #x-downloader-widget[data-side="right"] .xdock-scan-pop { right: 46px; flex-direction: row-reverse; }
                     #x-downloader-widget[data-side="left"]  .xdock-scan-pop { left: 46px; flex-direction: row; }
                     /* Durum karti: metne gore boyut (uzun metin ~190px'te sarar). */
-                    #x-downloader-widget .xdock-scan-msg { flex: 0 0 auto; width: max-content; max-width: 190px;
-                        padding: 10px 12px; font-size: 12px; line-height: 1.4;
+                    #x-downloader-widget .xdock-scan-msg { flex: 0 0 auto; width: max-content; max-width: 200px;
+                        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                        padding: 8px 11px; font-size: 12px; line-height: 1.3;
                         background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
-                        border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); }
+                        border-radius: 10px; box-shadow: 0 6px 24px var(--w-shadow); }
                     /* IPTAL: bilgi balonunun DISINDA, ayri kirmizi yuvarlak ikon (SADECE ✕). */
                     #x-downloader-widget .xdock-scan-cancel { position: relative; flex: none; width: 34px; height: 34px; padding: 0;
                         border: none; border-radius: 50%; background: #e0245e; color: #fff; font-size: 15px; cursor: pointer;
@@ -743,7 +744,11 @@
                     if (_t) { clearTimeout(_t); _t = null; }
                     const _msg = document.getElementById('w-scan-msg');
                     const _d = document.getElementById('w-durum');
-                    if (_msg) { const _s = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : ''; _msg.textContent = _s || 'Taranıyor…'; }
+                    if (_msg) {
+                        let _s = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : '';
+                        _s = _s.replace(/\s*·?\s*\d+\s*\/\s*\d+\s*$/, '');   // sondaki sayaci at (halka zaten gosteriyor)
+                        _msg.textContent = _s || 'Taranıyor…';
+                    }
                     scanDot.classList.add('xdock-scan-open');
                 };
                 const _kapatYakinda = () => { if (_t) clearTimeout(_t); _t = setTimeout(() => scanDot.classList.remove('xdock-scan-open'), 250); };
