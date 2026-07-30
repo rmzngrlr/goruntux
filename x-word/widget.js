@@ -543,6 +543,11 @@
                         --w-border: #38444d;
                         --w-card-bg: #192734;
                         --w-shadow: rgba(255, 255, 255, 0.15);
+                        --w-accent: #1d9bf0;
+                        position: fixed; z-index: 999999;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+                        user-select: none; box-sizing: border-box;
+                        transition: transform .18s ease;
                     }
                     #x-downloader-widget.light-theme {
                         --w-bg: #ffffff;
@@ -552,6 +557,107 @@
                         --w-card-bg: #f7f9fa;
                         --w-shadow: rgba(0, 0, 0, 0.1);
                     }
+                    #x-downloader-widget * { box-sizing: border-box; }
+
+                    /* Kenara yapisik dikey ray */
+                    #x-downloader-widget .xdock-rail {
+                        display: flex; flex-direction: column; align-items: center; gap: 10px;
+                        width: 52px; padding: 10px 0;
+                        background: var(--w-bg); color: var(--w-text);
+                        border: 1px solid var(--w-border); box-shadow: 0 4px 24px var(--w-shadow);
+                    }
+                    #x-downloader-widget[data-side="right"] { right: 0; }
+                    #x-downloader-widget[data-side="right"] .xdock-rail { border-radius: 14px 0 0 14px; border-right: none; }
+                    #x-downloader-widget[data-side="left"]  { left: 0; }
+                    #x-downloader-widget[data-side="left"]  .xdock-rail { border-radius: 0 14px 14px 0; border-left: none; }
+
+                    /* Gizli: kenardan ~8px dilim gorunur. Hover/surukleme ile acilir. */
+                    #x-downloader-widget[data-side="right"] { transform: translateX(44px); }
+                    #x-downloader-widget[data-side="left"]  { transform: translateX(-44px); }
+                    #x-downloader-widget:hover,
+                    #x-downloader-widget.xdock-open,
+                    #x-downloader-widget.dragging { transform: translateX(0) !important; }
+                    #x-downloader-widget.dragging { transition: none; }
+
+                    /* Logo (baslik yerine) + surukleme tutamagi */
+                    #x-downloader-widget .xdock-logo { position: relative; width: 34px; height: 34px; cursor: grab;
+                        display: flex; align-items: center; justify-content: center; }
+                    #x-downloader-widget.dragging .xdock-logo { cursor: grabbing; }
+
+                    /* Taranıyor: dairesel ilerleme HALKASI (dis cember, ici bos), ortada asama (ör. 1/2).
+                       Tarama sirasinda dock ACIK kalir, yalnız halka gorunur (Rapora Ekle gizli). Ilerleme panelde. */
+                    #x-downloader-widget .xdock-scan { display: none; position: relative; width: 40px; height: 40px; }
+                    #x-downloader-widget.scanning .xdock-scan { display: block; }
+                    #x-downloader-widget.scanning { transform: translateX(0) !important; }
+                    #x-downloader-widget.scanning #w-buton { display: none; }
+                    #x-downloader-widget .xdock-ring-track { fill: none; stroke: var(--w-border); stroke-width: 4; }
+                    #x-downloader-widget .xdock-ring-fill { fill: none; stroke: #00ba7c; stroke-width: 4; stroke-linecap: round;
+                        transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s ease; }
+                    #x-downloader-widget .xdock-scan-txt { position: absolute; inset: 0; display: flex; align-items: center;
+                        justify-content: center; font-size: 11px; font-weight: 700; color: var(--w-text); }
+
+                    /* Ikon butonlar */
+                    /* Buton favicon (logo) ile ayni boyutta: 34x34, ikon ~16px. */
+                    #x-downloader-widget .xdock-btn { position: relative; width: 34px; height: 34px; border-radius: 50%;
+                        border: 1px solid var(--w-border); background: var(--w-card-bg); color: var(--w-text);
+                        font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+                        transition: background .15s, transform .1s, box-shadow .2s; padding: 0; }
+                    /* BAGLANTI VAR: yesil + isik sacar (glow). Islev artik butonda (ayri nokta yok). */
+                    #x-downloader-widget .xdock-btn.connected { background: #00ba7c; color: #fff; border-color: #00ba7c;
+                        animation: xdockGlow 2.2s ease-in-out infinite; }
+                    @keyframes xdockGlow {
+                        0%,100% { box-shadow: 0 0 7px 0 rgba(0,186,124,.55); }
+                        50%     { box-shadow: 0 0 16px 3px rgba(0,186,124,.9); }
+                    }
+                    /* GUNCELLEME VAR: sari + uyari. */
+                    #x-downloader-widget .xdock-btn.outdated { background: #f5a623; color: #3b2a00; border-color: #f5a623;
+                        box-shadow: 0 0 10px 1px rgba(245,166,35,.6); animation: none; }
+                    #x-downloader-widget .xdock-btn:hover { transform: scale(1.06); }
+                    #x-downloader-widget .xdock-btn:disabled { cursor: default; transform: none; }
+                    #x-downloader-widget .xdock-ico { pointer-events: none; line-height: 1; }
+                    /* Hover'da acik yone dogru etiket balonu (+ gecici durumlarda .xdock-show-lbl ile) */
+                    #x-downloader-widget .xdock-lbl { position: absolute; top: 50%;
+                        transform: translateY(-50%) scale(.9); white-space: nowrap;
+                        padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 600;
+                        background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
+                        box-shadow: 0 4px 16px var(--w-shadow); opacity: 0; pointer-events: none;
+                        transition: opacity .12s, transform .12s; }
+                    #x-downloader-widget[data-side="right"] .xdock-lbl { right: 48px; }
+                    #x-downloader-widget[data-side="left"]  .xdock-lbl { left: 48px; }
+                    #x-downloader-widget .xdock-btn:hover .xdock-lbl,
+                    #x-downloader-widget .xdock-logo:hover .xdock-lbl,
+                    #x-downloader-widget .xdock-scan:hover .xdock-lbl,
+                    #x-downloader-widget .xdock-btn.xdock-show-lbl .xdock-lbl { opacity: 1; transform: translateY(-50%) scale(1); }
+                    /* Tarama halkasi etiketi: cok satirli acikla (o an ne oluyor). */
+                    #x-downloader-widget .xdock-scan-lbl { white-space: normal; width: 190px; line-height: 1.35; text-align: left; }
+
+                    /* Guncelleme uyari balonu (Rapora Ekle butonunda; .outdated ile acilir/genisler) */
+                    #x-downloader-widget .xdock-warn { display: none; }
+                    #x-downloader-widget .xdock-btn.outdated .xdock-warn { display: block; position: absolute; top: -6px;
+                        width: 200px; padding: 9px 11px; font-size: 11px; line-height: 1.4; font-weight: 500;
+                        background: var(--w-card-bg); color: var(--w-text); border: 1px solid var(--w-border);
+                        border-radius: 10px; box-shadow: 0 4px 16px var(--w-shadow); z-index: 3; cursor: pointer; }
+                    #x-downloader-widget[data-side="right"] .xdock-warn { right: 50px; }
+                    #x-downloader-widget[data-side="left"]  .xdock-warn { left: 50px; }
+                    #x-downloader-widget .xdock-warn b { color: var(--w-text); }
+                    #x-downloader-widget .xdock-warn .xdock-warn-link { color: #1d9bf0; font-weight: 700; }
+
+                    /* Tarama/idle kodunun bekledigi ama artik gizli dugumler */
+                    #x-downloader-widget .xdock-hidden { display: none !important; }
+
+                    /* Etkilesimli tarama diyalogu (limit/atla): dock KENARDA kalir, durum metni
+                       acik yone BITISIK bir kart olarak ANLIK acilir; kapaninca dar hale doner. */
+                    #x-downloader-widget .xdock-status { display: none; }
+                    #x-downloader-widget.xdock-dialog { transform: translateX(0) !important; }
+                    #x-downloader-widget.xdock-dialog #w-buton,
+                    #x-downloader-widget.xdock-dialog .xdock-scan { display: none; }
+                    #x-downloader-widget.xdock-dialog .xdock-status {
+                        display: block; position: absolute; top: 50%; transform: translateY(-50%);
+                        width: 212px; padding: 12px 14px; box-sizing: border-box; font-size: 12px; line-height: 1.45;
+                        background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
+                        border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); z-index: 5; }
+                    #x-downloader-widget[data-side="right"].xdock-dialog .xdock-status { right: 52px; }
+                    #x-downloader-widget[data-side="left"].xdock-dialog  .xdock-status { left: 52px; }
                 `;
                 document.head.appendChild(styleEl);
             }
@@ -559,13 +665,10 @@
             // 2. Create new widget element
             const widget = document.createElement('div'); 
             widget.id = 'x-downloader-widget'; 
-            widget.style.cssText = `
-                position: fixed; top: 100px; right: 20px; width: 290px;
-                background-color: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
-                border-radius: 16px; box-shadow: 0 4px 24px var(--w-shadow);
-                z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-                padding: 14px; user-select: none; box-sizing: border-box;
-            `; 
+            // Konumlandirma artik CSS'te (#x-downloader-widget). Varsayilan: sag kenar, top=100.
+            // Kalici deger (dock_side/dock_top) asagida chrome.storage'dan yuklenir.
+            widget.setAttribute('data-side', 'right');
+            widget.style.top = '100px';
 
             // Load theme
             chrome.storage.local.get({ lightTheme: false }, (result) => {
@@ -585,79 +688,66 @@
             };
             chrome.storage.onChanged.addListener(window.xRaporThemeListener);
 
-            const baslik = document.createElement('div'); 
-            baslik.style.cssText = `
-                font-weight: bold; font-size: 13px; border-bottom: 1px solid var(--w-border);
-                padding-bottom: 8px; margin-bottom: 12px; cursor: move;
-                display: flex; justify-content: space-between; align-items: center;
-            `; 
-            const baslikText = document.createElement('span'); 
-            baslikText.innerText = "GörüntüX";
-            baslik.appendChild(baslikText); 
+            // === Kalici konum: kaydedilmis taraf + dikey konum ===
+            chrome.storage.local.get({ dock_side: 'right', dock_top: 100 }, (r) => {
+                widget.setAttribute('data-side', r.dock_side === 'left' ? 'left' : 'right');
+                widget.style.top = (parseInt(r.dock_top, 10) || 100) + 'px';
+            });
 
-            const kapatButon = document.createElement('span'); 
-            kapatButon.innerText = "✕"; 
-            kapatButon.style.cssText = `cursor: pointer; color: var(--w-text-muted); font-weight: bold; padding: 2px 6px;`; 
-            kapatButon.onclick = () => widget.style.display = 'none'; 
-            baslik.appendChild(kapatButon); 
-            widget.appendChild(baslik); 
+            // === Ray (rail): logo (Panele Git) + taranıyor isigi + Rapora Ekle butonu ===
+            const rail = document.createElement('div');
+            rail.className = 'xdock-rail';
 
-            // SILINDI (v3.65): tivitBilgiKutusu (#w-tivit-bilgi). Widget'a bos bir div
-            // ekliyordu; iceriğini YALNIZCA silinen kazima motoru dolduruyordu
-            // (tivitBilgisiniYazdir). Artik okuyani yok -> gorunmez olu DOM ogesi.
+            // Logo (baslik metni YOK) = FAVICON. Ayni zamanda "Panele Git" (tikla) + surukleme
+            // tutamagi. Tikla vs surukle: initDockDrag esikle ayirir (kimildamadiysa -> panele git).
+            const logo = document.createElement('div');
+            logo.className = 'xdock-logo';
+            logo.id = 'w-panel-buton';
+            logo.title = 'GörüntüX\'e Git · sürükleyerek taşı';
+            logo.innerHTML = `<svg width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg><span class="xdock-lbl">GörüntüX'e Git</span>`;
+            rail.appendChild(logo);
 
+            // Taranıyor halkasi (.scanning ile acilir): dis cember ilerlemeye gore dolar,
+            // ortasinda asama (tamamlanan/toplam). Cember cevresi = 2*pi*16 ≈ 100.53.
+            const scanDot = document.createElement('div');
+            scanDot.className = 'xdock-scan';
+            scanDot.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle class="xdock-ring-track" cx="20" cy="20" r="16"></circle><circle class="xdock-ring-fill" id="w-scan-ring" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="xdock-scan-txt" id="w-scan-txt">0/0</span><span class="xdock-lbl xdock-scan-lbl" id="w-scan-lbl">Taranıyor…</span>`;
+            // Halkaya gelince "ne oluyor"u acikla: o anki tarama durum metnini (durumText) canli goster.
+            scanDot.addEventListener('mouseenter', () => {
+                const _lbl = document.getElementById('w-scan-lbl');
+                const _d = document.getElementById('w-durum');
+                const _t = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : '';
+                if (_lbl) _lbl.textContent = _t || 'Taranıyor…';
+            });
+            rail.appendChild(scanDot);
+
+            // Ana buton: "Rapora Ekle" (ikon; hover'da etiket). ID korunur (#w-buton).
+            // BAGLANTI DURUMUNU DA TASIR (kullanici istegi): .connected -> yesil + isik sacar (glow);
+            // .outdated -> sari + uyari balonu (#w-conn-warn) + kilit. Ayri yesil nokta YOK.
+            const buton = document.createElement('button');
+            buton.id = 'w-buton';
+            buton.className = 'xdock-btn connected';
+            buton.innerHTML = `<span class="xdock-ico">➕</span><span class="xdock-lbl">Rapora Ekle</span><div class="xdock-warn" id="w-conn-warn"></div>`;
+            rail.appendChild(buton);
+
+            widget.appendChild(rail);
+
+            // === Tarama/idle kodunun bekledigi ama artik GIZLI dugumler (uyumluluk) ===
+            // durumText (#w-durum): showStatus/showError/renderIdleWidget yazar; dock'ta gorunmez.
+            const durumText = document.createElement('div');
+            durumText.id = 'w-durum';
+            durumText.className = 'xdock-status';   // normalde gizli; YALNIZ .xdock-dialog'da kart olur
+            widget.appendChild(durumText);
+            // progressBox (#w-progress-*): initWidgetTimer/scan gunceller; ilerleme panelde.
             const progressBox = document.createElement('div');
             progressBox.id = 'w-progress-box';
-            progressBox.style.cssText = `
-                font-size: 11px; background: var(--w-card-bg); border: 1px solid var(--w-border); 
-                padding: 10px; border-radius: 8px; margin-bottom: 12px; color: var(--w-text);
-                display: none; flex-direction: column; gap: 6px; line-height: 1.4;
-            `;
+            progressBox.className = 'xdock-hidden';
             progressBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; font-weight: 500;">
-                    <span>Tarama İlerlemesi:</span>
-                    <span id="w-progress-counter" style="font-weight:bold; color:var(--w-text);">0 / 0</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-weight: 500;">
-                    <span>Geçen Süre:</span>
-                    <span id="w-progress-timer" style="font-weight:bold; color:var(--w-text);">⏱ 00:00</span>
-                </div>
-                <div style="width:100%; height:6px; background:var(--w-border); border-radius:3px; overflow:hidden; margin-top:2px;">
-                    <div id="w-progress-bar-fill" style="width:0%; height:100%; background:#1d9bf0; transition:width 0.3s;"></div>
-                </div>
+                <span id="w-progress-counter">0 / 0</span>
+                <span id="w-progress-timer">⏱ 00:00</span>
+                <div id="w-progress-bar-fill"></div>
             `;
             widget.appendChild(progressBox);
-
-            const durumText = document.createElement('div'); 
-            durumText.id = 'w-durum'; 
-            durumText.style.cssText = `font-size: 12px; color: var(--w-text-muted); margin-bottom: 14px; line-height: 1.5;`; 
-            widget.appendChild(durumText); 
-
-            const buton = document.createElement('button'); 
-            buton.id = 'w-buton'; 
-            buton.style.cssText = `
-                width: 100%; color: #fff; border: none; padding: 11px; font-weight: bold; 
-                font-size: 13px; border-radius: 99px; cursor: pointer; transition: background 0.2s; box-sizing: border-box;
-            `; 
-            widget.appendChild(buton);
-
-            // v3.81: "Panele Git" butonu — her durumda gorunur, kullanici panele gecebilsin.
-            // Paneli one alir / yeni sekmede acar; MEVCUT sekmeyi kapatmaz (X'te gezinme surer,
-            // panel ayri/ustune gelir). Ana butonun (Rapora Ekle/progress) durumlarindan bagimsiz.
-            const panelButon = document.createElement('button');
-            panelButon.id = 'w-panel-buton';
-            panelButon.innerText = '🔗 Panele Git';
-            panelButon.style.cssText = `
-                width: 100%; margin-top: 8px; background: transparent; color: var(--w-text-muted);
-                border: 1px solid var(--w-border); padding: 8px; font-weight: 600; font-size: 12px;
-                border-radius: 99px; cursor: pointer; transition: background 0.2s; box-sizing: border-box;
-            `;
-            panelButon.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
-                    chrome.runtime.sendMessage({ action: "goToPanel", origin: res.server_origin });
-                });
-            };
-            widget.appendChild(panelButon);
 
             document.body.appendChild(widget);
 
@@ -1895,13 +1985,18 @@
                 const box = document.getElementById('w-progress-box');
                 const counter = document.getElementById('w-progress-counter');
                 const fill = document.getElementById('w-progress-bar-fill');
-                
+                const widgetEl = document.getElementById('x-downloader-widget');
+
                 if (!box || !gorev || !gorev.aktif) {
                     if (box) box.style.display = 'none';
+                    // Tarama bitti/yok: dock'taki "taranıyor" isigini kapat.
+                    if (widgetEl) widgetEl.classList.remove('scanning');
                     return;
                 }
-                
+
                 box.style.display = 'flex';
+                // Tarama aktif: dock'ta yalnız "taranıyor" isigi (ilerleme panelde).
+                if (widgetEl) widgetEl.classList.add('scanning');
                 
                 const completed = (gorev.combinedData) ? gorev.combinedData.length : 0;
                 let total = 0;
@@ -1911,13 +2006,15 @@
                     total = completed + gorev.kuyruk.length;
                 }
                 
-                if (counter) {
-                    counter.innerText = `${completed} / ${total}`;
-                }
-                if (fill) {
-                    const pct = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
-                    fill.style.width = `${pct}%`;
-                }
+                const pct = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+                if (counter) { counter.innerText = `${completed} / ${total}`; }
+                if (fill) { fill.style.width = `${pct}%`; }
+
+                // Dock tarama HALKASI (dis cember) + ortadaki asama (tamamlanan/toplam).
+                const ring = document.getElementById('w-scan-ring');
+                if (ring) { const C = 100.53; ring.setAttribute('stroke-dashoffset', String(C * (1 - pct / 100))); }
+                const scanTxt = document.getElementById('w-scan-txt');
+                if (scanTxt) { scanTxt.textContent = `${completed}/${total}`; }
             }
 
             // Live DOM logging helper
@@ -2030,7 +2127,7 @@
         logToServer(`HATA: ${err.message || err}`);
         durumText.style.color = "#ff4a4a";
         durumText.innerHTML = `⚠️ <b>Hata Oluştu:</b><br>${err.message || err}`;
-        buton.innerText = "Yenile";
+        xSetButon("Yenile");
         buton.style.backgroundColor = "#38444d";
         buton.disabled = false;
         buton.onclick = () => location.reload();
@@ -2049,28 +2146,50 @@
     // Print initial log
     printLog("Betik başlatıldı. storage aranıyor...");
 
-    // Draggable header
-    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    baslik.onmousedown = (e) => { 
-        if (e.target === kapatButon) return; 
-        e.preventDefault(); 
-        pos3 = e.clientX; 
-        pos4 = e.clientY; 
-        document.onmouseup = () => { 
-            document.onmouseup = null; 
-            document.onmousemove = null; 
-        }; 
-        document.onmousemove = (ev) => { 
-            ev.preventDefault(); 
-            pos1 = pos3 - ev.clientX; 
-            pos2 = pos4 - ev.clientY; 
-            pos3 = ev.clientX; 
-            pos4 = ev.clientY; 
-            widget.style.top = (widget.offsetTop - pos2) + "px"; 
-            widget.style.left = (widget.offsetLeft - pos1) + "px"; 
-            widget.style.right = "auto"; 
-        }; 
-    }; 
+    // Dock surukleme: logodan tut-surukle -> DIKEY tasi. Isaretci ekranin obur yarisina
+    // gecince TARAF degisir (sag<->sol). Birakinca {dock_side, dock_top} kalici olarak yazilir.
+    // Surukleme boyunca .dragging: acik kalir + gecis kapali (titremesin).
+    // Logo hem "Panele Git" (tikla) hem surukleme tutamagi. Isaretci 5px'ten az kaydiysa
+    // TIKLAMA sayilir -> panele git; aksi halde surukleme (tasi/taraf degistir + kalici yaz).
+    (function initDockDrag() {
+        let dragging = false, moved = false, startX = 0, startY = 0, startTop = 0;
+        function goToPanel() {
+            chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                chrome.runtime.sendMessage({ action: "goToPanel", origin: res.server_origin });
+            });
+        }
+        logo.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            dragging = true; moved = false;
+            startX = e.clientX; startY = e.clientY;
+            startTop = widget.offsetTop;
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+        function onMove(ev) {
+            if (!dragging) return;
+            ev.preventDefault();
+            if (!moved && (Math.abs(ev.clientX - startX) > 5 || Math.abs(ev.clientY - startY) > 5)) {
+                moved = true;
+                widget.classList.add('dragging');   // gercek suruklemede: acik kal + gecis kapali
+            }
+            if (!moved) return;
+            let nt = startTop + (ev.clientY - startY);
+            nt = Math.max(4, Math.min(window.innerHeight - 80, nt));
+            widget.style.top = nt + 'px';
+            widget.setAttribute('data-side', (ev.clientX < window.innerWidth / 2) ? 'left' : 'right');
+        }
+        function onUp() {
+            dragging = false;
+            widget.classList.remove('dragging');
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            if (!moved) { goToPanel(); return; }   // tiklama -> panele git
+            const side = widget.getAttribute('data-side') || 'right';
+            const top = parseInt(widget.style.top, 10) || 100;
+            chrome.storage.local.set({ dock_side: side, dock_top: top });
+        }
+    })();
 
     // SILINDI (v3.65): olu kazima motorunun 11 yardimcisi — tivitIdZamaniBul,
     // zamanFormatla, tivitBilgisiniYazdir, gecenSureyiBul, kronometreyiBaslat,
@@ -2090,6 +2209,8 @@
     // (Sahada goruldu: TikTok captcha cikti, tarama durdu, panel "bitti" gibi davrandi.)
     function durdurVeTemizle(storageKey, interval, serverOrigin, sebep) {
         if (interval) clearInterval(interval);
+        // Tarama sonlandi: dock'taki "taranıyor" isigini kapat (savunmaci).
+        try { const _w = document.getElementById('x-downloader-widget'); if (_w) _w.classList.remove('scanning'); } catch (e) {}
         chrome.storage.local.get({ server_origin: "http://localhost:3011", client_id: "" }, (res) => {
             const origin = serverOrigin || res.server_origin;
             const clientId = res.client_id || "";
@@ -2159,7 +2280,7 @@
                 </div>
             `;
             
-            buton.innerText = "🔑 Giriş Paneline Git";
+            xSetButon("🔑 Giriş Paneline Git");
             buton.style.backgroundColor = '#1d9bf0';
             buton.disabled = false;
             
@@ -2174,6 +2295,20 @@
     }
 
     // UI State 1: Idle widget renderer
+    // Ikon+etiket yapisini KORUYARAK buton "metnini" ayarlar (eski buton.innerText'in yerini tutar).
+    // Bastaki emoji -> ikon (.xdock-ico); kalan -> etiket (.xdock-lbl). Idle "Rapora Ekle" disindaki
+    // (gecici) durumlarda etiketi otomatik gosterir (.xdock-show-lbl) ki kullanici sonucu okusun.
+    function xSetButon(text) {
+        text = String(text == null ? '' : text);
+        const ico = buton.querySelector('.xdock-ico');
+        const lbl = buton.querySelector('.xdock-lbl');
+        if (!ico || !lbl) { buton.textContent = text; return; }
+        const m = text.match(/^\s*(\p{Extended_Pictographic}️?)\s*([\s\S]*)$/u);
+        if (m) { ico.textContent = m[1]; lbl.textContent = m[2].trim(); }
+        else   { ico.textContent = '➕'; lbl.textContent = text.trim(); }
+        buton.classList.toggle('xdock-show-lbl', text.trim() !== 'Rapora Ekle');
+    }
+
     function renderIdleWidget(storageKey) {
         try {
             printLog("renderIdleWidget çağrıldı...");
@@ -2191,14 +2326,16 @@
                 
                 // v3.72: buton artik TEKIL WORD URETMEZ (o yol zaten 410 ile emekliydi);
                 // yakalanan icerigi PANELIN HAVUZUNA ekler. Tweet + profil sayfalarinda calisir.
-                buton.innerText = "Rapora Ekle";
-                buton.style.backgroundColor = '#1d9bf0'; // X Blue color
+                xSetButon("Rapora Ekle");
+                buton.className = 'xdock-btn connected';   // baglanti hazir -> yesil + isik sacar (glow)
+                buton.style.backgroundColor = '';          // onceki durum(lar)in inline rengini temizle
                 buton.disabled = false;
 
                 buton.onclick = async () => {
                     buton.disabled = true;
-                    buton.innerText = "⏳ Yakalanıyor...";
-                    const _sifirla = () => { buton.disabled = false; buton.innerText = "Rapora Ekle"; };
+                    xSetButon("⏳ Yakalanıyor...");
+                    // Yesil "connected" gorunumu gecici durumlarda da korunur; _sifirla idle'a doner.
+                    const _sifirla = () => { buton.disabled = false; buton.className = 'xdock-btn connected'; buton.style.backgroundColor = ''; xSetButon("Rapora Ekle"); };
 
                     const _urlSade = window.location.href.split('?')[0];
 
@@ -2221,7 +2358,7 @@
                         }
                         var _igPanoOk = await _panoIg.gorseliVer(_igSs);
                         var _igBaslik = xIgYazar();
-                        buton.innerText = "⏳ Ekleniyor...";
+                        xSetButon("⏳ Ekleniyor...");
                         chrome.runtime.sendMessage({
                             action: "addToPool",
                             origin: res.server_origin,
@@ -2232,10 +2369,10 @@
                             group_override: ""
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
-                                buton.innerText = _igPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                xSetButon(_igPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi");
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
-                                buton.innerText = "⚠️ Zaten havuzda";
+                                xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
                                 alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
@@ -2260,7 +2397,7 @@
                             _sifirla(); return;
                         }
                         var _fbPanoOk = await _panoFb.gorseliVer(_fbRes.shot);
-                        buton.innerText = "⏳ Ekleniyor...";
+                        xSetButon("⏳ Ekleniyor...");
                         chrome.runtime.sendMessage({
                             action: "addToPool",
                             origin: res.server_origin,
@@ -2271,10 +2408,10 @@
                             group_override: ""
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
-                                buton.innerText = _fbPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                xSetButon(_fbPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi");
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
-                                buton.innerText = "⚠️ Zaten havuzda";
+                                xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
                                 alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
@@ -2298,7 +2435,7 @@
                             _sifirla(); return;
                         }
                         var _ttPanoOk = await _panoTt.gorseliVer(_ttRes.shot);
-                        buton.innerText = "⏳ Ekleniyor...";
+                        xSetButon("⏳ Ekleniyor...");
                         chrome.runtime.sendMessage({
                             action: "addToPool",
                             origin: res.server_origin,
@@ -2309,10 +2446,10 @@
                             group_override: ""
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
-                                buton.innerText = _ttPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                xSetButon(_ttPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi");
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
-                                buton.innerText = "⚠️ Zaten havuzda";
+                                xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
                                 alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
@@ -2336,7 +2473,7 @@
                             _sifirla(); return;
                         }
                         var _ytPanoOk = await _panoYt.gorseliVer(_ytRes.shot);
-                        buton.innerText = "⏳ Ekleniyor...";
+                        xSetButon("⏳ Ekleniyor...");
                         chrome.runtime.sendMessage({
                             action: "addToPool",
                             origin: res.server_origin,
@@ -2347,10 +2484,10 @@
                             group_override: ""
                         }, (addRes) => {
                             if (addRes && addRes.status === "success") {
-                                buton.innerText = _ytPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                                xSetButon(_ytPanoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi");
                                 setTimeout(_sifirla, 1500);
                             } else if (addRes && addRes.status === "duplicate") {
-                                buton.innerText = "⚠️ Zaten havuzda";
+                                xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
                                 alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
@@ -2494,7 +2631,7 @@
                     // burada görseli doldururuz -> yakalama uzun sürse bile pano yazımı engellenmez.
                     var _panoOk = await _pano.gorseliVer(ekranGoruntusu);
 
-                    buton.innerText = "⏳ Ekleniyor...";
+                    xSetButon("⏳ Ekleniyor...");
                     chrome.runtime.sendMessage({
                         action: "addToPool",
                         origin: res.server_origin,
@@ -2505,13 +2642,13 @@
                         group_override: groupOverride
                     }, (addRes) => {
                         if (addRes && addRes.status === "success") {
-                            buton.innerText = _panoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi";
+                            xSetButon(_panoOk ? "✔️ Eklendi · 📋 Panoda" : "✔️ Rapora eklendi");
                             // v3.74 (kullanici istegi): panele YONLENDIRME YOK. Icerik sunucudaki
                             // havuza eklendi; kullanici panele kendisi gidince orada gorunur.
                             // (Eskiden burada focusOrOpenPanel cagriliyordu.)
                             setTimeout(_sifirla, 1500);
                         } else if (addRes && addRes.status === "duplicate") {
-                            buton.innerText = "⚠️ Zaten havuzda";
+                            xSetButon("⚠️ Zaten havuzda");
                             setTimeout(_sifirla, 1800);
                         } else {
                             alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
@@ -2531,6 +2668,10 @@
                     var _guncel = (vres && vres.latestVersion) || "";
                     if (_yerel && _guncel && isVersionOlder(_yerel, _guncel)) {
                         renderVersionLockedWidget(_yerel, _guncel);
+                    } else if (!buton.disabled) {
+                        // Guncel/fail-open: baglanti isigi yesil kalsin (onceki .outdated'i temizle).
+                        buton.classList.remove('outdated');
+                        buton.classList.add('connected');
                     }
                 });
             });
@@ -2591,35 +2732,34 @@
         return false;
     }
 
+    // GUNCELLEME VAR: baglanti isigi (=Rapora Ekle butonu) SARI olur, uyari balonu (#w-conn-warn)
+    // acilir/genisler, buton KILITLENIR (Rapora Ekle devre disi). Balona/butona tiklama indirme
+    // sayfasini acar. durumText/ayri kutu YOK (yeni dock tasarimi).
     function renderVersionLockedWidget(localVersion, latestVersion) {
         try {
             printLog("renderVersionLockedWidget çağrıldı...");
-            
-            const oldCb = document.getElementById('w-cb-container');
-            if (oldCb) oldCb.remove();
-            
-            durumText.style.color = "#ff4d4f";
-            durumText.innerHTML = `
-                <div style="text-align: center; padding: 10px 0;">
-                    <div style="font-size: 24px; margin-bottom: 8px;">❌</div>
-                    <div style="font-weight: bold; margin-bottom: 6px; font-size: 13px; color: var(--w-text);">Güncelleme Gerekli</div>
-                    <div style="font-size: 11px; line-height: 1.4; color: var(--w-text-muted);">
-                        Eklenti sürümünüz güncel değil! <br>
-                        Sizdeki: <b>v${localVersion}</b>, Güncel: <b>v${latestVersion}</b> <br><br>
-                        Taramaya devam edebilmek için lütfen güncel eklentiyi indirin ve tarayıcınızda yenileyin.
-                    </div>
-                </div>
-            `;
-            
-            buton.innerText = "📥 Eklentiyi İndir";
-            buton.style.backgroundColor = '#e0245e';
-            buton.disabled = false;
-            
-            buton.onclick = () => {
+
+            const acIndir = () => {
                 chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
                     window.open(`${res.server_origin}/x-rapor-arti`, "_blank");
                 });
             };
+
+            buton.classList.remove('connected');
+            buton.classList.add('outdated');
+            buton.style.backgroundColor = '';   // rengi .outdated sinifi versin (sari)
+            buton.disabled = true;              // Rapora Ekle kilitli
+            const ico = buton.querySelector('.xdock-ico');
+            const lbl = buton.querySelector('.xdock-lbl');
+            if (ico) ico.textContent = '⚠️';
+            if (lbl) lbl.textContent = 'Güncelleme gerekli';
+            buton.classList.remove('xdock-show-lbl');
+
+            const warn = document.getElementById('w-conn-warn');
+            if (warn) {
+                warn.innerHTML = `⚠️ <b>Güncelleme gerekli.</b><br>Sizdeki v${localVersion}, güncel v${latestVersion}.<br><span class="xdock-warn-link">Eklentiyi indir →</span>`;
+                warn.onclick = (e) => { e.stopPropagation(); acIndir(); };
+            }
         } catch (e) {
             showError(e);
         }
@@ -2638,6 +2778,10 @@
     function limitEngeliGoster(gorev, storageKey, sebepMetni) {
         gorev.retry_count = (gorev.retry_count || 0) + 1;
         printLog(`Hata: ${sebepMetni} Yeniden deneme adımı: ${gorev.retry_count}`);
+
+        // Dock'u KENARDA tutarak ANLIK genislet: durum karti + Yenile/Atla gorunur olsun.
+        // (Cozum yolu location.reload/navigate oldugu icin sinif sonrasinda kendiliginden temizlenir.)
+        try { const _w = document.getElementById('x-downloader-widget'); if (_w) { _w.classList.remove('scanning'); _w.classList.add('xdock-dialog'); } } catch (e) {}
 
         let saniyeKalan = 120;
         durumText.innerHTML = `
@@ -2704,7 +2848,7 @@
             
             if (!activeTask) {
                 durumText.innerHTML = `🎉 <b>Tüm Linkler Tarandı!</b><br>Word Raporunu panel üzerinden indirebilirsiniz.`;
-                buton.innerText = "Kapat";
+                xSetButon("Kapat");
                 buton.disabled = false;
                 buton.style.backgroundColor = '#1d9bf0';
                 buton.onclick = () => {
@@ -2766,7 +2910,7 @@
                 chrome.storage.local.set(_rz, () => {});
             }
             
-            buton.innerText = "🛑 Taramayı Durdur";
+            xSetButon("🛑 Taramayı Durdur");
             buton.style.backgroundColor = "#e0245e";
             buton.onclick = () => {
                 durdurVeTemizle(storageKey, null, gorev.server_origin);
