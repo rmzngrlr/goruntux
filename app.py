@@ -3732,6 +3732,9 @@ HTML_TEMPLATE = """
                 window.extensionInstalledVersion = kuruluSurum;
                 window.extensionLatestVersion = sonSurum;
 
+                // 24 saat otomatik havuz temizligi (local/sabit). Havuz sayisi + tarama durumu burada.
+                xHavuz24Kontrol(data);
+
                 // --- Sag-ust UC DURUMLU kutu (Stil Ayarlari'nin saginda) ---
                 //   yok/baglanmadi -> KIRMIZI (tiklanabilir: kur)
                 //   kurulu + ESKI  -> SARI   (tiklanabilir: guncelle)
@@ -4922,6 +4925,42 @@ HTML_TEMPLATE = """
             .then(function() {
                 refreshStatus();
             });
+        }
+
+        // YALNIZCA HAVUZ temizleme (24 saat otomatik temizlik icin). resetAutomationUIAndBackend'den
+        // farki: GIRDI KUTUSUNA / yazili linklere DOKUNMAZ. Sunucu havuzu (/api/manual/clear ->
+        // pool.clear + gecici gorseller) + yerel gorseller (XLocalImages) temizlenir.
+        function xHavuzYalnizTemizle() {
+            try { if (window.XLocalImages) window.XLocalImages.clear(); } catch (e) {}
+            fetch('/api/manual/clear', { method: 'POST' })
+                .then(function () { if (typeof refreshStatus === 'function') refreshStatus(); })
+                .catch(function () { if (typeof refreshStatus === 'function') refreshStatus(); });
+        }
+
+        // 24 SAAT OTOMATIK HAVUZ TEMIZLIGI (LOCAL / tarayici bazli, SABIT sure).
+        // Kullanici surekli "Rapora Ekle" ile havuza atip yalnizca panoyu kullanabilir; havuz
+        // gereksiz uzamasin diye: havuzda icerik VARSA ve "Kaydet ve Indir" YAPILMADIYSA, ilk
+        // icerigin gorulmesinden 24 saat sonra havuz otomatik temizlenir.
+        //  - Zaman damgasi localStorage'da (x_havuz_ilk_ts): ilk icerikte kurulur, SABIT (yeni
+        //    eklemede sifirlanmaz), havuz bosalinca (kaydet/temizle/ac) silinir. Panel kapaliyken
+        //    de sure isler; tekrar acilinca 24 saat dolduysa temizler.
+        //  - Aktif tarama sirasinda (status running) temizlemez.
+        function xHavuz24Kontrol(data) {
+            try {
+                var KEY = 'x_havuz_ilk_ts';
+                var n = (data && data.manuel_count) || 0;
+                if (n <= 0) { localStorage.removeItem(KEY); return; }   // havuz bos -> zamanlayici sifir
+                var ts = parseInt(localStorage.getItem(KEY) || '0', 10);
+                if (!ts) { localStorage.setItem(KEY, String(Date.now())); return; }   // SABIT: ilk icerikte basla
+                var running = (data && data.status === 'running');
+                if (!running && (Date.now() - ts) >= 24 * 60 * 60 * 1000 && !window._havuzTemizleniyor) {
+                    window._havuzTemizleniyor = true;
+                    localStorage.removeItem(KEY);
+                    xHavuzYalnizTemizle();
+                    if (typeof showToast === 'function') showToast('Havuz 24 saattir kaydedilmedi; otomatik temizlendi.', 'warning');
+                    setTimeout(function () { window._havuzTemizleniyor = false; }, 8000);
+                }
+            } catch (e) {}
         }
 
         function downloadFromPreview() {
