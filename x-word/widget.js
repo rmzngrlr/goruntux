@@ -743,12 +743,8 @@
                 const _ac = () => {
                     if (_t) { clearTimeout(_t); _t = null; }
                     const _msg = document.getElementById('w-scan-msg');
-                    const _d = document.getElementById('w-durum');
-                    if (_msg) {
-                        let _s = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : '';
-                        _s = _s.replace(/\s*·?\s*\d+\s*\/\s*\d+\s*$/, '');   // sondaki sayaci at (halka zaten gosteriyor)
-                        _msg.textContent = _s || 'Taranıyor…';
-                    }
+                    // Platforma gore temiz cumle (ör. "Instagram görseli alınıyor."). Sayac halkada.
+                    if (_msg) { _msg.textContent = xPlatformAdi() + ' görseli alınıyor.'; }
                     scanDot.classList.add('xdock-scan-open');
                 };
                 const _kapatYakinda = () => { if (_t) clearTimeout(_t); _t = setTimeout(() => scanDot.classList.remove('xdock-scan-open'), 250); };
