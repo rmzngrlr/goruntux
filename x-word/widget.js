@@ -597,13 +597,14 @@
                         justify-content: center; font-size: 11px; font-weight: 700; color: var(--w-text); }
                     /* Halka hover pop'u: o an ne oluyor + IPTAL. Grace-timer ile acik kalir (JS). */
                     #x-downloader-widget .xdock-scan-pop { display: none; position: absolute; top: 50%; transform: translateY(-50%);
-                        width: 214px; padding: 11px 12px; box-sizing: border-box;
+                        width: 210px; padding: 11px 12px; box-sizing: border-box;
                         background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
                         border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); z-index: 6; }
-                    #x-downloader-widget .xdock-scan.xdock-scan-open .xdock-scan-pop { display: flex; align-items: center; gap: 10px; }
+                    #x-downloader-widget .xdock-scan.xdock-scan-open .xdock-scan-pop { display: flex; align-items: center; gap: 9px; }
                     #x-downloader-widget[data-side="right"] .xdock-scan-pop { right: 46px; }
                     #x-downloader-widget[data-side="left"]  .xdock-scan-pop { left: 46px; }
-                    #x-downloader-widget .xdock-scan-msg { flex: 1; font-size: 12px; line-height: 1.4; }
+                    /* flex:0 1 auto -> ikon metni ITMEZ, metnin HEMEN ardina gelir (gereksiz bosluk yok). */
+                    #x-downloader-widget .xdock-scan-msg { flex: 0 1 auto; max-width: 165px; font-size: 12px; line-height: 1.4; }
                     /* IPTAL: SADECE IKON (kucuk kirmizi yuvarlak). Uyari yalnız hover'da. */
                     #x-downloader-widget .xdock-scan-cancel { position: relative; flex: none; width: 32px; height: 32px; padding: 0;
                         border: none; border-radius: 50%; background: #e0245e; color: #fff; font-size: 15px; cursor: pointer;
