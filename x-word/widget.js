@@ -2790,7 +2790,9 @@
 
             const acIndir = () => {
                 chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
-                    window.open(`${res.server_origin}/x-rapor-arti`, "_blank");
+                    // Guncel eklenti .zip'i (panelin sundugu route). ESKIDEN /x-rapor-arti idi ->
+                    // sunucuda boyle bir route YOK (404). Panelin indir dugmesiyle ayni uc.
+                    window.open(`${res.server_origin}/api/extension/download_zip`, "_blank");
                 });
             };
 

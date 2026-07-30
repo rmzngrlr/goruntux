@@ -1942,7 +1942,7 @@ HTML_TEMPLATE = """
             <div id="tab-auto" class="tab-content active">
                 <!-- Mobilde eklenti çalışmadığından YALNIZ bu sekme "Masaüstü Gerekli" gösterir; gerçek
                      tarama içeriği (#auto-desktop-content) html.x-mobile CSS'iyle gizlenir. Diğer sekmeler
-                     mobilde çalışır. xrapor.com/x-rapor-arti tarzı. -->
+                     mobilde çalışır. -->
                 <div id="auto-mobile-block" style="display:none; text-align:center; padding:56px 24px;">
                     <div style="font-size:66px; line-height:1; margin-bottom:22px;">💻</div>
                     <h3 style="font-size:22px; font-weight:700; color:var(--text-primary); margin:0 0 16px;">Masaüstü Bilgisayar Gerekli</h3>
