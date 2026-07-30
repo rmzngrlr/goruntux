@@ -595,6 +595,25 @@
                         transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s ease; }
                     #x-downloader-widget .xdock-scan-txt { position: absolute; inset: 0; display: flex; align-items: center;
                         justify-content: center; font-size: 11px; font-weight: 700; color: var(--w-text); }
+                    /* Halka hover pop'u: o an ne oluyor + IPTAL. Grace-timer ile acik kalir (JS). */
+                    #x-downloader-widget .xdock-scan-pop { display: none; position: absolute; top: 50%; transform: translateY(-50%);
+                        width: 214px; padding: 11px 12px; box-sizing: border-box;
+                        background: var(--w-bg); color: var(--w-text); border: 1px solid var(--w-border);
+                        border-radius: 12px; box-shadow: 0 6px 24px var(--w-shadow); z-index: 6; }
+                    #x-downloader-widget .xdock-scan.xdock-scan-open .xdock-scan-pop { display: flex; align-items: center; gap: 10px; }
+                    #x-downloader-widget[data-side="right"] .xdock-scan-pop { right: 46px; }
+                    #x-downloader-widget[data-side="left"]  .xdock-scan-pop { left: 46px; }
+                    #x-downloader-widget .xdock-scan-msg { flex: 1; font-size: 12px; line-height: 1.4; }
+                    /* IPTAL: SADECE IKON (kucuk kirmizi yuvarlak). Uyari yalnız hover'da. */
+                    #x-downloader-widget .xdock-scan-cancel { position: relative; flex: none; width: 32px; height: 32px; padding: 0;
+                        border: none; border-radius: 50%; background: #e0245e; color: #fff; font-size: 15px; cursor: pointer;
+                        display: flex; align-items: center; justify-content: center; }
+                    #x-downloader-widget .xdock-scan-cancel:hover { background: #c81e4f; }
+                    #x-downloader-widget .xdock-cancel-warn { display: none; }
+                    #x-downloader-widget .xdock-scan-cancel:hover .xdock-cancel-warn { display: block; position: absolute;
+                        top: calc(100% + 8px); right: 0; width: 190px; padding: 7px 9px; font-size: 11px; font-weight: 600; line-height: 1.3;
+                        background: var(--w-card-bg); color: #ff5c81; border: 1px solid #e0245e; border-radius: 8px;
+                        box-shadow: 0 4px 16px var(--w-shadow); z-index: 7; }
 
                     /* Ikon butonlar */
                     /* Buton favicon (logo) ile ayni boyutta: 34x34, ikon ~16px. */
@@ -626,10 +645,7 @@
                     #x-downloader-widget[data-side="left"]  .xdock-lbl { left: 48px; }
                     #x-downloader-widget .xdock-btn:hover .xdock-lbl,
                     #x-downloader-widget .xdock-logo:hover .xdock-lbl,
-                    #x-downloader-widget .xdock-scan:hover .xdock-lbl,
                     #x-downloader-widget .xdock-btn.xdock-show-lbl .xdock-lbl { opacity: 1; transform: translateY(-50%) scale(1); }
-                    /* Tarama halkasi etiketi: cok satirli acikla (o an ne oluyor). */
-                    #x-downloader-widget .xdock-scan-lbl { white-space: normal; width: 190px; line-height: 1.35; text-align: left; }
 
                     /* Guncelleme uyari balonu (Rapora Ekle butonunda; .outdated ile acilir/genisler) */
                     #x-downloader-widget .xdock-warn { display: none; }
@@ -711,14 +727,24 @@
             // ortasinda asama (tamamlanan/toplam). Cember cevresi = 2*pi*16 ≈ 100.53.
             const scanDot = document.createElement('div');
             scanDot.className = 'xdock-scan';
-            scanDot.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle class="xdock-ring-track" cx="20" cy="20" r="16"></circle><circle class="xdock-ring-fill" id="w-scan-ring" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="xdock-scan-txt" id="w-scan-txt">0/0</span><span class="xdock-lbl xdock-scan-lbl" id="w-scan-lbl">Taranıyor…</span>`;
-            // Halkaya gelince "ne oluyor"u acikla: o anki tarama durum metnini (durumText) canli goster.
-            scanDot.addEventListener('mouseenter', () => {
-                const _lbl = document.getElementById('w-scan-lbl');
-                const _d = document.getElementById('w-durum');
-                const _t = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : '';
-                if (_lbl) _lbl.textContent = _t || 'Taranıyor…';
-            });
+            scanDot.innerHTML = `<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><circle class="xdock-ring-track" cx="20" cy="20" r="16"></circle><circle class="xdock-ring-fill" id="w-scan-ring" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="xdock-scan-txt" id="w-scan-txt">0/0</span><div class="xdock-scan-pop"><div class="xdock-scan-msg" id="w-scan-msg">Taranıyor…</div><button class="xdock-scan-cancel" id="w-scan-cancel" type="button" aria-label="Taramayı iptal et">✕<span class="xdock-cancel-warn">Bu uzun tarama işlemini durdurur ve panele döner.</span></button></div>`;
+            // Halkaya gelince pop acilir: o anki tarama durum metni (durumText, canli) + IPTAL dugmesi.
+            // Grace-timer (250ms) ile halka<->pop gecisinde kapanmaz. Iptal -> xTaramaIptal().
+            (function initScanPop() {
+                let _t = null;
+                const _ac = () => {
+                    if (_t) { clearTimeout(_t); _t = null; }
+                    const _msg = document.getElementById('w-scan-msg');
+                    const _d = document.getElementById('w-durum');
+                    if (_msg) { const _s = _d ? String(_d.textContent || '').replace(/\s+/g, ' ').trim() : ''; _msg.textContent = _s || 'Taranıyor…'; }
+                    scanDot.classList.add('xdock-scan-open');
+                };
+                const _kapatYakinda = () => { if (_t) clearTimeout(_t); _t = setTimeout(() => scanDot.classList.remove('xdock-scan-open'), 250); };
+                scanDot.addEventListener('mouseenter', _ac);
+                scanDot.addEventListener('mouseleave', _kapatYakinda);
+                const _iptalBtn = scanDot.querySelector('#w-scan-cancel');
+                if (_iptalBtn) _iptalBtn.addEventListener('click', (e) => { e.stopPropagation(); xTaramaIptal(); });
+            })();
             rail.appendChild(scanDot);
 
             // Ana buton: "Rapora Ekle" (ikon; hover'da etiket). ID korunur (#w-buton).
@@ -1613,6 +1639,8 @@
 
             // Global timer and progress helper states
             let timerIntervalId = null;
+            // Aktif tarama gorevinin storage anahtari — dock'taki IPTAL dugmesi bunu kullanir.
+            let aktifStorageKey = null;
 
             // Facebook idle "Rapora Ekle" yakalayıcısı — taramanın (wordTaramaYonetimi isFacebook
             // bloğu) gorev-BAĞIMSIZ İKİZİ. captureArticle'ın YANINDA (aynı scope) tanımlı olmalı:
@@ -2207,6 +2235,14 @@
     // ayni "completeJobAndFocusPanel" mesajini gonderiyordu -> panel acisindan AYIRT
     // EDILEMEZ oluyordu. Sebep yalnizca Docker loguna yaziliyordu, kullanici gormuyordu.
     // (Sahada goruldu: TikTok captcha cikti, tarama durdu, panel "bitti" gibi davrandi.)
+    // Dock'taki halka pop'undaki IPTAL: panelden baslayan uzun taramayi durdurur ve panele doner.
+    // durdurVeTemizle: sunucu job'unu resetler + storage'i temizler + paneli 'sebep' ile bilgilendirir.
+    function xTaramaIptal() {
+        if (!aktifStorageKey) { printLog("İptal: aktif tarama görevi yok."); return; }
+        printLog("Kullanıcı taramayı dock'tan iptal etti.");
+        durdurVeTemizle(aktifStorageKey, timerIntervalId, null, "Kullanıcı taramayı iptal etti.");
+    }
+
     function durdurVeTemizle(storageKey, interval, serverOrigin, sebep) {
         if (interval) clearInterval(interval);
         // Tarama sonlandi: dock'taki "taranıyor" isigini kapat (savunmaci).
@@ -4812,6 +4848,7 @@
             printLog(`Görev sorgulama sonucu: Anahtar=${storageKey || 'Bulunamadı'}, Aktif=${gorev?.aktif || false}, Asama=${gorev?.asama || 'Yok'}`);
 
             if (gorev && gorev.aktif) {
+                aktifStorageKey = storageKey;   // dock IPTAL dugmesi bunu kullanir
                 initWidgetTimer(gorev, storageKey);
                 updateWidgetProgress(gorev);
                 if (gorev.asama === "word_taramasi") {
