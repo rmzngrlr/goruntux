@@ -641,6 +641,9 @@
                     #x-downloader-widget .xdock-btn:hover { transform: scale(1.06); }
                     #x-downloader-widget .xdock-btn:disabled { cursor: default; transform: none; }
                     #x-downloader-widget .xdock-ico { pointer-events: none; line-height: 1; }
+                    /* Yesil (connected) butonda ikon BEYAZ olsun: renkli emoji'yi (➕ / ⏳ / ✔️ / ⚠️)
+                       beyaz siluete cevir. color emoji'yi etkilemedigi icin brightness(0)+invert(1). */
+                    #x-downloader-widget .xdock-btn.connected .xdock-ico { filter: brightness(0) invert(1); }
                     /* Hover'da acik yone dogru etiket balonu (+ gecici durumlarda .xdock-show-lbl ile) */
                     #x-downloader-widget .xdock-lbl { position: absolute; top: 50%;
                         transform: translateY(-50%) scale(.9); white-space: nowrap;
