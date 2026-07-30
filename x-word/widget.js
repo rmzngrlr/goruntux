@@ -638,6 +638,8 @@
                     /* GUNCELLEME VAR: sari + uyari. */
                     #x-downloader-widget .xdock-btn.outdated { background: #f5a623; color: #3b2a00; border-color: #f5a623;
                         box-shadow: 0 0 10px 1px rgba(245,166,35,.6); animation: none; }
+                    /* Sarı butonda yalnız BEYAZ ünlem (düz "!" metni; emoji degil, filter gereksiz). */
+                    #x-downloader-widget .xdock-btn.outdated .xdock-ico { color: #fff; font-weight: 800; font-size: 19px; }
                     #x-downloader-widget .xdock-btn:hover { transform: scale(1.06); }
                     #x-downloader-widget .xdock-btn:disabled { cursor: default; transform: none; }
                     #x-downloader-widget .xdock-ico { pointer-events: none; line-height: 1; }
@@ -2798,7 +2800,7 @@
             buton.disabled = true;              // Rapora Ekle kilitli
             const ico = buton.querySelector('.xdock-ico');
             const lbl = buton.querySelector('.xdock-lbl');
-            if (ico) ico.textContent = '⚠️';
+            if (ico) ico.textContent = '!';   // sarı butonda yalnız BEYAZ ünlem (CSS: .outdated .xdock-ico)
             if (lbl) lbl.textContent = 'Güncelleme gerekli';
             buton.classList.remove('xdock-show-lbl');
 
