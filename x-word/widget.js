@@ -672,6 +672,8 @@
 
                     /* Tarama/idle kodunun bekledigi ama artik gizli dugumler */
                     #x-downloader-widget .xdock-hidden { display: none !important; }
+                    /* Tam ekran (video fullscreen) -> tum dock gizli (window.xRaporFsListener). */
+                    #x-downloader-widget.xdock-fs-gizli { display: none !important; }
 
                     /* Etkilesimli tarama diyalogu (limit/atla): dock KENARDA kalir, durum metni
                        acik yone BITISIK bir kart olarak ANLIK acilir; kapaninca dar hale doner. */
@@ -715,6 +717,24 @@
                 }
             };
             chrome.storage.onChanged.addListener(window.xRaporThemeListener);
+
+            // TAM EKRAN (fullscreen) -> dock GIZLE (tum platformlar, kullanici istegi). Video tam
+            // ekranken dock ustte gorunmesin; cikinca geri gelsin. Yalniz GERCEK fullscreen (F/tam
+            // ekran dugmesi); tiyatro modu haric. Tema dinleyicisi gibi TEKIL kalici window handler
+            // (yeniden enjeksiyonda mukerrer olmasin).
+            if (window.xRaporFsListener) {
+                document.removeEventListener('fullscreenchange', window.xRaporFsListener);
+                document.removeEventListener('webkitfullscreenchange', window.xRaporFsListener);
+            }
+            window.xRaporFsListener = () => {
+                const widgetEl = document.getElementById('x-downloader-widget');
+                if (!widgetEl) return;
+                const tamEkran = !!(document.fullscreenElement || document.webkitFullscreenElement);
+                widgetEl.classList.toggle('xdock-fs-gizli', tamEkran);
+            };
+            document.addEventListener('fullscreenchange', window.xRaporFsListener);
+            document.addEventListener('webkitfullscreenchange', window.xRaporFsListener);
+            window.xRaporFsListener();   // ilk durum (widget tam ekranken enjekte olduysa hemen gizle)
 
             // === Kalici konum: kaydedilmis taraf + dikey konum ===
             chrome.storage.local.get({ dock_side: 'right', dock_top: 100 }, (r) => {
