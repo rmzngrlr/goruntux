@@ -2424,7 +2424,9 @@
                                 xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
-                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                var _hataMsg = "Rapora eklenemedi (sunucu): " + (addRes && addRes.message ? addRes.message : "yanıt yok");
+                                if (_igPanoOk) _hataMsg += "\n\nAncak görsel PANONUZA kopyalandı — Ctrl+V ile istediğiniz yere yapıştırabilirsiniz.";
+                                alert(_hataMsg);
                                 _sifirla();
                             }
                         });
@@ -2463,7 +2465,9 @@
                                 xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
-                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                var _hataMsg = "Rapora eklenemedi (sunucu): " + (addRes && addRes.message ? addRes.message : "yanıt yok");
+                                if (_fbPanoOk) _hataMsg += "\n\nAncak görsel PANONUZA kopyalandı — Ctrl+V ile istediğiniz yere yapıştırabilirsiniz.";
+                                alert(_hataMsg);
                                 _sifirla();
                             }
                         });
@@ -2501,7 +2505,9 @@
                                 xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
-                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                var _hataMsg = "Rapora eklenemedi (sunucu): " + (addRes && addRes.message ? addRes.message : "yanıt yok");
+                                if (_ttPanoOk) _hataMsg += "\n\nAncak görsel PANONUZA kopyalandı — Ctrl+V ile istediğiniz yere yapıştırabilirsiniz.";
+                                alert(_hataMsg);
                                 _sifirla();
                             }
                         });
@@ -2539,7 +2545,9 @@
                                 xSetButon("⚠️ Zaten havuzda");
                                 setTimeout(_sifirla, 1800);
                             } else {
-                                alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                                var _hataMsg = "Rapora eklenemedi (sunucu): " + (addRes && addRes.message ? addRes.message : "yanıt yok");
+                                if (_ytPanoOk) _hataMsg += "\n\nAncak görsel PANONUZA kopyalandı — Ctrl+V ile istediğiniz yere yapıştırabilirsiniz.";
+                                alert(_hataMsg);
                                 _sifirla();
                             }
                         });
@@ -2700,7 +2708,9 @@
                             xSetButon("⚠️ Zaten havuzda");
                             setTimeout(_sifirla, 1800);
                         } else {
-                            alert("Rapora eklenirken hata: " + (addRes ? addRes.message : "yanıt yok"));
+                            var _hataMsg = "Rapora eklenemedi (sunucu): " + (addRes && addRes.message ? addRes.message : "yanıt yok");
+                            if (_panoOk) _hataMsg += "\n\nAncak görsel PANONUZA kopyalandı — Ctrl+V ile istediğiniz yere yapıştırabilirsiniz.";
+                            alert(_hataMsg);
                             _sifirla();
                         }
                     });
