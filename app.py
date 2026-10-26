@@ -6670,7 +6670,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
-#editorModal .ed-metin-ekle{display:inline-block;background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:0 0 10px;}
+#editorModal .ed-metin-ekle{display:block;width:fit-content;background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:0 0 10px;}
 #editorModal .ed-metin-ekle:hover{background:#eef5ff;}
 #editorModal .ed-parca{display:flex;gap:8px;align-items:flex-start;margin:0 0 6px;border-top:3px solid transparent;border-bottom:3px solid transparent;}
 #editorModal .ed-parca.ed-ust{border-top-color:#1DA1F2;}
