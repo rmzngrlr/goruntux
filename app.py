@@ -3531,6 +3531,12 @@ HTML_TEMPLATE = """
         }
 
         function generateManualWord(previewMode = false, forceServer = false) {
+            // Faz 3: Rapor Editörü bayrağı AÇIKSA, ÖNİZLEME yerine editörü aç (indirme eski yolda kalır).
+            // Bayrak KAPALIYKEN (varsayılan) bugünkü showDocxPreview yolu birebir çalışır.
+            if (previewMode && typeof xEditorEnabled === 'function' && xEditorEnabled() && window.XEditor) {
+                window.XEditor.ac();
+                return;
+            }
             if (!forceServer && xLocalGenEnabled() && window.XLocalDocx) {
                 return xGenerateLocal(previewMode, 'manual');
             }
@@ -4734,9 +4740,14 @@ HTML_TEMPLATE = """
                     if (item && container) {
                         var _tumOgeler = Array.prototype.slice.call(container.querySelectorAll('.pool-item'));
                         var _k = _tumOgeler.indexOf(item);
-                        if (_k >= 0 && typeof generateManualWord === 'function') {
-                            window.__previewScrollToIndex = _k;
-                            generateManualWord(true);   // previewMode -> showDocxPreview
+                        if (_k >= 0) {
+                            // Faz 3: editör bayrağı açıksa editörü aç + tıklanan karta kaydır; değilse eski önizleme.
+                            if (typeof xEditorEnabled === 'function' && xEditorEnabled() && window.XEditor) {
+                                window.XEditor.ac({ scrollIndex: _k });
+                            } else if (typeof generateManualWord === 'function') {
+                                window.__previewScrollToIndex = _k;
+                                generateManualWord(true);   // previewMode -> showDocxPreview
+                            }
                         }
                     }
                 } catch (e) {}
@@ -5359,6 +5370,7 @@ HTML_TEMPLATE = """
             <div class="modal-header">
                 <h2>📝 Rapor Editörü</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;">📥 İndir</button>
                     <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
                 </div>
             </div>
@@ -6068,6 +6080,13 @@ LOCAL_DOCX_JS = r'''
       for(oi2=0; oi2<order.length; oi2++){ toplaEntry(order[oi2], null); }
     }
 
+    // Faz 3 (Rapor Editörü): editör GÖRÜNÜMÜ çıktıyla BİREBİR eşleşsin diye aynı gruplama/birim
+    // planını paylaşır. __planOnly -> docx üretmeden (media/rels kurulmadan) render planını döndür.
+    // Normal docx yolu etkilenmez (yalnız bu bayrakla erken döner).
+    if (opts && opts.__planOnly) {
+      return { birimler: birimler, multiPlatform: multiPlatform, platOrder: platOrder, groups: groups };
+    }
+
     // v3.84: onizlemede oge silme icin -> her onizleme pozisyonunun (K) FLAT havuz indexi.
     // birimler GRUPLU sirada (onizlemedeki <img> sirasiyla ayni); her birimin item.index
     // (/api/pool/data'dan, 1-tabanli) flat havuz pozisyonu. showDocxPreview'daki silme
@@ -6598,37 +6617,122 @@ def x_saved_reports_js():
 # tanımlar. Gerçek editör (belge modeli, düzenlenebilir kartlar, görsel-altı metin, stil şeridi)
 # Faz 3+'te buraya gelecek. HAM r''' rota: escape-tuzağı yok (ters-bölü/regex güvenli).
 X_EDITOR_JS = r'''
-/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 0 iskeleti).
-   TEK-KAYNAK belge modeli ileride burada yaşayacak ve hem düzenlenebilir paneli
-   hem de generateBlob(docx) beslemesini sağlayacak. Faz 0: yalnız isim-uzayı + stublar. */
+/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 3 çekirdek).
+   TEK-KAYNAK: render planını generateBlob(__planOnly) VERIR (aynı gruplama/birim yapısı),
+   editör bu plandan düzenlenebilir kartları çizer; İndir/Kaydet de aynı modelden üretir.
+   Faz 3: başlık düzenleme + öğe silme + kaydırma + link/grup-çizgisi. Metin ekleme = Faz 4. */
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "0-iskelet";
+  XE.VERSION = "3-cekirdek";
+  XE.belge = { stil: {}, birimler: [] };
 
-  // TEK GERÇEK KAYNAK belge modeli (Faz 3'te dolacak):
-  //   { stil: { b1_*, b_*, l_*, m_* ... }, ogeler: [ { uid, baslik, link, image_b64, metin_bloklari[] } ] }
-  XE.belge = { stil: {}, ogeler: [] };
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function linkGoster(it){ var lk=(it&&it.link)||''; return String(lk).indexOf('rt:')===0 ? '' : lk; }
+  function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
 
-  // Editör modalını aç (Faz 0: yalnız kabuğu gösterir; içerik Faz 3+'te).
-  XE.ac = function (opts) {
-    try { console.log("[XEditor] ac() çağrıldı (iskelet). opts:", opts); } catch (e) {}
-    var m = document.getElementById("editorModal");
-    if (m) m.classList.add("active");
+  var CSS = `
+#editorModal .ed-root{padding:12px 18px 28px;}
+#editorModal .ed-plat{font-size:17px;font-weight:700;color:var(--text-primary);border-bottom:2px solid var(--border-color);padding-bottom:5px;margin:20px 0 10px;}
+#editorModal .ed-plat:first-child{margin-top:4px;}
+#editorModal .ed-card{position:relative;background:rgba(127,127,127,0.07);border:1px solid var(--border-color);border-radius:12px;padding:14px 16px;margin:0 0 12px;}
+#editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;}
+#editorModal .ed-del:hover{background:#c81e4f;}
+#editorModal .ed-h2{display:inline-block;font-size:15px;font-weight:700;color:var(--text-primary);outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
+#editorModal .ed-h2:hover{border-color:var(--border-color);}
+#editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.07);}
+#editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;margin:4px 0 8px;object-fit:contain;}
+#editorModal .ed-link{display:block;font-size:12px;color:#1DA1F2;word-break:break-all;text-decoration:none;}
+#editorModal .ed-link:hover{text-decoration:underline;}
+#editorModal .ed-line{border:0;border-top:2px solid var(--border-color);margin:2px 0 18px;}
+#editorModal .ed-bos{padding:28px;text-align:center;color:var(--text-secondary);font-size:14px;}
+`;
+  function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
+
+  // Render planını TEK KAYNAK'tan (generateBlob __planOnly) al. items verilmezse generateBlob
+  // havuzu (/api/pool/data) + XLocalImages görsellerini kendi kurar; verilirse onları kullanır.
+  XE.planGetir = async function(items, stil){
+    if(!window.XLocalDocx || !window.XLocalDocx.generateBlob) throw new Error('x-local-docx.js yüklü değil');
+    var opts = Object.assign({ __planOnly: true }, stil||{});
+    return await window.XLocalDocx.generateBlob(opts, items||null);
   };
 
-  // Editör modalını kapat.
-  XE.kapat = function () {
-    var m = document.getElementById("editorModal");
-    if (m) m.classList.remove("active");
+  XE.ac = async function(opts){
+    opts = opts||{};
+    stilEnjekte();
+    var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
+    var root=document.getElementById('editor-root'); if(root) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
+    var stil=stilOku();
+    try {
+      var plan=await XE.planGetir(opts.items||null, stil);
+      XE.belge={ stil:stil, birimler:(plan&&plan.birimler)||[], multiPlatform:!!(plan&&plan.multiPlatform) };
+      // Kararlı kimlik (uid) + metin_bloklari kabı (Faz 4'te dolacak).
+      XE.belge.birimler.forEach(function(b,i){ if(b.item){ if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i; if(!b.item.metin_bloklari) b.item.metin_bloklari=[]; } });
+      XE._ciz();
+      if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
+    } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
   };
 
-  // generateBlob beslemeleri (Faz 2/3'te dolacak): docx üreticisi TEK kalır, editör düzenlenmiş
-  // öğeleri + stil opts'unu doğrudan verir.
-  XE.toItems = function () { return (XE.belge && XE.belge.ogeler) || []; };
-  XE.toStyleOpts = function () { return (XE.belge && XE.belge.stil) || {}; };
+  XE.kapat = function(){ var m=document.getElementById('editorModal'); if(m) m.classList.remove('active'); };
 
-  try { console.log("[XEditor] iskelet yüklendi (v" + XE.VERSION + "). Bayrak: xEditorEnabled (varsayılan kapalı)."); } catch (e) {}
+  XE._ciz = function(){
+    var root=document.getElementById('editor-root'); if(!root) return;
+    var B=XE.belge.birimler||[];
+    if(!B.length){ root.innerHTML='<div class="ed-bos">Havuz boş — önce içerik ekleyin.</div>'; return; }
+    var h=['<div class="ed-root">'];
+    for(var i=0;i<B.length;i++){ var b=B[i];
+      if(b.h1) h.push('<div class="ed-plat">'+esc(b.h1)+'</div>');
+      h.push('<div class="ed-card" data-i="'+i+'">');
+      h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
+      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false">'+esc(b.h2)+'</div>');
+      if(b.item && b.item.image_b64) h.push('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">');
+      var lk=linkGoster(b.item); if(lk) h.push('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener">'+esc(lk)+'</a>');
+      h.push('</div>');
+      if(b.son) h.push('<hr class="ed-line">');
+    }
+    h.push('</div>');
+    root.innerHTML=h.join('');
+    root.querySelectorAll('.ed-h2').forEach(function(el){
+      el.addEventListener('input', function(){ var i=+el.getAttribute('data-i'); var b=XE.belge.birimler[i]; if(b&&b.item){ b.item.title=el.textContent; b.h2=el.textContent; } });
+    });
+    root.querySelectorAll('.ed-del').forEach(function(el){
+      el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); });
+    });
+  };
+
+  // Sil: kalan ögelerle YENİDEN PLANLA (gruplama/Başlık2 doğru kalsın).
+  XE._sil = async function(i){
+    var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
+    var kalan=[]; for(var j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
+    await XE.ac({ items: kalan });
+  };
+
+  XE._kaydir = function(idx){
+    var root=document.getElementById('editor-root'); if(!root) return;
+    var B=XE.belge.birimler||[]; var hedef=-1, i;
+    for(i=0;i<B.length;i++){ if(B[i].item && B[i].item.index===idx){ hedef=i; break; } }
+    if(hedef<0) hedef=Math.max(0, Math.min(B.length-1, idx|0));
+    var card=root.querySelector('.ed-card[data-i="'+hedef+'"]'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+  };
+
+  // generateBlob beslemeleri (TEK KAYNAK): düzenlenmiş öğeler + stil opts.
+  XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(Boolean); };
+  XE.toStyleOpts = function(){ return XE.belge.stil||{}; };
+
+  // İndir: editörün TEK KAYNAK modelinden (düzenlenmiş öğe + stil) docx üret ve indir.
+  XE.indir = async function(){
+    try {
+      if(!window.XLocalDocx) throw new Error('x-local-docx.js yüklü değil');
+      var blob=await window.XLocalDocx.generateBlob(XE.toStyleOpts(), XE.toItems());
+      var ad=(typeof window.xIndirmeDosyaAdi==='function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx';
+      var url=URL.createObjectURL(blob); var a=document.createElement('a');
+      a.href=url; a.download=ad; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 1500);
+      if(typeof window.showToast==='function') window.showToast('Word indirildi: '+ad, 'success');
+    } catch(e){ alert('İndirilemedi: '+(e&&e.message||e)); }
+  };
+
+  try { console.log('[XEditor] Faz 3 çekirdek yüklendi (v'+XE.VERSION+').'); } catch(e){}
 })();
 '''
 
