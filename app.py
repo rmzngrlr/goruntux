@@ -6652,7 +6652,7 @@ X_EDITOR_JS = r'''
   function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
   var CSS = `
-#editorModal .preview-body{display:block;scroll-padding-top:118px;}
+#editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;}
 #editorModal .ed-serit{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #d0d7de;padding:8px 14px;}
 #editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
 #editorModal .ed-tab{border:1px solid #d0d7de;background:#f6f8fa;color:#334;border-radius:16px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;}
