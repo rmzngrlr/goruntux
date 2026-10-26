@@ -5375,7 +5375,8 @@ HTML_TEMPLATE = """
                 </div>
             </div>
             <div class="preview-body">
-                <div id="editor-root" style="padding:16px; color:var(--text-secondary); font-size:14px;">Editör iskeleti (Faz 0) — içerik sonraki fazlarda gelecek.</div>
+                <div id="editor-serit" class="ed-serit"></div>
+                <div id="editor-root"></div>
             </div>
         </div>
     </div>
@@ -6617,14 +6618,13 @@ def x_saved_reports_js():
 # tanımlar. Gerçek editör (belge modeli, düzenlenebilir kartlar, görsel-altı metin, stil şeridi)
 # Faz 3+'te buraya gelecek. HAM r''' rota: escape-tuzağı yok (ters-bölü/regex güvenli).
 X_EDITOR_JS = r'''
-/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 3 çekirdek).
-   TEK-KAYNAK: render planını generateBlob(__planOnly) VERIR (aynı gruplama/birim yapısı),
-   editör bu plandan düzenlenebilir kartları çizer; İndir/Kaydet de aynı modelden üretir.
-   Faz 3: başlık düzenleme + öğe silme + kaydırma + link/grup-çizgisi. Metin ekleme = Faz 4. */
+/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 4: metin ekleme + stil şeridi + canlı render).
+   TEK-KAYNAK: plan generateBlob(__planOnly)'dan; stil xBuildStyleOpts (styleModal) CANLI kaynak.
+   Metin görselin ALTINA (item.metin_bloklari, konum 'alt'); İndir toItems+toStyleOpts ile üretir. */
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "3-cekirdek";
+  XE.VERSION = "4-metin-serit";
   XE.belge = { stil: {}, birimler: [] };
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -6632,18 +6632,35 @@ X_EDITOR_JS = r'''
   function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
 
   var CSS = `
-/* Editör bir BEYAZ BELGE yüzeyidir (çıktı gibi) -> panel temasından bağımsız, açık zeminde
-   koyu metin. Önizleme gövdesi beyaz olduğu için tema değişkenleri yerine açık renkler. */
+#editorModal .preview-body{display:block;}
+#editorModal .ed-serit{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #d0d7de;padding:8px 14px;}
+#editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
+#editorModal .ed-tab{border:1px solid #d0d7de;background:#f6f8fa;color:#334;border-radius:16px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;}
+#editorModal .ed-tab.aktif{background:#1DA1F2;color:#fff;border-color:#1DA1F2;}
+#editorModal .ed-panel{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+#editorModal .ed-panel label{display:flex;align-items:center;gap:4px;font-size:11px;color:#57606a;font-weight:600;}
+#editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:2px 4px;border:1px solid #d0d7de;border-radius:6px;color:#15202b;background:#fff;}
+#editorModal .ed-panel input[type=color]{width:28px;height:24px;padding:0;border:1px solid #d0d7de;border-radius:6px;background:#fff;cursor:pointer;}
+#editorModal .ed-panel .ed-chk input{margin:0;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
-#editorModal .ed-plat{font-size:17px;font-weight:700;color:#15202b;border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;}
+#editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;}
 #editorModal .ed-plat:first-child{margin-top:4px;}
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-#editorModal .ed-h2{display:inline-block;font-size:15px;font-weight:700;color:#15202b;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;margin:4px 0 8px;object-fit:contain;}
+#editorModal .ed-metinler{margin:2px 0 6px;}
+#editorModal .ed-metin-satir{display:flex;align-items:flex-start;gap:6px;margin:0 0 4px;}
+#editorModal .ed-metin{flex:1;outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
+#editorModal .ed-metin:empty:before{content:"Metin yazın…";color:#9aa3ad;}
+#editorModal .ed-metin:focus{border-color:#1DA1F2;border-style:solid;background:rgba(29,161,242,0.04);}
+#editorModal .ed-metin-sil{flex:none;width:26px;height:26px;border:1px solid #d0d7de;background:#fff;color:#e0245e;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;line-height:1;}
+#editorModal .ed-metin-sil:hover{background:#ffeef0;}
+#editorModal .ed-metin-ekle{background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:2px;}
+#editorModal .ed-metin-ekle:hover{background:#eef5ff;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
 #editorModal .ed-link:hover{text-decoration:underline;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
@@ -6651,8 +6668,32 @@ X_EDITOR_JS = r'''
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
 
-  // Render planını TEK KAYNAK'tan (generateBlob __planOnly) al. items verilmezse generateBlob
-  // havuzu (/api/pool/data) + XLocalImages görsellerini kendi kurar; verilirse onları kullanır.
+  // Stil opts -> satır-içi CSS (editör WYSIWYG gösterimi). pre: b1|b|l|m.
+  function stilCss(o, pre){
+    var f=o[pre+'_font']||'', s=o[pre+'_size']||'', c=o[pre+'_color']||'', al=o[pre+'_align']||'left';
+    var css="";
+    if(f) css+="font-family:'"+f+"',sans-serif;";
+    if(s) css+="font-size:"+(parseInt(s,10)||12)+"pt;";
+    if(c) css+="color:"+c+";";
+    css+="font-weight:"+(o[pre+'_bold']?'700':'400')+";";
+    css+="font-style:"+(o[pre+'_italic']?'italic':'normal')+";";
+    css+="text-decoration:"+(o[pre+'_underline']?'underline':'none')+";";
+    var jc={left:'left',center:'center',right:'right',both:'justify'}[al]||'left';
+    css+="text-align:"+jc+";";
+    return css;
+  }
+
+  // Stil şeridi grup yapılandırması (styleModal input ID'lerine bağlanır -> xBuildStyleOpts değişmez).
+  var GRUPLAR=[
+    {key:'b1', ad:'Başlık 1', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
+    {key:'b',  ad:'Başlık 2', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered'}},
+    {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
+    {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
+  ];
+
+  var _rt=null;
+  function canliCiz(){ if(_rt) clearTimeout(_rt); _rt=setTimeout(function(){ XE._ciz(); }, 160); }
+
   XE.planGetir = async function(items, stil){
     if(!window.XLocalDocx || !window.XLocalDocx.generateBlob) throw new Error('x-local-docx.js yüklü değil');
     var opts = Object.assign({ __planOnly: true }, stil||{});
@@ -6664,12 +6705,12 @@ X_EDITOR_JS = r'''
     stilEnjekte();
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     var root=document.getElementById('editor-root'); if(root) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
-    var stil=stilOku();
     try {
+      var stil=stilOku();
       var plan=await XE.planGetir(opts.items||null, stil);
       XE.belge={ stil:stil, birimler:(plan&&plan.birimler)||[], multiPlatform:!!(plan&&plan.multiPlatform) };
-      // Kararlı kimlik (uid) + metin_bloklari kabı (Faz 4'te dolacak).
       XE.belge.birimler.forEach(function(b,i){ if(b.item){ if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i; if(!b.item.metin_bloklari) b.item.metin_bloklari=[]; } });
+      XE._seritKur();
       XE._ciz();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
@@ -6677,51 +6718,120 @@ X_EDITOR_JS = r'''
 
   XE.kapat = function(){ var m=document.getElementById('editorModal'); if(m) m.classList.remove('active'); };
 
+  // ---- STİL ŞERİDİ (editör header'ı altında, sticky) ----
+  XE._seritKur = function(){
+    var host=document.getElementById('editor-serit'); if(!host) return;
+    var tabs=GRUPLAR.map(function(g,i){ return '<button class="ed-tab'+(i===1?' aktif':'')+'" data-g="'+g.key+'" type="button">'+esc(g.ad)+'</button>'; }).join('');
+    host.innerHTML='<div class="ed-tabs">'+tabs+'</div><div class="ed-panel" id="ed-panel"></div>';
+    host.querySelectorAll('.ed-tab').forEach(function(t){ t.addEventListener('click', function(){
+      host.querySelectorAll('.ed-tab').forEach(function(x){ x.classList.remove('aktif'); });
+      t.classList.add('aktif'); XE._panelCiz(t.getAttribute('data-g'));
+    }); });
+    XE._panelCiz('b');  // Başlık 2 varsayılan sekme
+  };
+  XE._panelCiz = function(key){
+    var g=null,i; for(i=0;i<GRUPLAR.length;i++){ if(GRUPLAR[i].key===key){ g=GRUPLAR[i]; break; } }
+    var panel=document.getElementById('ed-panel'); if(!g||!panel) return;
+    var ids=g.ids;
+    function val(id){ var e=document.getElementById(id); return e?(e.type==='checkbox'?e.checked:e.value):''; }
+    function nhex(c){ c=(c||'').trim(); return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; }
+    var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
+    var h='';
+    h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
+    h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(val(ids.size))+'" style="width:52px"></label>';
+    h+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(val(ids.color))+'"></label>';
+    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.bold+'" '+(val(ids.bold)?'checked':'')+'> Kalın</label>';
+    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.italic+'" '+(val(ids.italic)?'checked':'')+'> Eğik</label>';
+    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'> Altı çizili</label>';
+    h+='<label>Hiza <select data-t="'+ids.align+'"><option value="left">Sola</option><option value="center">Ortaya</option><option value="right">Sağa</option><option value="both">İki yana</option></select></label>';
+    if(ids.numbered) h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'> Numara</label>';
+    panel.innerHTML=h;
+    var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
+    var as=panel.querySelector('select[data-t="'+ids.align+'"]'); if(as) as.value=val(ids.align)||'left';
+    panel.querySelectorAll('[data-t]').forEach(function(ctrl){
+      var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
+      ctrl.addEventListener(ev, function(){ XE._stilUygula(ctrl); });
+      if(ctrl.type==='number') ctrl.addEventListener('input', function(){ XE._stilUygula(ctrl); });
+    });
+  };
+  // Şerit kontrolü -> styleModal input'una yaz (TEK KAYNAK) + kaydet + canlı render.
+  XE._stilUygula = function(ctrl){
+    var id=ctrl.getAttribute('data-t'); var tgt=document.getElementById(id); if(!tgt) return;
+    if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
+    if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
+    canliCiz();
+  };
+
+  // ---- KARTLAR ----
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
     if(!B.length){ root.innerHTML='<div class="ed-bos">Havuz boş — önce içerik ekleyin.</div>'; return; }
-    var h=['<div class="ed-root">'];
-    for(var i=0;i<B.length;i++){ var b=B[i];
-      if(b.h1) h.push('<div class="ed-plat">'+esc(b.h1)+'</div>');
+    var o=stilOku();
+    var c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
+    var h=['<div class="ed-root">'], i, k;
+    for(i=0;i<B.length;i++){ var b=B[i];
+      if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
-      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false">'+esc(b.h2)+'</div>');
+      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       if(b.item && b.item.image_b64) h.push('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">');
-      var lk=linkGoster(b.item); if(lk) h.push('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener">'+esc(lk)+'</a>');
+      var mb=(b.item&&b.item.metin_bloklari)||[];
+      h.push('<div class="ed-metinler" data-i="'+i+'">');
+      for(k=0;k<mb.length;k++){
+        h.push('<div class="ed-metin-satir">');
+        h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-k="'+k+'" spellcheck="false" style="'+cm+'">'+esc(mb[k].metin||'')+'</div>');
+        h.push('<button class="ed-metin-sil" data-i="'+i+'" data-k="'+k+'" title="Metni sil">&minus;</button>');
+        h.push('</div>');
+      }
+      h.push('<button class="ed-metin-ekle" data-i="'+i+'">+ Metin Ekle</button>');
+      h.push('</div>');
+      var lk=linkGoster(b.item); if(lk) h.push('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener" style="'+cl+'">'+esc(lk)+'</a>');
       h.push('</div>');
       if(b.son) h.push('<hr class="ed-line">');
     }
     h.push('</div>');
     root.innerHTML=h.join('');
+    // Başlık düzenleme
     root.querySelectorAll('.ed-h2').forEach(function(el){
-      el.addEventListener('input', function(){ var i=+el.getAttribute('data-i'); var b=XE.belge.birimler[i]; if(b&&b.item){ b.item.title=el.textContent; b.h2=el.textContent; } });
+      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.title=el.textContent; b.h2=el.textContent; } });
     });
+    // Metin düzenleme (re-render YOK -> imleç kaybolmasın)
+    root.querySelectorAll('.ed-metin').forEach(function(el){
+      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), ki=+el.getAttribute('data-k'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.metin_bloklari[ki]) b.item.metin_bloklari[ki].metin=el.textContent; });
+    });
+    // Metin ekle
+    root.querySelectorAll('.ed-metin-ekle').forEach(function(el){
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item) return; if(!b.item.metin_bloklari) b.item.metin_bloklari=[]; b.item.metin_bloklari.push({ id:'m'+Date.now()+Math.floor(Math.random()*1000), konum:'alt', metin:'' }); XE._ciz(); var yeni=root.querySelector('.ed-card[data-i="'+bi+'"] .ed-metin[data-k="'+(b.item.metin_bloklari.length-1)+'"]'); if(yeni){ yeni.focus(); } });
+    });
+    // Metin sil
+    root.querySelectorAll('.ed-metin-sil').forEach(function(el){
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), ki=+el.getAttribute('data-k'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.metin_bloklari){ b.item.metin_bloklari.splice(ki,1); XE._ciz(); } });
+    });
+    // Öğe sil
     root.querySelectorAll('.ed-del').forEach(function(el){
       el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); });
     });
   };
 
-  // Sil: kalan ögelerle YENİDEN PLANLA (gruplama/Başlık2 doğru kalsın).
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
-    var kalan=[]; for(var j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
+    var kalan=[], j; for(j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
     await XE.ac({ items: kalan });
   };
 
   XE._kaydir = function(idx){
     var root=document.getElementById('editor-root'); if(!root) return;
-    var B=XE.belge.birimler||[]; var hedef=-1, i;
+    var B=XE.belge.birimler||[], hedef=-1, i;
     for(i=0;i<B.length;i++){ if(B[i].item && B[i].item.index===idx){ hedef=i; break; } }
     if(hedef<0) hedef=Math.max(0, Math.min(B.length-1, idx|0));
     var card=root.querySelector('.ed-card[data-i="'+hedef+'"]'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
   };
 
-  // generateBlob beslemeleri (TEK KAYNAK): düzenlenmiş öğeler + stil opts.
+  // generateBlob beslemeleri (TEK KAYNAK): düzenlenmiş öğeler (metin+başlık) + CANLI stil.
   XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(Boolean); };
-  XE.toStyleOpts = function(){ return XE.belge.stil||{}; };
+  XE.toStyleOpts = function(){ return stilOku(); };
 
-  // İndir: editörün TEK KAYNAK modelinden (düzenlenmiş öğe + stil) docx üret ve indir.
   XE.indir = async function(){
     try {
       if(!window.XLocalDocx) throw new Error('x-local-docx.js yüklü değil');
@@ -6734,7 +6844,7 @@ X_EDITOR_JS = r'''
     } catch(e){ alert('İndirilemedi: '+(e&&e.message||e)); }
   };
 
-  try { console.log('[XEditor] Faz 3 çekirdek yüklendi (v'+XE.VERSION+').'); } catch(e){}
+  try { console.log('[XEditor] Faz 4 yüklendi (v'+XE.VERSION+').'); } catch(e){}
 })();
 '''
 
