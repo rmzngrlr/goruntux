@@ -2957,12 +2957,11 @@ HTML_TEMPLATE = """
             return true;
         }
 
-        // --- Yeni metin-editörü önizleme mimarisi (Faz 0+). BAYRAK KORUMALI, varsayılan KAPALI.
-        //     Açıkken 3 "Önizle" girişi (Faz 3'te bağlanacak) XEditor.ac()'a gidecek; KAPALIYKEN
-        //     bugünkü showDocxPreview yolu BİREBİR çalışır. Geliştirmede localStorage ile açılır:
-        //     localStorage.setItem('x_editor_enabled','1'). Hiç dokunulmazsa kapalı -> davranış aynı. ---
+        // --- Rapor Editörü önizleme mimarisi (Faz 7: VARSAYILAN AÇIK). Havuz "Önizle" girişleri
+        //     artık DAİMA editörü açar; eski showDocxPreview havuz yolu emekli. 'x_editor_enabled'
+        //     localStorage ile '0' verilirse acil durumda eski yola düşülebilir (geçici kaçış). ---
         function xEditorEnabled() {
-            try { return localStorage.getItem('x_editor_enabled') === '1'; } catch (e) { return false; }
+            try { return localStorage.getItem('x_editor_enabled') !== '0'; } catch (e) { return true; }
         }
 
         // --- Faz #1-A: Yerel ekran goruntusu bayragi ---
@@ -6726,6 +6725,8 @@ X_EDITOR_JS = r'''
   function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
   var CSS = `
+#editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
+#editorModal .preview-modal-content{width:100%;max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;}
 #editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;}
 #editorModal .ed-serit{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #d0d7de;padding:8px 14px;}
 #editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
