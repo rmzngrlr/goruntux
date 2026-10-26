@@ -2875,6 +2875,14 @@ HTML_TEMPLATE = """
             return true;
         }
 
+        // --- Yeni metin-editörü önizleme mimarisi (Faz 0+). BAYRAK KORUMALI, varsayılan KAPALI.
+        //     Açıkken 3 "Önizle" girişi (Faz 3'te bağlanacak) XEditor.ac()'a gidecek; KAPALIYKEN
+        //     bugünkü showDocxPreview yolu BİREBİR çalışır. Geliştirmede localStorage ile açılır:
+        //     localStorage.setItem('x_editor_enabled','1'). Hiç dokunulmazsa kapalı -> davranış aynı. ---
+        function xEditorEnabled() {
+            try { return localStorage.getItem('x_editor_enabled') === '1'; } catch (e) { return false; }
+        }
+
         // --- Faz #1-A: Yerel ekran goruntusu bayragi ---
         function xLocalImagesEnabled() {
             // Faz #1-D (tam kaldırma): ekran görüntüleri HER ZAMAN yerelde; sunucuya asla gitmez.
@@ -5207,6 +5215,22 @@ HTML_TEMPLATE = """
             </div>
         </div>
     </div>
+    <!-- YENİ: Rapor Editörü modalı (Faz 0 iskeleti). BAYRAK KORUMALI: yalnız xEditorEnabled()
+         açıkken ve Faz 3'te bağlanınca kullanılır. Şimdilik gizli (class "modal", "active" yok);
+         içeriği sonraki fazlarda /x-editor.js doldurur. Mevcut preview-modal CSS'i yeniden kullanılır. -->
+    <div id="editorModal" class="modal">
+        <div class="preview-modal-content">
+            <div class="modal-header">
+                <h2>📝 Rapor Editörü</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
+                </div>
+            </div>
+            <div class="preview-body">
+                <div id="editor-root" style="padding:16px; color:var(--text-secondary); font-size:14px;">Editör iskeleti (Faz 0) — içerik sonraki fazlarda gelecek.</div>
+            </div>
+        </div>
+    </div>
     <!-- Platform tespiti + FB kanoniklestirme (ORTAK). Digerlerinden ONCE yuklenmeli:
          xNormLink (x-local-images.js) ve entryPlatform (x-local-docx.js) window.XPlat'i kullanir. -->
     <script src="/x-platform.js"></script>
@@ -5215,6 +5239,8 @@ HTML_TEMPLATE = """
     <script src="/x-local-images.js"></script>
     <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta): "Kaydet ve İndir" + yeniden aç/indir/sil -->
     <script src="/x-saved-reports.js"></script>
+    <!-- YENİ: Rapor Editörü (metin-editörü önizleme mimarisi, Faz 0+). BAYRAK KORUMALI (xEditorEnabled). -->
+    <script src="/x-editor.js"></script>
 </body>
 </html>
 """
@@ -6397,6 +6423,52 @@ X_SAVED_REPORTS_JS = r'''
 @app.route('/x-saved-reports.js', methods=['GET'])
 def x_saved_reports_js():
     return _js_yanit(X_SAVED_REPORTS_JS)
+
+
+# ----------------- RAPOR EDİTÖRÜ (metin-editörü önizleme mimarisi) -----------------
+# Faz 0 İSKELETİ. BAYRAK KORUMALI (xEditorEnabled, varsayılan KAPALI) -> bu dosya yüklense
+# bile hiçbir davranışı değiştirmez; yalnız window.XEditor isim-uzayını + boş modal kancalarını
+# tanımlar. Gerçek editör (belge modeli, düzenlenebilir kartlar, görsel-altı metin, stil şeridi)
+# Faz 3+'te buraya gelecek. HAM r''' rota: escape-tuzağı yok (ters-bölü/regex güvenli).
+X_EDITOR_JS = r'''
+/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 0 iskeleti).
+   TEK-KAYNAK belge modeli ileride burada yaşayacak ve hem düzenlenebilir paneli
+   hem de generateBlob(docx) beslemesini sağlayacak. Faz 0: yalnız isim-uzayı + stublar. */
+(function () {
+  "use strict";
+  var XE = (window.XEditor = window.XEditor || {});
+  XE.VERSION = "0-iskelet";
+
+  // TEK GERÇEK KAYNAK belge modeli (Faz 3'te dolacak):
+  //   { stil: { b1_*, b_*, l_*, m_* ... }, ogeler: [ { uid, baslik, link, image_b64, metin_bloklari[] } ] }
+  XE.belge = { stil: {}, ogeler: [] };
+
+  // Editör modalını aç (Faz 0: yalnız kabuğu gösterir; içerik Faz 3+'te).
+  XE.ac = function (opts) {
+    try { console.log("[XEditor] ac() çağrıldı (iskelet). opts:", opts); } catch (e) {}
+    var m = document.getElementById("editorModal");
+    if (m) m.classList.add("active");
+  };
+
+  // Editör modalını kapat.
+  XE.kapat = function () {
+    var m = document.getElementById("editorModal");
+    if (m) m.classList.remove("active");
+  };
+
+  // generateBlob beslemeleri (Faz 2/3'te dolacak): docx üreticisi TEK kalır, editör düzenlenmiş
+  // öğeleri + stil opts'unu doğrudan verir.
+  XE.toItems = function () { return (XE.belge && XE.belge.ogeler) || []; };
+  XE.toStyleOpts = function () { return (XE.belge && XE.belge.stil) || {}; };
+
+  try { console.log("[XEditor] iskelet yüklendi (v" + XE.VERSION + "). Bayrak: xEditorEnabled (varsayılan kapalı)."); } catch (e) {}
+})();
+'''
+
+
+@app.route('/x-editor.js', methods=['GET'])
+def x_editor_js():
+    return _js_yanit(X_EDITOR_JS)
 
 # ----------------- FLASK FRONTEND ROUTES -----------------
 @app.route('/', methods=['GET'])
