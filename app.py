@@ -6701,6 +6701,25 @@ X_EDITOR_JS = r'''
   XE.VERSION = "4c-suruk";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
+  // Faz 7: sürükleme sırasında editör gövdesinin kenarına yaklaşınca OTOMATİK KAYDIRMA
+  // (uzun kart/liste içinde parçayı yukarı/aşağı sürüklerken scroll kolaylaşsın).
+  var _dragY = 0, _dragRaf = 0;
+  function _autoScrollTick(){
+    if(!_drag){ _dragRaf = 0; return; }
+    var sc = document.querySelector('#editorModal .preview-body');
+    if(sc){
+      var r = sc.getBoundingClientRect(), EDGE = 80, SPEED = 16;
+      if(_dragY < r.top + EDGE && sc.scrollTop > 0) sc.scrollTop -= SPEED;
+      else if(_dragY > r.bottom - EDGE) sc.scrollTop += SPEED;
+    }
+    _dragRaf = requestAnimationFrame(_autoScrollTick);
+  }
+  function _dragScrollKur(){
+    var sc = document.querySelector('#editorModal .preview-body');
+    if(!sc || sc._dragScrollBound) return;
+    sc._dragScrollBound = true;
+    sc.addEventListener('dragover', function(e){ if(_drag){ _dragY = e.clientY; } });
+  }
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function linkGoster(it){ var lk=(it&&it.link)||''; return String(lk).indexOf('rt:')===0 ? '' : lk; }
@@ -6824,6 +6843,7 @@ X_EDITOR_JS = r'''
     opts = opts||{};
     stilEnjekte();
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
+    _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
     var root=document.getElementById('editor-root'); if(root) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
     try {
       var stil=stilOku();
@@ -6941,8 +6961,8 @@ X_EDITOR_JS = r'''
 
     // SÜRÜKLE-BIRAK: tutamaktan (⠿) sürükle, aynı kart içinde parçaları yeniden sırala.
     root.querySelectorAll('.ed-tut').forEach(function(el){
-      el.addEventListener('dragstart', function(e){ _drag={i:+el.getAttribute('data-i'), p:+el.getAttribute('data-p')}; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','x'); }catch(_){} var pr=el.closest('.ed-parca'); if(pr) pr.classList.add('ed-suruk'); });
-      el.addEventListener('dragend', function(){ _drag=null; root.querySelectorAll('.ed-suruk,.ed-ust,.ed-alt').forEach(function(x){ x.classList.remove('ed-suruk','ed-ust','ed-alt'); }); });
+      el.addEventListener('dragstart', function(e){ _drag={i:+el.getAttribute('data-i'), p:+el.getAttribute('data-p')}; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','x'); }catch(_){} var pr=el.closest('.ed-parca'); if(pr) pr.classList.add('ed-suruk'); _dragY=e.clientY; if(!_dragRaf) _dragRaf=requestAnimationFrame(_autoScrollTick); });
+      el.addEventListener('dragend', function(){ _drag=null; if(_dragRaf){ cancelAnimationFrame(_dragRaf); _dragRaf=0; } root.querySelectorAll('.ed-suruk,.ed-ust,.ed-alt').forEach(function(x){ x.classList.remove('ed-suruk','ed-ust','ed-alt'); }); });
     });
     root.querySelectorAll('.ed-parca').forEach(function(pr){
       pr.addEventListener('dragover', function(e){ if(!_drag) return; var ci=+pr.getAttribute('data-i'); if(ci!==_drag.i) return; e.preventDefault(); var r=pr.getBoundingClientRect(); var ust=e.clientY < r.top+r.height/2; pr.classList.toggle('ed-ust',ust); pr.classList.toggle('ed-alt',!ust); });
