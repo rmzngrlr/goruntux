@@ -6234,7 +6234,7 @@ LOCAL_DOCX_JS = r'''
             var _p=_pc[_pi];
             if(_p.tur==='gorsel'){ if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h)); }
             else if(_p.tur==='metin'){ var _mt=String(_p.metin||'').trim(); if(_mt) body.push(textXml(_mt)); }
-            else if(_p.tur==='link'){ if(u.link) body.push(linkXml(u.link, 240, false)); }
+            else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link; if(_lu) body.push(linkXml(_lu, 240, false)); }
           }
           if(u.son) body.push(grupSonuXml());   // grup ayracı link'ten AYRI (parça sırası serbest)
         } else {
@@ -6746,6 +6746,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-metin-sil:hover{background:#ffeef0;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
 #editorModal .ed-link:hover{text-decoration:underline;}
+#editorModal .ed-link-edit{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:4px 8px;min-height:18px;background:#fff;cursor:text;}
+#editorModal .ed-link-edit:empty:before{content:"Bağlantı URL'si…";color:#9aa3ad;}
+#editorModal .ed-link-edit:focus{border-color:#1565c0;border-style:solid;background:rgba(21,101,192,0.05);}
+#editorModal .ed-ustswap{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334;cursor:pointer;user-select:none;padding:2px 4px;}
+#editorModal .ed-ustswap input{width:16px;height:16px;cursor:pointer;accent-color:#1DA1F2;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 `;
@@ -6765,15 +6770,32 @@ X_EDITOR_JS = r'''
     return css;
   }
 
+  // Faz 6: genel "link üstte" tercihi (localStorage). Kapalı: görsel üstte/link altta (varsayılan).
+  function linkUstteFlag(){ try{ return localStorage.getItem('x_link_ustte')==='1'; }catch(e){ return false; } }
+  function linkUstteSet(v){ try{ localStorage.setItem('x_link_ustte', v?'1':'0'); }catch(e){} }
   function parcaKur(item){
     if(item.parcalar && item.parcalar.length) return;
+    var linkUst=linkUstteFlag();
     var pc=[]; var mb=item.metin_bloklari||[];
     mb.forEach(function(m){ if(m && m.konum==='ust') pc.push({tur:'metin', id:yeniId(), metin:m.metin||''}); });
+    if(linkUst && linkGoster(item)) pc.push({tur:'link'});   // tik açık: link görselin üstünde
     if(item.image_b64) pc.push({tur:'gorsel'});
     mb.forEach(function(m){ if(m && m.konum!=='ust') pc.push({tur:'metin', id:yeniId(), metin:m.metin||''}); });
-    if(linkGoster(item)) pc.push({tur:'link'});
+    if(!linkUst && linkGoster(item)) pc.push({tur:'link'});  // normal: link görselin altında
     item.parcalar=pc;
   }
+  // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
+  XE._linkUstteUygula = function(on){
+    (XE.belge.birimler||[]).forEach(function(b, bi){
+      if(!b || !b.item || !b.item.parcalar) return;
+      var pc=b.item.parcalar, gi=-1, li=-1, x;
+      for(x=0;x<pc.length;x++){ if(pc[x].tur==='gorsel' && gi<0) gi=x; else if(pc[x].tur==='link' && li<0) li=x; }
+      if(gi<0 || li<0) return;                      // her ikisi yoksa dokunma
+      var linkOnce=(li<gi);
+      if((on && !linkOnce) || (!on && linkOnce)){ var t=pc[gi]; pc[gi]=pc[li]; pc[li]=t; XE._ovSet(bi); }
+    });
+    XE._ciz();
+  };
 
   // Faz 5: editör çalışma durumu (parcalar + düzenlenen başlık) panel-düzeyi bir overlay'de yaşar.
   // manual_add yalnız 5 alan taşıdığı için parcalar havuzdan geçmez; overlay bu köprüdür:
@@ -6825,11 +6847,14 @@ X_EDITOR_JS = r'''
   XE._seritKur = function(){
     var host=document.getElementById('editor-serit'); if(!host) return;
     var tabs=GRUPLAR.map(function(g,i){ return '<button class="ed-tab'+(i===1?' aktif':'')+'" data-g="'+g.key+'" type="button">'+esc(g.ad)+'</button>'; }).join('');
-    host.innerHTML='<div class="ed-tabs">'+tabs+'</div><div class="ed-panel" id="ed-panel"></div>';
+    var swap='<label class="ed-ustswap" title="Açık: link görselin üstünde, görsel altında. Kapalı: görsel üstte, link altta."><input type="checkbox" id="ed-link-ust"'+(linkUstteFlag()?' checked':'')+'> Link üstte</label>';
+    host.innerHTML='<div class="ed-tabs">'+tabs+swap+'</div><div class="ed-panel" id="ed-panel"></div>';
     host.querySelectorAll('.ed-tab').forEach(function(t){ t.addEventListener('click', function(){
       host.querySelectorAll('.ed-tab').forEach(function(x){ x.classList.remove('aktif'); });
       t.classList.add('aktif'); XE._panelCiz(t.getAttribute('data-g'));
     }); });
+    var cb=host.querySelector('#ed-link-ust');
+    if(cb) cb.addEventListener('change', function(){ linkUstteSet(cb.checked); XE._linkUstteUygula(cb.checked); });
     XE._panelCiz('b');
   };
   XE._panelCiz = function(key){
@@ -6883,7 +6908,7 @@ X_EDITOR_JS = r'''
         h.push('<div class="ed-parca-ic">');
         if(p.tur==='gorsel'){ h.push(b.item.image_b64 ? ('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">') : '<div class="ed-parca-bos">[görsel yok]</div>'); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+esc(p.metin||'')+'</div>'); }
-        else if(p.tur==='link'){ var lk=linkGoster(b.item); h.push(lk ? ('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener" style="'+cl+'">'+esc(lk)+'</a>') : '<div class="ed-parca-bos">[link yok]</div>'); }
+        else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push((lk||shown) ? ('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>') : '<div class="ed-parca-bos">[link yok]</div>'); }
         h.push('</div>');
         if(p.tur==='metin') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Metni sil">&minus;</button>');
         h.push('</div>');
@@ -6899,6 +6924,9 @@ X_EDITOR_JS = r'''
     });
     root.querySelectorAll('.ed-metin').forEach(function(el){
       el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=el.textContent; XE._ovSet(bi); } });
+    });
+    root.querySelectorAll('.ed-link-edit').forEach(function(el){
+      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-metin-ekle').forEach(function(el){
       el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item) return; if(!b.item.parcalar) b.item.parcalar=[]; b.item.parcalar.push({tur:'metin', id:yeniId(), metin:''}); XE._ovSet(bi); XE._ciz(); var yeni=root.querySelector('.ed-card[data-i="'+bi+'"] .ed-metin[data-p="'+(b.item.parcalar.length-1)+'"]'); if(yeni){ yeni.scrollIntoView({block:'center'}); yeni.focus(); } });
