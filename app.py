@@ -2074,6 +2074,15 @@ HTML_TEMPLATE = """
                     <input type="checkbox" id="b1_underline">
                     <label for="b1_underline">Altı Çizili</label>
                 </div>
+                <div class="form-group">
+                    <label for="b1_align">Hizalama:</label>
+                    <select id="b1_align">
+                        <option value="left" selected>Sola</option>
+                        <option value="center">Ortaya</option>
+                        <option value="right">Sağa</option>
+                        <option value="both">İki yana</option>
+                    </select>
+                </div>
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -2111,6 +2120,15 @@ HTML_TEMPLATE = """
                     <input type="checkbox" id="b_numbered">
                     <label for="b_numbered">Otomatik Numaralandır (1, 2...)</label>
                 </div>
+                <div class="form-group">
+                    <label for="b_align">Hizalama:</label>
+                    <select id="b_align">
+                        <option value="left" selected>Sola</option>
+                        <option value="center">Ortaya</option>
+                        <option value="right">Sağa</option>
+                        <option value="both">İki yana</option>
+                    </select>
+                </div>
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -2133,8 +2151,69 @@ HTML_TEMPLATE = """
                 </div>
                 
                 <div class="checkbox-group">
+                    <input type="checkbox" id="l_bold">
+                    <label for="l_bold">Kalın (Bold)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="l_italic">
+                    <label for="l_italic">Eğik (Italic)</label>
+                </div>
+                <div class="checkbox-group">
                     <input type="checkbox" id="l_underline" checked>
                     <label for="l_underline">Altı Çizili</label>
+                </div>
+                <div class="form-group">
+                    <label for="l_align">Hizalama:</label>
+                    <select id="l_align">
+                        <option value="left" selected>Sola</option>
+                        <option value="center">Ortaya</option>
+                        <option value="right">Sağa</option>
+                        <option value="both">İki yana</option>
+                    </select>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+                <h3>📝 Eklenen Metin Stili</h3>
+                <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
+                    Editörde <b>görsellerin altına</b> eklediğiniz serbest metinlere uygulanır.
+                </div>
+                <div class="form-group">
+                    <label for="m_font">Yazı Tipi (Font):</label>
+                    <select id="m_font">
+                        {% for font in fonts %}
+                        <option value="{{ font }}" {% if font == 'Calibri' %}selected{% endif %}>{{ font }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="m_size">Yazı Boyutu (PT):</label>
+                    <input type="number" id="m_size" value="11" min="8" max="28">
+                </div>
+                <div class="form-group">
+                    <label for="m_color">Metin Rengi:</label>
+                    <input type="text" id="m_color" value="#000000" placeholder="#000000">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="m_bold">
+                    <label for="m_bold">Kalın (Bold)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="m_italic">
+                    <label for="m_italic">Eğik (Italic)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="m_underline">
+                    <label for="m_underline">Altı Çizili</label>
+                </div>
+                <div class="form-group">
+                    <label for="m_align">Hizalama:</label>
+                    <select id="m_align">
+                        <option value="left" selected>Sola</option>
+                        <option value="center">Ortaya</option>
+                        <option value="right">Sağa</option>
+                        <option value="both">İki yana</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">
@@ -2751,6 +2830,9 @@ HTML_TEMPLATE = """
             // Oturum hatırlatması bandı (kapatılmadıysa göster).
             xInitLoginReminder();
 
+            // Stil ayarları: kaydedilmişleri geri yükle + değişince kaydet (Faz 1 kalıcılık).
+            xInitStyles();
+
             // Start polling loop
             refreshStatus();
             setInterval(refreshStatus, 1500);
@@ -3334,25 +3416,79 @@ HTML_TEMPLATE = """
         }
 
         function xBuildStyleOpts() {
+            // Güvenli okuyucular: öğe yoksa varsayılan döner (eski alanlar birebir korunur;
+            // m_* / *_align / l_bold / l_italic Faz 1'de EKLENDİ, Faz 2'de çıktıya uygulanacak).
+            var gv = function (id, def) { var e = document.getElementById(id); return e ? e.value : def; };
+            var gc = function (id, def) { var e = document.getElementById(id); return e ? e.checked : !!def; };
             return {
-                b1_font: document.getElementById('b1_font').value,
-                b1_size: document.getElementById('b1_size').value,
-                b1_color: document.getElementById('b1_color').value,
-                b1_bold: document.getElementById('b1_bold').checked,
-                b1_italic: document.getElementById('b1_italic').checked,
-                b1_underline: document.getElementById('b1_underline').checked,
-                b_font: document.getElementById('b_font').value,
-                b_size: document.getElementById('b_size').value,
-                b_color: document.getElementById('b_color').value,
-                b_numbered: document.getElementById('b_numbered').checked,
-                b_bold: document.getElementById('b_bold').checked,
-                b_italic: document.getElementById('b_italic').checked,
-                b_underline: document.getElementById('b_underline').checked,
-                l_font: document.getElementById('l_font').value,
-                l_size: document.getElementById('l_size').value,
-                l_color: document.getElementById('l_color').value,
-                l_underline: document.getElementById('l_underline').checked
+                b1_font: gv('b1_font', 'Arial'),
+                b1_size: gv('b1_size', '18'),
+                b1_color: gv('b1_color', '#000000'),
+                b1_bold: gc('b1_bold', true),
+                b1_italic: gc('b1_italic', false),
+                b1_underline: gc('b1_underline', false),
+                b1_align: gv('b1_align', 'left'),
+                b_font: gv('b_font', 'Arial'),
+                b_size: gv('b_size', '14'),
+                b_color: gv('b_color', '#000000'),
+                b_numbered: gc('b_numbered', false),
+                b_bold: gc('b_bold', true),
+                b_italic: gc('b_italic', false),
+                b_underline: gc('b_underline', false),
+                b_align: gv('b_align', 'left'),
+                l_font: gv('l_font', 'Calibri'),
+                l_size: gv('l_size', '10'),
+                l_color: gv('l_color', '#1DA1F2'),
+                l_bold: gc('l_bold', false),
+                l_italic: gc('l_italic', false),
+                l_underline: gc('l_underline', true),
+                l_align: gv('l_align', 'left'),
+                m_font: gv('m_font', 'Calibri'),
+                m_size: gv('m_size', '11'),
+                m_color: gv('m_color', '#000000'),
+                m_bold: gc('m_bold', false),
+                m_italic: gc('m_italic', false),
+                m_underline: gc('m_underline', false),
+                m_align: gv('m_align', 'left')
             };
+        }
+
+        // --- Stil ayarları KALICILIĞI (Faz 1). Bugüne dek "Uygula ve Kapat" hiçbir yere
+        //     kaydetmiyordu -> sayfa yenilemede HTML varsayılanlarına dönüyordu. Artık her
+        //     stil girdisi değişince localStorage'a yazılır, açılışta geri yüklenir. ---
+        function xStyleInputIds() {
+            return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align',
+                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_align',
+                    'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
+                    'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align'];
+        }
+        function xSaveStyles() {
+            try {
+                var o = {};
+                xStyleInputIds().forEach(function (id) {
+                    var e = document.getElementById(id); if (!e) return;
+                    o[id] = (e.type === 'checkbox') ? e.checked : e.value;
+                });
+                localStorage.setItem('x_style_opts', JSON.stringify(o));
+            } catch (e) {}
+        }
+        function xInitStyles() {
+            try {
+                var raw = localStorage.getItem('x_style_opts');
+                if (raw) {
+                    var o = JSON.parse(raw);
+                    xStyleInputIds().forEach(function (id) {
+                        var e = document.getElementById(id); if (!e || !(id in o)) return;
+                        if (e.type === 'checkbox') e.checked = !!o[id]; else e.value = o[id];
+                    });
+                }
+            } catch (e) {}
+            try {
+                xStyleInputIds().forEach(function (id) {
+                    var e = document.getElementById(id); if (!e) return;
+                    e.addEventListener('change', xSaveStyles);
+                });
+            } catch (e) {}
         }
         // v3.87: indirilen cikti dosyasinin adi = INDIRME ANINDAKI tarih-saat (kullanici istegi).
         // Her indirme cagrisinda taze hesaplanir (onizlemeden gec indirilse bile o an). ':' dosya
