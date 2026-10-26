@@ -5837,6 +5837,16 @@ LOCAL_DOCX_JS = r'''
     var b1Color=(opts.b1_color||'#000000').replace('#','');
     var b1Sz=(parseInt(opts.b1_size,10)||18)*2;
     var b1Font=opts.b1_font||opts.b_font||'Arial';
+    // Faz 2: Eklenen Metin stili + hizalama. Metin rengi/boyutu/fontu (bColor/bSz deseni).
+    var mColor=(opts.m_color||'#000000').replace('#','');
+    var mSz=(parseInt(opts.m_size,10)||11)*2;
+    var mFont=opts.m_font||opts.b_font||'Calibri';
+    // Hizalama (w:jc): stil ayarindaki *_align -> docx. Varsayilan 'left' = Word varsayilani ->
+    // eski cikti BIREBIR ayni (jc eklenmemis gibi render edilir). Gecerli: left/center/right/both.
+    function jc(align){
+      var a=(align||'left'); if(a!=='center'&&a!=='right'&&a!=='both') a='left';
+      return '<w:jc w:val="'+a+'"/>';
+    }
 
     function headingXml(text){
       var rPr='<w:rFonts w:ascii="'+xmlEsc(opts.b_font)+'" w:hAnsi="'+xmlEsc(opts.b_font)+'"/>';
@@ -5847,7 +5857,7 @@ LOCAL_DOCX_JS = r'''
       // keepNext: baslik kendisinden sonraki paragrafla (gorsel) AYNI sayfada kalir.
       // Sabit sayfa sonu kaldirildigi icin (2026-07-17) sayfa sinirini artik Word
       // belirliyor; baslik sayfa dibinde yalniz kalmasin diye bagliyoruz.
-      return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:keepNext/><w:keepLines/><w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:keepNext/><w:keepLines/>'+jc(opts.b_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     function heading1Xml(text){
       var rPr='<w:rFonts w:ascii="'+xmlEsc(b1Font)+'" w:hAnsi="'+xmlEsc(b1Font)+'"/>';
@@ -5855,7 +5865,7 @@ LOCAL_DOCX_JS = r'''
       if(opts.b1_italic) rPr+='<w:i/>';
       if(opts.b1_underline) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+b1Color+'"/><w:sz w:val="'+b1Sz+'"/><w:szCs w:val="'+b1Sz+'"/>';
-      return '<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      return '<w:p><w:pPr><w:pStyle w:val="Heading1"/>'+jc(opts.b1_align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
@@ -5879,16 +5889,28 @@ LOCAL_DOCX_JS = r'''
         + '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
     }
     function linkXml(url, afterTwips, withBorder){
-      var pPr='<w:spacing w:after="'+afterTwips+'"/>';
+      var pPr=jc(opts.l_align)+'<w:spacing w:after="'+afterTwips+'"/>';
       if(withBorder) pPr+='<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr>';
       var inner='';
       if(url){
         var rid=addHyperlink(url);
         var rPr='<w:color w:val="'+lColor+'"/><w:sz w:val="'+lSz+'"/><w:szCs w:val="'+lSz+'"/><w:rFonts w:ascii="'+xmlEsc(opts.l_font)+'" w:hAnsi="'+xmlEsc(opts.l_font)+'"/>';
+        if(opts.l_bold) rPr+='<w:b/>';
+        if(opts.l_italic) rPr+='<w:i/>';
         if(opts.l_underline) rPr+='<w:u w:val="single"/>';
         inner='<w:hyperlink r:id="'+rid+'"><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(url)+'</w:t></w:r></w:hyperlink>';
       }
       return '<w:p><w:pPr>'+pPr+'</w:pPr>'+inner+'</w:p>';
+    }
+    // Faz 2: Eklenen serbest metin paragrafi (görselin altına/üstüne). m_ stili + hizalama.
+    // keepNext: metin kendinden onceki gorsele/baslaga bagli kalir. xmlEsc ZORUNLU.
+    function textXml(metin){
+      var rPr='<w:rFonts w:ascii="'+xmlEsc(mFont)+'" w:hAnsi="'+xmlEsc(mFont)+'"/>';
+      if(opts.m_bold) rPr+='<w:b/>';
+      if(opts.m_italic) rPr+='<w:i/>';
+      if(opts.m_underline) rPr+='<w:u w:val="single"/>';
+      rPr+='<w:color w:val="'+mColor+'"/><w:sz w:val="'+mSz+'"/><w:szCs w:val="'+mSz+'"/>';
+      return '<w:p><w:pPr><w:keepNext/>'+jc(opts.m_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(metin)+'</w:t></w:r></w:p>';
     }
 
     // v3.75: RT'li ogenin linki SENTETIK ic anahtardir ("rt:{rt_yapan}:{tweet_id}") -> raporda
@@ -5943,7 +5965,7 @@ LOCAL_DOCX_JS = r'''
     var ESIK_W  = 2.5;        // kullanici karari: ortak genislik bunun altina duserse cift bozulur
     var GUVENLIK_PAY = 0.25;  // Word'un satir yuksekligini birebir bilemeyiz -> temkinli pay
 
-    var b1Pt=(parseInt(opts.b1_size,10)||18), bPt=(parseInt(opts.b_size,10)||14), lPt=(parseInt(opts.l_size,10)||10);
+    var b1Pt=(parseInt(opts.b1_size,10)||18), bPt=(parseInt(opts.b_size,10)||14), lPt=(parseInt(opts.l_size,10)||10), mPt=(parseInt(opts.m_size,10)||11);
 
     // Metin yuksekligi tahmini. Link metni URL'nin TAMAMI ve FB pfbid linkleri ~120
     // karakter -> 7"lik satira sigmaz, 2 satira kayar. AZ tahmin edersek sayfa TASAR
@@ -5963,6 +5985,10 @@ LOCAL_DOCX_JS = r'''
       var p=0;
       if(b.h1) p += 240/1440 + metinY(b.h1, b1Pt, METIN_W, 120);  // Baslik1: before 240
       if(b.h2) p += metinY(b.h2, bPt, METIN_W, 120);              // Baslik2
+      // Faz 2 KRITIK: eklenen metin bloklarinin (gorsel ustu+alti) dikey maliyeti. Hesaba
+      // KATILMAZSA sayfa tasar ve Word KENDI sayfa sonunu atar (tarihsel bug). metinY BOL tahmin.
+      var _mb=(b.item && b.item.metin_bloklari)||[];
+      for(var _i=0;_i<_mb.length;_i++){ var _t=String((_mb[_i]&&_mb[_i].metin)||'').trim(); if(_t) p += metinY(_t, mPt, METIN_W, 120); }
       if(b.item.image_b64) p += 120/1440;                          // gorsel paragrafi after
       p += metinY(b.link||'', lPt, METIN_W, b.son?360:240);        // link
       return p;
@@ -6116,7 +6142,12 @@ LOCAL_DOCX_JS = r'''
         var u=sayfalar[si][bj];
         if(u.h1) body.push(heading1Xml(u.h1));
         if(u.h2) body.push(headingXml(u.h2));
+        // Faz 2: eklenen metinler. konum 'ust' -> gorselin USTUNE; 'alt' (varsayilan) -> ALTINA.
+        // metin_bloklari olmayan ogelerde dizi bos -> cikti BIREBIR eski. Bos metin atlanir.
+        var _mb=(u.item && u.item.metin_bloklari)||[];
+        _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
         if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
+        _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
         body.push(linkXml(u.link, u.son?360:240, u.son));
       }
     }
