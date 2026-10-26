@@ -1817,7 +1817,6 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
-                    <button class="settings-toggle-btn" onclick="toggleStyleModal()">⚙️ Stil Ayarları</button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -2033,12 +2032,10 @@ HTML_TEMPLATE = """
     </div>
 
     <!-- Style Settings Modal -->
-    <div id="styleModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚙️ Stil Ayarları</h2>
-                <span class="close-btn" onclick="toggleStyleModal()">&times;</span>
-            </div>
+    <!-- Faz 7: "Stil Ayarları" editör şeridine taşındı. Burası artık GÖRÜNMEZ stil DEPOSU:
+         b1_/b_/l_/m_ <input>'ları burada yaşar -> xBuildStyleOpts okur, editör şeridi yazar,
+         xInitStyles/xSaveStyles localStorage ile eşler. Ayrı modal/buton YOK (kullanıcı: tam emeklilik). -->
+    <div id="styleModal" style="display:none" aria-hidden="true">
             <div class="modal-body">
                 <h3>🏷️ Başlık 1 Stili (Platform Ayracı)</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
@@ -2216,10 +2213,6 @@ HTML_TEMPLATE = """
                     </select>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-primary" onclick="toggleStyleModal()">Uygula ve Kapat</button>
-            </div>
-        </div>
     </div>
 
     <!-- Eklenti indirme + kullanma kılavuzu modalı. Yalnız durum kutusu KIRMIZI/SARI iken açılır. -->
@@ -2317,13 +2310,7 @@ HTML_TEMPLATE = """
             refreshStatus();
         }
 
-        // Style Modal Controls (Global scope)
-        function toggleStyleModal() {
-            const modal = document.getElementById('styleModal');
-            if (modal) {
-                modal.classList.toggle('active');
-            }
-        }
+        // Faz 7: toggleStyleModal KALDIRILDI (styleModal artık görünmez depo; stil editör şeridinde).
 
         // Eklenti durum kutusu: yalnız KIRMIZI/SARI (window.extBoxClickable) iken modal açılır.
         // YEŞİL (hazır) iken tıklanamaz -> indirme butonu/kılavuz gösterilmez.
@@ -2358,10 +2345,6 @@ HTML_TEMPLATE = """
 
         // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
-            const styleModal = document.getElementById('styleModal');
-            if (event.target === styleModal) {
-                styleModal.classList.remove('active');
-            }
             const previewModal = document.getElementById('previewModal');
             if (event.target === previewModal) {
                 previewModal.classList.remove('active');
@@ -6767,7 +6750,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-link-edit{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:4px 8px;min-height:18px;background:#fff;cursor:text;}
 #editorModal .ed-link-edit:empty:before{content:"Bağlantı URL'si…";color:#9aa3ad;}
 #editorModal .ed-link-edit:focus{border-color:#1565c0;border-style:solid;background:rgba(21,101,192,0.05);}
-#editorModal .ed-ustswap{margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334;cursor:pointer;user-select:none;padding:2px 4px;}
+#editorModal .ed-ustswap{margin-left:6px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334;cursor:pointer;user-select:none;padding:2px 8px;border:1px solid #d0d7de;border-radius:16px;background:#f6f8fa;}
 #editorModal .ed-ustswap input{width:16px;height:16px;cursor:pointer;accent-color:#1DA1F2;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
