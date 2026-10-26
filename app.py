@@ -3129,14 +3129,15 @@ HTML_TEMPLATE = """
                     }
                 }
 
-                // 3b) Faz 5: editör overlay'inden parcalar (eklenen metin + sıra) ve düzenlenen başlığı item'lara uygula.
-                //     Overlay yoksa (editör hiç açılmadı) davranış eskisi gibi: varsayılan görsel+link.
+                // 3b) Faz 5/6: editör overlay'inden parcalar (eklenen metin + sıra) ve başlık-override'ı
+                //     item'lara uygula. h2_override AYRI alandır (item.title DEĞİŞMEZ) -> gruplama/kimlik
+                //     bozulmaz; generateBlob override varsa onu başlık yapar. Overlay yoksa eski davranış.
                 var _ovB = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) ? window.__xEditorOverlay.byLink : {};
                 for (var oi = 0; oi < items.length; oi++) {
                     var _oe = _ovB[xOvKey(items[oi].link || '')];
                     if (_oe) {
                         if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
-                        if (_oe.title != null) { items[oi].title = _oe.title; }
+                        if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
                     }
                 }
 
@@ -3157,8 +3158,9 @@ HTML_TEMPLATE = """
                     await window.XSavedReports.whenReady();
                     // Snapshot item'ları: image_b64 ÇIKAR (images haritasında zaten var), parcalar/başlık KORU.
                     var _snapItems = items.map(function (it) {
-                        var o = { title: it.title || '', link: it.link || '' };
+                        var o = { title: it.title || '', link: it.link || '' };   // title ORİJİNAL (gruplama anahtarı)
                         if (it.parcalar) { o.parcalar = it.parcalar; }
+                        if (it.h2_override != null) { o.h2_override = it.h2_override; }   // Faz 6: başlık düzenlemesi
                         if (it.is_profile) { o.is_profile = true; }
                         if (it.group_override) { o.group_override = it.group_override; }
                         return o;
@@ -3326,7 +3328,7 @@ HTML_TEMPLATE = """
                 var _ov2 = { byLink: {}, style: rec.editorStyle || null };
                 for (var pi = 0; pi < rec.items.length; pi++) {
                     var _it2 = rec.items[pi];
-                    if (_it2 && _it2.parcalar) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar, title: (_it2.title != null ? _it2.title : null) }; }
+                    if (_it2 && (_it2.parcalar || _it2.h2_override != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
@@ -3384,9 +3386,9 @@ HTML_TEMPLATE = """
                             if (imgs[k] && imgs[k].dataUrl) {
                                 window.postMessage({ type: 'X_RAPOR_LOCAL_IMAGE', link: lk, dataUrl: imgs[k].dataUrl, mime: imgs[k].mime || '' }, '*');
                             }
-                            // Faz 5: bu öğenin kayıtlı parçaları/başlığı varsa overlay'e taşı (dedup'ta başta eklenen korunur).
+                            // Faz 5/6: bu öğenin parçaları/başlık-override'ı varsa overlay'e taşı (dedup'ta başta eklenen korunur).
                             var _mk = xOvKey(lk);
-                            if (it.parcalar && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar, title: (it.title != null ? it.title : null) }; }
+                            if ((it.parcalar || it.h2_override != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null) }; }
                             if (!_ovM.style && rec.editorStyle) { _ovM.style = rec.editorStyle; }
                         } else if (resp && resp.status === 'duplicate') {
                             atlanan++;
@@ -3395,6 +3397,7 @@ HTML_TEMPLATE = """
                 }
                 window.__xEditorOverlay = _ovM;   // Faz 5: birleşik overlay'i kur
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
+                if (_ovM.style) { xApplyStyleOpts(_ovM.style); }   // Faz 6 (Finding 5): ilk kaynağın stilini geri uygula
                 window.__openReportName = '';   // birlesik = YENI rapor (tek kaynaga bagli degil)
                 refreshStatus();
                 await renderSavedReports();
@@ -6090,26 +6093,36 @@ LOCAL_DOCX_JS = r'''
       var type=entry[0], val=entry[1];
       if(type==='group'){
         var group=groups[val];
-        var baslik='', gi;
-        for(gi=0; gi<group.items.length; gi++){
-          var tt=(group.items[gi].title||'').trim();
-          if(!tt) continue;
-          if(!baslik) baslik=tt;
-          if(tt.indexOf('(')!==-1){ baslik=tt; break; }
-        }
-        // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
-        // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
-        if(!baslik) baslik = window.XPlat ? XPlat.groupFallbackTitle(val)
-                                          : ((val.charAt(0)==='@') ? val : '@'+val);
-        headerIndex++;
-        if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
         // v3.77: PROFIL KARTI HER ZAMAN grubun EN USTUNDE (kullanici istegi). Havuz surukleme
         // sirasi ne olursa olsun profil kartlari basa alinir; geri kalanlar havuz sirasinda.
         // Kararli bolme (sort degil) -> profiller ve digerleri kendi ic sirasini korur.
         // h2 (hesap basligi) zaten k===0'a konuyor -> profil kartinin uzerine oturur, dogru.
+        // Faz 6: ordered'i baslik hesabindan ONCE kur -> baslik override'i ordered[0]'da aranir.
         var _prof=[], _rest=[];
         for(var _gi=0;_gi<group.items.length;_gi++){ (group.items[_gi].is_profile?_prof:_rest).push(group.items[_gi]); }
         var ordered=_prof.concat(_rest);
+        headerIndex++;   // her grup bir baslik indeksi tuketir (eski ile ayni zamanlama)
+        // Faz 6: editorde grubun basligi duzenlendiyse (ordered[0].h2_override) NIHAI baslik ODUR —
+        // verbatim (kullanicinin gordugu gibi, numara dahil). item.title DEGISMEZ -> gruplama anahtari
+        // ve '(' sezgisi bozulmaz (IG bolunmesi + kardes-ezme kök nedeni giderilir). Override YOKSA
+        // ESKI davranis birebir: '(' sezgisi + fallback + numara.
+        var _ovr=(ordered[0] && ordered[0].h2_override!=null && String(ordered[0].h2_override).trim()!=='') ? String(ordered[0].h2_override) : null;
+        var baslik='';
+        if(_ovr!=null){ baslik=_ovr; }
+        else {
+          var gi;
+          for(gi=0; gi<group.items.length; gi++){
+            var tt=(group.items[gi].title||'').trim();
+            if(!tt) continue;
+            if(!baslik) baslik=tt;
+            if(tt.indexOf('(')!==-1){ baslik=tt; break; }
+          }
+          // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
+          // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
+          if(!baslik) baslik = window.XPlat ? XPlat.groupFallbackTitle(val)
+                                            : ((val.charAt(0)==='@') ? val : '@'+val);
+          if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
+        }
         var k;
         for(k=0;k<ordered.length;k++){
           // h2 YALNIZCA grubun ILK gonderisinde: bir hesabin basligi belgede BIR KEZ
@@ -6120,8 +6133,12 @@ LOCAL_DOCX_JS = r'''
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
         }
       } else {
-        var item2=val, b2=(item2.title||'').trim();
-        if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; }
+        var item2=val;
+        // Faz 6: standalone baslik override'i varsa verbatim; yoksa title + (varsa) numara.
+        var _ovr2=(item2.h2_override!=null && String(item2.h2_override).trim()!=='') ? String(item2.h2_override) : null;
+        var b2;
+        if(_ovr2!=null){ headerIndex++; b2=_ovr2; }
+        else { b2=(item2.title||'').trim(); if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; } }
         birimler.push({ h1:h1, h2:((!opts.basliksiz && b2)?baslikFormatla(b2):null),
                         item:item2, link:xRaporLinkGoster(item2), son:true });
       }
@@ -6802,7 +6819,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), title:(b.item.title!=null?String(b.item.title):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Başlık 1', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
@@ -6832,9 +6849,11 @@ X_EDITOR_JS = r'''
         if(!b.item) return;
         if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i;
         parcaKur(b.item);
-        // Faz 5: overlay'de bu link için kaydedilmiş parçalar/başlık varsa geri yükle (eklenen metin + sıra + başlık düzenlemesi).
+        // Faz 5/6: overlay'de bu link için parçalar/başlık-override varsa geri yükle.
+        // Başlık override YALNIZ başlık taşıyan birime (b.h2!=null) uygulanır -> ikincil gönderilere
+        // sahte başlık basılmaz ve plandaki numara/sezgi değeri ham title ile EZİLMEZ (Faz 5 gerilemesi).
         var ov=ovStore().byLink[ovKey(b.item.link)];
-        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.title!=null){ b.item.title=ov.title; b.h2=ov.title; } }
+        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } }
       });
       XE._seritKur();
       XE._ciz();
@@ -6920,7 +6939,7 @@ X_EDITOR_JS = r'''
     root.innerHTML=h.join('');
 
     root.querySelectorAll('.ed-h2').forEach(function(el){
-      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.title=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
+      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-metin').forEach(function(el){
       el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=el.textContent; XE._ovSet(bi); } });
