@@ -5925,6 +5925,11 @@ LOCAL_DOCX_JS = r'''
       rPr+='<w:color w:val="'+mColor+'"/><w:sz w:val="'+mSz+'"/><w:szCs w:val="'+mSz+'"/>';
       return '<w:p><w:pPr><w:keepNext/>'+jc(opts.m_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(metin)+'</w:t></w:r></w:p>';
     }
+    // Faz 4b: grup-sonu ayraç çizgisi (parçalar modunda link'ten AYRI boş sınır paragrafı).
+    // Eskiden link paragrafının alt-sınırıydı; parça sırası serbest olunca link en altta olmayabilir.
+    function grupSonuXml(){
+      return '<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr><w:spacing w:after="360"/></w:pPr></w:p>';
+    }
 
     // v3.75: RT'li ogenin linki SENTETIK ic anahtardir ("rt:{rt_yapan}:{tweet_id}") -> raporda
     // GOSTERILMEZ (kullanici karari: RT'de link koymaya gerek yok). Anahtar yalnizca gorsel
@@ -5998,10 +6003,12 @@ LOCAL_DOCX_JS = r'''
       var p=0;
       if(b.h1) p += 240/1440 + metinY(b.h1, b1Pt, METIN_W, 120);  // Baslik1: before 240
       if(b.h2) p += metinY(b.h2, bPt, METIN_W, 120);              // Baslik2
-      // Faz 2 KRITIK: eklenen metin bloklarinin (gorsel ustu+alti) dikey maliyeti. Hesaba
-      // KATILMAZSA sayfa tasar ve Word KENDI sayfa sonunu atar (tarihsel bug). metinY BOL tahmin.
-      var _mb=(b.item && b.item.metin_bloklari)||[];
-      for(var _i=0;_i<_mb.length;_i++){ var _t=String((_mb[_i]&&_mb[_i].metin)||'').trim(); if(_t) p += metinY(_t, mPt, METIN_W, 120); }
+      // Faz 2/4b KRITIK: eklenen metinlerin dikey maliyeti. KATILMAZSA sayfa tasar ve Word KENDI
+      // sayfa sonunu atar (tarihsel bug). Sira onemsiz (toplam ayni) -> parcalar VEYA metin_bloklari.
+      var _mt=[], _k;
+      if(b.item && b.item.parcalar){ for(_k=0;_k<b.item.parcalar.length;_k++){ if(b.item.parcalar[_k].tur==='metin') _mt.push(b.item.parcalar[_k].metin); } }
+      else { var _mb=(b.item && b.item.metin_bloklari)||[]; for(_k=0;_k<_mb.length;_k++){ _mt.push(_mb[_k]&&_mb[_k].metin); } }
+      for(_k=0;_k<_mt.length;_k++){ var _t=String(_mt[_k]||'').trim(); if(_t) p += metinY(_t, mPt, METIN_W, 120); }
       if(b.item.image_b64) p += 120/1440;                          // gorsel paragrafi after
       p += metinY(b.link||'', lPt, METIN_W, b.son?360:240);        // link
       return p;
@@ -6162,13 +6169,24 @@ LOCAL_DOCX_JS = r'''
         var u=sayfalar[si][bj];
         if(u.h1) body.push(heading1Xml(u.h1));
         if(u.h2) body.push(headingXml(u.h2));
-        // Faz 2: eklenen metinler. konum 'ust' -> gorselin USTUNE; 'alt' (varsayilan) -> ALTINA.
-        // metin_bloklari olmayan ogelerde dizi bos -> cikti BIREBIR eski. Bos metin atlanir.
-        var _mb=(u.item && u.item.metin_bloklari)||[];
-        _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
-        if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
-        _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
-        body.push(linkXml(u.link, u.son?360:240, u.son));
+        // Faz 4b: SIRALANABILIR PARÇALAR. item.parcalar varsa kullanıcının düzenlediği serbest
+        // sıra (gorsel/metin/link). Yoksa ESKI yol (metin_bloklari konum alt/ust) -> cikti birebir.
+        var _pc=(u.item && u.item.parcalar) ? u.item.parcalar : null;
+        if(_pc){
+          for(var _pi=0; _pi<_pc.length; _pi++){
+            var _p=_pc[_pi];
+            if(_p.tur==='gorsel'){ if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h)); }
+            else if(_p.tur==='metin'){ var _mt=String(_p.metin||'').trim(); if(_mt) body.push(textXml(_mt)); }
+            else if(_p.tur==='link'){ if(u.link) body.push(linkXml(u.link, 240, false)); }
+          }
+          if(u.son) body.push(grupSonuXml());   // grup ayracı link'ten AYRI (parça sırası serbest)
+        } else {
+          var _mb=(u.item && u.item.metin_bloklari)||[];
+          _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
+          if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
+          _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
+          body.push(linkXml(u.link, u.son?360:240, u.son));
+        }
       }
     }
 
@@ -6618,21 +6636,22 @@ def x_saved_reports_js():
 # tanımlar. Gerçek editör (belge modeli, düzenlenebilir kartlar, görsel-altı metin, stil şeridi)
 # Faz 3+'te buraya gelecek. HAM r''' rota: escape-tuzağı yok (ters-bölü/regex güvenli).
 X_EDITOR_JS = r'''
-/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 4: metin ekleme + stil şeridi + canlı render).
-   TEK-KAYNAK: plan generateBlob(__planOnly)'dan; stil xBuildStyleOpts (styleModal) CANLI kaynak.
-   Metin görselin ALTINA (item.metin_bloklari, konum 'alt'); İndir toItems+toStyleOpts ile üretir. */
+/* GörüntüX — İstemci-taraflı Rapor Editörü (Faz 4b: sıralanabilir parçalar + stil şeridi + canlı).
+   Kart içeriği = SIRALANABILIR parçalar (gorsel/metin/link); ↑↓ ile yer değiştirir, "+ Metin Ekle"
+   en alta ekler (linkin altı). TEK-KAYNAK: plan generateBlob(__planOnly); stil xBuildStyleOpts CANLI. */
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4-metin-serit";
+  XE.VERSION = "4b-parcalar";
   XE.belge = { stil: {}, birimler: [] };
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function linkGoster(it){ var lk=(it&&it.link)||''; return String(lk).indexOf('rt:')===0 ? '' : lk; }
   function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
+  function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
   var CSS = `
-#editorModal .preview-body{display:block;}
+#editorModal .preview-body{display:block;scroll-padding-top:118px;}
 #editorModal .ed-serit{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #d0d7de;padding:8px 14px;}
 #editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
 #editorModal .ed-tab{border:1px solid #d0d7de;background:#f6f8fa;color:#334;border-radius:16px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;}
@@ -6641,34 +6660,37 @@ X_EDITOR_JS = r'''
 #editorModal .ed-panel label{display:flex;align-items:center;gap:4px;font-size:11px;color:#57606a;font-weight:600;}
 #editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:2px 4px;border:1px solid #d0d7de;border-radius:6px;color:#15202b;background:#fff;}
 #editorModal .ed-panel input[type=color]{width:28px;height:24px;padding:0;border:1px solid #d0d7de;border-radius:6px;background:#fff;cursor:pointer;}
-#editorModal .ed-panel .ed-chk input{margin:0;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
-#editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;}
+#editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;}
 #editorModal .ed-plat:first-child{margin-top:4px;}
-#editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;}
-#editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;}
+#editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
+#editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 10px 0;min-width:120px;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
-#editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;margin:4px 0 8px;object-fit:contain;}
-#editorModal .ed-metinler{margin:2px 0 6px;}
-#editorModal .ed-metin-satir{display:flex;align-items:flex-start;gap:6px;margin:0 0 4px;}
-#editorModal .ed-metin{flex:1;outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
+#editorModal .ed-parca{display:flex;gap:8px;align-items:flex-start;margin:0 0 8px;}
+#editorModal .ed-parca-ar{display:flex;flex-direction:column;gap:3px;flex:none;padding-top:2px;}
+#editorModal .ed-parca-ar button{width:26px;height:24px;border:1px solid #d0d7de;background:#fff;color:#334;border-radius:6px;font-size:13px;line-height:1;padding:0;cursor:pointer;}
+#editorModal .ed-parca-ar button:hover:not(:disabled){background:#eef5ff;}
+#editorModal .ed-parca-ar button:disabled{opacity:.3;cursor:default;}
+#editorModal .ed-parca-ar .ed-metin-sil{color:#e0245e;}
+#editorModal .ed-parca-ar .ed-metin-sil:hover{background:#ffeef0;}
+#editorModal .ed-parca-ic{flex:1;min-width:0;}
+#editorModal .ed-parca-bos{color:#9aa3ad;font-size:12px;font-style:italic;padding:4px 0;}
+#editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
+#editorModal .ed-metin{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
 #editorModal .ed-metin:empty:before{content:"Metin yazın…";color:#9aa3ad;}
 #editorModal .ed-metin:focus{border-color:#1DA1F2;border-style:solid;background:rgba(29,161,242,0.04);}
-#editorModal .ed-metin-sil{flex:none;width:26px;height:26px;border:1px solid #d0d7de;background:#fff;color:#e0245e;border-radius:6px;font-size:16px;font-weight:700;cursor:pointer;line-height:1;}
-#editorModal .ed-metin-sil:hover{background:#ffeef0;}
-#editorModal .ed-metin-ekle{background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;margin-top:2px;}
-#editorModal .ed-metin-ekle:hover{background:#eef5ff;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
 #editorModal .ed-link:hover{text-decoration:underline;}
+#editorModal .ed-metin-ekle{background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;}
+#editorModal .ed-metin-ekle:hover{background:#eef5ff;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
 
-  // Stil opts -> satır-içi CSS (editör WYSIWYG gösterimi). pre: b1|b|l|m.
   function stilCss(o, pre){
     var f=o[pre+'_font']||'', s=o[pre+'_size']||'', c=o[pre+'_color']||'', al=o[pre+'_align']||'left';
     var css="";
@@ -6683,14 +6705,24 @@ X_EDITOR_JS = r'''
     return css;
   }
 
-  // Stil şeridi grup yapılandırması (styleModal input ID'lerine bağlanır -> xBuildStyleOpts değişmez).
+  // Öğeye SIRALANABILIR parça listesi kur (yoksa): varsayılan [gorsel, link]. Eski metin_bloklari migrate.
+  function parcaKur(item){
+    if(item.parcalar && item.parcalar.length) return;
+    var pc=[];
+    var mb=item.metin_bloklari||[];
+    mb.forEach(function(m){ if(m && m.konum==='ust') pc.push({tur:'metin', id:yeniId(), metin:m.metin||''}); });
+    if(item.image_b64) pc.push({tur:'gorsel'});
+    mb.forEach(function(m){ if(m && m.konum!=='ust') pc.push({tur:'metin', id:yeniId(), metin:m.metin||''}); });
+    if(linkGoster(item)) pc.push({tur:'link'});
+    item.parcalar=pc;
+  }
+
   var GRUPLAR=[
     {key:'b1', ad:'Başlık 1', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
     {key:'b',  ad:'Başlık 2', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered'}},
     {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
     {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
   ];
-
   var _rt=null;
   function canliCiz(){ if(_rt) clearTimeout(_rt); _rt=setTimeout(function(){ XE._ciz(); }, 160); }
 
@@ -6709,7 +6741,7 @@ X_EDITOR_JS = r'''
       var stil=stilOku();
       var plan=await XE.planGetir(opts.items||null, stil);
       XE.belge={ stil:stil, birimler:(plan&&plan.birimler)||[], multiPlatform:!!(plan&&plan.multiPlatform) };
-      XE.belge.birimler.forEach(function(b,i){ if(b.item){ if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i; if(!b.item.metin_bloklari) b.item.metin_bloklari=[]; } });
+      XE.belge.birimler.forEach(function(b,i){ if(b.item){ if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i; parcaKur(b.item); } });
       XE._seritKur();
       XE._ciz();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
@@ -6718,7 +6750,6 @@ X_EDITOR_JS = r'''
 
   XE.kapat = function(){ var m=document.getElementById('editorModal'); if(m) m.classList.remove('active'); };
 
-  // ---- STİL ŞERİDİ (editör header'ı altında, sticky) ----
   XE._seritKur = function(){
     var host=document.getElementById('editor-serit'); if(!host) return;
     var tabs=GRUPLAR.map(function(g,i){ return '<button class="ed-tab'+(i===1?' aktif':'')+'" data-g="'+g.key+'" type="button">'+esc(g.ad)+'</button>'; }).join('');
@@ -6727,7 +6758,7 @@ X_EDITOR_JS = r'''
       host.querySelectorAll('.ed-tab').forEach(function(x){ x.classList.remove('aktif'); });
       t.classList.add('aktif'); XE._panelCiz(t.getAttribute('data-g'));
     }); });
-    XE._panelCiz('b');  // Başlık 2 varsayılan sekme
+    XE._panelCiz('b');
   };
   XE._panelCiz = function(key){
     var g=null,i; for(i=0;i<GRUPLAR.length;i++){ if(GRUPLAR[i].key===key){ g=GRUPLAR[i]; break; } }
@@ -6754,7 +6785,6 @@ X_EDITOR_JS = r'''
       if(ctrl.type==='number') ctrl.addEventListener('input', function(){ XE._stilUygula(ctrl); });
     });
   };
-  // Şerit kontrolü -> styleModal input'una yaz (TEK KAYNAK) + kaydet + canlı render.
   XE._stilUygula = function(ctrl){
     var id=ctrl.getAttribute('data-t'); var tgt=document.getElementById(id); if(!tgt) return;
     if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
@@ -6762,31 +6792,32 @@ X_EDITOR_JS = r'''
     canliCiz();
   };
 
-  // ---- KARTLAR ----
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
     if(!B.length){ root.innerHTML='<div class="ed-bos">Havuz boş — önce içerik ekleyin.</div>'; return; }
-    var o=stilOku();
-    var c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
+    var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
     var h=['<div class="ed-root">'], i, k;
     for(i=0;i<B.length;i++){ var b=B[i];
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
-      if(b.item && b.item.image_b64) h.push('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">');
-      var mb=(b.item&&b.item.metin_bloklari)||[];
-      h.push('<div class="ed-metinler" data-i="'+i+'">');
-      for(k=0;k<mb.length;k++){
-        h.push('<div class="ed-metin-satir">');
-        h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-k="'+k+'" spellcheck="false" style="'+cm+'">'+esc(mb[k].metin||'')+'</div>');
-        h.push('<button class="ed-metin-sil" data-i="'+i+'" data-k="'+k+'" title="Metni sil">&minus;</button>');
+      var pc=(b.item&&b.item.parcalar)||[];
+      for(k=0;k<pc.length;k++){ var p=pc[k];
+        h.push('<div class="ed-parca" data-i="'+i+'" data-p="'+k+'">');
+        h.push('<div class="ed-parca-ar">');
+        h.push('<button class="ed-yukari" data-i="'+i+'" data-p="'+k+'" title="Yukarı taşı"'+(k===0?' disabled':'')+'>&uarr;</button>');
+        h.push('<button class="ed-asagi" data-i="'+i+'" data-p="'+k+'" title="Aşağı taşı"'+(k===pc.length-1?' disabled':'')+'>&darr;</button>');
+        if(p.tur==='metin') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Metni sil">&minus;</button>');
         h.push('</div>');
+        h.push('<div class="ed-parca-ic">');
+        if(p.tur==='gorsel'){ h.push(b.item.image_b64 ? ('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">') : '<div class="ed-parca-bos">[görsel yok]</div>'); }
+        else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+esc(p.metin||'')+'</div>'); }
+        else if(p.tur==='link'){ var lk=linkGoster(b.item); h.push(lk ? ('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener" style="'+cl+'">'+esc(lk)+'</a>') : '<div class="ed-parca-bos">[link yok]</div>'); }
+        h.push('</div></div>');
       }
       h.push('<button class="ed-metin-ekle" data-i="'+i+'">+ Metin Ekle</button>');
-      h.push('</div>');
-      var lk=linkGoster(b.item); if(lk) h.push('<a class="ed-link" href="'+esc(lk)+'" target="_blank" rel="noopener" style="'+cl+'">'+esc(lk)+'</a>');
       h.push('</div>');
       if(b.son) h.push('<hr class="ed-line">');
     }
@@ -6796,24 +6827,32 @@ X_EDITOR_JS = r'''
     root.querySelectorAll('.ed-h2').forEach(function(el){
       el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.title=el.textContent; b.h2=el.textContent; } });
     });
-    // Metin düzenleme (re-render YOK -> imleç kaybolmasın)
+    // Metin düzenleme (re-render YOK -> imleç korunur)
     root.querySelectorAll('.ed-metin').forEach(function(el){
-      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), ki=+el.getAttribute('data-k'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.metin_bloklari[ki]) b.item.metin_bloklari[ki].metin=el.textContent; });
+      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]) b.item.parcalar[pk].metin=el.textContent; });
     });
-    // Metin ekle
+    // Metin ekle (en alta -> linkin altı)
     root.querySelectorAll('.ed-metin-ekle').forEach(function(el){
-      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item) return; if(!b.item.metin_bloklari) b.item.metin_bloklari=[]; b.item.metin_bloklari.push({ id:'m'+Date.now()+Math.floor(Math.random()*1000), konum:'alt', metin:'' }); XE._ciz(); var yeni=root.querySelector('.ed-card[data-i="'+bi+'"] .ed-metin[data-k="'+(b.item.metin_bloklari.length-1)+'"]'); if(yeni){ yeni.focus(); } });
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item) return; if(!b.item.parcalar) b.item.parcalar=[]; b.item.parcalar.push({tur:'metin', id:yeniId(), metin:''}); XE._ciz(); var yeni=root.querySelector('.ed-card[data-i="'+bi+'"] .ed-metin[data-p="'+(b.item.parcalar.length-1)+'"]'); if(yeni) yeni.focus(); });
     });
     // Metin sil
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
-      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), ki=+el.getAttribute('data-k'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.metin_bloklari){ b.item.metin_bloklari.splice(ki,1); XE._ciz(); } });
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ b.item.parcalar.splice(pk,1); XE._ciz(); } });
     });
+    // Parça taşı (yukarı/aşağı)
+    root.querySelectorAll('.ed-yukari').forEach(function(el){ el.addEventListener('click', function(){ XE._tasi(+el.getAttribute('data-i'), +el.getAttribute('data-p'), -1); }); });
+    root.querySelectorAll('.ed-asagi').forEach(function(el){ el.addEventListener('click', function(){ XE._tasi(+el.getAttribute('data-i'), +el.getAttribute('data-p'), 1); }); });
     // Öğe sil
-    root.querySelectorAll('.ed-del').forEach(function(el){
-      el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); });
-    });
+    root.querySelectorAll('.ed-del').forEach(function(el){ el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); }); });
   };
 
+  XE._tasi = function(i, pk, yon){
+    var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
+    var a=b.item.parcalar, j=pk+yon; if(j<0||j>=a.length) return;
+    var t=a[pk]; a[pk]=a[j]; a[j]=t; XE._ciz();
+  };
+
+  // Sil: kalan ÖĞE NESNELERİ (parcalar KORUNUR) ile yeniden planla -> gruplama doğru + düzenlemeler sağlam.
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
     var kalan=[], j; for(j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
@@ -6828,7 +6867,6 @@ X_EDITOR_JS = r'''
     var card=root.querySelector('.ed-card[data-i="'+hedef+'"]'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
   };
 
-  // generateBlob beslemeleri (TEK KAYNAK): düzenlenmiş öğeler (metin+başlık) + CANLI stil.
   XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(Boolean); };
   XE.toStyleOpts = function(){ return stilOku(); };
 
@@ -6844,7 +6882,7 @@ X_EDITOR_JS = r'''
     } catch(e){ alert('İndirilemedi: '+(e&&e.message||e)); }
   };
 
-  try { console.log('[XEditor] Faz 4 yüklendi (v'+XE.VERSION+').'); } catch(e){}
+  try { console.log('[XEditor] Faz 4b yüklendi (v'+XE.VERSION+').'); } catch(e){}
 })();
 '''
 
