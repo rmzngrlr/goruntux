@@ -1610,22 +1610,6 @@ HTML_TEMPLATE = """
             display: flex;
         }
 
-        .preview-iframe-container {
-            width: 100%;
-            height: 100%;
-            max-width: none;
-            background: #ffffff;
-            border-radius: 0;
-            box-shadow: none;
-            overflow: hidden;
-        }
-
-        .preview-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
         .modal {
             display: none;
             position: fixed;
@@ -2345,10 +2329,6 @@ HTML_TEMPLATE = """
 
         // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
-            const previewModal = document.getElementById('previewModal');
-            if (event.target === previewModal) {
-                previewModal.classList.remove('active');
-            }
             const extModal = document.getElementById('extModal');
             if (event.target === extModal) {
                 extModal.classList.remove('active');
@@ -2666,10 +2646,13 @@ HTML_TEMPLATE = """
                 }
                 stopFormatProgress(true);
                 if (previewMode) {
+                    // Faz 7: Word Düzenle önizlemesi de artık EDİTÖRDE (ayrıştırılan öğelerle).
+                    // Kullanıcı düzenleyip editörün "📥 İndir"i ile indirir; eski showDocxPreview emekli.
                     const filename = fileInput.files.length > 1 ? "GörüntüX_Birlesik.docx" : "GörüntüX_Duzenlenmis.docx";
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = filename;
-                    showDocxPreview(blob);
+                    if (window.XEditor) { window.XEditor.ac({ items: (result && result.items) || [] }); }
+                    else { showToast('Editör yüklenemedi (sayfayı yenileyin).', 'danger'); }
                     return;
                 }
                 // "Kaydet ve Indir": ad sor -> indir -> KAYITLI RAPOR olarak da kaydet (sekmedeki sayac artar).
@@ -2893,42 +2876,6 @@ HTML_TEMPLATE = """
                     showToast('Hata: ' + data.message, 'danger');
                 }
             });
-        }
-
-        // v3.84: ONIZLEMEDEN oge silme. K = onizlemedeki resmin sirasi; __previewItemIndices[K]
-        // o resmin FLAT havuz pozisyonu (1-tabanli, /api/pool/data + .docx gruplama sirasindan).
-        // Silme = gorsel + link birlikte (ayni havuz ogesi). Grup basligi hesap basina BIR KEZ
-        // basildigi icin, bir baslik altinda TEK oge kaldiysa o silinince grup bosalir ve baslik
-        // da otomatik kaybolur (ayrica islem gerekmez). Silme sonrasi onizleme yeniden uretilir.
-        function deleteFromPreview(K) {
-            try {
-                var _idxler = window.__previewItemIndices || [];
-                var _idx = _idxler[K];
-                if (!_idx) { showToast('Öğe eşleştirilemedi, sayfayı yenileyin.', 'danger'); return; }
-                fetch('/api/manual/delete/' + _idx, { method: 'POST' })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data && data.status === 'success') {
-                        window.lastManuelListJson = null;   // havuz DOM'u yeniden cizilsin
-                        refreshStatus();                     // havuz gorunumu guncelle
-                        // Son icerik de silindiyse (havuz BOS) onizlemeyi KAPAT (kullanici istegi).
-                        // Aksi halde silinen oge + bosalan basligi yansitmak icin onizlemeyi yeniden uret.
-                        // NOT: data.remaining eski sunucuda YOK -> undefined !== 0 -> eski davranis (yeniden uret).
-                        if (data.remaining === 0) {
-                            showToast('Son içerik silindi, havuz boş — önizleme kapatıldı.', 'success');
-                            closePreviewModal();
-                        } else {
-                            showToast('İçerik silindi.', 'success');
-                            if (typeof generateManualWord === 'function') {
-                                setTimeout(function () { generateManualWord(true); }, 250);
-                            }
-                        }
-                    } else {
-                        showToast('Silme hatası: ' + (data && data.message || ''), 'danger');
-                    }
-                })
-                .catch(function () { showToast('Silme hatası.', 'danger'); });
-            } catch (e) {}
         }
 
         // Generate manual word / Preview
@@ -3549,9 +3496,10 @@ HTML_TEMPLATE = """
             return window.XLocalDocx.generateBlob(xBuildStyleOpts())
                 .then(function(blob) {
                     if (previewMode) {
+                        // Faz 7: önizleme DAİMA editörde (generateManualWord zaten yönlendiriyor; bu dal savunma amaçlı).
                         window.lastGeneratedBlob = blob;
                         window.lastGeneratedFilename = filename;
-                        showDocxPreview(blob);
+                        if (window.XEditor) { window.XEditor.ac(); }
                         refreshStatus();
                         return;
                     }
@@ -3573,9 +3521,9 @@ HTML_TEMPLATE = """
         }
 
         function generateManualWord(previewMode = false, forceServer = false) {
-            // Faz 3: Rapor Editörü bayrağı AÇIKSA, ÖNİZLEME yerine editörü aç (indirme eski yolda kalır).
-            // Bayrak KAPALIYKEN (varsayılan) bugünkü showDocxPreview yolu birebir çalışır.
-            if (previewMode && typeof xEditorEnabled === 'function' && xEditorEnabled() && window.XEditor) {
+            // Faz 7: ÖNİZLEME artık DAİMA Rapor Editörü'nü açar (eski showDocxPreview emekli).
+            //        İNDİRME (previewMode=false) aşağıdaki üretim yolunda kalır.
+            if (previewMode && window.XEditor) {
                 window.XEditor.ac();
                 return;
             }
@@ -3619,9 +3567,10 @@ HTML_TEMPLATE = """
             })
             .then(blob => {
                 if (previewMode) {
+                    // Faz 7: önizleme DAİMA editörde (bu sunucu-önizleme dalı savunma amaçlı).
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = "GörüntüX_Toplu.docx";
-                    showDocxPreview(blob);
+                    if (window.XEditor) { window.XEditor.ac(); }
                     refreshStatus();
                 } else {
                     const url = window.URL.createObjectURL(blob);
@@ -4783,13 +4732,8 @@ HTML_TEMPLATE = """
                         var _tumOgeler = Array.prototype.slice.call(container.querySelectorAll('.pool-item'));
                         var _k = _tumOgeler.indexOf(item);
                         if (_k >= 0) {
-                            // Faz 3: editör bayrağı açıksa editörü aç + tıklanan karta kaydır; değilse eski önizleme.
-                            if (typeof xEditorEnabled === 'function' && xEditorEnabled() && window.XEditor) {
-                                window.XEditor.ac({ scrollIndex: _k });
-                            } else if (typeof generateManualWord === 'function') {
-                                window.__previewScrollToIndex = _k;
-                                generateManualWord(true);   // previewMode -> showDocxPreview
-                            }
+                            // Faz 7: havuz kartına tıklama -> editörü aç + o karta kaydır.
+                            if (window.XEditor) { window.XEditor.ac({ scrollIndex: _k }); }
                         }
                     }
                 } catch (e) {}
@@ -4982,13 +4926,6 @@ HTML_TEMPLATE = """
         window.lastGeneratedBlob = null;
         window.lastGeneratedFilename = "";
 
-        function closePreviewModal() {
-            const modal = document.getElementById('previewModal');
-            if (modal) {
-                modal.classList.remove('active');
-            }
-        }
-
         // Twitter (X) Live Preview Popover Controls
         function showTweetPreview(tweetId, anchorEl) {
             try {
@@ -5160,253 +5097,10 @@ HTML_TEMPLATE = """
             } catch (e) {}
         }
 
-        function downloadFromPreview() {
-            if (!window.lastGeneratedBlob) return;
-            const url = window.URL.createObjectURL(window.lastGeneratedBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = xIndirmeDosyaAdi();
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-            showToast('Word dosyası başarıyla indirildi!', 'success');
-            
-            if (window.lastGeneratedFilename === "GörüntüX_Toplu.docx") {
-                resetAutomationUIAndBackend();
-            }
-        }
-
-        function showDocxPreview(blob) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const arrayBuffer = e.target.result;
-                mammoth.convertToHtml({arrayBuffer: arrayBuffer})
-                    .then(function(result) {
-                        const html = result.value;
-                        
-                        // Get style settings from sidebar
-                        const b_font = document.getElementById('b_font').value;
-                        const b_size = document.getElementById('b_size').value;
-                        const b_color = document.getElementById('b_color').value;
-                        const b_bold = document.getElementById('b_bold').checked;
-                        const b_italic = document.getElementById('b_italic').checked;
-                        const b_underline = document.getElementById('b_underline').checked;
-
-                        const b1_font = document.getElementById('b1_font').value;
-                        const b1_size = document.getElementById('b1_size').value;
-                        const b1_color = document.getElementById('b1_color').value;
-                        const b1_bold = document.getElementById('b1_bold').checked;
-                        const b1_italic = document.getElementById('b1_italic').checked;
-                        const b1_underline = document.getElementById('b1_underline').checked;
-
-                        const l_font = document.getElementById('l_font').value;
-                        const l_size = document.getElementById('l_size').value;
-                        const l_color = document.getElementById('l_color').value;
-                        const l_underline = document.getElementById('l_underline').checked;
-                        
-                        // Show modal
-                        const modal = document.getElementById('previewModal');
-                        modal.classList.add('active');
-                        
-                        // Render iframe
-                        const iframe = document.getElementById('preview-iframe');
-                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-                        iframeDoc.open();
-                        iframeDoc.write(`
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                                <meta charset="utf-8">
-                                <style>
-                                    @import url('https://fonts.googleapis.com/css2?family=Arial&family=Calibri&family=Cambria&family=Georgia&family=Helvetica&family=Segoe+UI&family=Tahoma&family=Times+New+Roman&family=Trebuchet+MS&family=Verdana&display=swap');
-                                    
-                                    body {
-                                        font-family: 'Calibri', 'Arial', sans-serif;
-                                        color: #1a1a1a;
-                                        line-height: 1.5;
-                                        padding: 50px 60px;
-                                        margin: 0 auto;
-                                        max-width: 800px;
-                                        background-color: #ffffff;
-                                        word-wrap: break-word;
-                                    }
-                                    h1 {
-                                        font-family: '${b1_font}', sans-serif;
-                                        font-size: ${b1_size}pt;
-                                        color: ${b1_color};
-                                        font-weight: ${b1_bold ? 'bold' : 'normal'};
-                                        font-style: ${b1_italic ? 'italic' : 'normal'};
-                                        text-decoration: ${b1_underline ? 'underline' : 'none'};
-                                        margin-top: 26px;
-                                        margin-bottom: 10px;
-                                    }
-                                    h2 {
-                                        font-family: '${b_font}', sans-serif;
-                                        font-size: ${b_size}pt;
-                                        color: ${b_color};
-                                        font-weight: ${b_bold ? 'bold' : 'normal'};
-                                        font-style: ${b_italic ? 'italic' : 'normal'};
-                                        text-decoration: ${b_underline ? 'underline' : 'none'};
-                                        margin-top: 20px;
-                                        margin-bottom: 6px;
-                                    }
-                                    p {
-                                        margin-top: 0;
-                                        margin-bottom: 6px;
-                                    }
-                                    img {
-                                        max-width: 100%;
-                                        height: auto;
-                                        display: block;
-                                        margin: 12px 0;
-                                        border: 1px solid #e0e0e0;
-                                        border-radius: 4px;
-                                    }
-                                    a {
-                                        font-family: '${l_font}', sans-serif;
-                                        font-size: ${l_size}pt;
-                                        color: ${l_color};
-                                        text-decoration: ${l_underline ? 'underline' : 'none'};
-                                    }
-                                    /* Link paragraflari arasi bosluk. Alt cizgi ARTIK burada DEGIL
-                                       (blanket her-linke border kaldirildi); grup-SONU link'e JS ile
-                                       eklenir -> Word ciktisiyla ayni (v3.98). */
-                                    p:has(a) {
-                                        margin-bottom: 18px;
-                                    }
-                                    /* Horizontal line divider */
-                                    hr, div.divider {
-                                        border: 0;
-                                        border-top: 1px solid #D0D0D0;
-                                        margin: 15px 0;
-                                    }
-                                </style>
-                            </head>
-                            <body>
-                                ${html}
-                            </body>
-                            </html>
-                        `);
-                        iframeDoc.close();
-
-                        // v3.84: her onizleme resmine "✕ Sil" butonu. K'inci <img> =
-                        // __previewItemIndices[K] havuz ogesi. iframe same-origin (parent'ca
-                        // yazildi) -> buton window.parent.deleteFromPreview(K) cagirir.
-                        try {
-                            var _pimgs = iframeDoc.querySelectorAll('img');
-                            for (var _pk = 0; _pk < _pimgs.length; _pk++) {
-                                (function (K) {
-                                    var _img = _pimgs[K];
-                                    if (!_img || !_img.parentNode) return;
-                                    var _wrap = iframeDoc.createElement('span');
-                                    _wrap.style.cssText = 'position:relative; display:inline-block; max-width:100%;';
-                                    _img.parentNode.insertBefore(_wrap, _img);
-                                    _wrap.appendChild(_img);
-                                    var _del = iframeDoc.createElement('button');
-                                    _del.setAttribute('type', 'button');
-                                    _del.textContent = '✕ Sil';
-                                    _del.style.cssText = 'position:absolute; top:10px; right:10px; background:rgba(224,36,94,0.94); color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:13px; font-weight:bold; cursor:pointer; z-index:20; box-shadow:0 1px 4px rgba(0,0,0,0.35);';
-                                    _del.onclick = function (ev) { try { ev.preventDefault(); ev.stopPropagation(); window.parent.deleteFromPreview(K); } catch (e) {} };
-                                    _wrap.appendChild(_del);
-                                })(_pk);
-                            }
-                        } catch (e) {}
-
-                        // Onizlemede linke tiklaninca IFRAME'de degil YENI SEKMEDE acilsin (kullanici
-                        // istegi). target=_blank + rel=noopener/noreferrer (yeni sekme window.opener'a erisemesin).
-                        try {
-                            var _plinks = iframeDoc.querySelectorAll('a[href]');
-                            for (var _li = 0; _li < _plinks.length; _li++) {
-                                _plinks[_li].setAttribute('target', '_blank');
-                                _plinks[_li].setAttribute('rel', 'noopener noreferrer');
-                            }
-                        } catch (e) {}
-
-                        // Alt cizgi: HER link altina DEGIL, her baslik grubunun SON ICERIK blogu altina
-                        // (Word ciktisiyla ayni; v3.97/98). Blanket p:has(a) border CSS'i kaldirildi ->
-                        // grup-sonu icerik burada isaretlenir. Grup = bir h1/h2 basligindan digerine.
-                        // SON ICERIK = link YA DA gorsel iceren blok. NEDEN gorsel de: bir hesabin
-                        // linkli tweetlerinden SONRA gelen RT ss'i (RT'lenen tweetin linki raporda GIZLI ->
-                        // o blokta <a href> YOK, yalniz <img>) grubun son ogesiyse, yalniz-link izlense
-                        // cizgi bir onceki linkin altina (RT ss'in USTUNE) dusuyordu. Gorseli de sayinca
-                        // cizgi gercek son oge olan RT ss'inin ALTINA gelir (Word ile ayni).
-                        try {
-                            var _kids = iframeDoc.body ? iframeDoc.body.children : [];
-                            var _sonLinkP = null, _grupSon = [];
-                            for (var _ci = 0; _ci < _kids.length; _ci++) {
-                                var _el = _kids[_ci];
-                                var _tag = (_el.tagName || '').toLowerCase();
-                                if (_tag === 'h1' || _tag === 'h2') {
-                                    if (_sonLinkP) { _grupSon.push(_sonLinkP); _sonLinkP = null; }
-                                } else if (_el.querySelector && (_el.querySelector('a[href]') || _el.querySelector('img'))) {
-                                    _sonLinkP = _el;   // bu gruptaki (simdilik) son ICERIK blogu (link ya da gorsel)
-                                }
-                            }
-                            if (_sonLinkP) { _grupSon.push(_sonLinkP); }   // son grup
-                            for (var _gj = 0; _gj < _grupSon.length; _gj++) {
-                                _grupSon[_gj].style.borderBottom = '1px solid #D0D0D0';
-                                _grupSon[_gj].style.paddingBottom = '15px';
-                                _grupSon[_gj].style.marginBottom = '20px';
-                            }
-                        } catch (e) {}
-
-                        // v3.82 (Feature 2): bir HAVUZ OGESINE tiklanarak acildiysa o ogenin
-                        // resmine kaydir. __previewScrollToIndex yalnizca oge tiklamasinda set
-                        // edilir; "Onizle" butonuyla acilista set DEGIL -> ustten baslar (eski davranis).
-                        // Resimler data-URI oldugu icin yerlesim otursun diye kisa gecikme.
-                        try {
-                            if (window.__previewScrollToIndex != null) {
-                                var _hedefIdx = window.__previewScrollToIndex;
-                                window.__previewScrollToIndex = null;
-                                setTimeout(function () {
-                                    try {
-                                        var _imgs = iframeDoc.querySelectorAll('img');
-                                        var _hedef = _imgs && _imgs[_hedefIdx];
-                                        if (!_hedef) return;
-                                        // v3.83: resmin DEGIL, o icerigin BASLIGI (Baslik 2) ustte
-                                        // gorunsun. Resmin ONUNDEKI en yakin h1/h2'yi bul, ona kaydir;
-                                        // yoksa (standalone, basliksiz) resme kaydir.
-                                        var _basliklar = iframeDoc.body ? iframeDoc.body.querySelectorAll('h1, h2') : [];
-                                        var _enYakinBaslik = null;
-                                        for (var _bi = 0; _bi < _basliklar.length; _bi++) {
-                                            // 2 = DOCUMENT_POSITION_PRECEDING: _basliklar[_bi], _hedef'ten ONCE mi?
-                                            if (_hedef.compareDocumentPosition(_basliklar[_bi]) & 2) _enYakinBaslik = _basliklar[_bi];
-                                        }
-                                        (_enYakinBaslik || _hedef).scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    } catch (e) {}
-                                }, 300);
-                            }
-                        } catch (e) {}
-                    })
-                    .catch(function(err) {
-                        showToast('Önizleme oluşturulamadı: ' + err.message, 'danger');
-                        console.error(err);
-                    });
-            };
-            reader.readAsArrayBuffer(blob);
-        }
     </script>
 
-    <!-- Preview Modal -->
-    <div id="previewModal" class="modal">
-        <div class="preview-modal-content">
-            <div class="modal-header">
-                <h2>📄 Word Belgesi Önizleme</h2>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-success btn-sm" onclick="downloadFromPreview()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;">📥 İndir</button>
-                    <span class="close-btn" onclick="closePreviewModal()">&times;</span>
-                </div>
-            </div>
-            <div class="preview-body">
-                <div class="preview-iframe-container">
-                    <iframe id="preview-iframe" class="preview-iframe"></iframe>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- YENİ: Rapor Editörü modalı (Faz 0 iskeleti). BAYRAK KORUMALI: yalnız xEditorEnabled()
-         açıkken ve Faz 3'te bağlanınca kullanılır. Şimdilik gizli (class "modal", "active" yok);
-         içeriği sonraki fazlarda /x-editor.js doldurur. Mevcut preview-modal CSS'i yeniden kullanılır. -->
+    <!-- Rapor Editörü modalı (Faz 7: VARSAYILAN önizleme, tam sayfa). Önizle girişleri burayı açar;
+         içeriği /x-editor.js doldurur. preview-modal-content/preview-body CSS'ini yeniden kullanır. -->
     <div id="editorModal" class="modal">
         <div class="preview-modal-content">
             <div class="modal-header">
@@ -6151,11 +5845,6 @@ LOCAL_DOCX_JS = r'''
       return { birimler: birimler, multiPlatform: multiPlatform, platOrder: platOrder, groups: groups };
     }
 
-    // v3.84: onizlemede oge silme icin -> her onizleme pozisyonunun (K) FLAT havuz indexi.
-    // birimler GRUPLU sirada (onizlemedeki <img> sirasiyla ayni); her birimin item.index
-    // (/api/pool/data'dan, 1-tabanli) flat havuz pozisyonu. showDocxPreview'daki silme
-    // butonu K -> __previewItemIndices[K] ile dogru ogeyi siler (pool DOM'a bagimli DEGIL).
-    try { window.__previewItemIndices = birimler.map(function(b){ return (b.item && b.item.index) || null; }); } catch(e){}
 
     // ---- 2. GECIS: en-boy oranlarini oku (tek async adim; boyutlama buna dayanir)
     var bi2;
