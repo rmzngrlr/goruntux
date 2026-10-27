@@ -6570,6 +6570,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-chk{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;padding:5px 8px;border:1px solid #d7dde3;border-radius:7px;background:#fff;cursor:pointer;}
 #editorModal .ed-chk:has(input:checked){background:#eef5ff;border-color:#9ec5f0;color:#1565c0;}
 #editorModal .ed-chk input{cursor:pointer;}
+#editorModal .ed-hiza{display:inline-flex;gap:3px;padding:2px;background:#eaeef3;border-radius:8px;}
+#editorModal .ed-hb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border:none;background:transparent;color:#3a4654;border-radius:6px;cursor:pointer;padding:0;transition:background .1s;}
+#editorModal .ed-hb:hover{background:#d9e2ec;}
+#editorModal .ed-hb.aktif{background:#1565c0;color:#fff;box-shadow:0 1px 2px rgba(21,101,192,0.4);}
+#editorModal .ed-tgl-num svg,#editorModal .ed-hb svg{display:block;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
 #editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;}
 #editorModal .ed-plat:first-child{margin-top:4px;}
@@ -6758,19 +6763,34 @@ X_EDITOR_JS = r'''
     h+='<label class="ed-tgl ed-tgl-i" title="Eğik"><input type="checkbox" data-t="'+ids.italic+'" '+(val(ids.italic)?'checked':'')+'><span>I</span></label>';
     h+='<label class="ed-tgl ed-tgl-u" title="Altı çizili"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'><span>U</span></label>';
     h+='</span>';
-    h+='<label>Hiza <select data-t="'+ids.align+'"><option value="left">Sola</option><option value="center">Ortaya</option><option value="right">Sağa</option><option value="both">İki yana</option></select></label>';
+    var _hv=val(ids.align)||'left';
+    h+='<span class="ed-hiza">';
+    h+='<button class="ed-hb'+(_hv==='left'?' aktif':'')+'" data-a="'+ids.align+'" data-v="left" title="Sola"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h8"/><path d="M2 12h10"/></g></svg></button>';
+    h+='<button class="ed-hb'+(_hv==='center'?' aktif':'')+'" data-a="'+ids.align+'" data-v="center" title="Ortaya"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M4 8h8"/><path d="M3 12h10"/></g></svg></button>';
+    h+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
+    h+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
+    h+='</span>';
     if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Word stili <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
-    if(ids.numbered) h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'> Numara</label>';
+    if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
     if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun başlığı (kullanıcı adı) Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
-    var as=panel.querySelector('select[data-t="'+ids.align+'"]'); if(as) as.value=val(ids.align)||'left';
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
       ctrl.addEventListener(ev, function(){ XE._stilUygula(ctrl); });
       if(ctrl.type==='number') ctrl.addEventListener('input', function(){ XE._stilUygula(ctrl); });
     });
+    // Hizalama ikon butonları (Word gibi): tıklanınca ilgili hiza girdisini set eder + canlı yansıtır.
+    panel.querySelectorAll('.ed-hb').forEach(function(btn){
+      btn.addEventListener('click', function(){ XE._hizaSec(btn.getAttribute('data-a'), btn.getAttribute('data-v')); });
+    });
+  };
+  XE._hizaSec = function(inputId, v){
+    var el=document.getElementById(inputId); if(el){ el.value=v; }
+    if(typeof window.xSaveStyles==='function') try{ window.xSaveStyles(); }catch(e){}
+    var grp=document.querySelector('.ed-hiza'); if(grp){ grp.querySelectorAll('.ed-hb').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-v')===v); }); }
+    canliCiz();
   };
   // Yapısal stiller (numara/başlıksız/başlık-türü) h2'yi PLAN anında belirler -> canlı yansısın diye
   // YENİDEN PLANLA; CSS stilleri (font/renk/hiza) hızlı _ciz yolunda kalır.
