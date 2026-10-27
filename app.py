@@ -1801,6 +1801,7 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
+                    <button class="theme-toggle-btn" id="rapor-editoru-btn" style="display:none; background:var(--accent-color); color:#fff; border-color:var(--accent-color);" onclick="window.XEditor && window.XEditor.ac()" title="Havuz boşken elle rapor oluşturmak için Rapor Editörü'nü aç">📝 Rapor Editörü</button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -2064,6 +2065,16 @@ HTML_TEMPLATE = """
                         <option value="both">İki yana</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="b1_wordstyle">Word Başlık Türü:</label>
+                    <select id="b1_wordstyle">
+                        <option value="Heading1" selected>Başlık 1</option>
+                        <option value="Heading2">Başlık 2</option>
+                        <option value="Heading3">Başlık 3</option>
+                        <option value="Heading4">Başlık 4</option>
+                        <option value="Normal">Normal</option>
+                    </select>
+                </div>
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -2112,6 +2123,16 @@ HTML_TEMPLATE = """
                         <option value="center">Ortaya</option>
                         <option value="right">Sağa</option>
                         <option value="both">İki yana</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="b_wordstyle">Word Başlık Türü:</label>
+                    <select id="b_wordstyle">
+                        <option value="Heading1">Başlık 1</option>
+                        <option value="Heading2" selected>Başlık 2</option>
+                        <option value="Heading3">Başlık 3</option>
+                        <option value="Heading4">Başlık 4</option>
+                        <option value="Normal">Normal</option>
                     </select>
                 </div>
 
@@ -3406,6 +3427,7 @@ HTML_TEMPLATE = """
                 b1_italic: gc('b1_italic', false),
                 b1_underline: gc('b1_underline', false),
                 b1_align: gv('b1_align', 'left'),
+                b1_wordstyle: gv('b1_wordstyle', 'Heading1'),
                 b_font: gv('b_font', 'Arial'),
                 b_size: gv('b_size', '14'),
                 b_color: gv('b_color', '#000000'),
@@ -3415,6 +3437,7 @@ HTML_TEMPLATE = """
                 b_italic: gc('b_italic', false),
                 b_underline: gc('b_underline', false),
                 b_align: gv('b_align', 'left'),
+                b_wordstyle: gv('b_wordstyle', 'Heading2'),
                 l_font: gv('l_font', 'Calibri'),
                 l_size: gv('l_size', '10'),
                 l_color: gv('l_color', '#1DA1F2'),
@@ -3453,8 +3476,8 @@ HTML_TEMPLATE = """
         //     kaydetmiyordu -> sayfa yenilemede HTML varsayılanlarına dönüyordu. Artık her
         //     stil girdisi değişince localStorage'a yazılır, açılışta geri yüklenir. ---
         function xStyleInputIds() {
-            return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align',
-                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align',
+            return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align','b1_wordstyle',
+                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align','b_wordstyle',
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
                     'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align'];
         }
@@ -3913,6 +3936,10 @@ HTML_TEMPLATE = """
                 const manualListSec = document.getElementById('manual-list-section');
                 const container = document.getElementById('manual-items-container');
                 const titleEl = document.getElementById('manual-list-title');
+                // #3: Havuz BOŞken üst-sağda "Rapor Editörü" butonu görünür (elle rapor oluşturma);
+                //     havuza içerik düşünce gizlenir (o zaman Önizle ile açılır).
+                var _reBtn = document.getElementById('rapor-editoru-btn');
+                if (_reBtn) { _reBtn.style.display = (data.manuel_count > 0) ? 'none' : ''; }
                 if (data.manuel_count > 0) {
                     if (titleEl) {
                         titleEl.innerText = `📋 Havuzda Bekleyen Rapor İçerikleri (${data.manuel_count} Adet)`;
@@ -5613,7 +5640,9 @@ LOCAL_DOCX_JS = r'''
       // keepNext: baslik kendisinden sonraki paragrafla (gorsel) AYNI sayfada kalir.
       // Sabit sayfa sonu kaldirildigi icin (2026-07-17) sayfa sinirini artik Word
       // belirliyor; baslik sayfa dibinde yalniz kalmasin diye bagliyoruz.
-      return '<w:p><w:pPr><w:pStyle w:val="Heading2"/><w:keepNext/><w:keepLines/>'+jc(opts.b_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      // #1: Word başlık türü (Kullanıcı Adlı Başlık) kullanıcı seçimine göre (Normal/Heading1..4).
+      var _bSt = ({Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1}[opts.b_wordstyle]) ? opts.b_wordstyle : 'Heading2';
+      return '<w:p><w:pPr><w:pStyle w:val="'+_bSt+'"/><w:keepNext/><w:keepLines/>'+jc(opts.b_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     function heading1Xml(text){
       var rPr='<w:rFonts w:ascii="'+xmlEsc(b1Font)+'" w:hAnsi="'+xmlEsc(b1Font)+'"/>';
@@ -5621,7 +5650,9 @@ LOCAL_DOCX_JS = r'''
       if(opts.b1_italic) rPr+='<w:i/>';
       if(opts.b1_underline) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+b1Color+'"/><w:sz w:val="'+b1Sz+'"/><w:szCs w:val="'+b1Sz+'"/>';
-      return '<w:p><w:pPr><w:pStyle w:val="Heading1"/>'+jc(opts.b1_align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      // #1: Word başlık türü (Platform Adı) kullanıcı seçimine göre.
+      var _b1St = ({Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1}[opts.b1_wordstyle]) ? opts.b1_wordstyle : 'Heading1';
+      return '<w:p><w:pPr><w:pStyle w:val="'+_b1St+'"/>'+jc(opts.b1_align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
@@ -5772,10 +5803,6 @@ LOCAL_DOCX_JS = r'''
     //      gonderisi varsa yapi H2 + (gorsel+link)x3 olur; sayfa sonu grubun ortasina
     //      denk gelirse Baslik2 TEKRARLANMAZ. Word'un bugunku davranisiyla ayni.
     var birimler=[], headerIndex=0;
-    // #1 (Başlıksız): b_basliksiz AÇIKken Kullanıcı Adlı Başlık (h2) DOCX'te basılmaz. Ama __planOnly
-    // (editör planı) için h2 HEP doldurulur -> editör şeridindeki tik canlı gizleyip gösterebilsin
-    // (plan h2'yi null'lasaydı tik kapatılınca başlık geri gelmezdi).
-    var _h2gizle = !!(opts && opts.b_basliksiz && !opts.__planOnly);
     function toplaEntry(entry, h1){
       var type=entry[0], val=entry[1];
       if(type==='group'){
@@ -5816,7 +5843,7 @@ LOCAL_DOCX_JS = r'''
           // gorunur, gonderileri altinda akar (kac sayfaya yayildigi farketmez).
           // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
           // gorur (kullanici istegi 2026-07-17).
-          birimler.push({ h1:(k===0?h1:null), h2:((!_h2gizle && k===0)?baslikFormatla(baslik):null),
+          birimler.push({ h1:(k===0?h1:null), h2:((!opts.b_basliksiz && k===0)?baslikFormatla(baslik):null),
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
         }
       } else {
@@ -5826,7 +5853,7 @@ LOCAL_DOCX_JS = r'''
         var b2;
         if(_ovr2!=null){ headerIndex++; b2=_ovr2; }
         else { b2=(item2.title||'').trim(); if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; } }
-        birimler.push({ h1:h1, h2:((!_h2gizle && b2)?baslikFormatla(b2):null),
+        birimler.push({ h1:h1, h2:((!opts.b_basliksiz && b2)?baslikFormatla(b2):null),
                         item:item2, link:xRaporLinkGoster(item2), son:true });
       }
     }
@@ -5970,6 +5997,8 @@ LOCAL_DOCX_JS = r'''
       + '<w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style>'
       + '<w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="0"/></w:pPr></w:style>'
       + '<w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="1"/></w:pPr></w:style>'
+      + '<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="2"/></w:pPr></w:style>'
+      + '<w:style w:type="paragraph" w:styleId="Heading4"><w:name w:val="heading 4"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:pPr><w:keepNext/><w:outlineLvl w:val="3"/></w:pPr></w:style>'
       + '</w:styles>';
 
     var contentTypes='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -6462,6 +6491,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-metin{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
 #editorModal .ed-metin:empty:before{content:"Metin yazın…";color:#9aa3ad;}
 #editorModal .ed-metin:focus{border-color:#1DA1F2;border-style:solid;background:rgba(29,161,242,0.04);}
+#editorModal .ed-tur{flex:none;display:none;align-self:flex-start;font-size:11px;padding:3px 5px;border:1px solid #d0d7de;border-radius:6px;background:#fff;color:#334;cursor:pointer;}
+#editorModal .ed-parca:hover .ed-tur{display:inline-block;}
 #editorModal .ed-metin-sil{flex:none;width:26px;height:26px;border:1px solid #d0d7de;background:#fff;color:#e0245e;border-radius:6px;font-size:16px;line-height:1;cursor:pointer;}
 #editorModal .ed-metin-sil:hover{background:#ffeef0;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
@@ -6525,8 +6556,8 @@ X_EDITOR_JS = r'''
   XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null) }; }catch(e){} };
 
   var GRUPLAR=[
-    {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
-    {key:'b',  ad:'Kullanıcı Adlı Başlık', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz'}},
+    {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
+    {key:'b',  ad:'Kullanıcı Adlı Başlık', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz',wordstyle:'b_wordstyle'}},
     {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
     {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
   ];
@@ -6595,22 +6626,39 @@ X_EDITOR_JS = r'''
     h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.italic+'" '+(val(ids.italic)?'checked':'')+'> Eğik</label>';
     h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'> Altı çizili</label>';
     h+='<label>Hiza <select data-t="'+ids.align+'"><option value="left">Sola</option><option value="center">Ortaya</option><option value="right">Sağa</option><option value="both">İki yana</option></select></label>';
+    if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Word stili <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'> Numara</label>';
     if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun başlığı (kullanıcı adı) Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
     var as=panel.querySelector('select[data-t="'+ids.align+'"]'); if(as) as.value=val(ids.align)||'left';
+    if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
       ctrl.addEventListener(ev, function(){ XE._stilUygula(ctrl); });
       if(ctrl.type==='number') ctrl.addEventListener('input', function(){ XE._stilUygula(ctrl); });
     });
   };
+  // Yapısal stiller (numara/başlıksız/başlık-türü) h2'yi PLAN anında belirler -> canlı yansısın diye
+  // YENİDEN PLANLA; CSS stilleri (font/renk/hiza) hızlı _ciz yolunda kalır.
+  var STRUKT_STIL = { b_numbered:1, b_basliksiz:1 };
   XE._stilUygula = function(ctrl){
     var id=ctrl.getAttribute('data-t'); var tgt=document.getElementById(id); if(!tgt) return;
     if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
     if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
-    canliCiz();
+    if(STRUKT_STIL[id]){ XE._yenidenPlanla(); } else { canliCiz(); }
+  };
+  // Mevcut belge öğeleriyle planı yeniden kur (havuzu YENİDEN ÇEKMEZ; parçalar/override overlay'den korunur).
+  XE._yenidenPlanla = function(){ try { XE.ac({ items: XE.toItems() }); } catch(e){} };
+  // #4: Bir parçanın TÜRÜNÜ değiştir (Metin <-> Link; veya "Başlık yap" -> kartın başlığına taşı).
+  XE._turDegistir = function(i, pk, tur){
+    var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
+    var p=b.item.parcalar[pk]; if(!p) return;
+    var metin=(p.tur==='metin') ? (p.metin||'') : (p.tur==='link') ? ((p.url!=null&&p.url!=='')?p.url:(b.item.link||'')) : '';
+    if(tur==='metin'){ b.item.parcalar[pk]={tur:'metin', id:yeniId(), metin:metin}; }
+    else if(tur==='link'){ b.item.parcalar[pk]={tur:'link', url:metin}; }
+    else if(tur==='baslik'){ b.item.h2_override=metin; b.h2=metin; b.item.parcalar.splice(pk,1); }
+    XE._ovSet(i); XE._ciz();
   };
 
   XE._ciz = function(){
@@ -6623,7 +6671,7 @@ X_EDITOR_JS = r'''
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
-      if(b.h2!=null && !o.b_basliksiz) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
+      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       h.push('<button class="ed-metin-ekle" data-i="'+i+'" title="Görsel/link ile birlikte sürükleyerek konumlandırabileceğiniz bir metin ekler">+ Metin Ekle</button>');
       var pc=(b.item&&b.item.parcalar)||[];
       for(k=0;k<pc.length;k++){ var p=pc[k];
@@ -6634,7 +6682,14 @@ X_EDITOR_JS = r'''
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+esc(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push((lk||shown) ? ('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>') : '<div class="ed-parca-bos">[link yok]</div>'); }
         h.push('</div>');
-        if(p.tur==='metin') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Metni sil">&minus;</button>');
+        // #4: Word Düzenle (ve genel) için parça TÜRÜ değiştirici — hover'da çıkar (metin/link).
+        if(p.tur==='metin' || p.tur==='link'){
+          h.push('<select class="ed-tur" data-i="'+i+'" data-p="'+k+'" title="Bu parçanın türünü seç (Metin / Link / Başlık yap)">'
+            +'<option value="metin"'+(p.tur==='metin'?' selected':'')+'>Metin</option>'
+            +'<option value="link"'+(p.tur==='link'?' selected':'')+'>Link</option>'
+            +'<option value="baslik">Başlık yap</option></select>');
+        }
+        if(p.tur==='metin' || p.tur==='link') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Bu parçayı sil">&minus;</button>');
         h.push('</div>');
       }
       h.push('</div>');
@@ -6657,6 +6712,9 @@ X_EDITOR_JS = r'''
     });
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
       el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ b.item.parcalar.splice(pk,1); XE._ovSet(bi); XE._ciz(); } });
+    });
+    root.querySelectorAll('.ed-tur').forEach(function(el){
+      el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
     });
     root.querySelectorAll('.ed-del').forEach(function(el){ el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); }); });
 
@@ -6683,6 +6741,15 @@ X_EDITOR_JS = r'''
 
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
+    var it=B[i].item, idx=(it && it.index);
+    if(idx!=null){
+      // Havuz tabanlı öğe: SUNUCUDAN da sil (yoksa Kaydet/Önizle havuzu okuyunca öğe GERİ GELİR).
+      try{ await fetch('/api/manual/delete/'+idx, { method:'POST' }); }catch(e){}
+      try{ if(window.XLocalImages && window.XLocalImages.remove && it.link){ window.XLocalImages.remove(it.link); } }catch(e){}
+      await XE.ac({});   // havuz yeniden indexlendi -> taze havuzdan kur (indexler güncel kalsın)
+      return;
+    }
+    // Havuz tabanlı değil (Word Düzenle dış öğeleri) -> yalnız bellekten çıkar.
     var kalan=[], j; for(j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
     await XE.ac({ items: kalan });
   };
