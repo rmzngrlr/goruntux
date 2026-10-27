@@ -6779,12 +6779,18 @@ X_EDITOR_JS = r'''
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
       if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı">&#x283F; taşı</div>');
-      // #2: Küme taşıyıcı (hover'da çıkar) — öğeyi başka bir başlık/küme altına taşı.
-      var _kopt='';
-      if(b.grup==null) _kopt+='<option value="" selected>(Kendi kümesi)</option>';
-      for(var _ki=0;_ki<kumeler.length;_ki++){ var _kk=kumeler[_ki]; _kopt+='<option value="'+esc(_kk.grup)+'"'+(_kk.grup===b.grup?' selected':'')+'>'+esc(_kk.ad)+'</option>'; }
-      _kopt+='<option value="__yeni">➕ Yeni küme</option>';
-      h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi hangi kümeye (başlığa) taşımak istersin">'+_kopt+'</select>');
+      // #2: Küme taşıyıcı (hover'da çıkar) — YALNIZ anlamlıysa: taşınacak BAŞKA küme var ya da
+      // bu küme ÇOK ÜYELİ (ayırma mantıklı). Tek başına öğede gösterilmez (kafa karıştırmasın).
+      if(!b.manual){
+        var _digerKumeler=[]; for(var _ki=0;_ki<kumeler.length;_ki++){ if(kumeler[_ki].grup!==b.grup) _digerKumeler.push(kumeler[_ki]); }
+        var _kumeUye=0; if(b.grup!=null){ for(var _ci=0;_ci<B.length;_ci++){ if(B[_ci].grup===b.grup) _kumeUye++; } }
+        if(_digerKumeler.length>0 || _kumeUye>1){
+          var _kopt='<option value="__noop" selected>⇄ Başka başlığa taşı…</option>';
+          for(var _kj=0;_kj<_digerKumeler.length;_kj++){ _kopt+='<option value="'+esc(_digerKumeler[_kj].grup)+'">'+esc(_digerKumeler[_kj].ad)+'</option>'; }
+          _kopt+='<option value="__yeni">➕ Kendi başlığı (ayır)</option>';
+          h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi başka bir başlık (küme) altına taşı">'+_kopt+'</select>');
+        }
+      }
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       h.push('<button class="ed-metin-ekle" data-i="'+i+'" title="Görsel/link ile birlikte sürükleyerek konumlandırabileceğiniz bir metin ekler">+ Metin Ekle</button>');
       var pc=(b.item&&b.item.parcalar)||[];
@@ -6832,7 +6838,7 @@ X_EDITOR_JS = r'''
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
     });
     root.querySelectorAll('.ed-kume').forEach(function(el){
-      el.addEventListener('change', function(){ XE._kumeTasi(+el.getAttribute('data-i'), el.value); });
+      el.addEventListener('change', function(){ var v=el.value; if(v==='__noop'){ return; } XE._kumeTasi(+el.getAttribute('data-i'), v); });
     });
     root.querySelectorAll('.ed-ekle-t').forEach(function(el){
       el.addEventListener('click', function(){ var after=el.getAttribute('data-after'), tur=el.getAttribute('data-t');
