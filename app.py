@@ -5649,6 +5649,11 @@ LOCAL_DOCX_JS = r'''
     // hesap girince grup O NOKTADA bölünür (A1, manuel, A2 mümkün). ELLE taşıma (group_override) ve
     // saf tarama (manuel yok) HER ZAMAN tam-birleşir (eski davranış birebir).
     var _hasManual=false; for(var _hm=0;_hm<items.length;_hm++){ if(items[_hm] && xIsManualLink(items[_hm].link||'')){ _hasManual=true; break; } }
+    // [bitişik-dizi: OTO group_override dahil] Bayrak (geri alınabilir): manuel VARKEN otomatik @handle
+    // group_override'lı öğeler de ardışık-diziye girsin (araya manuel koyunca hesap O NOKTADA bölünür).
+    // '0' -> eski davranış (herhangi group_override her zaman tam birleşir). ELLE taşıma ('mc-'/run-key)
+    // bu bayraktan BAĞIMSIZ her zaman tam birleşir.
+    var _manualSplitsAuto=true; try{ _manualSplitsAuto = (localStorage.getItem('x_manual_splits_auto')!=='0'); }catch(e){}
     var groups={}, order=[], idx, _prevAutoUser=null, _runFirst='';
     for(idx=0; idx<items.length; idx++){
       var item=items[idx];
@@ -5706,8 +5711,14 @@ LOCAL_DOCX_JS = r'''
       var username = _go ? _go : _native;
       if(username){
         var gkey;
-        if(_go){ gkey=username; _prevAutoUser=null; }                 // ELLE taşıma/birleştirme -> HER ZAMAN tam birleş
-        else if(_hasManual){                                          // belge modu: ardışık-dizi (araya manuel girince böl)
+        // ELLE grup anahtarı mı? 'mc-' = "kendi başlığı/ayır" + küme-birleştir; '\u0001' = run-key'e taşıma.
+        // Bunları kullanıcı BİLEREK grupladı -> _hasManual olsa da HER ZAMAN tam birleş. OTO @handle
+        // group_override (Word Düzenle başlığı / RT yapan / kayıttan geri yüklenen) ELLE DEĞİL -> manuel
+        // varken ardışık-diziye girer ki araya konan manuel bölüm hesabı O NOKTADA bölebilsin. (KÖK NEDEN:
+        // eski "if(_go) her zaman tam birleş" dalı, group_override'lı A1/A2 arasına manuel giremiyordu.)
+        var _goElle = _go && (_go.indexOf('mc-')===0 || _go.indexOf('\u0001')!==-1);
+        if(_go && (_goElle || !_manualSplitsAuto || !_hasManual)){ gkey=username; _prevAutoUser=null; }   // ELLE grup / bayrak-kapalı / manuel-yok -> tam birleş (eski)
+        else if(_hasManual){                                          // belge modu: ardışık-dizi (OTO group_override DAHİL araya manuel girince böl)
           if(username!==_prevAutoUser){ _runFirst = link || ('oge'+idx); }   // yeni run -> ilk öğenin linki (KARARLI: planlar arası aynı -> menüden taşıma yapışır)
           gkey='\u0001run\u0001'+username+'\u0001'+_runFirst;
           _prevAutoUser=username;
