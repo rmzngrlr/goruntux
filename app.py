@@ -5214,10 +5214,14 @@ HTML_TEMPLATE = """
     <div id="editorModal" class="modal">
         <div class="preview-modal-content">
             <div class="modal-header">
-                <h2>📝 Rapor Editörü</h2>
+                <div style="display: flex; gap: 14px; align-items: center;">
+                    <h2 style="margin:0;">📝 Rapor Editörü</h2>
+                    <div style="display: flex; gap: 6px; align-items: center; border-left: 1px solid #d0d7de; padding-left: 14px;">
+                        <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶ Geri</button>
+                        <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷ İleri</button>
+                    </div>
+                </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶ Geri</button>
-                    <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷ İleri</button>
                     <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;" title="Raporu panele kaydet (indirmez; havuz commit edilir)">💾 Kaydet</button>
                     <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px; background: var(--accent-color);" title="Sadece .docx indir (kaydetmez)">📥 İndir</button>
                     <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
@@ -5460,9 +5464,9 @@ X_PLATFORM_JS = r'''
   // (ayni adli X hesabiyla CAKISMASIN) -> onek soyulur.
   function groupFallbackTitle(val){
     var v = String(val==null?'':val);
-    // B/C: manuel/ayri-kume sentetik anahtarlari (mc-..., xmanual://...) BASLIK DEGILDIR ->
-    // overlay basligi eksikse rastgele anahtar basliga sizmasin (bos don).
-    if(v.indexOf('mc-') === 0 || v.indexOf('xmanual') === 0) return '';
+    // B/C: manuel/ayri-kume sentetik anahtarlari (mc-..., xmanual://..., \x01run\x01 bitisik-dizi)
+    // BASLIK DEGILDIR -> overlay basligi eksikse rastgele anahtar basliga sizmasin (bos don).
+    if(v.indexOf('mc-') === 0 || v.indexOf('xmanual') === 0 || v.indexOf('\u0001run\u0001') === 0) return '';
     if(v.indexOf('fb:') === 0){
       var rest = v.slice(3);
       if(rest.indexOf('group:') === 0) return 'Facebook Grubu: ' + rest.slice(6);
@@ -5624,7 +5628,12 @@ LOCAL_DOCX_JS = r'''
       } catch(e){}
     }
 
-    var groups={}, order=[], idx;
+    // [bitişik-dizi gruplama]: Manuel bölüm VARSA (belge-oluşturucu modu) otomatik hesap gruplaması
+    // ARDIŞIK diziye iner -> aynı hesabın havuzda yan yana içerikleri birleşir, araya manuel/başka
+    // hesap girince grup O NOKTADA bölünür (A1, manuel, A2 mümkün). ELLE taşıma (group_override) ve
+    // saf tarama (manuel yok) HER ZAMAN tam-birleşir (eski davranış birebir).
+    var _hasManual=false; for(var _hm=0;_hm<items.length;_hm++){ if(items[_hm] && xIsManualLink(items[_hm].link||'')){ _hasManual=true; break; } }
+    var groups={}, order=[], idx, _prevAutoUser=null, _runFirst='';
     for(idx=0; idx<items.length; idx++){
       var item=items[idx];
       var link=item.link||'';
@@ -5680,10 +5689,18 @@ LOCAL_DOCX_JS = r'''
       item.__native = _native || '';     // başlık türetmesi için yerli anahtar
       var username = _go ? _go : _native;
       if(username){
-        if(!groups[username]){ groups[username]={items:[]}; order.push(['group',username]); }
-        groups[username].items.push(item);
+        var gkey;
+        if(_go){ gkey=username; _prevAutoUser=null; }                 // ELLE taşıma/birleştirme -> HER ZAMAN tam birleş
+        else if(_hasManual){                                          // belge modu: ardışık-dizi (araya manuel girince böl)
+          if(username!==_prevAutoUser){ _runFirst = link || ('oge'+idx); }   // yeni run -> ilk öğenin linki (KARARLI: planlar arası aynı -> menüden taşıma yapışır)
+          gkey='\u0001run\u0001'+username+'\u0001'+_runFirst;
+          _prevAutoUser=username;
+        } else { gkey=username; _prevAutoUser=username; }             // saf tarama -> tam birleş (eski)
+        if(!groups[gkey]){ groups[gkey]={items:[]}; order.push(['group',gkey]); }
+        groups[gkey].items.push(item);
       } else {
         order.push(['standalone', item]);
+        _prevAutoUser=null;                                           // standalone (manuel dahil) ardışık diziyi kırar
       }
     }
 
@@ -6103,13 +6120,24 @@ LOCAL_DOCX_JS = r'''
         // sıra (gorsel/metin/link). Yoksa ESKI yol (metin_bloklari konum alt/ust) -> cikti birebir.
         var _pc=(u.item && u.item.parcalar) ? u.item.parcalar : null;
         if(_pc){
+          // Grup-sonu ayraç çizgisi: son BASILAN parça link ise çizgiyi O linkin alt-kenarlığı yap
+          // (eski davranış) -> link ile çizgi arasında FAZLADAN BOŞ SATIR olmaz. Link son değilse
+          // (ör. "link üstte"de görsel altta) ayrı grupSonuXml paragrafı kullan.
+          var _lastEmit=-1;
+          for(var _q=0;_q<_pc.length;_q++){ var _pq=_pc[_q];
+            if(_pq.tur==='gorsel'){ if(u.item.image_b64) _lastEmit=_q; }
+            else if(_pq.tur==='metin'){ if(String(_pq.metin||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim()) _lastEmit=_q; }
+            else if(_pq.tur==='link'){ var _lq=(_pq.url!=null && String(_pq.url).trim()!=='')?String(_pq.url).trim():u.link; if(_lq) _lastEmit=_q; }
+          }
+          var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
             if(_p.tur==='gorsel'){ if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h)); }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh)); }
-            else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link; if(_lu) body.push(linkXml(_lu, 240, false)); }
+            else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link;
+              if(_lu){ var _bord=(u.son && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
           }
-          if(u.son) body.push(grupSonuXml());   // grup ayracı link'ten AYRI (parça sırası serbest)
+          if(u.son && !_cizgiKondu) body.push(grupSonuXml());   // link son değilse: ayrı ayraç (parça sırası serbest)
         } else {
           var _mb=(u.item && u.item.metin_bloklari)||[];
           _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
@@ -6863,7 +6891,9 @@ X_EDITOR_JS = r'''
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
 #editorModal .ed-ekle-zon{display:flex;justify-content:flex-start;align-items:center;min-height:14px;margin:0 0 4px;}
 #editorModal .ed-bolum-ekle{display:none;font-size:12px;font-weight:700;color:#1565c0;background:#eef5ff;border:1px dashed #9ab;border-radius:14px;padding:4px 16px;cursor:pointer;}
-#editorModal .ed-ekle-zon:hover .ed-bolum-ekle{display:inline-block;}
+#editorModal .ed-ekle-zon:hover .ed-bolum-ekle,#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{display:inline-block;}
+#editorModal .ed-ekle-zon.hep{justify-content:center;margin:10px 0;}
+#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{font-size:13px;padding:8px 22px;}
 #editorModal .ed-bolum-ekle:hover{background:#1565c0;color:#fff;}
 #editorModal .ed-pe-wrap{position:relative;display:inline-block;margin:0 0 10px;}
 #editorModal .ed-pe-btn{font-size:12px;font-weight:600;color:#1565c0;background:#fff;border:1px dashed #9ab;border-radius:7px;padding:5px 12px;cursor:pointer;}
@@ -6921,14 +6951,17 @@ X_EDITOR_JS = r'''
   // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
   XE._linkUstteUygula = function(on){
     XE._pushUndo();
-    XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir (bir takas olmasa bile)
+    XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir
+    // Yalnız LİNK parçasını taşı: üstte->en başa, altta->en sona. Görsel ve ARADAKİ METİN kendi
+    // sıralarını KORUR (eski "görsel<->link takası" metni de yukarı atıyordu -> kullanıcı: saçma).
     (XE.belge.birimler||[]).forEach(function(b, bi){
       if(!b || !b.item || !b.item.parcalar) return;
       var pc=b.item.parcalar, gi=-1, li=-1, x;
       for(x=0;x<pc.length;x++){ if(pc[x].tur==='gorsel' && gi<0) gi=x; else if(pc[x].tur==='link' && li<0) li=x; }
-      if(gi<0 || li<0) return;                      // her ikisi yoksa dokunma
+      if(gi<0 || li<0) return;                      // görsel+link ikisi de yoksa dokunma
       var linkOnce=(li<gi);
-      if((on && !linkOnce) || (!on && linkOnce)){ var t=pc[gi]; pc[gi]=pc[li]; pc[li]=t; XE._ovSet(bi); }
+      if(on && !linkOnce){ var el=pc.splice(li,1)[0]; pc.unshift(el); XE._ovSet(bi); }       // link üstte: en başa
+      else if(!on && linkOnce){ var el2=pc.splice(li,1)[0]; pc.push(el2); XE._ovSet(bi); }    // link altta: en sona
     });
     XE._ciz();
   };
@@ -7229,23 +7262,35 @@ X_EDITOR_JS = r'''
   };
   // #2: PANODAN görsel al (kopyalanan görsel) -> base64.
   // GÜVENLİ-OLMAYAN bağlamda (panel LAN IP'de http ile sunulur, localhost/https DEĞİL) navigator.clipboard
-  // YOK -> paste olayına düş: eski clipboardData API insecure context'te ÇALIŞIR (kullanıcı Ctrl+V yapar).
+  // YOK -> ODAKLI YAPIŞTIRMA PENCERESİ aç: net bir hedef kutusu (contenteditable, otomatik odaklı);
+  // kullanıcı "havaya" değil o kutuya Ctrl+V yapar (eski clipboardData API insecure context'te ÇALIŞIR).
   function _panoYapistirBekle(cb){
-    if(window.showToast) showToast('📋 Panodaki görseli eklemek için Ctrl+V (⌘+V) yapın.','info');
     var done=false;
-    function onPaste(e){
+    var ov=document.createElement('div'); ov.className='modal active'; ov.style.zIndex='3200';
+    ov.innerHTML='<div class="modal-content" style="max-width:460px;">'
+      +'<div class="modal-header"><h2 style="margin:0;">📋 Panodan Görsel</h2><span class="close-btn" data-x="1">&times;</span></div>'
+      +'<div class="modal-body">'
+        +'<div class="x-pano-hedef" contenteditable="true" spellcheck="false" style="min-height:130px; border:2px dashed #9ab; border-radius:12px; display:flex; align-items:center; justify-content:center; text-align:center; color:#57606a; font-size:14px; padding:16px; outline:none; background:#f7fafd; cursor:text;">Görseli buraya <b style="margin:0 5px;">Ctrl+V</b> (⌘V) ile yapıştırın</div>'
+      +'</div>'
+      +'<div class="modal-footer" style="gap:10px;"><button type="button" class="btn btn-secondary" data-x="1" style="margin:0;">Vazgeç</button></div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    var hedef=ov.querySelector('.x-pano-hedef');
+    function kapat(){ if(done) return; done=true; try{ ov.classList.remove('active'); ov.remove(); }catch(e){} }
+    hedef.addEventListener('paste', function(e){
       var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
       var its=cd.items||[], i;
       for(i=0;i<its.length;i++){ var it=its[i];
         if(it && it.type && it.type.indexOf('image/')===0){ var blob=it.getAsFile(); if(!blob) continue;
-          e.preventDefault(); e.stopPropagation(); done=true; temizle();
-          var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ cb(du.slice(ci+1), blob.type||'image/png'); }catch(_){} }; rd.readAsDataURL(blob); return; }
+          e.preventDefault();
+          var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ cb(du.slice(ci+1), blob.type||'image/png'); }catch(_){} }; rd.readAsDataURL(blob);
+          kapat(); return; }
       }
-      if(window.showToast) showToast('Panoda görsel yok (önce bir görsel kopyalayın).','warning');
-    }
-    function temizle(){ document.removeEventListener('paste', onPaste, true); }
-    document.addEventListener('paste', onPaste, true);   // capture -> paneldeki eski paste dinleyicisinden önce
-    setTimeout(function(){ if(!done) temizle(); }, 30000);
+      e.preventDefault(); hedef.innerHTML='Panoda görsel yok. Önce bir görsel kopyalayıp tekrar <b>Ctrl+V</b> yapın.';   // metin değil -> uyar, pencere açık kalsın
+    });
+    ov.addEventListener('click', function(e){ if(e.target===ov || (e.target.getAttribute && e.target.getAttribute('data-x'))) kapat(); });
+    ov.addEventListener('keydown', function(e){ if(e.key==='Escape') kapat(); });
+    setTimeout(function(){ try{ hedef.focus(); }catch(e){} }, 50);
   }
   XE._panoGorsel = function(cb){
     if(navigator.clipboard && navigator.clipboard.read){
@@ -7305,7 +7350,7 @@ X_EDITOR_JS = r'''
       hedefler.push({ key:_tkey, ad:_tad });
     }
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
-    function _ez(after){ var a=esc(after||''); return '<div class="ed-ekle-zon" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">+ Bölüm Ekle</button></div>'; }
+    function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">+ Bölüm Ekle</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
     function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya ekle">+</button><span class="ed-pz-menu">'
       +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
@@ -7315,7 +7360,7 @@ X_EDITOR_JS = r'''
       +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="link">Link</button></span></span></div>'; }
     var h=['<div class="ed-root">'], i, k;
     if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Bölüm Ekle</b> ile bir bölüm açıp içine başlık/metin/görsel/link ekleyerek rapor oluşturabilirsin.</div>'); }
-    h.push(_ez(''));   // en üstteki ekleme zonu
+    h.push(_ez('', !B.length));   // en üstteki ekleme zonu — havuz BOŞKEN daima görünür (hover gerekmez)
     for(i=0;i<B.length;i++){ var b=B[i];
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
