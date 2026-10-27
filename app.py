@@ -3154,7 +3154,10 @@ HTML_TEMPLATE = """
             await window.XSavedReports.whenReady();
             await window.XSavedReports.save({ name: name, items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename, editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || []) });
             await renderSavedReports();
-            await xResetAfterSave();
+            // [Kaydet havuzu TEMİZLEMEZ]: havuz KORUNUR; kullanıcı çalışmaya/indirmeye devam edebilir, tekrar
+            // Kaydet AYNI raporu günceller (upsert -> __openReportName). Havuzu yalnız "❌ Sıfırla" temizler.
+            window.__openReportName = name;
+            try { localStorage.setItem('x_havuz_ilk_ts', String(Date.now())); } catch (e) {}   // kaydetmek taze aktivite -> 24h saatini sıfırla
             return true;
         };
         window.xClearPoolAfterSave = xResetAfterSave;
@@ -3171,7 +3174,7 @@ HTML_TEMPLATE = """
                 name = (name || '').trim() || def;
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
                 var ok = await window.xSnapshotReport(name);
-                if (ok) showToast('Panele kaydedildi ve havuz temizlendi: ' + name, 'success');
+                if (ok) showToast('Panele kaydedildi (havuz korundu — "❌ Sıfırla" ile temizlenir): ' + name, 'success');
             } catch (err) {
                 console.error('Kaydet hatası:', err);
                 showToast('Kaydedilemedi: ' + (err && err.message ? err.message : err) + ' — havuz korundu.', 'danger');
@@ -5843,7 +5846,11 @@ LOCAL_DOCX_JS = r'''
     }
     // Faz FB-1: ikili '&&' yerine "birden fazla platform var mi". Tek platformda
     // Baslik 1 BASILMAZ (mevcut davranis birebir korunur).
-    var multiPlatform = platOrder.length > 1;
+    // [manuel araya girsin]: multiPlatform SAYIMINDA 'manual' SAYILMAZ -> "manuel + tek
+    // taranmis platform" (veya yalniz manuel) tek-platform yoluna duser = HAVUZ SIRASI emisyonu
+    // -> manuel bolumler eklendikleri yerde, bolumler ARASINDA kalir (ayri "Manuel Bolumler"
+    // kumesi/basligi OLUSMAZ). Saf cok-platform taramada (>=2 taranmis) eski gruplama korunur.
+    var multiPlatform = platOrder.filter(function(p){ return p!=='manual'; }).length > 1;
 
     // ================= SAYFA BAZLI YERLESIM (kullanici karari 2026-07-17) =================
     // Istek: "genislik/yukseklik oranini bozmadan oyle ayarla ki, gorselin yuksekligi
@@ -6748,9 +6755,10 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pz{display:flex;justify-content:flex-start;min-height:6px;margin:0;}
 #editorModal .ed-pz-wrap{position:relative;display:inline-flex;}
 #editorModal .ed-pz-art{display:none;width:24px;height:24px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:17px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;}
-#editorModal .ed-pz:hover .ed-pz-art{display:inline-flex;}
+#editorModal .ed-pz:hover .ed-pz-art,#editorModal .ed-pz-wrap.acik .ed-pz-art{display:inline-flex;}
+#editorModal .ed-pz-wrap.acik .ed-pz-art{background:#1565c0;color:#fff;}
 #editorModal .ed-pz-menu{display:none;position:absolute;top:100%;left:0;margin-top:2px;z-index:7;background:#fff;border:1px solid #d0d7de;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.16);padding:4px;flex-direction:column;min-width:130px;}
-#editorModal .ed-pz-wrap:hover .ed-pz-menu{display:flex;}
+#editorModal .ed-pz-wrap.acik .ed-pz-menu{display:flex;}
 #editorModal .ed-ekle-zon.ed-drop{min-height:30px;background:#eef5ff;border:2px dashed #1565c0;border-radius:8px;margin:4px 0;}
 #editorModal .ed-card-man{border-style:dashed;}
 #editorModal .ed-kltut{display:inline-block;margin:0 0 8px;font-size:11px;font-weight:600;color:#1565c0;background:#eef5ff;border:1px solid #c0c7cf;border-radius:12px;padding:3px 9px;cursor:grab;user-select:none;}
@@ -6866,7 +6874,7 @@ X_EDITOR_JS = r'''
         message:'Bu raporda kaydedilmemiş değişiklikler var. Ne yapmak istersin?',
         okText:'💾 Kaydet', thirdText:'Kaydetmeden çık', cancelText:'Vazgeç' });
     } else { sec = confirm('Kaydedilmemiş değişiklikler var. Kaydetmeden çıkılsın mı?') ? 'third' : false; }
-    if(sec===true){ await XE.kaydet(); return; }                       // Kaydet (XE.kaydet başarılıysa kendisi kapatır)
+    if(sec===true){ var _ok=await XE.kaydet(); if(_ok!==false){ if(m) m.classList.remove('active'); XE._dirty=false; } return; }   // Kaydet (sonra KAPAT — kullanıcı çıkmak istiyordu); iptal/başarısızsa açık kal
     if(sec==='third'){ if(m) m.classList.remove('active'); XE._dirty=false; return; }   // Kaydetmeden çık
     // Vazgeç / arka plana tıkla -> açık kal
   };
@@ -6882,7 +6890,7 @@ X_EDITOR_JS = r'''
       if(name===null) return false;                  // iptal
       name=(String(name||'').trim())||def;
       var ok = await window.xSnapshotReport(name);
-      if(ok){ XE._dirty=false; if(window.showToast) window.showToast('Kaydedildi: '+name+' (havuz temizlendi)','success'); await XE.kapat(true); }
+      if(ok){ XE._dirty=false; if(window.showToast) window.showToast('Kaydedildi: '+name+' (havuz korundu — çalışmaya devam edebilirsin)','success'); }   // [Kaydet artık KAPATMAZ/temizlemez] — editör açık kalır
       return ok;
     }catch(e){ if(window.showToast) window.showToast('Kaydedilemedi: '+(e&&e.message||e),'danger'); return false; }
   };
@@ -7086,15 +7094,37 @@ X_EDITOR_JS = r'''
     inp.click();
   };
   // #2: PANODAN görsel al (kopyalanan görsel) -> base64.
-  XE._panoGorsel = function(cb){
-    if(!navigator.clipboard || !navigator.clipboard.read){ if(window.showToast) showToast('Tarayıcı pano görselini desteklemiyor.','warning'); return; }
-    navigator.clipboard.read().then(function(items){
-      for(var i=0;i<items.length;i++){ var it=items[i], imgT=null;
-        for(var t=0;t<it.types.length;t++){ if(it.types[t].indexOf('image/')===0){ imgT=it.types[t]; break; } }
-        if(imgT){ it.getType(imgT).then(function(blob){ var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ cb(du.slice(ci+1), imgT); }catch(e){} }; rd.readAsDataURL(blob); }); return; }
+  // GÜVENLİ-OLMAYAN bağlamda (panel LAN IP'de http ile sunulur, localhost/https DEĞİL) navigator.clipboard
+  // YOK -> paste olayına düş: eski clipboardData API insecure context'te ÇALIŞIR (kullanıcı Ctrl+V yapar).
+  function _panoYapistirBekle(cb){
+    if(window.showToast) showToast('📋 Panodaki görseli eklemek için Ctrl+V (⌘+V) yapın.','info');
+    var done=false;
+    function onPaste(e){
+      var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
+      var its=cd.items||[], i;
+      for(i=0;i<its.length;i++){ var it=its[i];
+        if(it && it.type && it.type.indexOf('image/')===0){ var blob=it.getAsFile(); if(!blob) continue;
+          e.preventDefault(); e.stopPropagation(); done=true; temizle();
+          var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ cb(du.slice(ci+1), blob.type||'image/png'); }catch(_){} }; rd.readAsDataURL(blob); return; }
       }
-      if(window.showToast) showToast('Panoda görsel bulunamadı (önce bir görsel kopyalayın).','warning');
-    }).catch(function(e){ if(window.showToast) showToast('Pano okunamadı — izin verin ve tekrar deneyin.','warning'); });
+      if(window.showToast) showToast('Panoda görsel yok (önce bir görsel kopyalayın).','warning');
+    }
+    function temizle(){ document.removeEventListener('paste', onPaste, true); }
+    document.addEventListener('paste', onPaste, true);   // capture -> paneldeki eski paste dinleyicisinden önce
+    setTimeout(function(){ if(!done) temizle(); }, 30000);
+  }
+  XE._panoGorsel = function(cb){
+    if(navigator.clipboard && navigator.clipboard.read){
+      navigator.clipboard.read().then(function(items){
+        for(var i=0;i<items.length;i++){ var it=items[i], imgT=null;
+          for(var t=0;t<it.types.length;t++){ if(it.types[t].indexOf('image/')===0){ imgT=it.types[t]; break; } }
+          if(imgT){ (function(mt){ it.getType(mt).then(function(blob){ var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ cb(du.slice(ci+1), mt); }catch(e){} }; rd.readAsDataURL(blob); }); })(imgT); return; }
+        }
+        _panoYapistirBekle(cb);   // panoda görsel yok -> Ctrl+V yoluna düş
+      }).catch(function(e){ _panoYapistirBekle(cb); });   // izin yok / insecure -> Ctrl+V yolu
+    } else {
+      _panoYapistirBekle(cb);
+    }
   };
 
   // Word gibi SEÇİME özel biçim: metin seçince çıkan kayan B/I/U araç çubuğu (execCommand).
@@ -7211,8 +7241,21 @@ X_EDITOR_JS = r'''
       el.addEventListener('focus', function(){ XE._seritSekme('l'); });
       el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
+    // [+ menüsü tıkla-kalıcı]: "+" tıklanınca menü açılır, DIŞARI tıklayana (ya da bir seçenek seçene)
+    // kadar kalır. Hover'a bağlı değil (imleç kaçınca kapanmaz).
+    root.querySelectorAll('.ed-pz-art').forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); var w=el.closest('.ed-pz-wrap'); if(!w) return;
+        var acik=w.classList.contains('acik');
+        root.querySelectorAll('.ed-pz-wrap.acik').forEach(function(x){ x.classList.remove('acik'); });   // diğer açık menüleri kapat
+        if(!acik) w.classList.add('acik'); });
+    });
+    if(!window.__edPzOutside){ window.__edPzOutside=true; document.addEventListener('click', function(e){
+      if(e.target && e.target.closest && e.target.closest('.ed-pz-wrap')) return;   // menü/+ içine tıklama -> dokunma
+      var r=document.getElementById('editor-root'); if(r) r.querySelectorAll('.ed-pz-wrap.acik').forEach(function(x){ x.classList.remove('acik'); });
+    }); }
     root.querySelectorAll('.ed-pe').forEach(function(el){
-      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t'); var _ps=el.getAttribute('data-pos'); var pos=(_ps==null?null:+_ps);
+      el.addEventListener('click', function(){ var _w=el.closest('.ed-pz-wrap'); if(_w) _w.classList.remove('acik');   // seçince menüyü kapat
+        var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t'); var _ps=el.getAttribute('data-pos'); var pos=(_ps==null?null:+_ps);
         if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
         else if(tur==='pano'){ XE._panoGorsel(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
         else { XE._parcaEkle(bi, tur, null, pos); } });
