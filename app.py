@@ -3095,6 +3095,7 @@ HTML_TEMPLATE = """
                     if (_oe) {
                         if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
                         if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
+                        if (_oe.grup != null) { items[oi].group_override = _oe.grup; }   // #2: küme taşıma
                     }
                 }
 
@@ -3284,7 +3285,7 @@ HTML_TEMPLATE = """
                 var _ov2 = { byLink: {}, style: rec.editorStyle || null };
                 for (var pi = 0; pi < rec.items.length; pi++) {
                     var _it2 = rec.items[pi];
-                    if (_it2 && (_it2.parcalar || _it2.h2_override != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null) }; }
+                    if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
@@ -3344,7 +3345,7 @@ HTML_TEMPLATE = """
                             }
                             // Faz 5/6: bu öğenin parçaları/başlık-override'ı varsa overlay'e taşı (dedup'ta başta eklenen korunur).
                             var _mk = xOvKey(lk);
-                            if ((it.parcalar || it.h2_override != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null) }; }
+                            if ((it.parcalar || it.h2_override != null || it.group_override != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null) }; }
                             if (!_ovM.style && rec.editorStyle) { _ovM.style = rec.editorStyle; }
                         } else if (resp && resp.status === 'duplicate') {
                             atlanan++;
@@ -5546,18 +5547,20 @@ LOCAL_DOCX_JS = r'''
       // @kullanici gonderir). Word TARAYICIDA uretildigi icin Baslik 2 gruplamasini belirleyen
       // yer BURASI; yalniz Python'u degistirmek yetmez (FB/TT/YT yorumlarindaki uyari).
       var _go = ((item.group_override||'')+'').trim().replace(/^@+/, '').toLowerCase();
-      var username = _go ? _go : tweetKullaniciAdiOku(link);
-      if(!username && link && link.toLowerCase().indexOf('instagram.com')!==-1){
+      // #2: YERLI küme anahtarı (group_override YOK sayılarak) -> başlık türetmesi, kümeye elle
+      // TAŞINAN yabancı öğenin başlığını kullanmasın (sadece yerli üyeler başlığı belirler).
+      var _native = tweetKullaniciAdiOku(link);
+      if(!_native && link && link.toLowerCase().indexOf('instagram.com')!==-1){
         var t0=(item.title||'').trim();
-        username = t0 ? t0.toLowerCase() : '@instagram_user';
+        _native = t0 ? t0.toLowerCase() : '@instagram_user';
       }
       // Faz FB-1: sunucudaki pool_group_key ile AYNI kural. IKISINI BIRDEN degistir.
-      if(!username && link && window.XPlat && XPlat.platform(link)==='fb'){
+      if(!_native && link && window.XPlat && XPlat.platform(link)==='fb'){
         var slug = XPlat.fbPageSlug(link);
-        if(slug){ username = 'fb:' + slug; }
+        if(slug){ _native = 'fb:' + slug; }
         else {
           var tf=(item.title||'').trim();
-          username = (tf && !XPlat.isGenericTitle(tf)) ? ('fb:' + tf.toLowerCase()) : 'fb:@facebook_user';
+          _native = (tf && !XPlat.isGenericTitle(tf)) ? ('fb:' + tf.toLowerCase()) : 'fb:@facebook_user';
         }
       }
       // Faz TT-1: sunucudaki pool_group_key 'tt:' dalinin IKIZI.
@@ -5567,27 +5570,29 @@ LOCAL_DOCX_JS = r'''
       // Word TARAYICIDA uretiliyor -> Baslik 2 gruplamasini belirleyen yer BURASI;
       // sunucudaki pool_group_key'i duzeltmek TEK BASINA yetmiyor. (Ustteki FB yorumu
       // "IKISINI BIRDEN degistir" diye uyariyordu; tam o tuzaga dustum.)
-      if(!username && link && window.XPlat && XPlat.platform(link)==='tt'){
+      if(!_native && link && window.XPlat && XPlat.platform(link)==='tt'){
         var ttSlug = XPlat.ttUsername(link);
-        if(ttSlug){ username = 'tt:' + ttSlug; }
+        if(ttSlug){ _native = 'tt:' + ttSlug; }
         else {
           // Kisa link (vm./vt./t/) -> URL'de isim YOK; gercek ad yakalamadan gelir.
           var tt2=(item.title||'').trim();
-          username = (tt2 && !XPlat.isGenericTitle(tt2)) ? ('tt:' + tt2.toLowerCase()) : 'tt:@tiktok_user';
+          _native = (tt2 && !XPlat.isGenericTitle(tt2)) ? ('tt:' + tt2.toLowerCase()) : 'tt:@tiktok_user';
         }
       }
       // Faz YT-1: sunucudaki pool_group_key 'yt:' dalinin IKIZI.
       // (TikTok'ta bu ikizi ATLAMISTIM -> Word'de her gonderi AYRI Baslik 2 almisti.
       //  Ayni hatayi tekrarlamamak icin bu sefer AYNI commit'te.)
-      if(!username && link && window.XPlat && XPlat.platform(link)==='yt'){
+      if(!_native && link && window.XPlat && XPlat.platform(link)==='yt'){
         var ytK = XPlat.ytChannel(link);
-        if(ytK){ username = 'yt:' + ytK; }
+        if(ytK){ _native = 'yt:' + ytK; }
         else {
           // watch?v= / shorts / post -> kanal URL'de YOK; gercek ad yakalamadan gelir.
           var yt2=(item.title||'').trim();
-          username = (yt2 && !XPlat.isGenericTitle(yt2)) ? ('yt:' + yt2.toLowerCase()) : 'yt:@youtube_user';
+          _native = (yt2 && !XPlat.isGenericTitle(yt2)) ? ('yt:' + yt2.toLowerCase()) : 'yt:@youtube_user';
         }
       }
+      item.__native = _native || '';     // başlık türetmesi için yerli anahtar
+      var username = _go ? _go : _native;
       if(username){
         if(!groups[username]){ groups[username]={items:[]}; order.push(['group',username]); }
         groups[username].items.push(item);
@@ -5824,15 +5829,21 @@ LOCAL_DOCX_JS = r'''
         var baslik='';
         if(_ovr!=null){ baslik=_ovr; }
         else {
-          var gi;
+          // #2: YERLI üye (grup anahtarıyla eşleşen __native) başlığı önce gelir; kümeye elle TAŞINAN
+          // yabancı öğenin başlığı kümeyi EZMEZ. Yerli yoksa eski davranış ('(' tercihi, sonra ilk).
+          var gi, _first='', _anyParan='', _nativeB='', _nbParen=false;
           for(gi=0; gi<group.items.length; gi++){
-            var tt=(group.items[gi].title||'').trim();
+            var _gIt=group.items[gi], tt=(_gIt.title||'').trim();
             if(!tt) continue;
-            if(!baslik) baslik=tt;
-            if(tt.indexOf('(')!==-1){ baslik=tt; break; }
+            if(!_first) _first=tt;
+            if(!_anyParan && tt.indexOf('(')!==-1) _anyParan=tt;
+            if(_gIt.__native===val){
+              if(!_nativeB){ _nativeB=tt; _nbParen=(tt.indexOf('(')!==-1); }
+              else if(!_nbParen && tt.indexOf('(')!==-1){ _nativeB=tt; _nbParen=true; }
+            }
           }
-          // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
-          // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
+          baslik = _nativeB || _anyParan || _first;
+          // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler. X/IG BIREBIR ayni.
           if(!baslik) baslik = window.XPlat ? XPlat.groupFallbackTitle(val)
                                             : ((val.charAt(0)==='@') ? val : '@'+val);
           if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
@@ -5844,7 +5855,8 @@ LOCAL_DOCX_JS = r'''
           // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
           // gorur (kullanici istegi 2026-07-17).
           birimler.push({ h1:(k===0?h1:null), h2:((!opts.b_basliksiz && k===0)?baslikFormatla(baslik):null),
-                          item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
+                          item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1),
+                          grup:val, grupBaslik:baslik });   // #2: küme anahtarı + başlığı (öğeyi farklı kümeye taşıma UI'si için)
         }
       } else {
         var item2=val;
@@ -5854,7 +5866,8 @@ LOCAL_DOCX_JS = r'''
         if(_ovr2!=null){ headerIndex++; b2=_ovr2; }
         else { b2=(item2.title||'').trim(); if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; } }
         birimler.push({ h1:h1, h2:((!opts.b_basliksiz && b2)?baslikFormatla(b2):null),
-                        item:item2, link:xRaporLinkGoster(item2), son:true });
+                        item:item2, link:xRaporLinkGoster(item2), son:true,
+                        grup:null, grupBaslik:b2 });   // standalone = kendi kümesi (grup anahtarı yok)
       }
     }
     if(multiPlatform){
@@ -6493,6 +6506,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-metin:focus{border-color:#1DA1F2;border-style:solid;background:rgba(29,161,242,0.04);}
 #editorModal .ed-tur{flex:none;display:none;align-self:flex-start;font-size:11px;padding:3px 5px;border:1px solid #d0d7de;border-radius:6px;background:#fff;color:#334;cursor:pointer;}
 #editorModal .ed-parca:hover .ed-tur{display:inline-block;}
+#editorModal .ed-kume{display:none;margin:0 0 10px;max-width:260px;font-size:11px;padding:3px 7px;border:1px solid #c0c7cf;border-radius:14px;background:#eef5ff;color:#1565c0;font-weight:600;cursor:pointer;}
+#editorModal .ed-card:hover .ed-kume{display:inline-block;}
 #editorModal .ed-metin-sil{flex:none;width:26px;height:26px;border:1px solid #d0d7de;background:#fff;color:#e0245e;border-radius:6px;font-size:16px;line-height:1;cursor:pointer;}
 #editorModal .ed-metin-sil:hover{background:#ffeef0;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
@@ -6553,7 +6568,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
@@ -6650,15 +6665,26 @@ X_EDITOR_JS = r'''
   };
   // Mevcut belge öğeleriyle planı yeniden kur (havuzu YENİDEN ÇEKMEZ; parçalar/override overlay'den korunur).
   XE._yenidenPlanla = function(){ try { XE.ac({ items: XE.toItems() }); } catch(e){} };
-  // #4: Bir parçanın TÜRÜNÜ değiştir (Metin <-> Link; veya "Başlık yap" -> kartın başlığına taşı).
+  // #4: Bir parçanın TÜRÜNÜ değiştir (Metin <-> Link; veya "Başlık yap").
   XE._turDegistir = function(i, pk, tur){
     var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
     var p=b.item.parcalar[pk]; if(!p) return;
     var metin=(p.tur==='metin') ? (p.metin||'') : (p.tur==='link') ? ((p.url!=null&&p.url!=='')?p.url:(b.item.link||'')) : '';
-    if(tur==='metin'){ b.item.parcalar[pk]={tur:'metin', id:yeniId(), metin:metin}; }
-    else if(tur==='link'){ b.item.parcalar[pk]={tur:'link', url:metin}; }
-    else if(tur==='baslik'){ b.item.h2_override=metin; b.h2=metin; b.item.parcalar.splice(pk,1); }
-    XE._ovSet(i); XE._ciz();
+    if(tur==='metin'){ b.item.parcalar[pk]={tur:'metin', id:yeniId(), metin:metin}; XE._ovSet(i); XE._ciz(); }
+    else if(tur==='link'){ b.item.parcalar[pk]={tur:'link', url:metin}; XE._ovSet(i); XE._ciz(); }
+    else if(tur==='baslik'){
+      b.item.h2_override=metin; b.item.parcalar.splice(pk,1); b.h2=metin;
+      // Öğe bir kümenin ORTASINDAYSA (b.h2 yoktu) başlık görünmez -> KENDİ kümesine al.
+      if(b.grup!=null){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
+      XE._ovSet(i); XE._yenidenPlanla();   // group değişebilir -> yeniden planla
+    }
+  };
+  // #2: Öğeyi farklı kümeye taşı (group_override ile). grupKey: mevcut küme anahtarı, '' (kendi), '__yeni'.
+  XE._kumeTasi = function(i, grupKey){
+    var b=XE.belge.birimler[i]; if(!b||!b.item) return;
+    if(grupKey==='__yeni'){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
+    else { b.item.group_override = grupKey || ''; }
+    XE._ovSet(i); XE._yenidenPlanla();
   };
 
   XE._ciz = function(){
@@ -6666,11 +6692,20 @@ X_EDITOR_JS = r'''
     var B=XE.belge.birimler||[];
     if(!B.length){ root.innerHTML='<div class="ed-bos">Havuz boş — önce içerik ekleyin.</div>'; return; }
     var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
+    // #2: mevcut kümeler (distinct grup -> başlık) — "farklı kümeye taşı" menüsü için.
+    var kumeler=[], _gs={};
+    for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi]; if(_bb.grup!=null && !_gs[_bb.grup]){ _gs[_bb.grup]=1; kumeler.push({grup:_bb.grup, ad:(_bb.grupBaslik||_bb.grup)}); } }
     var h=['<div class="ed-root">'], i, k;
     for(i=0;i<B.length;i++){ var b=B[i];
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
+      // #2: Küme taşıyıcı (hover'da çıkar) — öğeyi başka bir başlık/küme altına taşı.
+      var _kopt='';
+      if(b.grup==null) _kopt+='<option value="" selected>(Kendi kümesi)</option>';
+      for(var _ki=0;_ki<kumeler.length;_ki++){ var _kk=kumeler[_ki]; _kopt+='<option value="'+esc(_kk.grup)+'"'+(_kk.grup===b.grup?' selected':'')+'>'+esc(_kk.ad)+'</option>'; }
+      _kopt+='<option value="__yeni">➕ Yeni küme</option>';
+      h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi hangi kümeye (başlığa) taşımak istersin">'+_kopt+'</select>');
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       h.push('<button class="ed-metin-ekle" data-i="'+i+'" title="Görsel/link ile birlikte sürükleyerek konumlandırabileceğiniz bir metin ekler">+ Metin Ekle</button>');
       var pc=(b.item&&b.item.parcalar)||[];
@@ -6715,6 +6750,9 @@ X_EDITOR_JS = r'''
     });
     root.querySelectorAll('.ed-tur').forEach(function(el){
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
+    });
+    root.querySelectorAll('.ed-kume').forEach(function(el){
+      el.addEventListener('change', function(){ XE._kumeTasi(+el.getAttribute('data-i'), el.value); });
     });
     root.querySelectorAll('.ed-del').forEach(function(el){ el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); }); });
 
