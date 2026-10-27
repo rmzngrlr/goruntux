@@ -5216,6 +5216,8 @@ HTML_TEMPLATE = """
             <div class="modal-header">
                 <h2>📝 Rapor Editörü</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
+                    <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶ Geri</button>
+                    <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷ İleri</button>
                     <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;" title="Raporu panele kaydet (indirmez; havuz commit edilir)">💾 Kaydet</button>
                     <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px; background: var(--accent-color);" title="Sadece .docx indir (kaydetmez)">📥 İndir</button>
                     <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
@@ -6684,6 +6686,111 @@ X_EDITOR_JS = r'''
   function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
   function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
+  // ====== GERİ AL / İLERİ AL (editör geçmişi) ======
+  // Tam durum anlık-görüntüsü: havuz öğe listesi (sıra+meta) + overlay + manuel bloklar + açık-rapor adı + stil.
+  // Geri-yüklemede havuz YALNIZ üyelik/sıra değişmişse yeniden kurulur (içerik/başlık/taşıma/stil değişiklikleri
+  // havuza dokunmaz = hızlı). Silinen öğenin görseli oturum-içi _imgStore'dan geri gelir (B6 görseli temizlense bile).
+  XE._undoStack = []; XE._redoStack = []; XE._imgStore = {};
+  XE._externalMode = false;   // [1] Word Düzenle (providedItems, .index YOK) -> snapshot havuz yerine belge item'larını tutar
+  var _UNDO_MAX = 50;
+  var _pendingSnap = null;   // metin/başlık/link alanına odaklanınca alınır; ilk girişte yığına atılır
+  var _restoring = false;    // geri-yükleme sırasında yeni snapshot ALMA (programatik stil olayları tetiklenebilir)
+  var _busy = false;         // [5] async yapısal işlem (sil/ekle/restore) uçuştayken geri/ileri REDDET (yarış önler)
+  function _imgStoreTopla(){
+    try{ (XE.belge.birimler||[]).forEach(function(b){ if(b&&b.item&&b.item.link&&b.item.image_b64){ XE._imgStore[b.item.link]={ dataUrl:'data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64, mime:(b.item.image_mime||'image/jpeg') }; } }); }catch(e){}
+  }
+  function _poolSnap(){
+    var arr=(XE.belge.birimler||[]).filter(function(b){ return b&&b.item&&b.item.index!=null; }).map(function(b){ return b.item; });
+    arr.sort(function(a,b){ return (a.index||0)-(b.index||0); });
+    return arr.map(function(it){ return { link:it.link||'', title:it.title||'', group_override:(it.group_override||''), is_profile:!!it.is_profile }; });
+  }
+  XE._snap = function(){
+    _imgStoreTopla();
+    var base = { overlay: JSON.parse(JSON.stringify(window.__xEditorOverlay||{byLink:{},style:null})),
+      manual: JSON.parse(JSON.stringify(window.__xManualClusters||[])),
+      openName: window.__openReportName||'',
+      style: (typeof window.xBuildStyleOpts==='function'? window.xBuildStyleOpts():{}) };
+    if(XE._externalMode){
+      // [1]: Word Düzenle (dış öğeler, havuz YOK) -> belge item'larının TAM kopyası; restore ac({items}) ile replay.
+      base.external=true;
+      base.items=(XE.belge.birimler||[]).map(function(b){ return JSON.parse(JSON.stringify(b.item||{})); });
+    } else { base.pool=_poolSnap(); }
+    return base;
+  };
+  function _geriBtnGuncelle(){ try{ var g=document.getElementById('ed-geri'), i=document.getElementById('ed-ileri'); if(g) g.disabled=!XE._undoStack.length; if(i) i.disabled=!XE._redoStack.length; }catch(e){} }
+  XE._pushUndo = function(){
+    if(_restoring) return;
+    try{ XE._undoStack.push(XE._snap()); if(XE._undoStack.length>_UNDO_MAX) XE._undoStack.shift(); XE._redoStack=[]; _geriBtnGuncelle(); }catch(e){}
+  };
+  function _linkSig(items){ return (items||[]).map(function(p){ return p.link||''; }).join('\n'); }
+  XE._restore = async function(snap){
+    if(!snap) return;
+    _restoring=true; _busy=true;
+    try{
+      window.__xEditorOverlay = JSON.parse(JSON.stringify(snap.overlay||{byLink:{},style:null}));
+      window.__xManualClusters = JSON.parse(JSON.stringify(snap.manual||[]));
+      window.__openReportName = snap.openName||'';
+      if(snap.style && typeof window.xApplyStyleOpts==='function'){ try{ window.xApplyStyleOpts(snap.style); }catch(e){} }
+      if(snap.external){
+        // [1]: Word Düzenle -> dış öğeleri replay et; sunucu havuzuna DOKUNMA.
+        XE._dirty=true;
+        await XE.ac({ items: JSON.parse(JSON.stringify(snap.items||[])) });
+        return;
+      }
+      // Havuz modu: canlı havuzu + iş durumunu çek. [2] Fetch başarısızsa ya da [7] tarama SÜRÜYORSA
+      // yıkıcı yeniden-kurma YAPMA (yalnız overlay/stil'i yeniden çiz); yoksa sadece üyelik/sıra değiştiyse kur.
+      var st=null; try{ st=await fetch('/api/status').then(function(r){return r.json();}); }catch(e){ st=null; }
+      if(st===null){ XE._dirty=true; await XE.ac({}); return; }                                 // [2]: fetch hatası -> havuzu YIKMA
+      if(st.status==='running'){ if(window.showToast) showToast('Tarama sürerken havuz yeniden kurulamaz; içerik/stil geri alındı.','warning'); XE._dirty=true; await XE.ac({}); return; }  // [7]: çalışan işi EZME
+      var cur=(st.manuel_list)||[];
+      if(_linkSig(cur) !== _linkSig(snap.pool)){
+        try{ await fetch('/api/manual/clear',{method:'POST'}); }catch(e){}
+        if(window.XLocalImages && window.XLocalImages.clear){ try{ await window.XLocalImages.clear(); }catch(e){} }
+        for(var k=0;k<snap.pool.length;k++){ var p=snap.pool[k];
+          var im=XE._imgStore[p.link];
+          if(im && window.XLocalImages && window.XLocalImages.put){ try{ window.XLocalImages.put(p.link, im.dataUrl, im.mime); }catch(e){} }
+          var body={ title:p.title||'', link:p.link||'', local:true };
+          if(p.is_profile) body.is_profile=true;
+          if(p.group_override) body.group_override=p.group_override;
+          try{ await fetch('/api/manual/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }catch(e){}
+        }
+      }
+      XE._dirty=true;
+      await XE.ac({});   // non-fresh -> yığınları sıfırlamaz; taze havuz+overlay'den çizer
+    } finally { _restoring=false; _busy=false; _geriBtnGuncelle(); }
+  };
+  XE.geriAl = async function(){
+    if(_restoring || _busy) return;   // [5] işlem uçuştayken reddet
+    if(!XE._undoStack.length){ if(window.showToast) showToast('Geri alınacak bir şey yok.','info'); return; }
+    XE._redoStack.push(XE._snap()); if(XE._redoStack.length>_UNDO_MAX) XE._redoStack.shift();
+    await XE._restore(XE._undoStack.pop());
+  };
+  XE.ileriAl = async function(){
+    if(_restoring || _busy) return;
+    if(!XE._redoStack.length){ if(window.showToast) showToast('İleri alınacak bir şey yok.','info'); return; }
+    XE._undoStack.push(XE._snap()); if(XE._undoStack.length>_UNDO_MAX) XE._undoStack.shift();
+    await XE._restore(XE._redoStack.pop());
+  };
+  XE._geriSifirla = function(){ XE._undoStack=[]; XE._redoStack=[]; _pendingSnap=null; XE._imgStore={}; _geriBtnGuncelle(); };
+  // metin/başlık/link alanı: odak->ön-anlık al, İLK giriş->yığına at (alan başına TEK undo adımı).
+  XE._alanOdak = function(){ if(_restoring) return; _pendingSnap = XE._snap(); };
+  XE._alanGiris = function(){ if(_restoring || !_pendingSnap) return; XE._undoStack.push(_pendingSnap); if(XE._undoStack.length>_UNDO_MAX) XE._undoStack.shift(); XE._redoStack=[]; _pendingSnap=null; _geriBtnGuncelle(); };
+  XE._alanBlur = function(){ _pendingSnap=null; };
+  // Klavye: editör açıkken Ctrl/Cmd+Z geri, Ctrl/Cmd+Y veya Ctrl/Cmd+Shift+Z ileri. Metin alanı
+  // İÇİNDEYKEN native undo'yu bırak (karakter-karakter); alan DIŞINDA editör-geçmişi. Butonlar her zaman editör-geçmişi.
+  function _klavyeKur(){
+    if(window.__edKlavye) return; window.__edKlavye=true;
+    document.addEventListener('keydown', function(e){
+      var m=document.getElementById('editorModal'); if(!m || !m.classList.contains('active')) return;
+      if(!(e.ctrlKey || e.metaKey)) return;
+      var ae=document.activeElement; var inEditable = !!(ae && (ae.isContentEditable || ae.tagName==='INPUT' || ae.tagName==='TEXTAREA'));
+      if(inEditable) return;   // alan içinde -> native undo/redo
+      var key=(e.key||'').toLowerCase();
+      if(key==='z' && !e.shiftKey){ e.preventDefault(); XE.geriAl(); }
+      else if(key==='y' || (key==='z' && e.shiftKey)){ e.preventDefault(); XE.ileriAl(); }
+    });
+  }
+
   var CSS = `
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
 #editorModal .preview-modal-content{width:100%;max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;}
@@ -6813,6 +6920,7 @@ X_EDITOR_JS = r'''
   }
   // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
   XE._linkUstteUygula = function(on){
+    XE._pushUndo();
     XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir (bir takas olmasa bile)
     (XE.belge.birimler||[]).forEach(function(b, bi){
       if(!b || !b.item || !b.item.parcalar) return;
@@ -6853,6 +6961,7 @@ X_EDITOR_JS = r'''
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
     _bicimAracKur();    // seçime özel B/I/U kayan araç çubuğu (bir kez)
+    _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
@@ -6873,9 +6982,13 @@ X_EDITOR_JS = r'''
         if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } }   // [9]: küme taşımayı (group_override) da geri yükle -> tam yeniden-fetch'te (ekle/sil/kart-tık) taşımalar kaybolmaz
       });
       XE._manuelEkle();   // #2: manuel blokları (kümeler arası eklenen) konumlarına enjekte et
+      // [1]: DIŞ MOD tespiti — hiçbir öğe .index taşımıyorsa (Word Düzenle providedItems) havuz-tabanlı
+      // snapshot işe yaramaz; snapshot belge item'larını tutar, restore ac({items}) ile replay eder.
+      XE._externalMode = ((XE.belge.birimler||[]).length>0) && !(XE.belge.birimler||[]).some(function(b){ return b.item && b.item.index!=null; });
       XE._seritKur();
       XE._ciz();
-      if(opts.fresh) XE._dirty=false;   // FIX-DIRTY: yalnız GERÇEK taze açılışta sıfırla (yeniden-plan/ekle/sil DEĞİL)
+      if(opts.fresh){ XE._dirty=false; XE._geriSifirla(); }   // FIX-DIRTY + geçmiş: yalnız GERÇEK taze açılışta sıfırla (yeniden-plan/ekle/sil/geri-al DEĞİL)
+      _geriBtnGuncelle();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
   };
@@ -6951,8 +7064,10 @@ X_EDITOR_JS = r'''
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
+      // [4]: stil kontrolüne ODAKLANINCA ön-anlık al, değişince TEK adım işle (sayı girişinde her tuşta
+      // yığını taşırma). Eski çift 'input' bağlaması (number) KALDIRILDI (ev zaten 'input').
+      ctrl.addEventListener('focus', function(){ XE._alanOdak(); });
       ctrl.addEventListener(ev, function(){ XE._stilUygula(ctrl); });
-      if(ctrl.type==='number') ctrl.addEventListener('input', function(){ XE._stilUygula(ctrl); });
     });
     // Hizalama ikon butonları (Word gibi): tıklanınca ilgili hiza girdisini set eder + canlı yansıtır.
     panel.querySelectorAll('.ed-hb').forEach(function(btn){
@@ -6960,6 +7075,7 @@ X_EDITOR_JS = r'''
     });
   };
   XE._hizaSec = function(inputId, v){
+    XE._pushUndo();
     var el=document.getElementById(inputId); if(el){ el.value=v; }
     if(typeof window.xSaveStyles==='function') try{ window.xSaveStyles(); }catch(e){}
     var grp=document.querySelector('.ed-hiza'); if(grp){ grp.querySelectorAll('.ed-hb').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-v')===v); }); }
@@ -6971,6 +7087,7 @@ X_EDITOR_JS = r'''
   var STRUKT_STIL = { b_numbered:1, b_basliksiz:1 };
   XE._stilUygula = function(ctrl){
     var id=ctrl.getAttribute('data-t'); var tgt=document.getElementById(id); if(!tgt) return;
+    XE._alanGiris();   // [4]: odakta alınan ön-anlığı TEK sefer işle (her tuşta yığını taşırma)
     if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
     if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
     XE._dirty=true;   // [4]: stil/yapısal (font/renk/Başlıksız/Numara) değişikliği de kirletir
@@ -6982,6 +7099,7 @@ X_EDITOR_JS = r'''
   XE._turDegistir = function(i, pk, tur){
     var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
     var p=b.item.parcalar[pk]; if(!p) return;
+    XE._pushUndo();
     var metin=(p.tur==='metin') ? (p.metin||'') : (p.tur==='link') ? ((p.url!=null&&p.url!=='')?p.url:(b.item.link||'')) : '';
     if(tur==='metin'){ b.item.parcalar[pk]={tur:'metin', id:yeniId(), metin:metin}; XE._ovSet(i); XE._ciz(); }
     else if(tur==='link'){ b.item.parcalar[pk]={tur:'link', url:metin}; XE._ovSet(i); XE._ciz(); }
@@ -6995,6 +7113,9 @@ X_EDITOR_JS = r'''
   // #2: Öğeyi farklı kümeye taşı (group_override ile). grupKey: mevcut küme anahtarı, '' (kendi), '__yeni'.
   XE._kumeTasi = function(i, grupKey){
     var b=XE.belge.birimler[i]; if(!b||!b.item) return;
+    // [6] no-op: mevcut küme anahtarıyla aynı hedef seçildiyse (özel komut değilse) atla.
+    if(grupKey!=='__yeni' && (grupKey||'').indexOf('__solo:')!==0 && (b.item.group_override||'')===(grupKey||'')){ return; }
+    XE._pushUndo();
     if(grupKey==='__yeni'){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
     else if(grupKey && grupKey.indexOf('__solo:')===0){
       // C3: tek-başına bir bölümle BİRLEŞTİR — hedef ile taşınan öğeye ORTAK bir küme anahtarı ver.
@@ -7040,6 +7161,7 @@ X_EDITOR_JS = r'''
   // Boylece havuz bosken editorden eklenince havuz OLUSUR; eklenti/Baslat ayni havuza biner; Kaydet'e
   // kadar her sey havuzda birikir. Zengin iskelet (baslik+metin+link) overlay'de sentetik anahtarla yasar.
   XE._bolumEkle = async function(afterUid){
+    XE._pushUndo();
     if(!unifyOn()){ return XE._bolumEkleLegacy(afterUid); }
     var uid=yeniManId(), link='xmanual://'+uid;
     // afterUid biriminin havuz pozisyonunu (1-tabanli) ŞİMDİ, taze belge üzerinden çöz (ekleme index kaydırır).
@@ -7050,9 +7172,12 @@ X_EDITOR_JS = r'''
     var body={ title:'', link:link, local:true };
     if(afterIndex!=null) body.after_index=afterIndex;       // afterItem'ın hemen ARDINA (0-tab insert = 1-tab pozisyon)
     else if(afterUid==='') body.after_index=0;              // en üste
-    try{ await fetch('/api/manual/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); }catch(e){}
     XE._dirty=true;
-    await XE.ac({});   // havuzdan yeniden kur -> yeni öğe gerçek .index + görsel-enjeksiyon yolu
+    _busy=true;   // [5] uçuştayken geri/ileri reddedilsin
+    try{
+      try{ await fetch('/api/manual/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); }catch(e){}
+      await XE.ac({});   // havuzdan yeniden kur -> yeni öğe gerçek .index + görsel-enjeksiyon yolu
+    } finally { _busy=false; }
   };
   XE._bolumEkleLegacy = function(afterUid){
     var it={ manual:true, uid:yeniManId(), link:'', h2_override:'', parcalar:[ {tur:'metin', id:yeniId(), metin:''}, {tur:'link', url:''} ] };
@@ -7063,6 +7188,7 @@ X_EDITOR_JS = r'''
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
   XE._parcaEkle = function(i, tur, ekstra, pos){
     var b=XE.belge.birimler[i]; if(!b||!b.item) return;
+    XE._pushUndo();
     if(!b.item.parcalar) b.item.parcalar=[];
     if(pos==null || pos<0 || pos>b.item.parcalar.length) pos=b.item.parcalar.length;
     if(tur==='baslik'){ if(b.item.h2_override==null||b.item.h2_override===''){ b.item.h2_override='Başlık'; b.h2='Başlık'; } XE._ovSet(i); XE._ciz(); return; }
@@ -7085,7 +7211,10 @@ X_EDITOR_JS = r'''
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
   XE._manuelTasi = function(uid, afterUid){
-    var mc=manuelStore(); for(var i=0;i<mc.length;i++){ if(mc[i].item.uid===uid){ mc[i].afterUid=afterUid||''; break; } }
+    var mc=manuelStore(), ent=null; for(var i=0;i<mc.length;i++){ if(mc[i].item.uid===uid){ ent=mc[i]; break; } }
+    if(!ent || ent.afterUid===(afterUid||'')){ return; }   // [6] no-op: konum değişmiyorsa atla
+    XE._pushUndo();
+    ent.afterUid=afterUid||'';
     XE._dirty=true;
     XE._yenidenPlanla();
   };
@@ -7237,16 +7366,19 @@ X_EDITOR_JS = r'''
     if(_savedScroll!=null){ var _pb1=document.querySelector('#editorModal .preview-body'); if(_pb1){ try{ _pb1.scrollTop=_savedScroll; }catch(e){} } _savedScroll=null; }
 
     root.querySelectorAll('.ed-h2').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('b'); });
-      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
+      el.addEventListener('focus', function(){ XE._seritSekme('b'); XE._alanOdak(); });
+      el.addEventListener('blur', function(){ XE._alanBlur(); });
+      el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-metin').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('m'); });
-      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
+      el.addEventListener('focus', function(){ XE._seritSekme('m'); XE._alanOdak(); });
+      el.addEventListener('blur', function(){ XE._alanBlur(); });
+      el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-link-edit').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('l'); });
-      el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
+      el.addEventListener('focus', function(){ XE._seritSekme('l'); XE._alanOdak(); });
+      el.addEventListener('blur', function(){ XE._alanBlur(); });
+      el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
     // [+ menüsü tıkla-kalıcı]: "+" tıklanınca menü açılır, DIŞARI tıklayana (ya da bir seçenek seçene)
     // kadar kalır. Hover'a bağlı değil (imleç kaçınca kapanmaz).
@@ -7268,7 +7400,7 @@ X_EDITOR_JS = r'''
         else { XE._parcaEkle(bi, tur, null, pos); } });
     });
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
-      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ b.item.parcalar.splice(pk,1); XE._ovSet(bi); XE._ciz(); } });
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ XE._pushUndo(); b.item.parcalar.splice(pk,1); XE._ovSet(bi); XE._ciz(); } });
     });
     root.querySelectorAll('.ed-tur').forEach(function(el){
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
@@ -7307,13 +7439,16 @@ X_EDITOR_JS = r'''
   XE._parcaTasi = function(i, from, to){
     var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
     var a=b.item.parcalar; if(from<0||from>=a.length) return;
+    var t=to; if(from<t) t--; if(t<0) t=0; if(t>a.length-1) t=a.length-1;   // kaldırma SONRASI son indeks
+    if(t===from){ return; }   // [6] no-op: aynı konuma bırakma -> undo adımı ekleme
+    XE._pushUndo();
     var el=a.splice(from,1)[0];
-    if(from<to) to--; if(to<0) to=0; if(to>a.length) to=a.length;
-    a.splice(to,0,el); XE._ovSet(i); XE._ciz();
+    a.splice(t,0,el); XE._ovSet(i); XE._ciz();
   };
 
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
+    XE._pushUndo();
     var it=B[i].item;
     XE._dirty=true;   // E1: silme de değişikliktir
     if(it && it.manual){   // #2: manuel blok -> __xManualClusters'tan çıkar
@@ -7323,14 +7458,17 @@ X_EDITOR_JS = r'''
     var idx=(it && it.index);
     if(idx!=null){
       // Havuz tabanlı öğe: SUNUCUDAN da sil (yoksa Kaydet/Önizle havuzu okuyunca öğe GERİ GELİR).
-      try{ await fetch('/api/manual/delete/'+idx, { method:'POST' }); }catch(e){}
-      try{ if(window.XLocalImages && window.XLocalImages.remove && it.link){ window.XLocalImages.remove(it.link); } }catch(e){}
-      await XE.ac({});   // havuz yeniden indexlendi -> taze havuzdan kur (indexler güncel kalsın)
+      _busy=true;   // [5] uçuştayken geri/ileri reddedilsin
+      try{
+        try{ await fetch('/api/manual/delete/'+idx, { method:'POST' }); }catch(e){}
+        try{ if(window.XLocalImages && window.XLocalImages.remove && it.link){ window.XLocalImages.remove(it.link); } }catch(e){}
+        await XE.ac({});   // havuz yeniden indexlendi -> taze havuzdan kur (indexler güncel kalsın)
+      } finally { _busy=false; }
       return;
     }
     // Havuz tabanlı değil (Word Düzenle dış öğeleri) -> yalnız bellekten çıkar.
     var kalan=[], j; for(j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
-    await XE.ac({ items: kalan });
+    _busy=true; try{ await XE.ac({ items: kalan }); } finally { _busy=false; }
   };
 
   XE._kaydir = function(idx){
