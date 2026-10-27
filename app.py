@@ -2021,7 +2021,7 @@ HTML_TEMPLATE = """
          xInitStyles/xSaveStyles localStorage ile eşler. Ayrı modal/buton YOK (kullanıcı: tam emeklilik). -->
     <div id="styleModal" style="display:none" aria-hidden="true">
             <div class="modal-body">
-                <h3>🏷️ Başlık 1 Stili (Platform Ayracı)</h3>
+                <h3>🏷️ Platform Adı Stili (Platform Ayracı)</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
                     Yalnızca çıktıda <b>birden fazla platform</b> varsa görünür: gönderiler
                     "X (Twitter)", "Instagram" ve "Facebook" başlıklarıyla ayrılır
@@ -2067,7 +2067,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔤 Başlık 2 Stili</h3>
+                <h3>🔤 Kullanıcı Adlı Başlık Stili</h3>
                 <div class="form-group">
                     <label for="b_font">Yazı Tipi (Font):</label>
                     <select id="b_font">
@@ -2100,6 +2100,10 @@ HTML_TEMPLATE = """
                 <div class="checkbox-group">
                     <input type="checkbox" id="b_numbered">
                     <label for="b_numbered">Otomatik Numaralandır (1, 2...)</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="b_basliksiz">
+                    <label for="b_basliksiz">Başlıksız (bu başlık Word'de basılmaz)</label>
                 </div>
                 <div class="form-group">
                     <label for="b_align">Hizalama:</label>
@@ -2937,8 +2941,12 @@ HTML_TEMPLATE = """
             return (s == null ? '' : s).toString().replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120);
         }
         function xRaporDosyaAdi(name) {
-            // Kullanici karari: dosya adi = "rapor adi + tarih-saat" (surumleri ayirt et).
-            return (xDosyaAdiTemizle(name) || 'GörüntüX') + ' ' + xTarihSaatDamgasi() + '.docx';
+            var temiz = xDosyaAdiTemizle(name) || 'GörüntüX';
+            // #2: Ad ZATEN tarih-saat damgasıysa (kullanıcı ismi değiştirmedi) sonuna BİR DAHA ekleme
+            //     -> "27-10-2026 14-30-45 27-10-2026 14-30-46.docx" gibi ÇİFT damga oluşmaz.
+            if (/^[0-9]{2}-[0-9]{2}-[0-9]{4} [0-9]{2}-[0-9]{2}-[0-9]{2}$/.test(temiz)) { return temiz + '.docx'; }
+            // Aksi halde sürümleri ayırt etmek için tarih-saat eklenir.
+            return temiz + ' ' + xTarihSaatDamgasi() + '.docx';
         }
 
         // Panel-ici STILLI dialog (kullanici istegi: native prompt/confirm degil, panelin .modal
@@ -3033,12 +3041,11 @@ HTML_TEMPLATE = """
                 var items = (data && data.items) || [];
                 if (!items.length) { showToast('Havuz boş — kaydedilecek içerik yok.', 'warning'); return; }
                 // 2) Ad sor. Varsayilan: acik bir rapor duzenleniyorsa ONUN adi (ayni kayit
-                //    guncellenir/upsert); yoksa tarih-saat.
+                //    guncellenir/upsert); yoksa tarih-saat. ("Başlıksız" tiki artık editör şeridinde — #1.)
                 var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
-                var _cevap = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet', checkbox: 'Başlıksız' });
-                if (_cevap === null) return;          // iptal
-                var name = (_cevap.value || '').trim() || def;
-                var basliksiz = !!_cevap.checked;     // "Başlıksız" işaretliyse Word'de Başlık 2 basılmaz
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
+                if (name === null) return;            // iptal
+                name = (name || '').trim() || def;
 
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
 
@@ -3071,8 +3078,7 @@ HTML_TEMPLATE = """
                 }
 
                 // 4) .docx uret (editör parçalarıyla) + PC'ye indir. (Havuz asagida, BASARILI kayittan sonra sifirlanir.)
-                var _wopts = xBuildStyleOpts();
-                if (basliksiz) { _wopts.basliksiz = true; }   // "Başlıksız": Başlık 2'ler basılmaz
+                var _wopts = xBuildStyleOpts();   // "Başlıksız" (b_basliksiz) dahil tüm stil editör şeridinden gelir
                 var blob = await window.XLocalDocx.generateBlob(_wopts, items);
                 var filename = xRaporDosyaAdi(name);
                 var url = window.URL.createObjectURL(blob);
@@ -3404,6 +3410,7 @@ HTML_TEMPLATE = """
                 b_size: gv('b_size', '14'),
                 b_color: gv('b_color', '#000000'),
                 b_numbered: gc('b_numbered', false),
+                b_basliksiz: gc('b_basliksiz', false),
                 b_bold: gc('b_bold', true),
                 b_italic: gc('b_italic', false),
                 b_underline: gc('b_underline', false),
@@ -3434,7 +3441,7 @@ HTML_TEMPLATE = """
         // Anahtarlar input id'leriyle birebir (b1_font -> #b1_font). Onay kutuları .checked, diğerleri .value.
         function xApplyStyleOpts(o) {
             if (!o) return;
-            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1 };
+            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1,b_basliksiz:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1 };
             Object.keys(o).forEach(function (k) {
                 var e = document.getElementById(k); if (!e) return;
                 if (checks[k]) { e.checked = !!o[k]; } else { e.value = o[k]; }
@@ -3447,7 +3454,7 @@ HTML_TEMPLATE = """
         //     stil girdisi değişince localStorage'a yazılır, açılışta geri yüklenir. ---
         function xStyleInputIds() {
             return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align',
-                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_align',
+                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align',
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
                     'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align'];
         }
@@ -5765,6 +5772,10 @@ LOCAL_DOCX_JS = r'''
     //      gonderisi varsa yapi H2 + (gorsel+link)x3 olur; sayfa sonu grubun ortasina
     //      denk gelirse Baslik2 TEKRARLANMAZ. Word'un bugunku davranisiyla ayni.
     var birimler=[], headerIndex=0;
+    // #1 (Başlıksız): b_basliksiz AÇIKken Kullanıcı Adlı Başlık (h2) DOCX'te basılmaz. Ama __planOnly
+    // (editör planı) için h2 HEP doldurulur -> editör şeridindeki tik canlı gizleyip gösterebilsin
+    // (plan h2'yi null'lasaydı tik kapatılınca başlık geri gelmezdi).
+    var _h2gizle = !!(opts && opts.b_basliksiz && !opts.__planOnly);
     function toplaEntry(entry, h1){
       var type=entry[0], val=entry[1];
       if(type==='group'){
@@ -5805,7 +5816,7 @@ LOCAL_DOCX_JS = r'''
           // gorunur, gonderileri altinda akar (kac sayfaya yayildigi farketmez).
           // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
           // gorur (kullanici istegi 2026-07-17).
-          birimler.push({ h1:(k===0?h1:null), h2:((!opts.basliksiz && k===0)?baslikFormatla(baslik):null),
+          birimler.push({ h1:(k===0?h1:null), h2:((!_h2gizle && k===0)?baslikFormatla(baslik):null),
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1) });
         }
       } else {
@@ -5815,7 +5826,7 @@ LOCAL_DOCX_JS = r'''
         var b2;
         if(_ovr2!=null){ headerIndex++; b2=_ovr2; }
         else { b2=(item2.title||'').trim(); if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; } }
-        birimler.push({ h1:h1, h2:((!opts.basliksiz && b2)?baslikFormatla(b2):null),
+        birimler.push({ h1:h1, h2:((!_h2gizle && b2)?baslikFormatla(b2):null),
                         item:item2, link:xRaporLinkGoster(item2), son:true });
       }
     }
@@ -6514,8 +6525,8 @@ X_EDITOR_JS = r'''
   XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null) }; }catch(e){} };
 
   var GRUPLAR=[
-    {key:'b1', ad:'Başlık 1', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
-    {key:'b',  ad:'Başlık 2', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered'}},
+    {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align'}},
+    {key:'b',  ad:'Kullanıcı Adlı Başlık', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz'}},
     {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
     {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
   ];
@@ -6585,6 +6596,7 @@ X_EDITOR_JS = r'''
     h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'> Altı çizili</label>';
     h+='<label>Hiza <select data-t="'+ids.align+'"><option value="left">Sola</option><option value="center">Ortaya</option><option value="right">Sağa</option><option value="both">İki yana</option></select></label>';
     if(ids.numbered) h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'> Numara</label>';
+    if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun başlığı (kullanıcı adı) Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
     var as=panel.querySelector('select[data-t="'+ids.align+'"]'); if(as) as.value=val(ids.align)||'left';
@@ -6611,7 +6623,7 @@ X_EDITOR_JS = r'''
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
-      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
+      if(b.h2!=null && !o.b_basliksiz) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       h.push('<button class="ed-metin-ekle" data-i="'+i+'" title="Görsel/link ile birlikte sürükleyerek konumlandırabileceğiniz bir metin ekler">+ Metin Ekle</button>');
       var pc=(b.item&&b.item.parcalar)||[];
       for(k=0;k<pc.length;k++){ var p=pc[k];
