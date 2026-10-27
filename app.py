@@ -6116,45 +6116,85 @@ LOCAL_DOCX_JS = r'''
       var m = String(baslik || '').match(/@([A-Za-z0-9_]+)/);
       return m ? m[1].toLowerCase() : '';
     }
-    function _oge(title, link, img, mime){
+    function _oge(title, link, img, mime, parcalar){
       var o = { title: title, link: link, image_b64: img, image_mime: mime };
       var g = _grup(title);
       if (g) { o.group_override = g; }
+      // v4.28: kaynak rapordaki link/gorsel sirasini KORU (asagida saptanan duzene gore).
+      // parcaKur bu parcalar doluysa dokunmaz -> editor/docx kaynak sirayi aynen gosterir.
+      if (parcalar && parcalar.length) { o.parcalar = parcalar; }
       return o;
     }
     var items = [];
     try {
       var doc = new DOMParser().parseFromString(html || '', 'text/html');
       var blocks = (doc && doc.body) ? doc.body.children : [];
-      var curBaslik = '', curImg = null, curMime = '';
+      // v4.28: once bloklari DUZ bir belirtec akisina indir (h / img / link). Boylece
+      // "link gorselin ustunde mi altinda mi" GLOBAL olarak saptanabilir (kullanici istegi).
+      var toks = [];
       for (var i = 0; i < blocks.length; i++){
         var el = blocks[i];
         var tag = (el.tagName || '').toLowerCase();
-        if (/^h[1-6]$/.test(tag)) {
-          // v4.7: yeni baslik -> bekleyen LINKSIZ gorsel (RT vb.) varsa ESKI baslikla ONCE push et.
-          if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); curImg = null; curMime = ''; }
-          curBaslik = (el.textContent || '').trim();
-          continue;
-        }
+        if (/^h[1-6]$/.test(tag)) { toks.push({ t: 'h', text: (el.textContent || '').trim() }); continue; }
         var a = el.querySelector ? el.querySelector('a[href]') : null;
         var img = el.querySelector ? el.querySelector('img') : null;
         if (a) {
-          var href = a.getAttribute('href') || '';
-          items.push(_oge(curBaslik, href, curImg, curMime));
-          curImg = null; curMime = '';
+          toks.push({ t: 'link', href: (a.getAttribute('href') || '') });
         } else if (img) {
-          // v4.7: yeni gorsel -> bekleyen LINKSIZ gorsel varsa ONCE push et (ustune yazma; RT kaybolmasin).
-          if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); curImg = null; curMime = ''; }
           var src = img.getAttribute('src') || '';
           var ci = src.indexOf(',');
           if (src.indexOf('data:') === 0 && ci > 0) {
             var meta = src.slice(5, ci);            // "image/png;base64"
-            curMime = (meta.split(';')[0] || 'image/jpeg');
-            curImg = src.slice(ci + 1);             // saf base64 govde
+            toks.push({ t: 'img', mime: (meta.split(';')[0] || 'image/jpeg'), b64: src.slice(ci + 1) });
           }
         }
       }
-      if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime)); }
+      // v4.28: DUZEN SAPTAMA — ilk link, ilk gorselden ONCE mi geliyor? (basliklar sayilmaz)
+      // Kullanici: "ilk linkin gorselin altinda mi ustunde mi oldugunu cozerek bolumle".
+      var firstImg = -1, firstLink = -1;
+      for (var t = 0; t < toks.length; t++){
+        if (firstImg < 0 && toks[t].t === 'img') firstImg = t;
+        if (firstLink < 0 && toks[t].t === 'link') firstLink = t;
+      }
+      var linkUst = (firstLink >= 0 && (firstImg < 0 || firstLink < firstImg));
+      var curBaslik = '';
+      if (!linkUst) {
+        // GORSEL-USTTE (varsayilan; eski davranisla BIREBIR eslesir): [gorsel?][link] -> oge.
+        var curImg = null, curMime = '';
+        for (var j = 0; j < toks.length; j++){
+          var tk = toks[j];
+          if (tk.t === 'h') {
+            if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime, [{tur:'gorsel'}])); curImg = null; curMime = ''; }
+            curBaslik = tk.text; continue;
+          }
+          if (tk.t === 'link') {
+            items.push(_oge(curBaslik, tk.href, curImg, curMime, curImg ? [{tur:'gorsel'},{tur:'link'}] : [{tur:'link'}]));
+            curImg = null; curMime = '';
+          } else if (tk.t === 'img') {
+            if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime, [{tur:'gorsel'}])); }  // bekleyen LINKSIZ gorsel (RT vb.)
+            curImg = tk.b64; curMime = tk.mime;
+          }
+        }
+        if (curImg) { items.push(_oge(curBaslik, '', curImg, curMime, [{tur:'gorsel'}])); }
+      } else {
+        // LINK-USTTE: [link][gorsel?] -> oge (link gorselin ustunde). Linksiz gorsel kendi ogesi.
+        var curLink = null;
+        for (var j2 = 0; j2 < toks.length; j2++){
+          var tk2 = toks[j2];
+          if (tk2.t === 'h') {
+            if (curLink != null) { items.push(_oge(curBaslik, curLink, null, '', [{tur:'link'}])); curLink = null; }
+            curBaslik = tk2.text; continue;
+          }
+          if (tk2.t === 'link') {
+            if (curLink != null) { items.push(_oge(curBaslik, curLink, null, '', [{tur:'link'}])); }  // ard arda iki link -> ilki linksiz-gorsel-siz oge
+            curLink = tk2.href;
+          } else if (tk2.t === 'img') {
+            if (curLink != null) { items.push(_oge(curBaslik, curLink, tk2.b64, tk2.mime, [{tur:'link'},{tur:'gorsel'}])); curLink = null; }
+            else { items.push(_oge(curBaslik, '', tk2.b64, tk2.mime, [{tur:'gorsel'}])); }
+          }
+        }
+        if (curLink != null) { items.push(_oge(curBaslik, curLink, null, '', [{tur:'link'}])); }
+      }
     } catch (e) {}
     return items;
   }
