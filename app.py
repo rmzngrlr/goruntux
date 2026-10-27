@@ -6548,14 +6548,28 @@ X_EDITOR_JS = r'''
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
 #editorModal .preview-modal-content{width:100%;max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;}
 #editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;}
-#editorModal .ed-serit{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #d0d7de;padding:8px 14px;}
-#editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;}
-#editorModal .ed-tab{border:1px solid #d0d7de;background:#f6f8fa;color:#334;border-radius:16px;padding:4px 14px;font-size:12px;font-weight:600;cursor:pointer;}
-#editorModal .ed-tab.aktif{background:#1DA1F2;color:#fff;border-color:#1DA1F2;}
-#editorModal .ed-panel{display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
-#editorModal .ed-panel label{display:flex;align-items:center;gap:4px;font-size:11px;color:#57606a;font-weight:600;}
-#editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:2px 4px;border:1px solid #d0d7de;border-radius:6px;color:#15202b;background:#fff;}
-#editorModal .ed-panel input[type=color]{width:28px;height:24px;padding:0;border:1px solid #d0d7de;border-radius:6px;background:#fff;cursor:pointer;}
+#editorModal .ed-serit{position:sticky;top:0;z-index:5;background:linear-gradient(#ffffff,#f2f5f9);border-bottom:1px solid #d0d7de;padding:10px 16px;box-shadow:0 1px 4px rgba(16,24,40,0.05);}
+#editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+#editorModal .ed-tab{border:1px solid #d7dde3;background:#fff;color:#3a4654;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s;}
+#editorModal .ed-tab:hover{background:#eef5ff;border-color:#9ec5f0;}
+#editorModal .ed-tab.aktif{background:#1565c0;color:#fff;border-color:#1565c0;box-shadow:0 1px 3px rgba(21,101,192,0.35);}
+#editorModal .ed-panel{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+#editorModal .ed-panel label{display:flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;}
+#editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:4px 6px;border:1px solid #d0d7de;border-radius:7px;color:#15202b;background:#fff;height:30px;box-sizing:border-box;}
+#editorModal .ed-panel select:focus,#editorModal .ed-panel input:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
+#editorModal .ed-panel input[type=color]{width:30px;height:30px;padding:0;border:1px solid #d0d7de;border-radius:7px;background:#fff;cursor:pointer;}
+#editorModal .ed-biu{display:inline-flex;gap:3px;padding:2px;background:#eaeef3;border-radius:8px;}
+#editorModal .ed-tgl{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:6px;cursor:pointer;color:#3a4654;transition:background .1s;}
+#editorModal .ed-tgl input{position:absolute;opacity:0;width:0;height:0;margin:0;}
+#editorModal .ed-tgl span{font-size:14px;line-height:1;}
+#editorModal .ed-tgl-b span{font-weight:800;}
+#editorModal .ed-tgl-i span{font-style:italic;font-family:Georgia,'Times New Roman',serif;}
+#editorModal .ed-tgl-u span{text-decoration:underline;}
+#editorModal .ed-tgl:hover{background:#d9e2ec;}
+#editorModal .ed-tgl:has(input:checked){background:#1565c0;color:#fff;box-shadow:0 1px 2px rgba(21,101,192,0.4);}
+#editorModal .ed-chk{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;padding:5px 8px;border:1px solid #d7dde3;border-radius:7px;background:#fff;cursor:pointer;}
+#editorModal .ed-chk:has(input:checked){background:#eef5ff;border-color:#9ec5f0;color:#1565c0;}
+#editorModal .ed-chk input{cursor:pointer;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
 #editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;}
 #editorModal .ed-plat:first-child{margin-top:4px;}
@@ -6605,6 +6619,12 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pe-wrap:hover .ed-pe-menu{display:flex;}
 #editorModal .ed-pe{text-align:left;font-size:12px;font-weight:600;color:#334;background:transparent;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;}
 #editorModal .ed-pe:hover{background:#eef5ff;color:#1565c0;}
+#editorModal .ed-pz{display:flex;justify-content:center;min-height:6px;margin:0;}
+#editorModal .ed-pz-wrap{position:relative;display:inline-flex;}
+#editorModal .ed-pz-art{display:none;width:24px;height:24px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:17px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;}
+#editorModal .ed-pz:hover .ed-pz-art{display:inline-flex;}
+#editorModal .ed-pz-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:2px;z-index:7;background:#fff;border:1px solid #d0d7de;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.16);padding:4px;flex-direction:column;min-width:130px;}
+#editorModal .ed-pz-wrap:hover .ed-pz-menu{display:flex;}
 #editorModal .ed-ekle-zon.ed-drop{min-height:30px;background:#eef5ff;border:2px dashed #1565c0;border-radius:8px;margin:4px 0;}
 #editorModal .ed-card-man{border-style:dashed;}
 #editorModal .ed-kltut{display:inline-block;margin:0 0 8px;font-size:11px;font-weight:600;color:#1565c0;background:#eef5ff;border:1px solid #c0c7cf;border-radius:12px;padding:3px 9px;cursor:grab;user-select:none;}
@@ -6733,9 +6753,11 @@ X_EDITOR_JS = r'''
     h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
     h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(val(ids.size))+'" style="width:52px"></label>';
     h+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(val(ids.color))+'"></label>';
-    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.bold+'" '+(val(ids.bold)?'checked':'')+'> Kalın</label>';
-    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.italic+'" '+(val(ids.italic)?'checked':'')+'> Eğik</label>';
-    h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'> Altı çizili</label>';
+    h+='<span class="ed-biu">';
+    h+='<label class="ed-tgl ed-tgl-b" title="Kalın"><input type="checkbox" data-t="'+ids.bold+'" '+(val(ids.bold)?'checked':'')+'><span>B</span></label>';
+    h+='<label class="ed-tgl ed-tgl-i" title="Eğik"><input type="checkbox" data-t="'+ids.italic+'" '+(val(ids.italic)?'checked':'')+'><span>I</span></label>';
+    h+='<label class="ed-tgl ed-tgl-u" title="Altı çizili"><input type="checkbox" data-t="'+ids.underline+'" '+(val(ids.underline)?'checked':'')+'><span>U</span></label>';
+    h+='</span>';
     h+='<label>Hiza <select data-t="'+ids.align+'"><option value="left">Sola</option><option value="center">Ortaya</option><option value="right">Sağa</option><option value="both">İki yana</option></select></label>';
     if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Word stili <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-chk"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'> Numara</label>';
@@ -6806,16 +6828,22 @@ X_EDITOR_JS = r'''
     manuelStore().push({ afterUid: afterUid||'', item: it });
     XE._yenidenPlanla();
   };
-  // Bir KARTA (bölüm veya havuz öğesi) parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
-  XE._parcaEkle = function(i, tur, ekstra){
+  // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
+  XE._parcaEkle = function(i, tur, ekstra, pos){
     var b=XE.belge.birimler[i]; if(!b||!b.item) return;
     if(!b.item.parcalar) b.item.parcalar=[];
-    if(tur==='baslik'){ if(b.item.h2_override==null||b.item.h2_override===''){ b.item.h2_override='Başlık'; b.h2='Başlık'; } }
-    else if(tur==='metin'){ b.item.parcalar.push({tur:'metin', id:yeniId(), metin:''}); }
-    else if(tur==='link'){ b.item.parcalar.push({tur:'link', url:''}); }
-    else if(tur==='gorsel'){ if(ekstra && ekstra.b64){ b.item.image_b64=ekstra.b64; b.item.image_mime=ekstra.mime||'image/png'; if(!b.item.parcalar.some(function(p){return p.tur==='gorsel';})) b.item.parcalar.push({tur:'gorsel'}); } else { return; } }
-    XE._ovSet(i); XE._ciz();
-    if(tur==='metin'){ var yeni=document.querySelector('#editor-root .ed-card[data-i="'+i+'"] .ed-metin:last-of-type'); if(yeni){ yeni.scrollIntoView({block:'center'}); yeni.focus(); } }
+    if(pos==null || pos<0 || pos>b.item.parcalar.length) pos=b.item.parcalar.length;
+    if(tur==='baslik'){ if(b.item.h2_override==null||b.item.h2_override===''){ b.item.h2_override='Başlık'; b.h2='Başlık'; } XE._ovSet(i); XE._ciz(); return; }
+    if(tur==='gorsel'){ if(!(ekstra&&ekstra.b64)) return; b.item.image_b64=ekstra.b64; b.item.image_mime=ekstra.mime||'image/png';
+      var gi=-1; for(var gg=0;gg<b.item.parcalar.length;gg++){ if(b.item.parcalar[gg].tur==='gorsel'){ gi=gg; break; } }
+      if(gi>=0){ var g=b.item.parcalar.splice(gi,1)[0]; if(gi<pos) pos--; b.item.parcalar.splice(pos,0,g); }
+      else { b.item.parcalar.splice(pos,0,{tur:'gorsel'}); }
+      XE._ovSet(i); XE._ciz(); return;
+    }
+    var yeni = (tur==='metin') ? {tur:'metin', id:yeniId(), metin:''} : (tur==='link') ? {tur:'link', url:''} : null;
+    if(!yeni) return;
+    b.item.parcalar.splice(pos,0,yeni); XE._ovSet(i); XE._ciz();
+    if(tur==='metin'){ var el=document.querySelector('#editor-root .ed-card[data-i="'+i+'"] .ed-metin[data-p="'+pos+'"]'); if(el){ el.scrollIntoView({block:'center'}); el.focus(); } }
   };
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
@@ -6878,6 +6906,13 @@ X_EDITOR_JS = r'''
     for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi]; if(_bb.grup!=null && !_gs[_bb.grup]){ _gs[_bb.grup]=1; kumeler.push({grup:_bb.grup, ad:(_bb.grupBaslik||_bb.grup)}); } }
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
     function _ez(after){ var a=esc(after||''); return '<div class="ed-ekle-zon" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">+ Bölüm Ekle</button></div>'; }
+    // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
+    function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya ekle">+</button><span class="ed-pz-menu">'
+      +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
+      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="metin">Metin</button>'
+      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="gorsel">Görsel</button>'
+      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="pano">📋 Pano</button>'
+      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="link">Link</button></span></span></div>'; }
     var h=['<div class="ed-root">'], i, k;
     if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Bölüm Ekle</b> ile bir bölüm açıp içine başlık/metin/görsel/link ekleyerek rapor oluşturabilirsin.</div>'); }
     h.push(_ez(''));   // en üstteki ekleme zonu
@@ -6899,13 +6934,8 @@ X_EDITOR_JS = r'''
         }
       }
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
-      h.push('<span class="ed-pe-wrap"><button class="ed-pe-btn" data-i="'+i+'">+ Ekle ▾</button><span class="ed-pe-menu">'
-        + (b.manual ? '<button class="ed-pe" data-i="'+i+'" data-t="baslik">Başlık</button>' : '')
-        + '<button class="ed-pe" data-i="'+i+'" data-t="metin">Metin</button>'
-        + '<button class="ed-pe" data-i="'+i+'" data-t="gorsel">Görsel</button>'
-        + '<button class="ed-pe" data-i="'+i+'" data-t="pano">📋 Pano</button>'
-        + '<button class="ed-pe" data-i="'+i+'" data-t="link">Link</button></span></span>');
       var pc=(b.item&&b.item.parcalar)||[];
+      h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
       for(k=0;k<pc.length;k++){ var p=pc[k];
         h.push('<div class="ed-parca" data-i="'+i+'" data-p="'+k+'">');
         h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı">&#x283F;</div>');
@@ -6923,6 +6953,7 @@ X_EDITOR_JS = r'''
         }
         if(p.tur==='metin' || p.tur==='link') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Bu parçayı sil">&minus;</button>');
         h.push('</div>');
+        h.push(_pz(i, k+1, b.manual));   // bu parçadan SONRA ekleme noktası
       }
       h.push('</div>');
       if(b.son) h.push('<hr class="ed-line">');
@@ -6941,10 +6972,10 @@ X_EDITOR_JS = r'''
       el.addEventListener('input', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-pe').forEach(function(el){
-      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t');
-        if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}); }); }
-        else if(tur==='pano'){ XE._panoGorsel(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}); }); }
-        else { XE._parcaEkle(bi, tur); } });
+      el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t'); var _ps=el.getAttribute('data-pos'); var pos=(_ps==null?null:+_ps);
+        if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
+        else if(tur==='pano'){ XE._panoGorsel(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
+        else { XE._parcaEkle(bi, tur, null, pos); } });
     });
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
       el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ b.item.parcalar.splice(pk,1); XE._ovSet(bi); XE._ciz(); } });
