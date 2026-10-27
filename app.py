@@ -4616,6 +4616,8 @@ HTML_TEMPLATE = """
                 if (x.indexOf('(') !== -1) { t = x; break; }
             }
             if (t) return t;
+            // Manuel (xmanual://) öğe: başlığı boşsa "Manuel bölüm" göster (ham link gösterme).
+            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) return 'Manuel bölüm';
             // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
             // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
             if (group) return (window.XPlat ? XPlat.groupFallbackTitle(group)
@@ -4672,11 +4674,21 @@ HTML_TEMPLATE = """
             // bolum sirasi dogrudan havuz sirasina, oradan da Word'deki Baslik 1 sirasina
             // yansir. Bolum sirasi: havuzda ILK gorunen platform once (Word ile AYNI kural).
             var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok', yt: 'YouTube', manual: 'Manuel Bölümler' };
+            // [manuel havuz sırası]: Manuel öğe VARSA (ya da tek taranmış platform) -> platform bölümlerine
+            // AYIRMA; TEK bölümde HAVUZ SIRASINDA göster. Böylece manuel ekleme koyulduğu yerde kalır ve
+            // başlık ("Manuel Bölümler" / "X (Twitter)") basılmaz (editör/docx davranışıyla aynı; sections=1 -> başlık gizli).
+            var _hasManual = false, _scraped = {};
+            for (var _pi2 = 0; _pi2 < blocks.length; _pi2++) { var _pp = poolPlatformOf(blocks[_pi2].items[0]); if (_pp === 'manual') _hasManual = true; else _scraped[_pp] = 1; }
+            var _platformGrupla = !_hasManual && (Object.keys(_scraped).length > 1);
             var sections = [], bySec = {};
-            for (var si = 0; si < blocks.length; si++) {
-                var sPlat = poolPlatformOf(blocks[si].items[0]);
-                if (!bySec[sPlat]) { bySec[sPlat] = { plat: sPlat, blocks: [] }; sections.push(bySec[sPlat]); }
-                bySec[sPlat].blocks.push(blocks[si]);
+            if (_platformGrupla) {
+                for (var si = 0; si < blocks.length; si++) {
+                    var sPlat = poolPlatformOf(blocks[si].items[0]);
+                    if (!bySec[sPlat]) { bySec[sPlat] = { plat: sPlat, blocks: [] }; sections.push(bySec[sPlat]); }
+                    bySec[sPlat].blocks.push(blocks[si]);
+                }
+            } else {
+                sections = [{ plat: (blocks[0] ? poolPlatformOf(blocks[0].items[0]) : 'x'), blocks: blocks }];   // TEK bölüm = havuz sırası, başlık yok
             }
 
             var html = '';
@@ -6613,6 +6625,7 @@ X_EDITOR_JS = r'''
   XE.VERSION = "4c-suruk";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
+  var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
   // Faz 7: sürükleme sırasında editör gövdesinin kenarına yaklaşınca OTOMATİK KAYDIRMA
   // (uzun kart/liste içinde parçayı yukarı/aşağı sürüklerken scroll kolaylaşsın).
   var _dragY = 0, _dragRaf = 0;
@@ -6840,6 +6853,10 @@ X_EDITOR_JS = r'''
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
     _bicimAracKur();    // seçime özel B/I/U kayan araç çubuğu (bir kez)
+    // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
+    // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
+    if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
+    else { _savedScroll = null; }
     var root=document.getElementById('editor-root'); if(root) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
     try {
       var stil=stilOku();
@@ -6863,21 +6880,9 @@ X_EDITOR_JS = r'''
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
   };
 
-  // E3: ✕ ile kapatınca kaydedilmemiş değişiklik varsa SOR (Kaydet / Kaydetmeden çık / Vazgeç).
-  // force=true -> sormadan kapat (XE.kaydet başarıyla kaydettikten sonra çağırır).
-  XE.kapat = async function(force){
-    var m=document.getElementById('editorModal');
-    if(force || !XE._dirty){ if(m) m.classList.remove('active'); XE._dirty=false; return; }
-    var sec;
-    if(typeof window.xDialog==='function'){
-      sec = await window.xDialog({ title:'Kaydedilmemiş değişiklikler',
-        message:'Bu raporda kaydedilmemiş değişiklikler var. Ne yapmak istersin?',
-        okText:'💾 Kaydet', thirdText:'Kaydetmeden çık', cancelText:'Vazgeç' });
-    } else { sec = confirm('Kaydedilmemiş değişiklikler var. Kaydetmeden çıkılsın mı?') ? 'third' : false; }
-    if(sec===true){ var _ok=await XE.kaydet(); if(_ok!==false){ if(m) m.classList.remove('active'); XE._dirty=false; } return; }   // Kaydet (sonra KAPAT — kullanıcı çıkmak istiyordu); iptal/başarısızsa açık kal
-    if(sec==='third'){ if(m) m.classList.remove('active'); XE._dirty=false; return; }   // Kaydetmeden çık
-    // Vazgeç / arka plana tıkla -> açık kal
-  };
+  // ✕ ile kapat: SORMADAN kapat (kullanıcı isteği). Havuz "Kaydet" artık temizlemediği için çıkınca
+  // hiçbir şey kaybolmaz (havuz + overlay panelde durur); kaydetmek isteyen "💾 Kaydet"i kullanır.
+  XE.kapat = function(){ var m=document.getElementById('editorModal'); if(m) m.classList.remove('active'); XE._dirty=false; };
   // D3: editör "💾 Kaydet" -> panel snapshot rutinini (havuz+overlay) çağırır; indirmez. Başarıda kapatır.
   XE.kaydet = async function(){
     try{
@@ -7228,6 +7233,8 @@ X_EDITOR_JS = r'''
     }
     h.push('</div>');
     root.innerHTML=h.join('');
+    // [scroll zıplamasını önle]: saklanan scroll varsa geri koy (re-render tepeye zıplamasın).
+    if(_savedScroll!=null){ var _pb1=document.querySelector('#editorModal .preview-body'); if(_pb1){ try{ _pb1.scrollTop=_savedScroll; }catch(e){} } _savedScroll=null; }
 
     root.querySelectorAll('.ed-h2').forEach(function(el){
       el.addEventListener('focus', function(){ XE._seritSekme('b'); });
