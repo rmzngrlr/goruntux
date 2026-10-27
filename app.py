@@ -2020,10 +2020,10 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div class="pool-actions">
-                        <button id="save-btn" class="btn btn-success" style="flex: 2; margin: 0;" onclick="savePoolReport()" title="Raporu panele kaydet (havuz commit edilir, temizlenir). İndirmez.">💾 Kaydet</button>
-                        <button id="download-btn" class="btn btn-success" style="flex: 1; margin: 0; background: var(--accent-color);" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur).">📥 İndir</button>
-                        <button class="btn btn-primary" style="flex: 2; margin: 0;" onclick="generateManualWord(true)">👁️ Önizle</button>
-                        <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
+                        <button id="save-btn" class="btn btn-success" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez.">💾 Kaydet</button>
+                        <button id="download-btn" class="btn btn-success" style="flex: 1 1 0; min-width: 0; margin: 0; background: var(--accent-color);" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur).">📥 İndir</button>
+                        <button class="btn btn-primary" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="generateManualWord(true)">👁️ Önizle</button>
+                        <button class="btn btn-secondary btn-danger" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
                     </div>
                 </div>
             </div>
@@ -2094,7 +2094,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔤 Kullanıcı Adlı Başlık Stili</h3>
+                <h3>🔤 İçerik Başlığı Stili</h3>
                 <div class="form-group">
                     <label for="b_font">Yazı Tipi (Font):</label>
                     <select id="b_font">
@@ -3154,10 +3154,10 @@ HTML_TEMPLATE = """
             await window.XSavedReports.whenReady();
             await window.XSavedReports.save({ name: name, items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename, editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || []) });
             await renderSavedReports();
-            // [Kaydet havuzu TEMİZLEMEZ]: havuz KORUNUR; kullanıcı çalışmaya/indirmeye devam edebilir, tekrar
-            // Kaydet AYNI raporu günceller (upsert -> __openReportName). Havuzu yalnız "❌ Sıfırla" temizler.
-            window.__openReportName = name;
-            try { localStorage.setItem('x_havuz_ilk_ts', String(Date.now())); } catch (e) {}   // kaydetmek taze aktivite -> 24h saatini sıfırla
+            // [Kaydet = COMMIT]: isimle kaydedince havuzu SIFIRLA (kullanıcı isteği). Rapor Kayıtlı
+            // Raporlar'da durur; "Aç" ile aynı havuza geri yüklenir, sonra manuel/eklenti/tarama o havuza
+            // birikir, tekrar Kaydet upsert eder (openSavedReport __openReportName'i kurar).
+            await xResetAfterSave();
             return true;
         };
         window.xClearPoolAfterSave = xResetAfterSave;
@@ -3174,7 +3174,7 @@ HTML_TEMPLATE = """
                 name = (name || '').trim() || def;
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
                 var ok = await window.xSnapshotReport(name);
-                if (ok) showToast('Panele kaydedildi (havuz korundu — "❌ Sıfırla" ile temizlenir): ' + name, 'success');
+                if (ok) showToast('Panele kaydedildi, havuz sıfırlandı: ' + name, 'success');
             } catch (err) {
                 console.error('Kaydet hatası:', err);
                 showToast('Kaydedilemedi: ' + (err && err.message ? err.message : err) + ' — havuz korundu.', 'danger');
@@ -5233,8 +5233,8 @@ HTML_TEMPLATE = """
                 <div style="display: flex; gap: 14px; align-items: center;">
                     <h2 style="margin:0;">📝 Rapor Editörü</h2>
                     <div class="ed-undo-grup">
-                        <button id="ed-geri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri al (Ctrl+Z)" disabled>↺</button>
-                        <button id="ed-ileri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri al (Ctrl+Y)" disabled>↻</button>
+                        <button id="ed-geri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri" disabled>↺</button>
+                        <button id="ed-ileri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri" disabled>↻</button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
@@ -5764,7 +5764,7 @@ LOCAL_DOCX_JS = r'''
       // keepNext: baslik kendisinden sonraki paragrafla (gorsel) AYNI sayfada kalir.
       // Sabit sayfa sonu kaldirildigi icin (2026-07-17) sayfa sinirini artik Word
       // belirliyor; baslik sayfa dibinde yalniz kalmasin diye bagliyoruz.
-      // #1: Word başlık türü (Kullanıcı Adlı Başlık) kullanıcı seçimine göre (Normal/Heading1..4).
+      // #1: Word başlık türü (İçerik Başlığı) kullanıcı seçimine göre (Normal/Heading1..4).
       var _bSt = ({Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1}[opts.b_wordstyle]) ? opts.b_wordstyle : 'Heading2';
       return '<w:p><w:pPr><w:pStyle w:val="'+_bSt+'"/><w:keepNext/><w:keepLines/>'+jc(opts.b_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
@@ -6904,7 +6904,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
 #editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
-#editorModal .ed-h2:empty:before{content:"Başlık…";color:#9aa3ad;font-weight:normal;}
+#editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
 #editorModal .ed-metin-ekle{display:block;width:fit-content;background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:0 0 10px;}
@@ -7029,7 +7029,7 @@ X_EDITOR_JS = r'''
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
-    {key:'b',  ad:'Kullanıcı Adlı Başlık', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz',wordstyle:'b_wordstyle'}},
+    {key:'b',  ad:'İçerik Başlığı', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz',wordstyle:'b_wordstyle'}},
     {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
     {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
   ];
@@ -7095,7 +7095,7 @@ X_EDITOR_JS = r'''
       if(name===null) return false;                  // iptal
       name=(String(name||'').trim())||def;
       var ok = await window.xSnapshotReport(name);
-      if(ok){ XE._dirty=false; if(window.showToast) window.showToast('Kaydedildi: '+name+' (havuz korundu — çalışmaya devam edebilirsin)','success'); }   // [Kaydet artık KAPATMAZ/temizlemez] — editör açık kalır
+      if(ok){ XE._dirty=false; XE.kapat(); if(window.showToast) window.showToast('Kaydedildi: '+name+' (havuz sıfırlandı)','success'); }   // [Kaydet = COMMIT] havuz sıfırlandı → editör kapanır
       return ok;
     }catch(e){ if(window.showToast) window.showToast('Kaydedilemedi: '+(e&&e.message||e),'danger'); return false; }
   };
@@ -7145,7 +7145,7 @@ X_EDITOR_JS = r'''
     h+='</span>';
     if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
-    if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun başlığı (kullanıcı adı) Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
+    if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
