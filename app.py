@@ -21,6 +21,17 @@ from urllib.parse import urlparse, parse_qs
 client_pools = {}
 client_jobs = {}
 
+# --- B (havuz birlesmesi): editor "+" ile eklenen manuel bolumler ARTIK gercek sunucu
+# havuzu ogesi olur (link alaninda sentetik "xmanual://<uid>" anahtariyla). Bu bayrak kapaliyken
+# tum birlesme davranisi devre disi kalir (auto_start eski kosulsuz temizlige doner, detect_platform
+# "manual" dondurmez) -> istemci x_unify_manual bayragiyla birlikte temiz, veri-guvenli geri alma.
+X_UNIFY_MANUAL = (os.environ.get("X_UNIFY_MANUAL", "1") != "0")
+
+def is_manual_link(link):
+    # Editor-manuel bolum sentetik anahtari. normalize_link_key/x_temizle_link bunu OLDUGU GIBI
+    # gecirir (ig/fb/tt/yt/x.com host'u degil), overlay/gorsel/havuz kimligi TEK anahtara duser.
+    return bool(link) and str(link).lower().startswith("xmanual://")
+
 def get_client_id():
     try:
         c_id = request.args.get("client_id")
@@ -266,6 +277,8 @@ def _url_host(link):
 
 def detect_platform(link):
     low = (link or "").lower()
+    if is_manual_link(link):          # B9: editor-manuel bolum -> kendi platformu ('manual')
+        return "manual"
     if "instagram.com" in low:        # MEVCUT KURAL — bilerek DEGISTIRILMEDI
         return "ig"
     _h = _url_host(link)
@@ -1801,7 +1814,7 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
-                    <button class="theme-toggle-btn" id="rapor-editoru-btn" style="display:none; background:var(--accent-color); color:#fff; border-color:var(--accent-color);" onclick="window.XEditor && window.XEditor.ac()" title="Havuz boşken elle rapor oluşturmak için Rapor Editörü'nü aç">📝 Rapor Editörü</button>
+                    <button class="theme-toggle-btn" id="rapor-editoru-btn" style="display:none; background:var(--accent-color); color:#fff; border-color:var(--accent-color);" onclick="window.XEditor && window.XEditor.ac({fresh:true})" title="Havuz boşken elle rapor oluşturmak için Rapor Editörü'nü aç">📝 Rapor Editörü</button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -2007,8 +2020,9 @@ HTML_TEMPLATE = """
                     </div>
 
                     <div class="pool-actions">
-                        <button id="save-download-btn" class="btn btn-success" style="flex: 2; margin: 0;" onclick="saveAndDownloadReport()">💾 Kaydet ve İndir</button>
-                        <button class="btn btn-primary" style="flex: 2; margin: 0; background: var(--accent-color);" onclick="generateManualWord(true)">👁️ Önizle</button>
+                        <button id="save-btn" class="btn btn-success" style="flex: 2; margin: 0;" onclick="savePoolReport()" title="Raporu panele kaydet (havuz commit edilir, temizlenir). İndirmez.">💾 Kaydet</button>
+                        <button id="download-btn" class="btn btn-success" style="flex: 1; margin: 0; background: var(--accent-color);" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur).">📥 İndir</button>
+                        <button class="btn btn-primary" style="flex: 2; margin: 0;" onclick="generateManualWord(true)">👁️ Önizle</button>
                         <button class="btn btn-secondary btn-danger" style="flex: 1; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
                     </div>
                 </div>
@@ -2678,7 +2692,7 @@ HTML_TEMPLATE = """
                     const filename = fileInput.files.length > 1 ? "GörüntüX_Birlesik.docx" : "GörüntüX_Duzenlenmis.docx";
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = filename;
-                    if (window.XEditor) { window.XEditor.ac({ items: (result && result.items) || [] }); }
+                    if (window.XEditor) { window.XEditor.ac({ items: (result && result.items) || [], fresh: true }); }
                     else { showToast('Editör yüklenemedi (sayfayı yenileyin).', 'danger'); }
                     return;
                 }
@@ -2870,25 +2884,30 @@ HTML_TEMPLATE = """
         }
 
         // Clear manual contents list
-        function clearManualList() {
-            fetch('/api/manual/clear', { method: 'POST' })
-            .then(res => res.json())
-            .then(data => {
-                showToast('Liste temizlendi.', 'success');
-                
-                // Clear accumulated links and input textarea
-                window.accumulatedLinks = [];
-                var inputEl = document.getElementById('tweet_links_input');
-                if (inputEl) {
-                    inputEl.value = '';
-                    if (typeof updateLinksPreview === 'function') {
-                        updateLinksPreview();
-                    }
-                    autoResizeTextarea(inputEl);
-                }
-                
-                refreshStatus();
-            });
+        async function clearManualList() {
+            // FIX-SIFIRLA: havuz birleşmesinden sonra Sıfırla TEK açık temizleme yoludur (Kaydet commit eder).
+            // Onay iste; sunucu havuzu + overlay + manuel bloklar + editör belgesi + YEREL GÖRSELLER birlikte silinsin
+            // (yoksa IndexedDB'de yetim görsel + bayat overlay kalır).
+            var onay = (typeof xConfirm === 'function')
+                ? await xConfirm('Havuzdaki tüm içerik (ve eklenen görseller) silinsin mi? Bu geri alınamaz.', { title: '❌ Sıfırla', okText: 'Sıfırla', danger: true })
+                : confirm('Havuzdaki tüm içerik silinsin mi?');
+            if (!onay) return;
+            try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
+            window.__openReportName = '';
+            window.__xEditorOverlay = { byLink: {}, style: null };
+            window.__xManualClusters = [];
+            try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; window.XEditor._dirty = false; } } catch (e) {}
+            try { if (window.XLocalImages && window.XLocalImages.clear) { window.XLocalImages.clear(); } } catch (e) {}
+            window.accumulatedLinks = [];
+            var inputEl = document.getElementById('tweet_links_input');
+            if (inputEl) {
+                inputEl.value = '';
+                if (typeof updateLinksPreview === 'function') { updateLinksPreview(); }
+                autoResizeTextarea(inputEl);
+            }
+            try { if (window.XEditor && window.XEditor.kapat) { window.XEditor.kapat(true); } } catch (e) {}   // içerik gitti -> editörü kapat
+            showToast('Liste temizlendi.', 'success');
+            refreshStatus();
         }
 
         // Delete a single manual item by index
@@ -2994,6 +3013,7 @@ HTML_TEMPLATE = """
                             (opts.checkbox ? '<label class="x-dlg-check-row" style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--text-secondary); cursor:pointer; user-select:none;"><input type="checkbox" class="x-dlg-check" style="width:16px; height:16px; cursor:pointer; margin:0;"><span class="x-dlg-check-label"></span></label>' : '') +
                         '</div>' +
                         '<div class="modal-footer" style="gap:10px;">' +
+                            (opts.thirdText ? '<button type="button" class="btn btn-secondary x-dlg-third" data-act="third" style="margin:0;"></button>' : '') +
                             '<button type="button" class="btn btn-secondary x-dlg-cancel" data-act="cancel" style="margin:0;"></button>' +
                             '<button type="button" class="btn x-dlg-ok" data-act="ok" style="margin:0; ' + okStyle + '"></button>' +
                         '</div>' +
@@ -3003,6 +3023,7 @@ HTML_TEMPLATE = """
                 overlay.querySelector('.x-dlg-msg').textContent = opts.message || '';
                 overlay.querySelector('.x-dlg-ok').textContent = opts.okText || 'Tamam';
                 overlay.querySelector('.x-dlg-cancel').textContent = opts.cancelText || 'Vazgeç';
+                if (opts.thirdText) { var _t3 = overlay.querySelector('.x-dlg-third'); if (_t3) { _t3.textContent = opts.thirdText; } }
                 if (opts.checkbox) { var _clbl = overlay.querySelector('.x-dlg-check-label'); if (_clbl) { _clbl.textContent = opts.checkbox; } }
                 var inputEl = overlay.querySelector('.x-dlg-input');
                 if (inputEl) { inputEl.value = (opts.defaultValue == null ? '' : opts.defaultValue); }
@@ -3025,7 +3046,7 @@ HTML_TEMPLATE = """
                 overlay.addEventListener('click', function (ev) {
                     if (ev.target === overlay) { onCancel(); return; }   // arka plana tikla -> iptal
                     var act = ev.target.getAttribute && ev.target.getAttribute('data-act');
-                    if (act === 'ok') { onOk(); } else if (act === 'cancel') { onCancel(); }
+                    if (act === 'ok') { onOk(); } else if (act === 'cancel') { onCancel(); } else if (act === 'third') { finish('third'); }
                 });
                 overlay.addEventListener('keydown', function (ev) {
                     if (ev.key === 'Enter') { ev.preventDefault(); onOk(); }
@@ -3053,108 +3074,126 @@ HTML_TEMPLATE = """
         // "Kaydet ve Indir": .docx uret -> PC'ye indir -> panele YEREL kaydet -> havuzu SIFIRLA
         // (kullanici istegi: eski "Word Uret ve Indir" gibi uret->indir->temizle). Kayit BASARISIZSA
         // havuz KORUNUR (snapshot yok, kaybolmasin). Duzenlemeye devam icin rapor "Ac" ile geri yuklenir.
-        async function saveAndDownloadReport() {
-            var btn = document.getElementById('save-download-btn');
-            var _restore = function () { if (btn) { btn.disabled = false; btn.innerHTML = '💾 Kaydet ve İndir'; } };
+        // D1 (Kaydet/İndir AYRI): havuz+overlay'den .docx + snapshot verisi üret. İNDİRMEZ/KAYDETMEZ/TEMİZLEMEZ.
+        async function xBuildReport(name) {
+            if (!window.XLocalDocx) throw new Error('Word üretimi kullanılamıyor.');
+            var res = await fetch('/api/pool/data');
+            var data = await res.json();
+            var items = (data && data.items) || [];
+            var _manVar = !!(window.__xManualClusters && window.__xManualClusters.length);
+            if (!items.length && !_manVar) return null;   // içerik yok
+            // Görselleri TOPLA (snapshot link->dataUrl) + genItems'e image_b64 ENJEKTE et
+            // (providedItems yolu XLocalImages enjeksiyonu yapmaz; görselli .docx için şart).
+            var images = {};
+            if (window.XLocalImages) {
+                if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch (e) {} }
+                for (var i = 0; i < items.length; i++) {
+                    var lk = items[i].link || '';
+                    if (window.XLocalImages.hasImage(lk)) {
+                        var k = window.XLocalImages.normLink(lk);
+                        images[k] = { dataUrl: window.XLocalImages.getImageUrl(lk), mime: window.XLocalImages.getMime(lk) };
+                        items[i].image_b64 = window.XLocalImages.getBase64(lk);
+                        items[i].image_mime = window.XLocalImages.getMime(lk);
+                    }
+                }
+            }
+            // Editör overlay'inden parcalar + başlık-override + küme taşıma (h2_override AYRI alan -> kimlik bozulmaz).
+            var _ovB = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) ? window.__xEditorOverlay.byLink : {};
+            for (var oi = 0; oi < items.length; oi++) {
+                var _oe = _ovB[xOvKey(items[oi].link || '')];
+                if (_oe) {
+                    if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
+                    if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
+                    if (_oe.grup != null) { items[oi].group_override = _oe.grup; }
+                }
+            }
+            var _wopts = xBuildStyleOpts();
+            // FIX-STALE-BELGE: editör AÇIKSA canlı GÖRÜNÜMÜ (__birimler) kullan (taşıma/sıra birebir).
+            // Editör KAPALIYSA bayat belge yeni havuz öğelerini atlardı -> __birimler KULLANMA, havuzdan grupla.
+            // AMA [5/7/12]: eski (link='') manuel bloklar YALNIZ __birimler ile docx'e girer -> editör kapalıyken
+            // __xManualClusters varsa taze birimler kur (buildBirimler) ki o bloklar kaybolmasın.
+            var _edAktif = !!(document.getElementById('editorModal') && document.getElementById('editorModal').classList.contains('active'));
+            if (_edAktif && window.XEditor && window.XEditor.belge && window.XEditor.belge.birimler && window.XEditor.belge.birimler.length) {
+                _wopts.__birimler = window.XEditor.belge.birimler;
+            } else if (window.XEditor && window.XEditor.buildBirimler && window.__xManualClusters && window.__xManualClusters.length) {
+                try { _wopts.__birimler = await window.XEditor.buildBirimler(items, _wopts); } catch (e) { console.error('buildBirimler hata:', e); }
+            }
+            var blob = await window.XLocalDocx.generateBlob(_wopts, items);
+            var filename = xRaporDosyaAdi(name);
+            var _snapItems = items.map(function (it) {
+                var o = { title: it.title || '', link: it.link || '' };   // title ORİJİNAL (gruplama anahtarı)
+                if (it.parcalar) { o.parcalar = it.parcalar; }
+                if (it.h2_override != null) { o.h2_override = it.h2_override; }
+                if (it.is_profile) { o.is_profile = true; }
+                if (it.group_override) { o.group_override = it.group_override; }
+                return o;
+            });
+            return { blob: blob, filename: filename, snapItems: _snapItems, images: images };
+        }
+        function xTriggerDownload(blob, filename) {
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
+        }
+        // Başarılı kayıttan (commit) sonra: sunucu havuzu + yerel görseller + editör durumu SIFIRLA.
+        function xResetAfterSave() {
+            window.__openReportName = '';
+            window.__xEditorOverlay = { byLink: {}, style: null };
+            window.__xManualClusters = [];
+            try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; window.XEditor._dirty = false; } } catch (e) {}
+            return fetch('/api/manual/clear', { method: 'POST' })
+                .then(function () { resetAutomationUIAndBackend(); })
+                .catch(function () { resetAutomationUIAndBackend(); });
+        }
+        // D: "💾 Kaydet" -> panele kaydet + havuzu temizle (commit). İNDİRMEZ. Editör Kaydet de bunu çağırır.
+        window.xSnapshotReport = async function (name) {
+            var r = await xBuildReport(name);
+            if (!r) { showToast('İçerik yok — kaydedilecek bir şey yok.', 'warning'); return false; }
+            await window.XSavedReports.whenReady();
+            await window.XSavedReports.save({ name: name, items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename, editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || []) });
+            await renderSavedReports();
+            await xResetAfterSave();
+            return true;
+        };
+        window.xClearPoolAfterSave = xResetAfterSave;
+        // Panel "💾 Kaydet" (indirmez): ad sor -> snapshot -> havuzu temizle.
+        async function savePoolReport() {
+            var btn = document.getElementById('save-btn');
             try {
-                if (!window.XLocalDocx) { showToast('Word üretimi kullanılamıyor.', 'danger'); return; }
-                // 1) Havuz bos mu?
-                var res = await fetch('/api/pool/data');
-                var data = await res.json();
-                var items = (data && data.items) || [];
-                // #2: havuz boş olsa bile MANUEL bloklar varsa kaydet (elle oluşturulan rapor).
+                var _res0 = await fetch('/api/pool/data'); var _d0 = await _res0.json();
                 var _manVar = !!(window.__xManualClusters && window.__xManualClusters.length);
-                if (!items.length && !_manVar) { showToast('İçerik yok — kaydedilecek bir şey yok.', 'warning'); return; }
-                // 2) Ad sor. Varsayilan: acik bir rapor duzenleniyorsa ONUN adi (ayni kayit
-                //    guncellenir/upsert); yoksa tarih-saat. ("Başlıksız" tiki artık editör şeridinde — #1.)
+                if (!((_d0 && _d0.items && _d0.items.length) || _manVar)) { showToast('İçerik yok — kaydedilecek bir şey yok.', 'warning'); return; }
                 var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
-                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
-                if (name === null) return;            // iptal
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet', okText: 'Kaydet' });
+                if (name === null) return;
                 name = (name || '').trim() || def;
-
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
-
-                // 3) Gorselleri TOPLA (snapshot icin link->dataUrl) + genItems'e image_b64 ENJEKTE et.
-                //    (providedItems yolu XLocalImages enjeksiyonu yapmaz; gorselli .docx icin sart.)
-                var images = {};
-                if (window.XLocalImages) {
-                    if (window.XLocalImages.whenReady) { try { await window.XLocalImages.whenReady(); } catch (e) {} }
-                    for (var i = 0; i < items.length; i++) {
-                        var lk = items[i].link || '';
-                        if (window.XLocalImages.hasImage(lk)) {
-                            var k = window.XLocalImages.normLink(lk);
-                            images[k] = { dataUrl: window.XLocalImages.getImageUrl(lk), mime: window.XLocalImages.getMime(lk) };
-                            items[i].image_b64 = window.XLocalImages.getBase64(lk);
-                            items[i].image_mime = window.XLocalImages.getMime(lk);
-                        }
-                    }
-                }
-
-                // 3b) Faz 5/6: editör overlay'inden parcalar (eklenen metin + sıra) ve başlık-override'ı
-                //     item'lara uygula. h2_override AYRI alandır (item.title DEĞİŞMEZ) -> gruplama/kimlik
-                //     bozulmaz; generateBlob override varsa onu başlık yapar. Overlay yoksa eski davranış.
-                var _ovB = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) ? window.__xEditorOverlay.byLink : {};
-                for (var oi = 0; oi < items.length; oi++) {
-                    var _oe = _ovB[xOvKey(items[oi].link || '')];
-                    if (_oe) {
-                        if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
-                        if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
-                        if (_oe.grup != null) { items[oi].group_override = _oe.grup; }   // #2: küme taşıma
-                    }
-                }
-
-                // 4) .docx uret (editör parçalarıyla) + PC'ye indir. (Havuz asagida, BASARILI kayittan sonra sifirlanir.)
-                var _wopts = xBuildStyleOpts();   // "Başlıksız" (b_basliksiz) dahil tüm stil editör şeridinden gelir
-                // #2: editör açık/kullanıldıysa docx'i GÖRÜNÜMDEN üret (manuel bloklar + küme taşımaları dahil).
-                if (window.XEditor && window.XEditor.belge && window.XEditor.belge.birimler && window.XEditor.belge.birimler.length) {
-                    _wopts.__birimler = window.XEditor.belge.birimler;
-                }
-                var blob = await window.XLocalDocx.generateBlob(_wopts, items);
-                var filename = xRaporDosyaAdi(name);
-                var url = window.URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click(); a.remove();
-                setTimeout(function () { try { window.URL.revokeObjectURL(url); } catch (e) {} }, 4000);
-
-                // 5) Panele YEREL kaydet. Indirme zaten oldu; kayit ayri hata verirse ayirt et.
-                var _kayitOk = false;
-                try {
-                    await window.XSavedReports.whenReady();
-                    // Snapshot item'ları: image_b64 ÇIKAR (images haritasında zaten var), parcalar/başlık KORU.
-                    var _snapItems = items.map(function (it) {
-                        var o = { title: it.title || '', link: it.link || '' };   // title ORİJİNAL (gruplama anahtarı)
-                        if (it.parcalar) { o.parcalar = it.parcalar; }
-                        if (it.h2_override != null) { o.h2_override = it.h2_override; }   // Faz 6: başlık düzenlemesi
-                        if (it.is_profile) { o.is_profile = true; }
-                        if (it.group_override) { o.group_override = it.group_override; }
-                        return o;
-                    });
-                    await window.XSavedReports.save({ name: name, items: _snapItems, images: images, blob: blob, filename: filename, editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || []) });
-                    _kayitOk = true;
-                    showToast('İndirildi, panele kaydedildi ve havuz temizlendi: ' + name, 'success');
-                } catch (saveErr) {
-                    console.error('Panele kaydetme hatası:', saveErr);
-                    showToast('İndirildi ama panele kaydedilemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr) + ' — havuz korundu.', 'warning');
-                }
-                await renderSavedReports();
-                // 6) BASARILI kayitta havuzu SIFIRLA (eski "Word Uret ve Indir" gibi). resetAutomationUIAndBackend
-                //    sunucu havuzu + XLocalImages'i + arayuzu temizler (snapshot gorselleri zaten kopyalandi).
-                //    Kayit BASARISIZSA havuz KORUNUR -> kullanici yeniden deneyebilir.
-                if (_kayitOk) {
-                    window.__openReportName = '';   // acik rapor baglami bitti
-                    window.__xEditorOverlay = { byLink: {}, style: null };   // Faz 5: rapor bitti, editör durumu sıfırlanır
-                    window.__xManualClusters = [];   // #2: manuel bloklar da sıfırlanır
-                    try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
-                    fetch('/api/manual/clear', { method: 'POST' })
-                        .then(function () { resetAutomationUIAndBackend(); })
-                        .catch(function () { resetAutomationUIAndBackend(); });
-                }
+                var ok = await window.xSnapshotReport(name);
+                if (ok) showToast('Panele kaydedildi ve havuz temizlendi: ' + name, 'success');
             } catch (err) {
-                console.error('Kaydet ve İndir hatası:', err);
-                showToast('Kaydet ve İndir başarısız: ' + (err && err.message ? err.message : err), 'danger');
+                console.error('Kaydet hatası:', err);
+                showToast('Kaydedilemedi: ' + (err && err.message ? err.message : err) + ' — havuz korundu.', 'danger');
             } finally {
-                _restore();
+                if (btn) { btn.disabled = false; btn.innerHTML = '💾 Kaydet'; }
+            }
+        }
+        // Panel "📥 İndir" (kaydetmez/temizlemez): havuzdan .docx üret ve indir.
+        async function downloadPoolReport() {
+            var btn = document.getElementById('download-btn');
+            try {
+                var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳ İndiriliyor...'; }
+                var r = await xBuildReport(def);
+                if (!r) { showToast('İçerik yok — indirilecek bir şey yok.', 'warning'); return; }
+                xTriggerDownload(r.blob, r.filename);
+                showToast('Word indirildi: ' + r.filename, 'success');
+            } catch (err) {
+                console.error('İndir hatası:', err);
+                showToast('İndirilemedi: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = '📥 İndir'; }
             }
         }
 
@@ -3375,7 +3414,7 @@ HTML_TEMPLATE = """
                 xHavuzaKaydir();   // birlesik havuz bu sekmede acildi -> kullaniciyi ona goturur
                 var msg = raporSay + ' rapor birleştirildi — ' + eklenen + ' içerik havuza yüklendi';
                 if (atlanan > 0) { msg += ' (' + atlanan + ' tekrar atlandı)'; }
-                msg += '. Gözden geçirip "Kaydet ve İndir" ile kaydedin.';
+                msg += '. Gözden geçirip "💾 Kaydet" ile kaydedin (İndir ayrı).';
                 showToast(msg, 'success');
             } catch (err) {
                 console.error('Birleştirme hatası:', err);
@@ -3544,7 +3583,7 @@ HTML_TEMPLATE = """
                         // Faz 7: önizleme DAİMA editörde (generateManualWord zaten yönlendiriyor; bu dal savunma amaçlı).
                         window.lastGeneratedBlob = blob;
                         window.lastGeneratedFilename = filename;
-                        if (window.XEditor) { window.XEditor.ac(); }
+                        if (window.XEditor) { window.XEditor.ac({fresh:true}); }
                         refreshStatus();
                         return;
                     }
@@ -3569,7 +3608,7 @@ HTML_TEMPLATE = """
             // Faz 7: ÖNİZLEME artık DAİMA Rapor Editörü'nü açar (eski showDocxPreview emekli).
             //        İNDİRME (previewMode=false) aşağıdaki üretim yolunda kalır.
             if (previewMode && window.XEditor) {
-                window.XEditor.ac();
+                window.XEditor.ac({fresh:true});
                 return;
             }
             if (!forceServer && xLocalGenEnabled() && window.XLocalDocx) {
@@ -3615,7 +3654,7 @@ HTML_TEMPLATE = """
                     // Faz 7: önizleme DAİMA editörde (bu sunucu-önizleme dalı savunma amaçlı).
                     window.lastGeneratedBlob = blob;
                     window.lastGeneratedFilename = "GörüntüX_Toplu.docx";
-                    if (window.XEditor) { window.XEditor.ac(); }
+                    if (window.XEditor) { window.XEditor.ac({fresh:true}); }
                     refreshStatus();
                 } else {
                     const url = window.URL.createObjectURL(blob);
@@ -3704,8 +3743,13 @@ HTML_TEMPLATE = """
             // Oturum hatırlatması (kullanıcı isteği): tarama başlarken sağ-altta anlık toast.
             showToast('🔐 Tarayacağınız platformlarda (X, Instagram, Facebook, TikTok) oturumunuzun AÇIK olduğundan emin olun.', 'warning');
 
-            // Faz #1-A: yeni tarama sunucu havuzunu temizliyor; yerel goruntu deposunu da temizle.
-            try { if (window.XLocalImages) window.XLocalImages.clear(); } catch (e) {}
+            // Faz #1-A / B8 ([1]): unify AÇIKKEN havuz Başlat'ta KORUNUR (biriken manuel/widget öğeler),
+            // bu yüzden yerel görselleri de KORU (yoksa biriken öğelerin görseli silinir -> .docx görselsiz).
+            // Unify KAPALIYKEN eski davranış: tarama havuzu temizler, yerel görseller de temizlenir.
+            try { if (window.XLocalImages && !(window.XEditor && window.XEditor._unifyOn && window.XEditor._unifyOn())) window.XLocalImages.clear(); } catch (e) {}
+            // B8 ([2]): Başlat taze bir aktivitedir -> 24h otomatik-temizlik saatini YENİDEN BAŞLAT (yoksa
+            // ilk içerikten SABIT sayan saat, biriken + yeni taranan havuzu 24s sonra sessizce silebilir).
+            try { localStorage.setItem('x_havuz_ilk_ts', String(Date.now())); } catch (e) {}
 
             fetch('/api/auto/start', {
                 method: 'POST',
@@ -3895,6 +3939,8 @@ HTML_TEMPLATE = """
             fetch('/api/status')
             .then(res => res.json())
             .then(data => {
+                // [13]: sunucunun efektif birleşme bayrağı -> unifyOn() bunu okur (localStorage'tan bağımsız).
+                if (data && typeof data.unify_manual !== 'undefined') { window.__xUnifyServer = !!data.unify_manual; }
                 // Eklenti bağlantı durumu.
                 // ÖNCELİKLİ İŞARET: bridge.js, eklenti KURULU olduğu sürece her sayfaya (bu panel dahil)
                 // documentElement üzerine data-x-rapor-installed="true" koyar. Bu işaret, MV3 servis
@@ -4622,7 +4668,7 @@ HTML_TEMPLATE = """
             // KENDILIGINDEN asamaz; savePoolOrderFromDom da DOM sirasini okudugu icin
             // bolum sirasi dogrudan havuz sirasina, oradan da Word'deki Baslik 1 sirasina
             // yansir. Bolum sirasi: havuzda ILK gorunen platform once (Word ile AYNI kural).
-            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok', yt: 'YouTube' };
+            var PLAT_ETIKET = { x: 'X (Twitter)', ig: 'Instagram', fb: 'Facebook', tt: 'TikTok', yt: 'YouTube', manual: 'Manuel Bölümler' };
             var sections = [], bySec = {};
             for (var si = 0; si < blocks.length; si++) {
                 var sPlat = poolPlatformOf(blocks[si].items[0]);
@@ -4683,8 +4729,8 @@ HTML_TEMPLATE = """
                     html += '<div class="pool-item" draggable="false" data-pool-index="' + poolIdx + '" data-blockkey="' + poolEscapeHtml(blk.key) + '">' +
                             '<span class="pool-grip">⠿</span>' +
                             thumb +
-                            '<div class="item-text"><div class="item-title">' + poolEscapeHtml(x.title || '') + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
-                            '<div class="item-link">' + ((x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok' : poolEscapeHtml(x.link || 'Link yok')) + '</div></div>' +
+                            '<div class="item-text"><div class="item-title">' + poolEscapeHtml(x.title || ((window.XPlat && XPlat.isManual(x.link)) ? 'Manuel bölüm' : '')) + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
+                            '<div class="item-link">' + ((x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok' : ((window.XPlat && XPlat.isManual(x.link)) ? 'Manuel bölüm — bağlantı yok' : poolEscapeHtml(x.link || 'Link yok'))) + '</div></div>' +
                             '<button class="btn btn-danger-action btn-sm" draggable="false" onclick="deleteManualItem(' + x.index + ')" style="background: rgba(224, 36, 94, 0.1); border: 1px solid rgba(224, 36, 94, 0.2); color: var(--danger-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;">Sil</button>' +
                             '</div>';
                 }
@@ -4782,7 +4828,7 @@ HTML_TEMPLATE = """
                         var _k = _tumOgeler.indexOf(item);
                         if (_k >= 0) {
                             // Faz 7: havuz kartına tıklama -> editörü aç + o karta kaydır.
-                            if (window.XEditor) { window.XEditor.ac({ scrollIndex: _k }); }
+                            if (window.XEditor) { window.XEditor.ac({ scrollIndex: _k, fresh: true }); }
                         }
                     }
                 } catch (e) {}
@@ -5155,7 +5201,8 @@ HTML_TEMPLATE = """
             <div class="modal-header">
                 <h2>📝 Rapor Editörü</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;">📥 İndir</button>
+                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;" title="Raporu panele kaydet (indirmez; havuz commit edilir)">💾 Kaydet</button>
+                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px; background: var(--accent-color);" title="Sadece .docx indir (kaydetmez)">📥 İndir</button>
                     <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
                 </div>
             </div>
@@ -5219,8 +5266,12 @@ X_PLATFORM_JS = r'''
   // --- platform tespiti (Python: detect_platform) ---
   // 'x' | 'ig' | 'fb' | 'tt'. BILINMEYEN -> 'x' (mevcut davranis KORUNUR).
   // Python detect_platform ile SIRA DAHIL birebir ayni olmali.
+  function isManual(link){   // Python is_manual_link ikizi
+    return !!link && String(link).toLowerCase().indexOf('xmanual://') === 0;
+  }
   function platform(link){
     var low = String(link==null?'':link).toLowerCase();
+    if(isManual(link)) return 'manual';                    // B9: editor-manuel bolum (Python detect_platform ikizi)
     if(low.indexOf('instagram.com') !== -1) return 'ig';   // MEVCUT KURAL — DEGISTIRILMEDI
     var h = hostOf(link);
     if(isFbHost(h)) return 'fb';                           // host-hassas
@@ -5392,6 +5443,9 @@ X_PLATFORM_JS = r'''
   // (ayni adli X hesabiyla CAKISMASIN) -> onek soyulur.
   function groupFallbackTitle(val){
     var v = String(val==null?'':val);
+    // B/C: manuel/ayri-kume sentetik anahtarlari (mc-..., xmanual://...) BASLIK DEGILDIR ->
+    // overlay basligi eksikse rastgele anahtar basliga sizmasin (bos don).
+    if(v.indexOf('mc-') === 0 || v.indexOf('xmanual') === 0) return '';
     if(v.indexOf('fb:') === 0){
       var rest = v.slice(3);
       if(rest.indexOf('group:') === 0) return 'Facebook Grubu: ' + rest.slice(6);
@@ -5422,6 +5476,7 @@ X_PLATFORM_JS = r'''
     ytCanonical: ytCanonical,
     ytChannel: ytChannel,
     groupFallbackTitle: groupFallbackTitle,
+    isManual: isManual,
     isGenericTitle: isGenericTitle,
     isFbHost: isFbHost,
     isTtHost: isTtHost,
@@ -5763,15 +5818,17 @@ LOCAL_DOCX_JS = r'''
     // GOSTERILMEZ (kullanici karari: RT'de link koymaya gerek yok). Anahtar yalnizca gorsel
     // eslesmesi + dedup icin var; RT'nin kendine ait gercek bir URL'si zaten yok. entryPlatform
     // GERCEK item.link'i kullandigi icin ('rt:...' -> XPlat.platform -> 'x') X bolumu etkilenmez.
+    function xIsManualLink(lk){ return !!lk && String(lk).toLowerCase().indexOf('xmanual://') === 0; }
     function xRaporLinkGoster(it){
       var lk = (it && it.link) || '';
-      return (String(lk).indexOf('rt:') === 0) ? '' : lk;
+      // rt: sentetik RT anahtari VE xmanual:// editor-manuel anahtari raporda GOSTERILMEZ.
+      return (String(lk).indexOf('rt:') === 0 || xIsManualLink(lk)) ? '' : lk;
     }
 
     // Platform tespiti: bir order girisinin (grup/standalone) platformu, ilk ogesinin linkinden.
     // Faz FB-1: kural artik UCLU ve XPlat'a (sunucudaki detect_platform ikizi) delege edilir.
     // Eskiden 'instagram.com degilse X' idi -> Facebook linki SESSIZCE X sayilirdi.
-    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook', tt:'TikTok', yt:'YouTube' };
+    var PLAT_LABEL = { x:'X (Twitter)', ig:'Instagram', fb:'Facebook', tt:'TikTok', yt:'YouTube', manual:'Manuel Bölümler' };
     function entryPlatform(entry){
       var it = (entry[0]==='group') ? groups[entry[1]].items[0] : entry[1];
       var lk = ((it && it.link)||'');
@@ -5895,7 +5952,7 @@ LOCAL_DOCX_JS = r'''
           // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler. X/IG BIREBIR ayni.
           if(!baslik) baslik = window.XPlat ? XPlat.groupFallbackTitle(val)
                                             : ((val.charAt(0)==='@') ? val : '@'+val);
-          if(opts.b_numbered) baslik = headerIndex+'. '+baslik;
+          if(opts.b_numbered && baslik) baslik = headerIndex+'. '+baslik;   // [8]: boş başlığa (tümü-boş manuel/birleşik küme) "N." basma -> stray başlık olmasın
         }
         var k;
         for(k=0;k<ordered.length;k++){
@@ -5914,7 +5971,10 @@ LOCAL_DOCX_JS = r'''
         var b2;
         if(_ovr2!=null){ headerIndex++; b2=_ovr2; }
         else { b2=(item2.title||'').trim(); if(b2){ headerIndex++; if(opts.b_numbered) b2=headerIndex+'. '+b2; } }
-        birimler.push({ h1:h1, h2:((!opts.b_basliksiz && b2)?baslikFormatla(b2):null),
+        // B5: editor-manuel standalone -> baslik satiri HER ZAMAN duzenlenebilir olsun diye h2 '' (null DEGIL);
+        // bos kalirsa docx'te baslik BASILMAZ (if(u.h2)). Overlay geri-yukleme de b.h2!=null ister.
+        var _man2 = xIsManualLink(item2.link);
+        birimler.push({ h1:h1, h2:(opts.b_basliksiz?null:(b2?baslikFormatla(b2):(_man2?'':null))),
                         item:item2, link:xRaporLinkGoster(item2), son:true,
                         grup:null, grupBaslik:b2 });   // standalone = kendi kümesi (grup anahtarı yok)
       }
@@ -6337,6 +6397,12 @@ LOCAL_IMAGES_JS = r'''
       try{ var tx=_db.transaction(STORE,'readwrite'); tx.objectStore(STORE).clear(); tx.oncomplete=function(){resolve();}; tx.onerror=function(){resolve();}; }catch(e){ resolve(); }
     });
   }
+  // B6: tek görseli sil (editor-manuel öğe silinince IndexedDB'de yetim kalmasın).
+  function removeItem(k){
+    delete _cache[k];
+    if(!_db) return;
+    try{ _db.transaction(STORE,'readwrite').objectStore(STORE).delete(k); }catch(e){}
+  }
   // Faz #1-D (tam kaldirma): gorseller HER ZAMAN yerel; sunucuya asla gitmez.
   function isEnabled(){ return true; }
   function setEnabled(v){ try{ localStorage.setItem('x_local_images', v?'1':'0'); }catch(e){} }
@@ -6350,6 +6416,10 @@ LOCAL_IMAGES_JS = r'''
     getBase64:function(link){ var e=_cache[xNormLink(link)]; return e?base64FromDataUrl(e.dataUrl):''; },
     getMime:function(link){ var e=_cache[xNormLink(link)]; return e?(e.mime||mimeFromDataUrl(e.dataUrl)):''; },
     clear:function(){ return clearAll(); },
+    // B2/FIX-IMG-RACE: senkron yazım — postMessage'ın async işlenmesini beklemeden _cache'e koyar
+    // (ardından gelen fetch-yolu yeniden-plan/kaydet görseli KAÇIRMASIN). IndexedDB'ye de yazar.
+    put:function(link,dataUrl,mime){ if(!link||!dataUrl) return; putItem(xNormLink(link), dataUrl, mime||mimeFromDataUrl(dataUrl)); },
+    remove:function(link){ removeItem(xNormLink(link)); },   // B6
     count:function(){ return Object.keys(_cache).length; },
     whenReady:function(){ return _readyPromise||Promise.resolve(); }
   };
@@ -6580,7 +6650,17 @@ X_EDITOR_JS = r'''
     }catch(e){ return esc(String(html==null?'':html)); }
   }
   function renderMetin(m){ m=String(m==null?'':m); return /<(b|strong|i|em|u|br)[ >\/]/i.test(m) ? m : esc(m); }
-  function linkGoster(it){ var lk=(it&&it.link)||''; return String(lk).indexOf('rt:')===0 ? '' : lk; }
+  // B (havuz birlesmesi): editor-manuel bolum sentetik anahtari (xmanual://<uid>) -> HEM havuz
+  // kimligi HEM overlay HEM yerel gorsel anahtari (tek anahtar; gorsel/parca desenkron imkansiz).
+  function edManual(lk){ return !!lk && String(lk).toLowerCase().indexOf('xmanual://')===0; }
+  // [13]: SUNUCU bayrağı (X_UNIFY_MANUAL, /api/status -> window.__xUnifyServer) KAPALIYSA özellik tümden
+  // kapanır (istemci localStorage'tan bağımsız); böylece sunucu-tarafı geri alma airtight. Aksi halde
+  // per-tarayıcı localStorage x_unify_manual (varsayılan AÇIK).
+  function unifyOn(){ try{ if(window.__xUnifyServer===false) return false; return localStorage.getItem('x_unify_manual')!=='0'; }catch(e){ return true; } }
+  XE._unifyOn = unifyOn;   // panel kodu (startAutomation vb.) için
+  XE._dirty = false;   // E1: kaydedilmemis degisiklik -> kapanista sorulur
+  var _manSeq = 0;     // monotonik sayac: ayni ms uid cakismasini onler
+  function linkGoster(it){ var lk=(it&&it.link)||''; return (String(lk).indexOf('rt:')===0 || edManual(lk)) ? '' : lk; }
   function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
   function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
@@ -6712,6 +6792,7 @@ X_EDITOR_JS = r'''
   }
   // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
   XE._linkUstteUygula = function(on){
+    XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir (bir takas olmasa bile)
     (XE.belge.birimler||[]).forEach(function(b, bi){
       if(!b || !b.item || !b.item.parcalar) return;
       var pc=b.item.parcalar, gi=-1, li=-1, x;
@@ -6728,7 +6809,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; if(b.item.manual) return;  /* manuel bölümler __xManualClusters'ta yaşar (link='' overlay çakışması olmasın) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
@@ -6764,16 +6845,47 @@ X_EDITOR_JS = r'''
         // Başlık override YALNIZ başlık taşıyan birime (b.h2!=null) uygulanır -> ikincil gönderilere
         // sahte başlık basılmaz ve plandaki numara/sezgi değeri ham title ile EZİLMEZ (Faz 5 gerilemesi).
         var ov=ovStore().byLink[ovKey(b.item.link)];
-        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } }
+        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } }   // [9]: küme taşımayı (group_override) da geri yükle -> tam yeniden-fetch'te (ekle/sil/kart-tık) taşımalar kaybolmaz
       });
       XE._manuelEkle();   // #2: manuel blokları (kümeler arası eklenen) konumlarına enjekte et
       XE._seritKur();
       XE._ciz();
+      if(opts.fresh) XE._dirty=false;   // FIX-DIRTY: yalnız GERÇEK taze açılışta sıfırla (yeniden-plan/ekle/sil DEĞİL)
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
   };
 
-  XE.kapat = function(){ var m=document.getElementById('editorModal'); if(m) m.classList.remove('active'); };
+  // E3: ✕ ile kapatınca kaydedilmemiş değişiklik varsa SOR (Kaydet / Kaydetmeden çık / Vazgeç).
+  // force=true -> sormadan kapat (XE.kaydet başarıyla kaydettikten sonra çağırır).
+  XE.kapat = async function(force){
+    var m=document.getElementById('editorModal');
+    if(force || !XE._dirty){ if(m) m.classList.remove('active'); XE._dirty=false; return; }
+    var sec;
+    if(typeof window.xDialog==='function'){
+      sec = await window.xDialog({ title:'Kaydedilmemiş değişiklikler',
+        message:'Bu raporda kaydedilmemiş değişiklikler var. Ne yapmak istersin?',
+        okText:'💾 Kaydet', thirdText:'Kaydetmeden çık', cancelText:'Vazgeç' });
+    } else { sec = confirm('Kaydedilmemiş değişiklikler var. Kaydetmeden çıkılsın mı?') ? 'third' : false; }
+    if(sec===true){ await XE.kaydet(); return; }                       // Kaydet (XE.kaydet başarılıysa kendisi kapatır)
+    if(sec==='third'){ if(m) m.classList.remove('active'); XE._dirty=false; return; }   // Kaydetmeden çık
+    // Vazgeç / arka plana tıkla -> açık kal
+  };
+  // D3: editör "💾 Kaydet" -> panel snapshot rutinini (havuz+overlay) çağırır; indirmez. Başarıda kapatır.
+  XE.kaydet = async function(){
+    try{
+      if(typeof window.xSnapshotReport!=='function'){ if(window.showToast) window.showToast('Kaydetme kullanılamıyor.','danger'); return false; }
+      var def = (window.__openReportName && String(window.__openReportName).trim()) ? window.__openReportName
+              : ((typeof window.xTarihSaatDamgasi==='function') ? window.xTarihSaatDamgasi() : 'Rapor');
+      var name = (typeof window.xPrompt==='function')
+               ? await window.xPrompt('Rapor için bir ad girin:', def, { title:'💾 Kaydet', okText:'Kaydet' })
+               : def;
+      if(name===null) return false;                  // iptal
+      name=(String(name||'').trim())||def;
+      var ok = await window.xSnapshotReport(name);
+      if(ok){ XE._dirty=false; if(window.showToast) window.showToast('Kaydedildi: '+name+' (havuz temizlendi)','success'); await XE.kapat(true); }
+      return ok;
+    }catch(e){ if(window.showToast) window.showToast('Kaydedilemedi: '+(e&&e.message||e),'danger'); return false; }
+  };
 
   XE._seritKur = function(){
     var host=document.getElementById('editor-serit'); if(!host) return;
@@ -6838,6 +6950,7 @@ X_EDITOR_JS = r'''
     var el=document.getElementById(inputId); if(el){ el.value=v; }
     if(typeof window.xSaveStyles==='function') try{ window.xSaveStyles(); }catch(e){}
     var grp=document.querySelector('.ed-hiza'); if(grp){ grp.querySelectorAll('.ed-hb').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-v')===v); }); }
+    XE._dirty=true;   // [4]: biçim değişikliği de kirletir -> kapanışta sorulur
     canliCiz();
   };
   // Yapısal stiller (numara/başlıksız/başlık-türü) h2'yi PLAN anında belirler -> canlı yansısın diye
@@ -6847,6 +6960,7 @@ X_EDITOR_JS = r'''
     var id=ctrl.getAttribute('data-t'); var tgt=document.getElementById(id); if(!tgt) return;
     if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
     if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
+    XE._dirty=true;   // [4]: stil/yapısal (font/renk/Başlıksız/Numara) değişikliği de kirletir
     if(STRUKT_STIL[id]){ XE._yenidenPlanla(); } else { canliCiz(); }
   };
   // Mevcut belge öğeleriyle planı yeniden kur (havuzu YENİDEN ÇEKMEZ; parçalar/override overlay'den korunur).
@@ -6869,13 +6983,29 @@ X_EDITOR_JS = r'''
   XE._kumeTasi = function(i, grupKey){
     var b=XE.belge.birimler[i]; if(!b||!b.item) return;
     if(grupKey==='__yeni'){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
+    else if(grupKey && grupKey.indexOf('__solo:')===0){
+      // C3: tek-başına bir bölümle BİRLEŞTİR — hedef ile taşınan öğeye ORTAK bir küme anahtarı ver.
+      var tuid=grupKey.slice(7), tgt=null, ti=-1, B=XE.belge.birimler||[];
+      for(var j=0;j<B.length;j++){ if(B[j].item && B[j].item.uid===tuid){ tgt=B[j]; ti=j; break; } }
+      if(!tgt) return;
+      var shared = (tgt.item.group_override && String(tgt.item.group_override)) || ('mc-'+(tgt.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6));
+      tgt.item.group_override = shared; b.item.group_override = shared;
+      // [10]: "B'yi T'ye taşı" -> T'nin başlığı kalsın. Küme başlığı ordered[0].h2_override'dan türer ve
+      // ordered[0] havuz-sırası-ilk öğedir (T olmayabilir). İKİSİNE de T'nin başlığını yazarak hangisi
+      // ilk olursa olsun T'nin başlığı görünür; diğeri zaten ikincil olduğu için başlık basmaz.
+      var _tbaslik = (tgt.item.h2_override!=null && String(tgt.item.h2_override).trim()!=='') ? String(tgt.item.h2_override)
+                   : (tgt.h2!=null && String(tgt.h2).trim()!=='') ? String(tgt.h2)
+                   : (String(tgt.item.title||'').trim());
+      if(_tbaslik){ tgt.item.h2_override=_tbaslik; b.item.h2_override=_tbaslik; }
+      XE._ovSet(ti);   // hedef biriminin overlay'i de ortak anahtar + başlıkla güncellensin
+    }
     else { b.item.group_override = grupKey || ''; }
     XE._ovSet(i); XE._yenidenPlanla();
   };
 
   // #2: MANUEL bloklar (havuza bağlı OLMAYAN, kümeler arası eklenen içerik) panel-global listede yaşar.
   function manuelStore(){ window.__xManualClusters = window.__xManualClusters || []; return window.__xManualClusters; }
-  function yeniManId(){ return 'man'+Date.now()+Math.floor(Math.random()*1e6); }
+  function yeniManId(){ return 'man'+Date.now()+'x'+(_manSeq++)+'x'+Math.floor(Math.random()*1e6); }
   // belge.birimler kurulduktan SONRA manuel blokları afterUid konumlarına yerleştir (kendi kümeleri).
   XE._manuelEkle = function(){
     var mc=manuelStore(); if(!mc.length) return;
@@ -6893,9 +7023,28 @@ X_EDITOR_JS = r'''
   };
   // Yeni bölüm (manuel) — ŞABLONLU gelir: başlık + metin + link slotları (boş). Doldurulmayan
   // slotlar indirilen Word'de BASILMAZ (hizalama ona göre akar). İstenirse + ile parça eklenir.
-  XE._bolumEkle = function(afterUid){
+  // B1 (havuz birlesmesi): "+" artik GERCEK sunucu havuzu ogesi tohumlar (sentetik xmanual:// link).
+  // Boylece havuz bosken editorden eklenince havuz OLUSUR; eklenti/Baslat ayni havuza biner; Kaydet'e
+  // kadar her sey havuzda birikir. Zengin iskelet (baslik+metin+link) overlay'de sentetik anahtarla yasar.
+  XE._bolumEkle = async function(afterUid){
+    if(!unifyOn()){ return XE._bolumEkleLegacy(afterUid); }
+    var uid=yeniManId(), link='xmanual://'+uid;
+    // afterUid biriminin havuz pozisyonunu (1-tabanli) ŞİMDİ, taze belge üzerinden çöz (ekleme index kaydırır).
+    var afterIndex=null;
+    if(afterUid){ var B=XE.belge.birimler||[]; for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===afterUid && B[i].item.index!=null){ afterIndex=B[i].item.index; break; } } }
+    // Overlay'e ŞABLON tohumu -> "+" hemen başlık+metin+link iskeleti doğursun ve havuz yeniden-fetch'inde yaşasın.
+    try{ ovStore().byLink[ovKey(link)] = { parcalar:[{tur:'metin', id:yeniId(), metin:''},{tur:'link', url:''}], h2:'', grup:null }; }catch(e){}
+    var body={ title:'', link:link, local:true };
+    if(afterIndex!=null) body.after_index=afterIndex;       // afterItem'ın hemen ARDINA (0-tab insert = 1-tab pozisyon)
+    else if(afterUid==='') body.after_index=0;              // en üste
+    try{ await fetch('/api/manual/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); }catch(e){}
+    XE._dirty=true;
+    await XE.ac({});   // havuzdan yeniden kur -> yeni öğe gerçek .index + görsel-enjeksiyon yolu
+  };
+  XE._bolumEkleLegacy = function(afterUid){
     var it={ manual:true, uid:yeniManId(), link:'', h2_override:'', parcalar:[ {tur:'metin', id:yeniId(), metin:''}, {tur:'link', url:''} ] };
     manuelStore().push({ afterUid: afterUid||'', item: it });
+    XE._dirty=true;
     XE._yenidenPlanla();
   };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
@@ -6905,6 +7054,11 @@ X_EDITOR_JS = r'''
     if(pos==null || pos<0 || pos>b.item.parcalar.length) pos=b.item.parcalar.length;
     if(tur==='baslik'){ if(b.item.h2_override==null||b.item.h2_override===''){ b.item.h2_override='Başlık'; b.h2='Başlık'; } XE._ovSet(i); XE._ciz(); return; }
     if(tur==='gorsel'){ if(!(ekstra&&ekstra.b64)) return; b.item.image_b64=ekstra.b64; b.item.image_mime=ekstra.mime||'image/png';
+      // B2/FIX-IMG-RACE: birleşik manuel öğenin görseli SENKRON olarak XLocalImages'a (sentetik link anahtarı)
+      // yazılır -> ardından gelen havuz yeniden-fetch/kaydet görseli kaçırmaz (sunucuya GİTMEZ, yerel kalır).
+      if(edManual(b.item.link) && window.XLocalImages && window.XLocalImages.put){
+        try{ window.XLocalImages.put(b.item.link, 'data:'+b.item.image_mime+';base64,'+b.item.image_b64, b.item.image_mime); }catch(e){}
+      }
       var gi=-1; for(var gg=0;gg<b.item.parcalar.length;gg++){ if(b.item.parcalar[gg].tur==='gorsel'){ gi=gg; break; } }
       if(gi>=0){ var g=b.item.parcalar.splice(gi,1)[0]; if(gi<pos) pos--; b.item.parcalar.splice(pos,0,g); }
       else { b.item.parcalar.splice(pos,0,{tur:'gorsel'}); }
@@ -6919,6 +7073,7 @@ X_EDITOR_JS = r'''
   var _clDrag=null;
   XE._manuelTasi = function(uid, afterUid){
     var mc=manuelStore(); for(var i=0;i<mc.length;i++){ if(mc[i].item.uid===uid){ mc[i].afterUid=afterUid||''; break; } }
+    XE._dirty=true;
     XE._yenidenPlanla();
   };
   // #2: PC'den görsel seç -> base64 (manuel görsel bloğu için). Görsel yalnız panelde/snapshot'ta kalır.
@@ -6971,9 +7126,20 @@ X_EDITOR_JS = r'''
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
     var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
-    // #2: mevcut kümeler (distinct grup -> başlık) — "farklı kümeye taşı" menüsü için.
-    var kumeler=[], _gs={};
-    for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi]; if(_bb.grup!=null && !_gs[_bb.grup]){ _gs[_bb.grup]=1; kumeler.push({grup:_bb.grup, ad:(_bb.grupBaslik||_bb.grup)}); } }
+    // C (istediğin bölüme taşı): TÜM bölümler hedef olabilir — hem çok-üyeli kümeler hem de
+    // tek-başına (standalone) öğeler. Okunur etiket; ham mc-/xmanual anahtarı ASLA gösterilmez.
+    var hedefler=[], _hg={}, _bosSay=0;
+    for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi];
+      // [11]: eski (link='') manuel bloklar group_override gruplamasına GİRMEZ (plan-sonrası enjekte edilir)
+      // -> hedef olarak gösterme (oraya taşıma sessiz no-op / yetim küme olurdu).
+      if(_bb.manual && !edManual((_bb.item&&_bb.item.link)||'')) continue;
+      var _tkey = (_bb.grup!=null) ? _bb.grup : ('__solo:'+((_bb.item&&_bb.item.uid)||_bi));
+      if(_hg[_tkey]) continue; _hg[_tkey]=1;
+      var _tad = (_bb.grupBaslik && String(_bb.grupBaslik).trim()) ? String(_bb.grupBaslik).trim()
+               : (_bb.h2 && String(_bb.h2).trim()) ? String(_bb.h2).trim()
+               : ('Başlıksız bölüm ' + (++_bosSay));
+      hedefler.push({ key:_tkey, ad:_tad });
+    }
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
     function _ez(after){ var a=esc(after||''); return '<div class="ed-ekle-zon" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">+ Bölüm Ekle</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
@@ -6991,16 +7157,17 @@ X_EDITOR_JS = r'''
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
       if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı">&#x283F; taşı</div>');
-      // #2: Küme taşıyıcı (hover'da çıkar) — YALNIZ anlamlıysa: taşınacak BAŞKA küme var ya da
-      // bu küme ÇOK ÜYELİ (ayırma mantıklı). Tek başına öğede gösterilmez (kafa karıştırmasın).
-      if(!b.manual){
-        var _digerKumeler=[]; for(var _ki=0;_ki<kumeler.length;_ki++){ if(kumeler[_ki].grup!==b.grup) _digerKumeler.push(kumeler[_ki]); }
-        var _kumeUye=0; if(b.grup!=null){ for(var _ci=0;_ci<B.length;_ci++){ if(B[_ci].grup===b.grup) _kumeUye++; } }
-        if(_digerKumeler.length>0 || _kumeUye>1){
-          var _kopt='<option value="__noop" selected>⇄ Başka başlığa taşı…</option>';
-          for(var _kj=0;_kj<_digerKumeler.length;_kj++){ _kopt+='<option value="'+esc(_digerKumeler[_kj].grup)+'">'+esc(_digerKumeler[_kj].ad)+'</option>'; }
+      // C (istediğin bölüme taşı): taşıma menüsü HER kartta (hover'da çıkar) — hedefte TÜM diğer
+      // bölümler (kümeler + tek-başına öğeler) okunur adlarıyla. YALNIZ eski (link='') manuel bloklar
+      // hariç (onlar ⠿ ile sürüklenir). Birleşik xmanual:// öğeler gerçek havuz öğesi -> menüde yer alır.
+      if(!b.manual || edManual(b.item.link)){
+        var _selfKey = (b.grup!=null) ? b.grup : ('__solo:'+((b.item&&b.item.uid)||i));
+        var _diger=[]; for(var _ki=0;_ki<hedefler.length;_ki++){ if(hedefler[_ki].key!==_selfKey) _diger.push(hedefler[_ki]); }
+        if(_diger.length>0){
+          var _kopt='<option value="__noop" selected>⇄ Başka bölüme taşı…</option>';
+          for(var _kj=0;_kj<_diger.length;_kj++){ _kopt+='<option value="'+esc(_diger[_kj].key)+'">'+esc(_diger[_kj].ad)+'</option>'; }
           _kopt+='<option value="__yeni">➕ Kendi başlığı (ayır)</option>';
-          h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi başka bir başlık (küme) altına taşı">'+_kopt+'</select>');
+          h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi başka bir bölüm altına taşı">'+_kopt+'</select>');
         }
       }
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
@@ -7098,6 +7265,7 @@ X_EDITOR_JS = r'''
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
     var it=B[i].item;
+    XE._dirty=true;   // E1: silme de değişikliktir
     if(it && it.manual){   // #2: manuel blok -> __xManualClusters'tan çıkar
       var mc=manuelStore(); for(var m=0;m<mc.length;m++){ if(mc[m].item.uid===it.uid){ mc.splice(m,1); break; } }
       XE._yenidenPlanla(); return;
@@ -7124,10 +7292,33 @@ X_EDITOR_JS = r'''
   };
 
   // toItems: YALNIZ havuz öğeleri (manuel bloklar hariç -> onlar __birimler ile docx'e gider, gruplamaya girmez).
-  XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(function(it){ return it && !it.manual; }); };
+  XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(function(it){ return it && (!it.manual || edManual(it.link)); }); };   // B7: birleşik xmanual:// öğeler gerçek havuz öğesi -> gruplamaya girer; YALNIZ eski (link='') manuel bloklar hariç
   XE.toStyleOpts = function(){ return stilOku(); };
   // #2: docx üretiminde editörün GÖRÜNÜMÜNÜ birebir kullan (manuel bloklar + taşımalar dahil).
   XE.docxOpts = function(){ return Object.assign({}, XE.toStyleOpts(), { __birimler: (XE.belge.birimler||[]) }); };
+  // [5/7/12]: Editör KAPALIYKEN panel Kaydet/İndir için taze birimler kur (canlı belge/DOM'a dokunMADAN):
+  // havuz öğelerini planla + overlay (parcalar/h2/grup) geri yükle + eski __xManualClusters bloklarını enjekte et.
+  // Böylece eski (link='') manuel bloklar docx'e GİRER (yoksa __birimler'siz plan onları atlar).
+  XE.buildBirimler = async function(items, stil){
+    var plan = await XE.planGetir(items||null, stil||stilOku());
+    var B = (plan && plan.birimler) || [];
+    B.forEach(function(b,i){ if(!b || !b.item) return;
+      if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i;
+      parcaKur(b.item);
+      var ov=ovStore().byLink[ovKey(b.item.link)];
+      if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } }
+    });
+    // XE._manuelEkle ile AYNI enjeksiyon (ama canlı belge yerine bu B dizisi üzerinde).
+    var mc=manuelStore();
+    mc.forEach(function(entry){ var it=entry.item;
+      var birim={ h1:null, h2:String(it.h2_override!=null ? it.h2_override : ''), item:it, link:'', son:true, manual:true, grup:'m-'+it.uid, grupBaslik:(it.h2_override||'') };
+      var pos=B.length;
+      if(entry.afterUid===''){ pos=0; }
+      else { for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===entry.afterUid){ pos=i+1; break; } } }
+      B.splice(pos, 0, birim);
+    });
+    return B;
+  };
 
   XE.indir = async function(){
     try {
@@ -7192,6 +7383,9 @@ def get_status():
         "ext_latest_version": EKLENTI_SURUMU,
         "start_time": job.get("start_time", 0.0),
         "end_time": job.get("end_time", 0.0),
+        # [13]: sunucunun efektif birlesme bayragi -> istemci unifyOn() bunu okur (localStorage'tan
+        # bagimsiz). X_UNIFY_MANUAL=0 ise ozellik tum tarayicilarda kapanir (airtight geri alma).
+        "unify_manual": bool(X_UNIFY_MANUAL),
         "manuel_count": len(pool),
         "manuel_list": [
             {
@@ -7297,7 +7491,14 @@ def manual_add():
         # bunu link'ten turetilen sahibe TERCIH eder.
         if group_override:
             item["group_override"] = group_override
-        pool.append(item)
+        # FIX-POS (havuz birlesmesi): editor "+" bir bolumu ARALARA ekleyebilsin diye istege bagli
+        # konumlu ekleme. after_index 0-tabanli gecerli bir konumsa oraya sokulur, degilse sona eklenir
+        # (widget/panel eski davranis: after_index gondermez -> append). Mevcut pozisyonlar korunur.
+        after_index = data.get("after_index", None)
+        if isinstance(after_index, int) and 0 <= after_index <= len(pool):
+            pool.insert(after_index, item)
+        else:
+            pool.append(item)
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
@@ -7565,9 +7766,13 @@ def auto_start():
     job["status"] = "running"
     job["start_time"] = time.time()
     
-    # Yeni otomasyon başladığında havuzu temizle
+    # Yeni otomasyon başladığında havuzu temizle.
+    # B8 (havuz birlesmesi): X_UNIFY_MANUAL acikken havuzu TEMIZLEME -> editor "+" ile kurulan
+    # manuel bolumler + eklenti "Rapora Ekle" ogeleri + onceki sonuclar KORUNUR; yeni tarama
+    # AYNI havuza eklenir (kullanici: "Baslat deyince de o ayni havuza eklensin").
     pool = get_client_pool()
-    pool.clear()
+    if not X_UNIFY_MANUAL:
+        pool.clear()
 
     return jsonify({"status": "success", "job_id": job["job_id"]})
 
@@ -7904,13 +8109,12 @@ def submit_word_result():
                 dup_item_idx = i
                 break
 
-        filepath = save_temp_image(img_bytes) if img_bytes else None
-
         if dup_item_idx is not None:
             existing = pool[dup_item_idx]
             # Görsel: mevcut öğede görsel yoksa yeni geleni ekle.
-            if filepath and not existing.get("image"):
-                existing["image"] = filepath
+            # [3]: temp dosyayı YALNIZ kullanılacaksa yaz (mevcut öğede görsel VARSA yazma) -> yetim dosya sızmasın.
+            if img_bytes and not existing.get("image"):
+                existing["image"] = save_temp_image(img_bytes)
             # Başlık: mevcut başlık boş/genel ise gerçek bir kullanıcı adıyla değiştir;
             # ya da mevcut başlık tamamen boşsa yeni geleni yaz.
             if title_formatted:
@@ -7925,7 +8129,7 @@ def submit_word_result():
         else:
             pool.append({
                 "title": title_formatted if title_formatted else "",
-                "image": filepath,
+                "image": (save_temp_image(img_bytes) if img_bytes else None),
                 "link": link,
                 "is_profile": is_profile
             })
