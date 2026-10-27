@@ -4659,12 +4659,28 @@ HTML_TEMPLATE = """
         }
         function renderPoolGrouped(container, list) {
             ensurePoolStyles();
+            // [bitişik-dizi] Manuel öğe VARSA bloklar ARDIŞIK diziyle kurulur -> aynı hesabın havuzda yan
+            // yana içerikleri birleşir ama araya manuel/başka hesap girince O NOKTADA bölünür (editör/Word ile
+            // aynı). Manuel yoksa eski tam-birleşme (hash) davranışı korunur.
+            var _poolHasManual = false;
+            for (var _ph = 0; _ph < list.length; _ph++) { if (list[_ph] && list[_ph].link && window.XPlat && XPlat.isManual(list[_ph].link)) { _poolHasManual = true; break; } }
             var blocks = [], byKey = {};
-            for (var i = 0; i < list.length; i++) {
-                var it = list[i];
-                var key = it.group ? ('g:' + it.group) : ('solo:' + it.index);
-                if (!byKey[key]) { byKey[key] = { key: key, group: it.group, items: [] }; blocks.push(byKey[key]); }
-                byKey[key].items.push(it);
+            if (_poolHasManual) {
+                var _prevG = null, _curBlk = null;
+                for (var i = 0; i < list.length; i++) {
+                    var it = list[i];
+                    var g = it.group || '';
+                    if (g && g === _prevG && _curBlk) { _curBlk.items.push(it); }
+                    else { _curBlk = { key: (g ? ('g:' + g + ':' + i) : ('solo:' + it.index)), group: (g || null), items: [it] }; blocks.push(_curBlk); }
+                    _prevG = g || null;   // solo (manuel/linksiz) -> ardışık diziyi kırar
+                }
+            } else {
+                for (var i2 = 0; i2 < list.length; i2++) {
+                    var it2 = list[i2];
+                    var key = it2.group ? ('g:' + it2.group) : ('solo:' + it2.index);
+                    if (!byKey[key]) { byKey[key] = { key: key, group: it2.group, items: [] }; blocks.push(byKey[key]); }
+                    byKey[key].items.push(it2);
+                }
             }
             // --- PLATFORM BOLUMLERI (= Word'deki Baslik 1) ---
             // Kullanici istegi (2026-07-17): siralama Baslik 1 ICINDE kalsin — X'ler kendi
@@ -5952,6 +5968,11 @@ LOCAL_DOCX_JS = r'''
     //      gonderisi varsa yapi H2 + (gorsel+link)x3 olur; sayfa sonu grubun ortasina
     //      denk gelirse Baslik2 TEKRARLANMAZ. Word'un bugunku davranisiyla ayni.
     var birimler=[], headerIndex=0;
+    // [tekrar eden hesap başlığı]: bitişik-dizi grubu aynı hesabı birden çok run'a böldüğünde (araya
+    // manuel girince) YALNIZ İLK run'ın OTOMATİK başlığı basılır; sonraki run'larda başlık BOŞ bırakılır
+    // (null değil -> alan durur, kullanıcı isterse elle yazar; boşsa Word'e basılmaz). Kullanıcının elle
+    // verdiği başlık (h2_override) her run'da gösterilir.
+    var _seenUser={};
     function toplaEntry(entry, h1){
       var type=entry[0], val=entry[1];
       if(type==='group'){
@@ -5992,13 +6013,20 @@ LOCAL_DOCX_JS = r'''
                                             : ((val.charAt(0)==='@') ? val : '@'+val);
           if(opts.b_numbered && baslik) baslik = headerIndex+'. '+baslik;   // [8]: boş başlığa (tümü-boş manuel/birleşik küme) "N." basma -> stray başlık olmasın
         }
+        // Aynı hesabın TEKRAR eden (bitişik-dizi) run'ında otomatik başlığı bastırma (boş bırak).
+        var _isRun=(String(val).indexOf('\u0001run\u0001')===0);
+        var _acctUser=_isRun ? String(val).split('\u0001')[2] : null;
+        var _suppress=false;
+        if(_isRun){
+          if(_ovr!==null){ _seenUser[_acctUser]=true; }          // elle override -> göster + işaretle
+          else if(_seenUser[_acctUser]){ _suppress=true; }       // oto başlık TEKRARI -> boş
+          else { _seenUser[_acctUser]=true; }                    // ilk oto başlık -> göster + işaretle
+        }
         var k;
         for(k=0;k<ordered.length;k++){
-          // h2 YALNIZCA grubun ILK gonderisinde: bir hesabin basligi belgede BIR KEZ
-          // gorunur, gonderileri altinda akar (kac sayfaya yayildigi farketmez).
-          // Ayni sayfaya dusen ayni hesabin iki gonderisi de dogal olarak TEK Baslik2
-          // gorur (kullanici istegi 2026-07-17).
-          birimler.push({ h1:(k===0?h1:null), h2:((!opts.b_basliksiz && k===0)?baslikFormatla(baslik):null),
+          // h2 YALNIZCA grubun ILK gonderisinde. _suppress ise boş '' (null DEĞİL) -> alan durur, Word'e basılmaz.
+          var _h2 = opts.b_basliksiz ? null : (k===0 ? (_suppress ? '' : baslikFormatla(baslik)) : null);
+          birimler.push({ h1:(k===0?h1:null), h2:_h2,
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1),
                           grup:val, grupBaslik:baslik });   // #2: küme anahtarı + başlığı (öğeyi farklı kümeye taşıma UI'si için)
         }
