@@ -5232,9 +5232,9 @@ HTML_TEMPLATE = """
             <div class="modal-header">
                 <div style="display: flex; gap: 14px; align-items: center;">
                     <h2 style="margin:0;">📝 Rapor Editörü</h2>
-                    <div style="display: flex; gap: 6px; align-items: center; border-left: 1px solid #d0d7de; padding-left: 14px;">
-                        <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 17px; line-height:1; padding: 6px 11px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶</button>
-                        <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 17px; line-height:1; padding: 6px 11px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷</button>
+                    <div class="ed-undo-grup">
+                        <button id="ed-geri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri al (Ctrl+Z)" disabled>↺</button>
+                        <button id="ed-ileri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri al (Ctrl+Y)" disabled>↻</button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
@@ -6068,6 +6068,24 @@ LOCAL_DOCX_JS = r'''
     // docx'e aktarmak için kendi hazır belge.birimler'ini verebilir -> gruplama/sıra EZİLİR, birebir o çizilir.
     if (opts && opts.__birimler && opts.__birimler.length) { birimler = opts.__birimler; }
 
+    // AYRAÇ ÇİZGİSİ (cizgi): grup-sonu (son) birimde çizilir AMA (a) manuel/hesapsız birimden SONRA
+    // çizilmez, (b) AYNI hesap ileride (arada yalnız manuel/hesapsız birim varken) DEVAM ediyorsa
+    // çizilmez. Böylece "A1, manuel, A2" dizisinde yalnız A2 sonrası ayraç olur; A1 ve manuel sonrası
+    // uzun çizgi OLMAZ (kullanıcı isteği). Saf taramada her grup ayrı hesap -> eski davranış birebir.
+    function _acctOf(bb){ return (bb && bb.item && bb.item.__native) ? String(bb.item.__native) : ''; }
+    for(var _ci=0; _ci<birimler.length; _ci++){
+      var _bb=birimler[_ci]; _bb.cizgi = !!_bb.son;
+      if(!_bb.cizgi) continue;
+      var _ac=_acctOf(_bb);
+      if(!_ac){ _bb.cizgi=false; continue; }   // manuel/hesapsız -> ardından çizgi yok
+      for(var _cj=_ci+1; _cj<birimler.length; _cj++){
+        var _na=_acctOf(birimler[_cj]);
+        if(_na==='') continue;                 // manuel -> şeffaf, atla
+        if(_na===_ac) _bb.cizgi=false;          // aynı hesap devam -> çizgi çizme
+        break;                                  // farklı hesap -> çizgiyi koru
+      }
+    }
+
     // Faz 3 (Rapor Editörü): editör GÖRÜNÜMÜ çıktıyla BİREBİR eşleşsin diye aynı gruplama/birim
     // planını paylaşır. __planOnly -> docx üretmeden (media/rels kurulmadan) render planını döndür.
     // Normal docx yolu etkilenmez (yalnız bu bayrakla erken döner).
@@ -6164,15 +6182,15 @@ LOCAL_DOCX_JS = r'''
             if(_p.tur==='gorsel'){ if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h)); }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link;
-              if(_lu){ var _bord=(u.son && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
+              if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
           }
-          if(u.son && !_cizgiKondu) body.push(grupSonuXml());   // link son değilse: ayrı ayraç (parça sırası serbest)
+          if(u.cizgi && !_cizgiKondu) body.push(grupSonuXml());   // link son değilse: ayrı ayraç (parça sırası serbest)
         } else {
           var _mb=(u.item && u.item.metin_bloklari)||[];
           _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
           if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
           _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
-          body.push(linkXml(u.link, u.son?360:240, u.son));
+          body.push(linkXml(u.link, u.cizgi?360:240, u.cizgi));
         }
       }
     }
@@ -6900,6 +6918,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-tut:active{cursor:grabbing;}
 #editorModal .ed-parca-ic{flex:1;min-width:0;}
 #editorModal .ed-parca-bos{color:#9aa3ad;font-size:12px;font-style:italic;padding:4px 0;}
+#editorModal .ed-undo-grup{display:inline-flex;border:1px solid #d7dde3;border-radius:9px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.05);}
+#editorModal .ed-undo-btn{border:0;background:transparent;padding:7px 15px;font-size:16px;line-height:1;color:#3a4654;cursor:pointer;transition:background .1s,color .1s;}
+#editorModal .ed-undo-btn+.ed-undo-btn{border-left:1px solid #e6eaef;}
+#editorModal .ed-undo-btn:hover:not(:disabled){background:#eef5ff;color:#1565c0;}
+#editorModal .ed-undo-btn:disabled{opacity:.33;cursor:default;}
 #editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
@@ -7441,7 +7464,7 @@ X_EDITOR_JS = r'''
         h.push(_pz(i, k+1, b.manual));   // bu parçadan SONRA ekleme noktası
       }
       h.push('</div>');
-      if(b.son) h.push('<hr class="ed-line">');
+      if(b.cizgi) h.push('<hr class="ed-line">');   // ayraç çizgisi: docx ile aynı (A1/manuel sonrası yok)
       h.push(_ez(b.item.uid||''));   // bu karttan sonra ekleme zonu
     }
     h.push('</div>');
