@@ -5233,8 +5233,8 @@ HTML_TEMPLATE = """
                 <div style="display: flex; gap: 14px; align-items: center;">
                     <h2 style="margin:0;">📝 Rapor Editörü</h2>
                     <div style="display: flex; gap: 6px; align-items: center; border-left: 1px solid #d0d7de; padding-left: 14px;">
-                        <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶ Geri</button>
-                        <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 13px; padding: 6px 12px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷ İleri</button>
+                        <button id="ed-geri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" style="font-size: 17px; line-height:1; padding: 6px 11px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="Geri al (Ctrl+Z)" disabled>↶</button>
+                        <button id="ed-ileri" class="btn btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" style="font-size: 17px; line-height:1; padding: 6px 11px; border-radius: 8px; background:#eef2f6; color:#334; border:1px solid #cdd6df;" title="İleri al (Ctrl+Y)" disabled>↷</button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 10px; align-items: center;">
@@ -5953,8 +5953,8 @@ LOCAL_DOCX_JS = r'''
       return p;
     }
     // Bir sayfadaki TUM gorsellere verilecek ORTAK genislik
-    function ortakGenislik(grup){
-      var pay=0, tersToplam=0, i;
+    function ortakGenislik(grup, extraPay){
+      var pay=(extraPay||0), tersToplam=0, i;   // extraPay: çiftin ARASINDAKİ metin-only (manuel) birimlerin yüksekliği
       for(i=0;i<grup.length;i++){ pay += birimPay(grup[i]); if(grup[i].ar) tersToplam += 1/grup[i].ar; }
       var kalan = SAYFA_H - pay - GUVENLIK_PAY;
       if(kalan<=0) return 0;
@@ -6090,36 +6090,37 @@ LOCAL_DOCX_JS = r'''
     }
 
     // ---- 3. GECIS: sayfalara ayir + her sayfanin ORTAK genisligini hesapla
-    var sayfalar=[], ix=0;
-    while(ix < birimler.length){
-      var a=birimler[ix], b=(ix+1<birimler.length) ? birimler[ix+1] : null;
-      // Baslik2 GRUP BASINA BIR KEZ (kullanici istegi 2026-07-17: "ayni basligin her
-      // sayfa basinda olmasini da coz").
-      //
-      // Burada bir sure "sayfa basina dusen birimin basligini tekrarla" kodu vardi:
-      // sabit sayfa sonlari varken devam sayfasi basliksiz aciliyordu (orfan) ve bunu
-      // kapatiyordu. Sabit sayfa sonlari kalkinca (bkz. 4. gecis) bu koruma yalnizca
-      // GEREKSIZ degil, ZARARLI hale geldi: ayni hesabin gonderileri birden cok sayfaya
-      // yayilinca "MAH Ajansi (@mahajansi)" her sayfa basinda tekrar ediyordu.
-      // Akis serbest oldugunda dogru davranis, basligin bir kez gorunup icerigin
-      // sayfalara yayilmasidir - her belgenin yaptigi sey. Kaldirildi.
+    // BOYUTLAMA: GÖRSEL birimleri (ar!=null) çiftle -> 2 görsel aynı sayfaya sığacak ORTAK genişlik.
+    // ARALARINDA metin-only (manuel bölüm) birim OLSA BİLE görseller çiftlenir (eski kod görseli
+    // metin-only ile eşleyip TAM GENİŞLİK yapıyordu -> 2-görsel-sayfada küçültme bozuluyordu). Aradaki
+    // metin-only birimlerin yüksekliği extraPay olarak sayfaya katılır; emisyon birimleri plan sırasında
+    // serbest akar (sabit sayfa sonu yok). Baslik2 grup başına bir kez (eski davranış).
+    var sayfalar=[];
+    var _imgIx=[]; for(var _z=0;_z<birimler.length;_z++){ if(birimler[_z].ar) _imgIx.push(_z); }
+    var _pz=0;
+    while(_pz < _imgIx.length){
+      var _ai=_imgIx[_pz], _bi=(_pz+1<_imgIx.length)?_imgIx[_pz+1]:-1;
+      var a=birimler[_ai], b=(_bi>=0)?birimler[_bi]:null;
       var ciftKuruldu=false;
       if(b){
-        var W2=ortakGenislik([a,b]);
+        var _araPay=0; for(var _q=_ai+1;_q<_bi;_q++){ _araPay += birimPay(birimler[_q]); }   // aradaki metin-only (manuel) yükseklik
+        var W2=ortakGenislik([a,b], _araPay);
         if(W2 >= ESIK_W){
           a.w=W2; a.h=a.ar?(W2/a.ar):0;
           b.w=W2; b.h=b.ar?(W2/b.ar):0;
-          sayfalar.push([a,b]); ix+=2; ciftKuruldu=true;
+          _pz+=2; ciftKuruldu=true;
         }
       }
       if(!ciftKuruldu){
-        // "Cok uzun" -> tek basina sayfa; tum sayfa yuksekligi ona kalir.
+        // "Cok uzun" ya da tek görsel -> tek başına sayfa (tüm yükseklik ona kalır).
         var kalan1=SAYFA_H - birimPay(a) - GUVENLIK_PAY;
         var W1=a.ar ? Math.min(METIN_W, Math.max(0.1, kalan1)*a.ar) : METIN_W;
         a.w=W1; a.h=a.ar?(W1/a.ar):0;
-        sayfalar.push([a]); ix+=1;
+        _pz+=1;
       }
     }
+    // Emisyon sırası = plan/havuz sırası (serbest akış); boyutlar yukarıda kondu.
+    for(var _z2=0;_z2<birimler.length;_z2++){ sayfalar.push([birimler[_z2]]); }
 
     // ---- 4. GECIS: XML uret. SABIT SAYFA SONU YOK (kullanici istegi 2026-07-17).
     //
@@ -6899,6 +6900,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-tut:active{cursor:grabbing;}
 #editorModal .ed-parca-ic{flex:1;min-width:0;}
 #editorModal .ed-parca-bos{color:#9aa3ad;font-size:12px;font-style:italic;padding:4px 0;}
+#editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
+#editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
 #editorModal .ed-metin{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
 #editorModal .ed-metin:empty:before{content:"Metin yazın…";color:#9aa3ad;}
@@ -7253,6 +7256,14 @@ X_EDITOR_JS = r'''
     if(!b.item.parcalar) b.item.parcalar=[];
     if(pos==null || pos<0 || pos>b.item.parcalar.length) pos=b.item.parcalar.length;
     if(tur==='baslik'){ if(b.item.h2_override==null||b.item.h2_override===''){ b.item.h2_override='Başlık'; b.h2='Başlık'; } XE._ovSet(i); XE._ciz(); return; }
+    if(tur==='panoSlot'){
+      // #3: pano görseli INLINE yapıştırma yuvası (popup YOK) -> boş gorsel işaretçisi ekle; _ciz onu
+      // odaklı yapıştırma kutusu çizer, kullanıcı oraya Ctrl+V yapınca görsel dolar ("metin ekler gibi").
+      var _gi0=-1; for(var _g0=0;_g0<b.item.parcalar.length;_g0++){ if(b.item.parcalar[_g0].tur==='gorsel'){ _gi0=_g0; break; } }
+      if(_gi0<0){ b.item.parcalar.splice(pos,0,{tur:'gorsel'}); }   // yoksa boş yuva ekle
+      b.item._panoBekle=true;   // _ciz paste kutusunu odaklasın
+      XE._ovSet(i); XE._ciz(); return;
+    }
     if(tur==='gorsel'){ if(!(ekstra&&ekstra.b64)) return; b.item.image_b64=ekstra.b64; b.item.image_mime=ekstra.mime||'image/png';
       // B2/FIX-IMG-RACE: birleşik manuel öğenin görseli SENKRON olarak XLocalImages'a (sentetik link anahtarı)
       // yazılır -> ardından gelen havuz yeniden-fetch/kaydet görseli kaçırmaz (sunucuya GİTMEZ, yerel kalır).
@@ -7414,7 +7425,7 @@ X_EDITOR_JS = r'''
         h.push('<div class="ed-parca" data-i="'+i+'" data-p="'+k+'">');
         h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı">&#x283F;</div>');
         h.push('<div class="ed-parca-ic">');
-        if(p.tur==='gorsel'){ h.push(b.item.image_b64 ? ('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">') : '<div class="ed-parca-bos">[görsel yok]</div>'); }
+        if(p.tur==='gorsel'){ h.push(b.item.image_b64 ? ('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">') : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır</div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
         h.push('</div>');
@@ -7453,6 +7464,28 @@ X_EDITOR_JS = r'''
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
+    // #3: INLINE pano yapıştırma kutusu -> buraya Ctrl+V yapınca görsel dolar (popup yok).
+    root.querySelectorAll('.ed-img-pano').forEach(function(el){
+      el.addEventListener('paste', function(e){
+        var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
+        var its=cd.items||[], j;
+        for(j=0;j<its.length;j++){ var it=its[j];
+          if(it && it.type && it.type.indexOf('image/')===0){ var blob=it.getAsFile(); if(!blob) continue;
+            e.preventDefault();
+            var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item){ return; }
+            var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return;
+              XE._pushUndo();
+              b.item.image_b64=du.slice(ci+1); b.item.image_mime=blob.type||'image/png'; b.item._panoBekle=false;
+              if(edManual(b.item.link) && window.XLocalImages && window.XLocalImages.put){ try{ window.XLocalImages.put(b.item.link, 'data:'+b.item.image_mime+';base64,'+b.item.image_b64, b.item.image_mime); }catch(_){} }
+              XE._ovSet(bi); XE._ciz();
+            }; rd.readAsDataURL(blob); return; }
+        }
+        e.preventDefault(); el.innerHTML='Panoda görsel yok. Önce bir görsel kopyalayıp tekrar <b>Ctrl+V</b> yapın.';
+      });
+    });
+    // _panoBekle olan kartın yapıştırma kutusunu odakla (kullanıcı hemen Ctrl+V yapabilsin).
+    (function(){ var bek=-1, Bb=XE.belge.birimler||[]; for(var z=0;z<Bb.length;z++){ if(Bb[z].item && Bb[z].item._panoBekle){ bek=z; break; } }
+      if(bek>=0){ var pel=root.querySelector('.ed-card[data-i="'+bek+'"] .ed-img-pano'); if(pel){ pel.scrollIntoView({block:'center'}); try{ pel.focus(); }catch(e){} } } })();
     // [+ menüsü tıkla-kalıcı]: "+" tıklanınca menü açılır, DIŞARI tıklayana (ya da bir seçenek seçene)
     // kadar kalır. Hover'a bağlı değil (imleç kaçınca kapanmaz).
     root.querySelectorAll('.ed-pz-art').forEach(function(el){
@@ -7469,7 +7502,7 @@ X_EDITOR_JS = r'''
       el.addEventListener('click', function(){ var _w=el.closest('.ed-pz-wrap'); if(_w) _w.classList.remove('acik');   // seçince menüyü kapat
         var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t'); var _ps=el.getAttribute('data-pos'); var pos=(_ps==null?null:+_ps);
         if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
-        else if(tur==='pano'){ XE._panoGorsel(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
+        else if(tur==='pano'){ XE._parcaEkle(bi,'panoSlot',null, pos); }   // #3: inline yapıştırma yuvası aç (popup yok)
         else { XE._parcaEkle(bi, tur, null, pos); } });
     });
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
