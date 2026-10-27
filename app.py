@@ -1811,7 +1811,9 @@ HTML_TEMPLATE = """
             <!-- Tab Buttons -->
             <div class="tabs">
                 <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')">🤖 Otomatik Rapor Hazırla</button>
-                <button class="tab-btn" data-tab="tab-manual" onclick="switchTab('tab-manual')">✍️ Manuel Rapor Hazırla</button>
+                <!-- #2: "Manuel Rapor Hazırla" sekmesi EMEKLİ — manuel içerik artık Rapor Editörü içinde
+                     (kümeler arası "+ Ekle" ile başlık/metin/görsel/link). Havuz boşken üstteki "Rapor Editörü"
+                     butonuyla açılır. (tab-manual içerik div'i erişilmez kaldı; işlevi editöre taşındı.) -->
                 <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">🗂️ Kayıtlı Raporlar<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
             </div>
 
@@ -3101,6 +3103,10 @@ HTML_TEMPLATE = """
 
                 // 4) .docx uret (editör parçalarıyla) + PC'ye indir. (Havuz asagida, BASARILI kayittan sonra sifirlanir.)
                 var _wopts = xBuildStyleOpts();   // "Başlıksız" (b_basliksiz) dahil tüm stil editör şeridinden gelir
+                // #2: editör açık/kullanıldıysa docx'i GÖRÜNÜMDEN üret (manuel bloklar + küme taşımaları dahil).
+                if (window.XEditor && window.XEditor.belge && window.XEditor.belge.birimler && window.XEditor.belge.birimler.length) {
+                    _wopts.__birimler = window.XEditor.belge.birimler;
+                }
                 var blob = await window.XLocalDocx.generateBlob(_wopts, items);
                 var filename = xRaporDosyaAdi(name);
                 var url = window.URL.createObjectURL(blob);
@@ -3122,7 +3128,7 @@ HTML_TEMPLATE = """
                         if (it.group_override) { o.group_override = it.group_override; }
                         return o;
                     });
-                    await window.XSavedReports.save({ name: name, items: _snapItems, images: images, blob: blob, filename: filename, editorStyle: _wopts });
+                    await window.XSavedReports.save({ name: name, items: _snapItems, images: images, blob: blob, filename: filename, editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || []) });
                     _kayitOk = true;
                     showToast('İndirildi, panele kaydedildi ve havuz temizlendi: ' + name, 'success');
                 } catch (saveErr) {
@@ -3136,6 +3142,7 @@ HTML_TEMPLATE = """
                 if (_kayitOk) {
                     window.__openReportName = '';   // acik rapor baglami bitti
                     window.__xEditorOverlay = { byLink: {}, style: null };   // Faz 5: rapor bitti, editör durumu sıfırlanır
+                    window.__xManualClusters = [];   // #2: manuel bloklar da sıfırlanır
                     try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
                     fetch('/api/manual/clear', { method: 'POST' })
                         .then(function () { resetAutomationUIAndBackend(); })
@@ -3288,6 +3295,7 @@ HTML_TEMPLATE = """
                     if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
+                window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
                 if (rec.editorStyle) { xApplyStyleOpts(rec.editorStyle); }
                 // 4) Acik rapor baglami: sonraki "Kaydet ve Indir" AYNI adi gunceller (upsert).
@@ -3324,10 +3332,12 @@ HTML_TEMPLATE = """
                 if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
                 var eklenen = 0, atlanan = 0, raporSay = 0;
                 var _ovM = { byLink: {}, style: null };   // Faz 5: birleşik raporun editör overlay'i (ilk gelen kazanır)
+                var _mcAll = [];   // #2: birleştirilen raporların manuel blokları
                 for (var i = 0; i < ids.length; i++) {
                     var rec = await window.XSavedReports.get(ids[i]);
                     if (!rec || !rec.items || !rec.items.length) { continue; }
                     raporSay++;
+                    if (rec.manualClusters && rec.manualClusters.length) { _mcAll = _mcAll.concat(rec.manualClusters); }
                     var imgs = rec.images || {};
                     for (var j = 0; j < rec.items.length; j++) {
                         var it = rec.items[j];
@@ -3353,6 +3363,7 @@ HTML_TEMPLATE = """
                     }
                 }
                 window.__xEditorOverlay = _ovM;   // Faz 5: birleşik overlay'i kur
+                window.__xManualClusters = _mcAll;   // #2: birleşik manuel bloklar
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
                 if (_ovM.style) { xApplyStyleOpts(_ovM.style); }   // Faz 6 (Finding 5): ilk kaynağın stilini geri uygula
                 window.__openReportName = '';   // birlesik = YENI rapor (tek kaynaga bagli degil)
@@ -5889,6 +5900,10 @@ LOCAL_DOCX_JS = r'''
       for(oi2=0; oi2<order.length; oi2++){ toplaEntry(order[oi2], null); }
     }
 
+    // #2 (doküman-oluşturucu): editör, GÖRÜNÜMÜNÜ (manuel bloklar + küme taşımalar dahil) birebir
+    // docx'e aktarmak için kendi hazır belge.birimler'ini verebilir -> gruplama/sıra EZİLİR, birebir o çizilir.
+    if (opts && opts.__birimler && opts.__birimler.length) { birimler = opts.__birimler; }
+
     // Faz 3 (Rapor Editörü): editör GÖRÜNÜMÜ çıktıyla BİREBİR eşleşsin diye aynı gruplama/birim
     // planını paylaşır. __planOnly -> docx üretmeden (media/rels kurulmadan) render planını döndür.
     // Normal docx yolu etkilenmez (yalnız bu bayrakla erken döner).
@@ -6347,7 +6362,7 @@ X_SAVED_REPORTS_JS = r'''
       var createdAt = existing ? (existing.createdAt||now) : now;
       var meta = { id:id, name:(o.name==null?'':o.name).toString().trim(), createdAt:createdAt,
                    updatedAt:now, itemCount:((o.items&&o.items.length)||0) };
-      var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null };
+      var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
       return new Promise(function(resolve,reject){
         try{
           var tx=_tx([META,DATA],'readwrite');
@@ -6518,6 +6533,17 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ustswap{margin-left:6px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334;cursor:pointer;user-select:none;padding:2px 8px;border:1px solid #d0d7de;border-radius:16px;background:#f6f8fa;}
 #editorModal .ed-ustswap input{width:16px;height:16px;cursor:pointer;accent-color:#1DA1F2;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
+#editorModal .ed-ekle-zon{display:flex;justify-content:flex-end;align-items:center;gap:6px;min-height:16px;margin:0 0 4px;}
+#editorModal .ed-ekle-art{display:none;font-size:12px;font-weight:700;color:#1565c0;background:#eef5ff;border:1px dashed #9ab;border-radius:12px;padding:2px 10px;}
+#editorModal .ed-ekle-menu{display:none;gap:5px;}
+#editorModal .ed-ekle-zon:hover .ed-ekle-art{display:inline-flex;}
+#editorModal .ed-ekle-zon:hover .ed-ekle-menu{display:inline-flex;}
+#editorModal .ed-ekle-t{font-size:11px;font-weight:600;color:#1565c0;background:#fff;border:1px solid #9ab;border-radius:12px;padding:3px 10px;cursor:pointer;}
+#editorModal .ed-ekle-t:hover{background:#1565c0;color:#fff;}
+#editorModal .ed-ekle-zon.ed-drop{min-height:30px;background:#eef5ff;border:2px dashed #1565c0;border-radius:8px;margin:4px 0;}
+#editorModal .ed-card-man{border-style:dashed;}
+#editorModal .ed-kltut{display:inline-block;margin:0 0 8px;font-size:11px;font-weight:600;color:#1565c0;background:#eef5ff;border:1px solid #c0c7cf;border-radius:12px;padding:3px 9px;cursor:grab;user-select:none;}
+#editorModal .ed-kltut:active{cursor:grabbing;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
@@ -6605,6 +6631,7 @@ X_EDITOR_JS = r'''
         var ov=ovStore().byLink[ovKey(b.item.link)];
         if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } }
       });
+      XE._manuelEkle();   // #2: manuel blokları (kümeler arası eklenen) konumlarına enjekte et
       XE._seritKur();
       XE._ciz();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
@@ -6687,19 +6714,71 @@ X_EDITOR_JS = r'''
     XE._ovSet(i); XE._yenidenPlanla();
   };
 
+  // #2: MANUEL bloklar (havuza bağlı OLMAYAN, kümeler arası eklenen içerik) panel-global listede yaşar.
+  function manuelStore(){ window.__xManualClusters = window.__xManualClusters || []; return window.__xManualClusters; }
+  function yeniManId(){ return 'man'+Date.now()+Math.floor(Math.random()*1e6); }
+  // belge.birimler kurulduktan SONRA manuel blokları afterUid konumlarına yerleştir (kendi kümeleri).
+  XE._manuelEkle = function(){
+    var mc=manuelStore(); if(!mc.length) return;
+    var B=XE.belge.birimler;
+    mc.forEach(function(entry){
+      var it=entry.item;
+      var birim={ h1:null, h2:(it.h2_override!=null && String(it.h2_override)!=='' ? String(it.h2_override) : null),
+                  item:it, link:'', son:true, manual:true, grup:'m-'+it.uid, grupBaslik:(it.h2_override||'') };
+      var pos=B.length;
+      if(entry.afterUid===''){ pos=0; }
+      else { for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===entry.afterUid){ pos=i+1; break; } } }
+      B.splice(pos, 0, birim);
+    });
+  };
+  // Yeni manuel blok ekle. tur: baslik/metin/link/gorsel. afterUid = hangi birimden sonra ('' = en üst).
+  XE._blokEkle = function(afterUid, tur, ekstra){
+    var it={ manual:true, uid:yeniManId(), link:'', h2_override:null, parcalar:[] };
+    if(tur==='baslik'){ it.h2_override='Yeni Başlık'; }
+    else if(tur==='metin'){ it.parcalar.push({tur:'metin', id:yeniId(), metin:''}); }
+    else if(tur==='link'){ it.parcalar.push({tur:'link', url:''}); }
+    else if(tur==='gorsel'){ if(ekstra && ekstra.b64){ it.image_b64=ekstra.b64; it.image_mime=ekstra.mime||'image/png'; it.parcalar.push({tur:'gorsel'}); } else { return; } }
+    manuelStore().push({ afterUid: afterUid||'', item: it });
+    XE._yenidenPlanla();
+  };
+  // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
+  var _clDrag=null;
+  XE._manuelTasi = function(uid, afterUid){
+    var mc=manuelStore(); for(var i=0;i<mc.length;i++){ if(mc[i].item.uid===uid){ mc[i].afterUid=afterUid||''; break; } }
+    XE._yenidenPlanla();
+  };
+  // #2: PC'den görsel seç -> base64 (manuel görsel bloğu için). Görsel yalnız panelde/snapshot'ta kalır.
+  XE._gorselSec = function(cb){
+    var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+    inp.addEventListener('change', function(){ var f=inp.files&&inp.files[0]; if(!f) return;
+      var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return;
+        var mime=(du.slice(5, (du.indexOf(';')>0?du.indexOf(';'):ci)))||'image/png'; try{ cb(du.slice(ci+1), mime); }catch(e){} };
+      rd.readAsDataURL(f); });
+    inp.click();
+  };
+
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
-    if(!B.length){ root.innerHTML='<div class="ed-bos">Havuz boş — önce içerik ekleyin.</div>'; return; }
     var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
     // #2: mevcut kümeler (distinct grup -> başlık) — "farklı kümeye taşı" menüsü için.
     var kumeler=[], _gs={};
     for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi]; if(_bb.grup!=null && !_gs[_bb.grup]){ _gs[_bb.grup]=1; kumeler.push({grup:_bb.grup, ad:(_bb.grupBaslik||_bb.grup)}); } }
+    // #2: kümeler-arası "+ Ekle" zonu (hover'da çıkar) — başlık/metin/görsel/link ekle.
+    function _ez(after){ var a=esc(after||''); return '<div class="ed-ekle-zon" data-after="'+a+'"><span class="ed-ekle-art">+ Ekle</span>'
+      +'<span class="ed-ekle-menu">'
+      +'<button class="ed-ekle-t" data-after="'+a+'" data-t="baslik">Başlık</button>'
+      +'<button class="ed-ekle-t" data-after="'+a+'" data-t="metin">Metin</button>'
+      +'<button class="ed-ekle-t" data-after="'+a+'" data-t="gorsel">Görsel</button>'
+      +'<button class="ed-ekle-t" data-after="'+a+'" data-t="link">Link</button></span></div>'; }
     var h=['<div class="ed-root">'], i, k;
+    if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Ekle</b> ile başlık, metin, görsel veya link ekleyerek rapor oluşturabilirsin.</div>'); }
+    h.push(_ez(''));   // en üstteki ekleme zonu
     for(i=0;i<B.length;i++){ var b=B[i];
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
-      h.push('<div class="ed-card" data-i="'+i+'">');
+      h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
+      if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı">&#x283F; taşı</div>');
       // #2: Küme taşıyıcı (hover'da çıkar) — öğeyi başka bir başlık/küme altına taşı.
       var _kopt='';
       if(b.grup==null) _kopt+='<option value="" selected>(Kendi kümesi)</option>';
@@ -6729,6 +6808,7 @@ X_EDITOR_JS = r'''
       }
       h.push('</div>');
       if(b.son) h.push('<hr class="ed-line">');
+      h.push(_ez(b.item.uid||''));   // bu karttan sonra ekleme zonu
     }
     h.push('</div>');
     root.innerHTML=h.join('');
@@ -6753,6 +6833,21 @@ X_EDITOR_JS = r'''
     });
     root.querySelectorAll('.ed-kume').forEach(function(el){
       el.addEventListener('change', function(){ XE._kumeTasi(+el.getAttribute('data-i'), el.value); });
+    });
+    root.querySelectorAll('.ed-ekle-t').forEach(function(el){
+      el.addEventListener('click', function(){ var after=el.getAttribute('data-after'), tur=el.getAttribute('data-t');
+        if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._blokEkle(after,'gorsel',{b64:b64,mime:mime}); }); }
+        else { XE._blokEkle(after, tur); } });
+    });
+    // #2: manuel blok küme-sürükleme -> ekleme zonuna bırakınca o konuma taşınır.
+    root.querySelectorAll('.ed-kltut').forEach(function(el){
+      el.addEventListener('dragstart', function(e){ _clDrag=el.getAttribute('data-uid'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','x'); }catch(_){} });
+      el.addEventListener('dragend', function(){ _clDrag=null; root.querySelectorAll('.ed-ekle-zon.ed-drop').forEach(function(x){ x.classList.remove('ed-drop'); }); });
+    });
+    root.querySelectorAll('.ed-ekle-zon').forEach(function(z){
+      z.addEventListener('dragover', function(e){ if(_clDrag==null) return; e.preventDefault(); z.classList.add('ed-drop'); });
+      z.addEventListener('dragleave', function(){ z.classList.remove('ed-drop'); });
+      z.addEventListener('drop', function(e){ if(_clDrag==null) return; e.preventDefault(); var u=_clDrag; _clDrag=null; XE._manuelTasi(u, z.getAttribute('data-after')); });
     });
     root.querySelectorAll('.ed-del').forEach(function(el){ el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); }); });
 
@@ -6779,7 +6874,12 @@ X_EDITOR_JS = r'''
 
   XE._sil = async function(i){
     var B=XE.belge.birimler||[]; if(i<0||i>=B.length) return;
-    var it=B[i].item, idx=(it && it.index);
+    var it=B[i].item;
+    if(it && it.manual){   // #2: manuel blok -> __xManualClusters'tan çıkar
+      var mc=manuelStore(); for(var m=0;m<mc.length;m++){ if(mc[m].item.uid===it.uid){ mc.splice(m,1); break; } }
+      XE._yenidenPlanla(); return;
+    }
+    var idx=(it && it.index);
     if(idx!=null){
       // Havuz tabanlı öğe: SUNUCUDAN da sil (yoksa Kaydet/Önizle havuzu okuyunca öğe GERİ GELİR).
       try{ await fetch('/api/manual/delete/'+idx, { method:'POST' }); }catch(e){}
@@ -6800,13 +6900,16 @@ X_EDITOR_JS = r'''
     var card=root.querySelector('.ed-card[data-i="'+hedef+'"]'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
   };
 
-  XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(Boolean); };
+  // toItems: YALNIZ havuz öğeleri (manuel bloklar hariç -> onlar __birimler ile docx'e gider, gruplamaya girmez).
+  XE.toItems = function(){ return (XE.belge.birimler||[]).map(function(b){ return b.item; }).filter(function(it){ return it && !it.manual; }); };
   XE.toStyleOpts = function(){ return stilOku(); };
+  // #2: docx üretiminde editörün GÖRÜNÜMÜNÜ birebir kullan (manuel bloklar + taşımalar dahil).
+  XE.docxOpts = function(){ return Object.assign({}, XE.toStyleOpts(), { __birimler: (XE.belge.birimler||[]) }); };
 
   XE.indir = async function(){
     try {
       if(!window.XLocalDocx) throw new Error('x-local-docx.js yüklü değil');
-      var blob=await window.XLocalDocx.generateBlob(XE.toStyleOpts(), XE.toItems());
+      var blob=await window.XLocalDocx.generateBlob(XE.docxOpts(), XE.toItems());
       var ad=(typeof window.xIndirmeDosyaAdi==='function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx';
       var url=URL.createObjectURL(blob); var a=document.createElement('a');
       a.href=url; a.download=ad; document.body.appendChild(a); a.click(); a.remove();
