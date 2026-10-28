@@ -6939,6 +6939,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-tgl-u span{text-decoration:underline;}
 #editorModal .ed-tgl:hover{background:#d9e2ec;}
 #editorModal .ed-tgl:has(input:checked){background:#1565c0;color:#fff;box-shadow:0 1px 2px rgba(21,101,192,0.4);}
+/* İkon+METİN toggle (Link üstte / Başlıksız): numaralandırma gibi aç/kapa buton ama metinli. */
+#editorModal .ed-tgl-metinli{width:auto;padding:0 11px;gap:6px;border:1px solid #d7dde3;background:#f6f8fa;}
+#editorModal .ed-tgl-metinli span{font-size:11px;font-weight:600;line-height:1;}
+#editorModal .ed-tgl-metinli:hover:not(:has(input:checked)){background:#eef5ff;}
+#editorModal .ed-tgl-metinli:has(input:checked){background:#1565c0;border-color:#1565c0;color:#fff;}
 #editorModal .ed-chk{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;padding:5px 8px;border:1px solid #d7dde3;border-radius:7px;background:#fff;cursor:pointer;}
 #editorModal .ed-chk:has(input:checked){background:#eef5ff;border-color:#9ec5f0;color:#1565c0;}
 #editorModal .ed-chk input{cursor:pointer;}
@@ -6954,7 +6959,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 70px 8px 0;min-width:120px;}
+#editorModal .ed-h2-sar{padding-right:76px;}   /* "✕ Sil" butonuna yer bırak; hizalama bu sarmalayıcıda */
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;max-width:100%;}
 #editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
@@ -7212,9 +7218,10 @@ X_EDITOR_JS = r'''
     h+='</span>';
     if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
-    if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
-    // "Link üstte" GLOBAL toggle (numaralandırma gibi ikon-buton; tik değil). Açık: link görselin ÜSTÜNDE.
-    h+='<label class="ed-tgl ed-tgl-linkust" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg></label>';
+    // "Başlıksız" ikon+metin toggle (tik değil; Link üstte ile aynı stil). Açık: grup başlığı Word'e basılmaz.
+    if(ids.basliksiz) h+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
+    // "Link üstte" GLOBAL toggle (ikon+metin; tik değil). Açık: link görselin ÜSTÜNDE.
+    h+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
@@ -7597,7 +7604,9 @@ X_EDITOR_JS = r'''
           h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi başka bir bölüm altına taşı">'+_kopt+'</select>');
         }
       }
-      if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
+      // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ (kutu içerik-genişliğinde solda).
+      // Blok SARMALAYICIYA hizalamayı koy -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu).
+      if(b.h2!=null){ var _h2a=({left:'left',center:'center',right:'right',both:'left'}[o.b_align]||'left'); h.push('<div class="ed-h2-sar" style="text-align:'+_h2a+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div></div>'); }
       var pc=(b.item&&b.item.parcalar)||[];
       var _gm=edGorselHarita(b.item);   // [ÇOKLU GÖRSEL] parça-indeksi -> {b64,mime}
       h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
