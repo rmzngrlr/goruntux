@@ -6951,7 +6951,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-hb{display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border:none;background:transparent;color:#3a4654;border-radius:6px;cursor:pointer;padding:0;transition:background .1s;}
 #editorModal .ed-hb:hover{background:#d9e2ec;}
 #editorModal .ed-hb.aktif{background:#1565c0;color:#fff;box-shadow:0 1px 2px rgba(21,101,192,0.4);}
-#editorModal .ed-tgl-num svg,#editorModal .ed-hb svg{display:block;}
+#editorModal .ed-tgl-num svg,#editorModal .ed-hb svg,#editorModal .ed-tut svg,#editorModal .ed-kume-kalem svg{display:block;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
 #editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;cursor:pointer;border-radius:5px;transition:background .1s;}
 #editorModal .ed-plat:hover{background:rgba(21,101,192,0.06);}
@@ -7042,7 +7042,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pz>.ed-pz-wrap{width:26px;justify-content:center;}   /* "+" sabit 26px sol sütun -> ⠿ ile aynı merkez (hizalı) */
 /* [titreme önleme] display yerine OPACITY: işaret HEP yerinde durur (yerleşim kaymaz) -> mouse gezince
    titremez. Varsayılan çok saydam; bölge üstüne gelince hafif, butonun üstüne gelince tam opak. Küçültüldü. */
-#editorModal .ed-pz-art{display:inline-flex;width:16px;height:16px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:12px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
+#editorModal .ed-pz-art{display:inline-flex;width:15px;height:15px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:11px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
 #editorModal .ed-pz:hover .ed-pz-art{opacity:.5;}
 #editorModal .ed-pz:hover .ed-pz-art:hover,#editorModal .ed-pz-wrap.acik .ed-pz-art{opacity:1;}
 #editorModal .ed-pz-wrap.acik .ed-pz-art{background:#1565c0;color:#fff;}
@@ -7616,7 +7616,7 @@ X_EDITOR_JS = r'''
       if(b.h1) h.push('<div class="ed-plat" style="'+c1+'" title="Platform Adı stilini düzenlemek için tıkla">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
-      if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı">&#x283F; taşı</div>');
+      if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" style="vertical-align:-2px"><circle cx="6" cy="4" r="1.35"/><circle cx="10" cy="4" r="1.35"/><circle cx="6" cy="8" r="1.35"/><circle cx="10" cy="8" r="1.35"/><circle cx="6" cy="12" r="1.35"/><circle cx="10" cy="12" r="1.35"/></svg> taşı</div>');
       // C (istediğin bölüme taşı): taşıma menüsü HER kartta (hover'da çıkar) — hedefte TÜM diğer
       // bölümler (kümeler + tek-başına öğeler) okunur adlarıyla. YALNIZ eski (link='') manuel bloklar
       // hariç (onlar ⠿ ile sürüklenir). Birleşik xmanual:// öğeler gerçek havuz öğesi -> menüde yer alır.
@@ -7647,7 +7647,7 @@ X_EDITOR_JS = r'''
       h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
       for(k=0;k<pc.length;k++){ var p=pc[k];
         h.push('<div class="ed-parca" data-i="'+i+'" data-p="'+k+'">');
-        h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı">&#x283F;</div>');
+        h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><circle cx="6" cy="4" r="1.35"/><circle cx="10" cy="4" r="1.35"/><circle cx="6" cy="8" r="1.35"/><circle cx="10" cy="8" r="1.35"/><circle cx="6" cy="12" r="1.35"/><circle cx="10" cy="12" r="1.35"/></svg></div>');
         h.push('<div class="ed-parca-ic">');
         if(p.tur==='gorsel'){ var _g=_gm[k];
           h.push((_g && _g.b64)
