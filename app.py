@@ -3105,7 +3105,8 @@ HTML_TEMPLATE = """
                     if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
                     if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
                     if (_oe.grup != null) { items[oi].group_override = _oe.grup; }
-                    if (_oe.h2grup != null) { items[oi].h2_grup = _oe.h2grup; }
+                    if (_oe.h1ov) { items[oi].h1_ov = _oe.h1ov; }
+                    if (_oe.h2ov) { items[oi].h2_ov = _oe.h2ov; }
                 }
             }
             var _wopts = xBuildStyleOpts();
@@ -3127,7 +3128,8 @@ HTML_TEMPLATE = """
                 if (it.h2_override != null) { o.h2_override = it.h2_override; }
                 if (it.is_profile) { o.is_profile = true; }
                 if (it.group_override) { o.group_override = it.group_override; }
-                if (it.h2_grup != null) { o.h2_grup = it.h2_grup; }
+                if (it.h1_ov) { o.h1_ov = it.h1_ov; }
+                if (it.h2_ov) { o.h2_ov = it.h2_ov; }
                 return o;
             });
             return { blob: blob, filename: filename, snapItems: _snapItems, images: images };
@@ -3339,7 +3341,7 @@ HTML_TEMPLATE = """
                 var _ov2 = { byLink: {}, style: rec.editorStyle || null };
                 for (var pi = 0; pi < rec.items.length; pi++) {
                     var _it2 = rec.items[pi];
-                    if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null || _it2.h2_grup != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null), h2grup: (_it2.h2_grup != null ? _it2.h2_grup : null) }; }
+                    if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null || _it2.h1_ov || _it2.h2_ov)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null), h1ov: (_it2.h1_ov || null), h2ov: (_it2.h2_ov || null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
                 window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
@@ -3402,7 +3404,7 @@ HTML_TEMPLATE = """
                             }
                             // Faz 5/6: bu öğenin parçaları/başlık-override'ı varsa overlay'e taşı (dedup'ta başta eklenen korunur).
                             var _mk = xOvKey(lk);
-                            if ((it.parcalar || it.h2_override != null || it.group_override != null || it.h2_grup != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null), h2grup: (it.h2_grup != null ? it.h2_grup : null) }; }
+                            if ((it.parcalar || it.h2_override != null || it.group_override != null || it.h1_ov || it.h2_ov) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null), h1ov: (it.h1_ov || null), h2ov: (it.h2_ov || null) }; }
                             if (!_ovM.style && rec.editorStyle) { _ovM.style = rec.editorStyle; }
                         } else if (resp && resp.status === 'duplicate') {
                             atlanan++;
@@ -5638,10 +5640,12 @@ LOCAL_DOCX_JS = r'''
     return out;
   }
 
-  // [BAŞLIK TÜRÜ] Bir içerik başlığı (h2) tekil olarak "Platform Adı" (b1) üslubuyla da basılabilir.
-  // item.h2_grup==='b1' -> heading1Xml (b1 font/renk/boyut/hiza + b1 Word başlık düzeyi). Varsayılan 'b'.
-  // Bayrak x_h2_grup='0' -> özellik tümden kapalı (başlık DAİMA b=İçerik Başlığı; eski davranış birebir).
-  function h2GrupAcik(){ try{ return localStorage.getItem('x_h2_grup')!=='0'; }catch(e){ return true; } }
+  // [BAŞLIK OVERRIDE] Her başlık (platform h1 / içerik h2) tekil olarak biçimlenebilir: item.h1_ov / item.h2_ov
+  // = yalnız override edilen özellikleri taşıyan nesne {font,size,color,bold,italic,underline,align,word}.
+  // Efektif biçim = rol varsayılanı (b1/b global stil) ÜZERİNE override. Bayrak x_h_ov='0' -> override YOK
+  // (başlık DAİMA rol varsayılanı; eski davranış birebir).
+  function hOvAcik(){ try{ return localStorage.getItem('x_h_ov')!=='0'; }catch(e){ return true; } }
+  var WORD_GECERLI={Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1};
 
   async function generateBlob(opts, providedItems){
     var items;
@@ -5794,28 +5798,38 @@ LOCAL_DOCX_JS = r'''
       return '<w:jc w:val="'+a+'"/>';
     }
 
-    function headingXml(text){
-      var rPr='<w:rFonts w:ascii="'+xmlEsc(opts.b_font)+'" w:hAnsi="'+xmlEsc(opts.b_font)+'"/>';
-      if(opts.b_bold) rPr+='<w:b/>';
-      if(opts.b_italic) rPr+='<w:i/>';
-      if(opts.b_underline) rPr+='<w:u w:val="single"/>';
-      rPr+='<w:color w:val="'+bColor+'"/><w:sz w:val="'+bSz+'"/><w:szCs w:val="'+bSz+'"/>';
-      // keepNext: baslik kendisinden sonraki paragrafla (gorsel) AYNI sayfada kalir.
-      // Sabit sayfa sonu kaldirildigi icin (2026-07-17) sayfa sinirini artik Word
-      // belirliyor; baslik sayfa dibinde yalniz kalmasin diye bagliyoruz.
-      // #1: Word başlık türü (İçerik Başlığı) kullanıcı seçimine göre (Normal/Heading1..4).
-      var _bSt = ({Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1}[opts.b_wordstyle]) ? opts.b_wordstyle : 'Heading2';
-      return '<w:p><w:pPr><w:pStyle w:val="'+_bSt+'"/><w:keepNext/><w:keepLines/>'+jc(opts.b_align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+    // [BAŞLIK OVERRIDE] rol varsayılanı (b/b1) ÜZERİNE başlık-başına override (ov) birleştir. ov yoksa/bayrak
+    // kapalıysa eski çıktı BİREBİR (rol global stili). ov alanları: font,size(pt),color(#hex),bold,italic,
+    // underline,align,word(Heading1..4/Normal). keepNext: başlık sonraki paragrafla aynı sayfada kalır.
+    function headingXml(text, ov){
+      ov = (hOvAcik() && ov) ? ov : {};
+      var font=ov.font||opts.b_font;
+      var color=(ov.color?String(ov.color).replace('#',''):bColor);
+      var sz=(ov.size!=null?(parseInt(ov.size,10)||14)*2:bSz);
+      var bold=(ov.bold!=null?ov.bold:opts.b_bold), ital=(ov.italic!=null?ov.italic:opts.b_italic), und=(ov.underline!=null?ov.underline:opts.b_underline);
+      var align=ov.align||opts.b_align;
+      var word=WORD_GECERLI[ov.word]?ov.word:(WORD_GECERLI[opts.b_wordstyle]?opts.b_wordstyle:'Heading2');
+      var rPr='<w:rFonts w:ascii="'+xmlEsc(font)+'" w:hAnsi="'+xmlEsc(font)+'"/>';
+      if(bold) rPr+='<w:b/>';
+      if(ital) rPr+='<w:i/>';
+      if(und) rPr+='<w:u w:val="single"/>';
+      rPr+='<w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>';
+      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/><w:keepNext/><w:keepLines/>'+jc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
-    function heading1Xml(text){
-      var rPr='<w:rFonts w:ascii="'+xmlEsc(b1Font)+'" w:hAnsi="'+xmlEsc(b1Font)+'"/>';
-      if(opts.b1_bold) rPr+='<w:b/>';
-      if(opts.b1_italic) rPr+='<w:i/>';
-      if(opts.b1_underline) rPr+='<w:u w:val="single"/>';
-      rPr+='<w:color w:val="'+b1Color+'"/><w:sz w:val="'+b1Sz+'"/><w:szCs w:val="'+b1Sz+'"/>';
-      // #1: Word başlık türü (Platform Adı) kullanıcı seçimine göre.
-      var _b1St = ({Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1}[opts.b1_wordstyle]) ? opts.b1_wordstyle : 'Heading1';
-      return '<w:p><w:pPr><w:pStyle w:val="'+_b1St+'"/>'+jc(opts.b1_align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+    function heading1Xml(text, ov){
+      ov = (hOvAcik() && ov) ? ov : {};
+      var font=ov.font||b1Font;
+      var color=(ov.color?String(ov.color).replace('#',''):b1Color);
+      var sz=(ov.size!=null?(parseInt(ov.size,10)||18)*2:b1Sz);
+      var bold=(ov.bold!=null?ov.bold:opts.b1_bold), ital=(ov.italic!=null?ov.italic:opts.b1_italic), und=(ov.underline!=null?ov.underline:opts.b1_underline);
+      var align=ov.align||opts.b1_align;
+      var word=WORD_GECERLI[ov.word]?ov.word:(WORD_GECERLI[opts.b1_wordstyle]?opts.b1_wordstyle:'Heading1');
+      var rPr='<w:rFonts w:ascii="'+xmlEsc(font)+'" w:hAnsi="'+xmlEsc(font)+'"/>';
+      if(bold) rPr+='<w:b/>';
+      if(ital) rPr+='<w:i/>';
+      if(und) rPr+='<w:u w:val="single"/>';
+      rPr+='<w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>';
+      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/>'+jc(align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
@@ -5863,29 +5877,40 @@ LOCAL_DOCX_JS = r'''
     // Faz 2: Eklenen serbest metin paragrafi (görselin altına/üstüne). m_ stili + hizalama.
     // keepNext: metin kendinden onceki gorsele/baslaga bagli kalir. xmlEsc ZORUNLU.
     // Zengin metin: editör metin bloğu HTML (b/i/u/br) tutabilir -> satır-içi biçimli PARÇALARA ayır.
-    // Düz metin (eski) -> tek parça. Her parçada temel m-stil + satır-içi (seçime özel) B/I/U birleşir.
+    // Düz metin (eski) -> tek parça. Her parçada temel m-stil + satır-içi (seçime özel) biçim birleşir.
+    // [FAZ B] Satır-içi <span style>'tan font-family/color/font-size de toplanır (iç içe span'de iç olan kazanır).
+    function _hex6(c){ c=String(c==null?'':c).trim(); var m;
+      if(/^#[0-9a-f]{6}$/i.test(c)) return c.slice(1).toLowerCase();
+      if(/^#[0-9a-f]{3}$/i.test(c)){ return (c[1]+c[1]+c[2]+c[2]+c[3]+c[3]).toLowerCase(); }
+      if((m=c.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i))){ function h(n){ n=Math.max(0,Math.min(255,parseInt(n,10)||0)).toString(16); return n.length<2?'0'+n:n; } return (h(m[1])+h(m[2])+h(m[3])).toLowerCase(); }
+      return null;
+    }
+    function _font1(f){ f=String(f==null?'':f).split(',')[0].trim().replace(/^['"]|['"]$/g,'').trim(); return f||null; }
     function textRuns(html){
       var runs=[];
       try{
         var box=document.createElement('div'); box.innerHTML=String(html==null?'':html);
         (function walk(node, fmt){
           for(var c=node.firstChild;c;c=c.nextSibling){
-            if(c.nodeType===3){ var t=c.nodeValue; if(t) runs.push({text:t,b:fmt.b,i:fmt.i,u:fmt.u}); }
+            if(c.nodeType===3){ var t=c.nodeValue; if(t) runs.push({text:t,b:fmt.b,i:fmt.i,u:fmt.u,f:fmt.f,c:fmt.c,sz:fmt.sz}); }
             else if(c.nodeType===1){
               var tag=c.tagName.toLowerCase();
               if(tag==='br'){ runs.push({br:true}); continue; }
-              var nf={b:fmt.b,i:fmt.i,u:fmt.u};
+              var nf={b:fmt.b,i:fmt.i,u:fmt.u,f:fmt.f,c:fmt.c,sz:fmt.sz};
               if(tag==='b'||tag==='strong') nf.b=true;
               if(tag==='i'||tag==='em') nf.i=true;
               if(tag==='u'||tag==='ins') nf.u=true;
-              var st=(c.getAttribute&&c.getAttribute('style'))||'';
+              var st=(c.getAttribute&&c.getAttribute('style'))||'', m;
               if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(st)) nf.b=true;
               if(/font-style\s*:\s*italic/i.test(st)) nf.i=true;
               if(/text-decoration[^;"']*underline/i.test(st)) nf.u=true;
+              if((m=st.match(/font-family\s*:\s*([^;]+)/i))){ var f1=_font1(m[1]); if(f1) nf.f=f1; }
+              if((m=st.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i))){ var c1=_hex6(m[1]); if(c1) nf.c=c1; }
+              if((m=st.match(/font-size\s*:\s*([\d.]+)pt/i))){ var z=parseFloat(m[1]); if(z) nf.sz=Math.round(z*2); }
               walk(c, nf);
             }
           }
-        })(box, {b:false,i:false,u:false});
+        })(box, {b:false,i:false,u:false,f:null,c:null,sz:null});
       }catch(e){ runs=[{text:String(html==null?'':html),b:false,i:false,u:false}]; }
       if(!runs.length) runs=[{text:'',b:false,i:false,u:false}];
       return runs;
@@ -5895,11 +5920,12 @@ LOCAL_DOCX_JS = r'''
       for(var r=0;r<runs.length;r++){ var run=runs[r];
         if(run.br){ body+='<w:r><w:br/></w:r>'; continue; }
         if(run.text==null || run.text==='') continue;
-        var rPr='<w:rFonts w:ascii="'+xmlEsc(mFont)+'" w:hAnsi="'+xmlEsc(mFont)+'"/>';
+        var rF=run.f||mFont, rC=run.c||mColor, rSz=run.sz||mSz;
+        var rPr='<w:rFonts w:ascii="'+xmlEsc(rF)+'" w:hAnsi="'+xmlEsc(rF)+'"/>';
         if(opts.m_bold || run.b) rPr+='<w:b/>';
         if(opts.m_italic || run.i) rPr+='<w:i/>';
         if(opts.m_underline || run.u) rPr+='<w:u w:val="single"/>';
-        rPr+='<w:color w:val="'+mColor+'"/><w:sz w:val="'+mSz+'"/><w:szCs w:val="'+mSz+'"/>';
+        rPr+='<w:color w:val="'+rC+'"/><w:sz w:val="'+rSz+'"/><w:szCs w:val="'+rSz+'"/>';
         body+='<w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(run.text)+'</w:t></w:r>';
       }
       if(!body) body='<w:r><w:rPr><w:rFonts w:ascii="'+xmlEsc(mFont)+'" w:hAnsi="'+xmlEsc(mFont)+'"/><w:color w:val="'+mColor+'"/><w:sz w:val="'+mSz+'"/><w:szCs w:val="'+mSz+'"/></w:rPr><w:t xml:space="preserve"></w:t></w:r>';
@@ -5988,7 +6014,7 @@ LOCAL_DOCX_JS = r'''
     function birimPay(b){
       var p=0;
       if(b.h1) p += 240/1440 + metinY(b.h1, b1Pt, METIN_W, 120);  // Baslik1: before 240
-      if(b.h2) p += metinY(b.h2, ((h2GrupAcik() && b.h2grup==='b1')?b1Pt:bPt), METIN_W, 120);   // Baslik2 (b1 üsluplu ise b1Pt)
+      if(b.h2){ var _h2pt=bPt; if(hOvAcik() && b.h2ov && b.h2ov.size!=null){ _h2pt=parseInt(b.h2ov.size,10)||bPt; } p += metinY(b.h2, _h2pt, METIN_W, 120); }   // Baslik2 (override boyutu varsa onunla)
       // Faz 2/4b KRITIK: eklenen metinlerin dikey maliyeti. KATILMAZSA sayfa tasar ve Word KENDI
       // sayfa sonunu atar (tarihsel bug). Sira onemsiz (toplam ayni) -> parcalar VEYA metin_bloklari.
       var _mt=[], _k;
@@ -6074,7 +6100,7 @@ LOCAL_DOCX_JS = r'''
           // h2 YALNIZCA grubun ILK gonderisinde. _suppress ise boş '' (null DEĞİL) -> alan durur, Word'e basılmaz.
           var _h2 = opts.b_basliksiz ? null : (k===0 ? (_suppress ? '' : baslikFormatla(baslik)) : null);
           birimler.push({ h1:(k===0?h1:null), h2:_h2,
-                          h2grup:((h2GrupAcik() && ordered[0] && ordered[0].h2_grup==='b1')?'b1':'b'),   // [BAŞLIK TÜRÜ] küme başlığı (ordered[0]) tekil üslup seçimi
+                          h1ov:((k===0 && ordered[0])?(ordered[0].h1_ov||null):null), h2ov:((ordered[0])?(ordered[0].h2_ov||null):null),   // [BAŞLIK OVERRIDE] platform/içerik başlığı tekil biçim (ordered[0] taşır)
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1),
                           grup:val, grupBaslik:baslik });   // #2: küme anahtarı + başlığı (öğeyi farklı kümeye taşıma UI'si için)
         }
@@ -6089,7 +6115,7 @@ LOCAL_DOCX_JS = r'''
         // bos kalirsa docx'te baslik BASILMAZ (if(u.h2)). Overlay geri-yukleme de b.h2!=null ister.
         var _man2 = xIsManualLink(item2.link);
         birimler.push({ h1:h1, h2:(opts.b_basliksiz?null:(b2?baslikFormatla(b2):(_man2?'':null))),
-                        h2grup:((h2GrupAcik() && item2.h2_grup==='b1')?'b1':'b'),   // [BAŞLIK TÜRÜ] standalone başlık tekil üslup seçimi
+                        h1ov:(item2.h1_ov||null), h2ov:(item2.h2_ov||null),   // [BAŞLIK OVERRIDE] standalone başlık tekil biçim
                         item:item2, link:xRaporLinkGoster(item2), son:true,
                         grup:null, grupBaslik:b2 });   // standalone = kendi kümesi (grup anahtarı yok)
       }
@@ -6218,8 +6244,8 @@ LOCAL_DOCX_JS = r'''
     for(si=0; si<sayfalar.length; si++){
       for(bj=0; bj<sayfalar[si].length; bj++){
         var u=sayfalar[si][bj];
-        if(u.h1) body.push(heading1Xml(u.h1));
-        if(u.h2) body.push((h2GrupAcik() && u.h2grup==='b1') ? heading1Xml(u.h2) : headingXml(u.h2));   // [BAŞLIK TÜRÜ] tekil "Platform Adı" üslubu
+        if(u.h1) body.push(heading1Xml(u.h1, u.h1ov));   // platform başlığı (b1) + tekil override
+        if(u.h2) body.push(headingXml(u.h2, u.h2ov));   // içerik başlığı (b) + tekil override
         // Faz 4b: SIRALANABILIR PARÇALAR. item.parcalar varsa kullanıcının düzenlediği serbest
         // sıra (gorsel/metin/link). Yoksa ESKI yol (metin_bloklari konum alt/ust) -> cikti birebir.
         var _pc=(u.item && u.item.parcalar) ? u.item.parcalar : null;
@@ -6783,29 +6809,47 @@ X_EDITOR_JS = r'''
   }
 
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  // Zengin metin: yalnız b/strong/i/em/u/br korunur (seçime özel biçim). Diğer etiketler açılır (içerik kalır).
+  // [FAZ B] Satır-içi biçimde izin verilen span stil özellikleri: font-family, color, font-size.
+  // Diğer tüm stil/öznitelik atılır. px -> pt'ye çevrilir (docx pt bazlı).
+  function _temizStil(st){
+    st=String(st||''); var out='', m;
+    if((m=st.match(/font-family\s*:\s*([^;]+)/i))){ var f=m[1].split(',')[0].replace(/['"]/g,'').trim(); if(f) out+="font-family:'"+f+"',sans-serif;"; }
+    if((m=st.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i))){ var c=m[1].trim(); if(c) out+='color:'+c+';'; }
+    if((m=st.match(/font-size\s*:\s*([\d.]+)(pt|px)/i))){ var num=parseFloat(m[1]); var pt=(m[2].toLowerCase()==='px')?Math.round(num/1.3333):num; if(pt) out+='font-size:'+pt+'pt;'; }
+    return out;
+  }
+  // Zengin metin: b/strong/i/em/u/br + font/renk/boyut taşıyan span'ler korunur (seçime özel biçim).
+  // Diğer etiketler açılır (içerik kalır); stil-tabanlı kalın/eğik/altçizgi b/i/u'ya sarılır.
   function sanitizeMetin(html){
     try{ var d=document.createElement('div'); d.innerHTML=String(html==null?'':html);
       (function walk(n){ var kids=Array.prototype.slice.call(n.childNodes);
         kids.forEach(function(c){
           if(c.nodeType===1){ var tag=c.tagName.toLowerCase();
-            // stil-tabanlı kalın/eğik/altçizgi span'leri b/i/u'ya çevir (kaybolmasın)
             var st=(c.getAttribute&&c.getAttribute('style'))||'';
-            if(['b','strong','i','em','u','br'].indexOf(tag)===-1){
-              var wrap=null;
-              if(/font-weight\s*:\s*(bold|[6-9]00)/i.test(st)) wrap='b';
-              else if(/font-style\s*:\s*italic/i.test(st)) wrap='i';
-              else if(/text-decoration[^;"']*underline/i.test(st)) wrap='u';
-              if(wrap){ var w=document.createElement(wrap); while(c.firstChild) w.appendChild(c.firstChild); n.replaceChild(w,c); walk(w); }
-              else { while(c.firstChild) n.insertBefore(c.firstChild,c); n.removeChild(c); }
-            } else { while(c.attributes && c.attributes.length) c.removeAttribute(c.attributes[0].name); if(tag!=='br') walk(c); }
+            if(['b','strong','i','em','u','br'].indexOf(tag)!==-1){
+              while(c.attributes && c.attributes.length) c.removeAttribute(c.attributes[0].name); if(tag!=='br') walk(c);
+            } else {
+              var isB=/font-weight\s*:\s*(bold|[6-9]00)/i.test(st), isI=/font-style\s*:\s*italic/i.test(st), isU=/text-decoration[^;"']*underline/i.test(st);
+              var clean=_temizStil(st);
+              if(clean){
+                var span=document.createElement('span'); span.setAttribute('style', clean);
+                while(c.firstChild) span.appendChild(c.firstChild);
+                var top=span;
+                if(isU){ var wu=document.createElement('u'); wu.appendChild(top); top=wu; }
+                if(isI){ var wi=document.createElement('i'); wi.appendChild(top); top=wi; }
+                if(isB){ var wb=document.createElement('b'); wb.appendChild(top); top=wb; }
+                n.replaceChild(top,c); walk(span);
+              } else if(isB||isI||isU){
+                var wrap=isB?'b':(isI?'i':'u'); var w=document.createElement(wrap); while(c.firstChild) w.appendChild(c.firstChild); n.replaceChild(w,c); walk(w);
+              } else { while(c.firstChild) n.insertBefore(c.firstChild,c); n.removeChild(c); }
+            }
           } else if(c.nodeType!==3){ n.removeChild(c); }
         });
       })(d);
       return d.innerHTML;
     }catch(e){ return esc(String(html==null?'':html)); }
   }
-  function renderMetin(m){ m=String(m==null?'':m); return /<(b|strong|i|em|u|br)[ >\/]/i.test(m) ? m : esc(m); }
+  function renderMetin(m){ m=String(m==null?'':m); return /<(b|strong|i|em|u|br|span)[ >\/]/i.test(m) ? m : esc(m); }
   // B (havuz birlesmesi): editor-manuel bolum sentetik anahtari (xmanual://<uid>) -> HEM havuz
   // kimligi HEM overlay HEM yerel gorsel anahtari (tek anahtar; gorsel/parca desenkron imkansiz).
   function edManual(lk){ return !!lk && String(lk).toLowerCase().indexOf('xmanual://')===0; }
@@ -7067,9 +7111,21 @@ X_EDITOR_JS = r'''
 #editorModal .ed-card-man{border-style:dashed;}
 #editorModal .ed-kltut{display:inline-block;margin:0 0 8px;font-size:11px;font-weight:600;color:#1565c0;background:#eef5ff;border:1px solid #c0c7cf;border-radius:12px;padding:3px 9px;cursor:grab;user-select:none;}
 #editorModal .ed-kltut:active{cursor:grabbing;}
-#ed-bicim-arac{position:fixed;display:none;gap:2px;z-index:3000;background:#1f2b38;border-radius:8px;padding:3px;box-shadow:0 4px 16px rgba(0,0,0,0.3);}
-#ed-bicim-arac button{width:30px;height:28px;border:none;background:transparent;color:#fff;font-size:14px;border-radius:5px;cursor:pointer;line-height:1;}
-#ed-bicim-arac button:hover{background:rgba(255,255,255,0.18);}
+/* [SAĞ-TIK BİÇİM PANELİ] başlık (tüm başlık) + metin seçimi (satır-içi). */
+#ed-rt-panel{position:fixed;display:none;z-index:3200;min-width:230px;background:#fff;border:1px solid #cfd7df;border-radius:10px;padding:8px;box-shadow:0 8px 28px rgba(16,24,40,0.22);font-size:12px;color:#1f2b38;}
+#ed-rt-panel .rt-title{font-size:11px;font-weight:700;color:#1565c0;margin:0 2px 7px;padding-bottom:5px;border-bottom:1px solid #eef1f4;}
+#ed-rt-panel .rt-row{display:flex;align-items:center;gap:7px;margin:5px 2px;font-size:11px;color:#57606a;font-weight:600;}
+#ed-rt-panel label.rt-row,#ed-rt-panel .rt-row label{display:flex;align-items:center;gap:5px;}
+#ed-rt-panel select,#ed-rt-panel input[type=number]{font-size:12px;padding:3px 5px;border:1px solid #d0d7de;border-radius:6px;color:#15202b;background:#fff;height:28px;box-sizing:border-box;}
+#ed-rt-panel select{max-width:150px;}
+#ed-rt-panel input[type=color]{width:28px;height:28px;padding:0;border:1px solid #d0d7de;border-radius:6px;background:#fff;cursor:pointer;}
+#ed-rt-panel .rt-biu,#ed-rt-panel .rt-hiza{gap:3px;background:#eef1f4;border-radius:7px;padding:3px;display:inline-flex;}
+#ed-rt-panel .rt-tgl,#ed-rt-panel .rt-hb{width:30px;height:27px;border:none;background:transparent;color:#3a4654;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:14px;line-height:1;padding:0;}
+#ed-rt-panel .rt-tgl:hover,#ed-rt-panel .rt-hb:hover{background:#d9e2ec;}
+#ed-rt-panel .rt-tgl.aktif,#ed-rt-panel .rt-hb.aktif{background:#1565c0;color:#fff;}
+#ed-rt-panel .rt-tgl b{font-weight:800;} #ed-rt-panel .rt-tgl i{font-style:italic;font-family:Georgia,serif;} #ed-rt-panel .rt-tgl u{text-decoration:underline;}
+#ed-rt-panel .rt-reset{width:100%;border:1px solid #d7dde3;background:#f6f8fa;color:#3a4654;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:600;cursor:pointer;}
+#ed-rt-panel .rt-reset:hover{background:#fdecef;border-color:#f3b6c4;color:#c81e4f;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
@@ -7083,6 +7139,26 @@ X_EDITOR_JS = r'''
     css+="font-weight:"+(o[pre+'_bold']?'700':'400')+";";
     css+="font-style:"+(o[pre+'_italic']?'italic':'normal')+";";
     css+="text-decoration:"+(o[pre+'_underline']?'underline':'none')+";";
+    var jc={left:'left',center:'center',right:'right',both:'justify'}[al]||'left';
+    css+="text-align:"+jc+";";
+    return css;
+  }
+  // [BAŞLIK OVERRIDE] Bayrak x_h_ov='0' -> başlık-başına override kapalı (rol varsayılanı; eski davranış).
+  function hOvAcik(){ try{ return localStorage.getItem('x_h_ov')!=='0'; }catch(e){ return true; } }
+  // Rol varsayılan stili (b/b1 global) ÜZERİNE başlık-başına override (ov) birleşmiş CSS döndürür.
+  // ov alanları: font,size(pt),color(#hex),bold,italic,underline,align. Yoksa stilCss ile birebir aynı.
+  function stilCssOv(o, pre, ov){
+    if(!hOvAcik() || !ov) return stilCss(o, pre);
+    var f=(ov.font!=null?ov.font:o[pre+'_font'])||'', s=(ov.size!=null?ov.size:o[pre+'_size'])||'';
+    var c=(ov.color!=null?ov.color:o[pre+'_color'])||'', al=(ov.align!=null?ov.align:o[pre+'_align'])||'left';
+    var bold=(ov.bold!=null?ov.bold:o[pre+'_bold']), ital=(ov.italic!=null?ov.italic:o[pre+'_italic']), und=(ov.underline!=null?ov.underline:o[pre+'_underline']);
+    var css="";
+    if(f) css+="font-family:'"+f+"',sans-serif;";
+    if(s) css+="font-size:"+(parseInt(s,10)||12)+"pt;";
+    if(c) css+="color:"+c+";";
+    css+="font-weight:"+(bold?'700':'400')+";";
+    css+="font-style:"+(ital?'italic':'normal')+";";
+    css+="text-decoration:"+(und?'underline':'none')+";";
     var jc={left:'left',center:'center',right:'right',both:'justify'}[al]||'left';
     css+="text-align:"+jc+";";
     return css;
@@ -7106,9 +7182,6 @@ X_EDITOR_JS = r'''
   // efektif görseli. Parçanın kendi b64'ü yoksa YALNIZ ilk görsel parçası öğenin birincil image_b64'üne düşer.
   // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski tek-görsel). Dönen: {parçaIndeksi: {b64,mime}}.
   function cokluGorselAcik(){ try{ return localStorage.getItem('x_coklu_gorsel')!=='0'; }catch(e){ return true; } }
-  // [BAŞLIK TÜRÜ] Bir içerik başlığı (h2) tekil olarak "Platform Adı" (b1) üslubuyla da gösterilir/basılır.
-  // Bayrak x_h2_grup='0' -> özellik kapalı (başlık DAİMA İçerik Başlığı; x-local-docx ikiziyle aynı).
-  function h2GrupAcik(){ try{ return localStorage.getItem('x_h2_grup')!=='0'; }catch(e){ return true; } }
   function grupAd(key){ for(var _gi=0;_gi<GRUPLAR.length;_gi++){ if(GRUPLAR[_gi].key===key) return GRUPLAR[_gi].ad; } return ''; }
   function edGorselHarita(item){
     var map={}, usedPrimary=false, pc=(item&&item.parcalar)||[], k, coklu=cokluGorselAcik();
@@ -7145,7 +7218,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null), h2grup:(b.item.h2_grup!=null?String(b.item.h2_grup):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null), h1ov:(b.item.h1_ov?JSON.parse(JSON.stringify(b.item.h1_ov)):null), h2ov:(b.item.h2_ov?JSON.parse(JSON.stringify(b.item.h2_ov)):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
@@ -7167,7 +7240,7 @@ X_EDITOR_JS = r'''
     stilEnjekte();
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
-    _bicimAracKur();    // seçime özel B/I/U kayan araç çubuğu (bir kez)
+    _sagTikKur();       // SAĞ-TIK biçim paneli: başlık (tüm başlık) + metin seçimi (satır-içi) (bir kez)
     _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
@@ -7189,7 +7262,7 @@ X_EDITOR_JS = r'''
         // Başlık override YALNIZ başlık taşıyan birime (b.h2!=null) uygulanır -> ikincil gönderilere
         // sahte başlık basılmaz ve plandaki numara/sezgi değeri ham title ile EZİLMEZ (Faz 5 gerilemesi).
         var ov=ovStore().byLink[ovKey(b.item.link)];
-        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h2grup!=null){ b.item.h2_grup=ov.h2grup; b.h2grup=(ov.h2grup==='b1'?'b1':'b'); } }   // [9]: küme taşıma (group_override) + [BAŞLIK TÜRÜ] (h2grup) geri yükle -> tam yeniden-fetch'te taşımalar/üslup kaybolmaz
+        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h1ov){ b.item.h1_ov=ov.h1ov; b.h1ov=ov.h1ov; } if(ov.h2ov){ b.item.h2_ov=ov.h2ov; b.h2ov=ov.h2ov; } }   // [9]: küme taşıma (group_override) + [BAŞLIK OVERRIDE] (h1ov/h2ov) geri yükle
       });
       XE._manuelEkle();   // #2: manuel blokları (kümeler arası eklenen) konumlarına enjekte et
       // [1]: DIŞ MOD tespiti — hiçbir öğe .index taşımıyorsa (Word Düzenle providedItems) havuz-tabanlı
@@ -7242,18 +7315,38 @@ X_EDITOR_JS = r'''
     XE._aktifBaglam = ctx || null;
     XE._aktifGrup = key; XE._panelCiz(key);
   };
-  // [BAŞLIK TÜRÜ] Bir içerik başlığının türünü (b=İçerik Başlığı / b1=Platform Adı) tekil değiştir.
-  // Öğeye h2_grup yazar (overlay'e + plana akar), başlığı yeni üslupla yeniden çizer, şeridi yeni gruba geçirir.
-  XE._h2GrupSec = function(bi, grp){
+  // [BAŞLIK OVERRIDE] Bir başlığa (rol: 'h1'=platform / 'h2'=içerik) tekil biçim uygula. prop: font/size/
+  // color/bold/italic/underline/align/word. val boş -> o özelliğin override'ı kalkar; nesne boşalırsa override
+  // tümden silinir (rol varsayılanına döner). Canlı önizleme YERİNDE yapılır (full _ciz YOK -> popover kararlı).
+  XE._hOvSec = function(bi, rol, prop, val){
+    if(!hOvAcik()) return;   // bayrak kapalı -> override YAZMA (snapshot'a sızmasın; airtight geri alma)
     var b=XE.belge.birimler[bi]; if(!b||!b.item) return;
     XE._pushUndo();
-    var val=(grp==='b1')?'b1':'b';
-    b.item.h2_grup=val; b.h2grup=val;
-    XE._ovSet(bi);
-    XE._aktifGrup=val;
-    XE._ciz();                 // başlık yeni üslupla (c1/c2) hemen yansısın
-    XE._panelCiz(val);         // şerit yeni grubun kontrollerine + bağlam menüsü güncel
+    var ik=(rol==='h1')?'h1_ov':'h2_ov', bk=(rol==='h1')?'h1ov':'h2ov';
+    var ov=b.item[ik]?JSON.parse(JSON.stringify(b.item[ik])):{};
+    if(val==null || val===''){ delete ov[prop]; } else { ov[prop]=val; }
+    var bos=true,k; for(k in ov){ if(ov.hasOwnProperty(k)){ bos=false; break; } }
+    if(bos){ try{ delete b.item[ik]; }catch(e){ b.item[ik]=null; } b[bk]=null; } else { b.item[ik]=ov; b[bk]=ov; }
+    XE._ovSet(bi); XE._dirty=true;
+    _hBaslikStilYansit(bi, rol);   // başlık öğesinin stilini yerinde güncelle (word hariç görünür)
   };
+  // Bir başlığın TÜM override'ını temizle (rol varsayılanına dön).
+  XE._hOvSifirla = function(bi, rol){
+    if(!hOvAcik()) return;
+    var b=XE.belge.birimler[bi]; if(!b||!b.item) return;
+    XE._pushUndo();
+    try{ delete b.item[rol==='h1'?'h1_ov':'h2_ov']; }catch(e){ b.item[rol==='h1'?'h1_ov':'h2_ov']=null; }
+    b[rol==='h1'?'h1ov':'h2ov']=null;
+    XE._ovSet(bi); XE._dirty=true; _hBaslikStilYansit(bi, rol);
+  };
+  // Başlık öğesinin inline stilini efektif (rol varsayılanı + override) değere set et (canlı önizleme).
+  function _hBaslikStilYansit(bi, rol){
+    var b=XE.belge.birimler[bi]; if(!b) return; var o=stilOku();
+    var sel=(rol==='h1')?'.ed-plat[data-i="'+bi+'"]':'.ed-h2[data-i="'+bi+'"]';
+    var el=document.querySelector('#editor-root '+sel); if(!el) return;
+    el.setAttribute('style', stilCssOv(o, (rol==='h1'?'b1':'b'), (rol==='h1'?b.h1ov:b.h2ov)));
+    if(rol==='h2'){ var sar=el.closest('.ed-h2-sar'); if(sar){ var al=((b.h2ov&&b.h2ov.align)||o.b_align); sar.style.justifyContent=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[al]||'flex-start'); } }
+  }
   XE._panelCiz = function(key){
     var g=null,i; for(i=0;i<GRUPLAR.length;i++){ if(GRUPLAR[i].key===key){ g=GRUPLAR[i]; break; } }
     var panel=document.getElementById('ed-panel'); if(!g||!panel) return;
@@ -7262,16 +7355,11 @@ X_EDITOR_JS = r'''
     function nhex(c){ c=(c||'').trim(); return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; }
     var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
     var h='';
-    // [BAĞLAM] Font'un solunda "şu an hangi öğe düzenleniyor" göstergesi. Başlık düzenlenirken bu gösterge
-    // bir AÇILIR MENÜ olur -> başlığın türünü (Platform Adı / İçerik Başlığı) tekil olarak seçtirir.
+    // [BAĞLAM] Font'un solunda "şu an hangi öğe düzenleniyor" göstergesi (okunur etiket; tür seçtirmez).
+    // Tekil (o başlığa özel) biçim için başlığa SAĞ TIKLANIR -> _hOvPanel.
     var _ctx=XE._aktifBaglam||{};
-    if(h2GrupAcik() && _ctx.kind==='h2' && _ctx.bi!=null && XE.belge.birimler[_ctx.bi]){
-      var _cb=XE.belge.birimler[_ctx.bi]; var _cur=(_cb.h2grup==='b1')?'b1':'b';
-      h+='<label class="ed-ctx ed-ctx-sel" title="Bu başlığın türü: üslubu (font/boyut/renk/hiza) ve Word başlık düzeyini belirler"><span class="ed-ctx-ad">Başlık türü</span><select id="ed-ctx-grup" data-i="'+_ctx.bi+'"><option value="b"'+(_cur==='b'?' selected':'')+'>İçerik Başlığı</option><option value="b1"'+(_cur==='b1'?' selected':'')+'>Platform Adı</option></select></label>';
-    } else {
-      var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2'?'Başlık':grupAd(key));
-      h+='<span class="ed-ctx" title="Şu an düzenlenen öğenin ayarları">'+esc(_ctxAd)+'</span>';
-    }
+    var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2')?'İçerik Başlığı':grupAd(key);
+    h+='<span class="ed-ctx" title="Şu an düzenlenen öğenin genel ayarları. Tek bir başlığı ayrı biçimlemek için başlığa sağ tıkla.">'+esc(_ctxAd)+'</span>';
     h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
     h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(val(ids.size))+'" style="width:52px"></label>';
     h+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(val(ids.color))+'"></label>';
@@ -7309,8 +7397,6 @@ X_EDITOR_JS = r'''
     });
     // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
     var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
-    // [BAŞLIK TÜRÜ] bağlam açılır menüsü: başlığın türünü (b/b1) tekil değiştir.
-    var _cg=panel.querySelector('#ed-ctx-grup'); if(_cg) _cg.addEventListener('change', function(){ XE._h2GrupSec(+_cg.getAttribute('data-i'), _cg.value); });
   };
   XE._hizaSec = function(inputId, v){
     XE._pushUndo();
@@ -7602,29 +7688,155 @@ X_EDITOR_JS = r'''
     }
   };
 
-  // Word gibi SEÇİME özel biçim: metin seçince çıkan kayan B/I/U araç çubuğu (execCommand).
   function _metinKaydet(m){ try{ var bi=+m.getAttribute('data-i'), pk=+m.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(m.innerHTML); XE._ovSet(bi); } }catch(e){} }
   function _aktifMetin(){ var sel=window.getSelection(); if(!sel||!sel.anchorNode) return null; var el=sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentNode; return (el&&el.closest)?el.closest('.ed-metin'):null; }
-  function _bicimAracKur(){
-    if(document.getElementById('ed-bicim-arac')) return;
-    try{ document.execCommand('styleWithCSS', false, false); }catch(_){}   // kalın -> <b> (span değil)
-    var bar=document.createElement('div'); bar.id='ed-bicim-arac';
-    bar.innerHTML='<button type="button" data-c="bold" title="Kalın"><b>K</b></button><button type="button" data-c="italic" title="Eğik"><i>E</i></button><button type="button" data-c="underline" title="Altı çizili"><u>A</u></button>';
-    (document.body||document.documentElement).appendChild(bar);
-    bar.addEventListener('mousedown', function(e){ e.preventDefault(); });   // tıklarken seçim kaybolmasın
-    bar.addEventListener('click', function(e){ var btn=e.target.closest('button'); if(!btn) return; var m=_aktifMetin(); try{ document.execCommand(btn.getAttribute('data-c'), false, null); }catch(_){} if(m) _metinKaydet(m); });
-    document.addEventListener('selectionchange', _bicimAracGuncelle);
+
+  // ============== SAĞ-TIK BİÇİM PANELİ ==============
+  // Araç çubuğu = GENEL stil (üst şerit). SAĞ TIK = o anki seçime özel.
+  //  - Başlığa (içerik .ed-h2 / platform .ed-plat) sağ tık -> O BAŞLIĞIN tamamı için biçim (font/boyut/renk/
+  //    B-I-U/hiza/Word düzeyi) -> item.h1_ov/h2_ov (XE._hOvSec). Diğer başlıkları ETKİLEMEZ.
+  //  - Metinde (.ed-metin) bir kelime/cümle SEÇİP sağ tık -> yalnız o SEÇİME satır-içi biçim (font/renk/
+  //    boyut/B-I-U) -> <span style> / <b><i><u> (Faz B). textRuns/textXml bunu docx run'larına çevirir.
+  var _rtInfo=null;
+  var _inlineBusy=false;   // satır-içi biçim uygulanırken metin input handler'ı undo'yu çift işlemesin
+  function _rtEff(bi, rol, prop){
+    var b=XE.belge.birimler[bi], o=stilOku(), pre=(rol==='h1')?'b1':'b';
+    var ov=((rol==='h1')?(b&&b.h1ov):(b&&b.h2ov))||{};
+    if(prop==='font') return (ov.font!=null?ov.font:o[pre+'_font'])||'';
+    if(prop==='size') return (ov.size!=null?ov.size:o[pre+'_size'])||'';
+    if(prop==='color'){ var c=(ov.color!=null?ov.color:o[pre+'_color'])||'#000000'; return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; }
+    if(prop==='align') return (ov.align!=null?ov.align:o[pre+'_align'])||'left';
+    if(prop==='word') return (ov.word!=null?ov.word:o[pre+'_wordstyle'])||(rol==='h1'?'Heading1':'Heading2');
+    if(prop==='bold') return (ov.bold!=null?!!ov.bold:!!o[pre+'_bold']);
+    if(prop==='italic') return (ov.italic!=null?!!ov.italic:!!o[pre+'_italic']);
+    if(prop==='underline') return (ov.underline!=null?!!ov.underline:!!o[pre+'_underline']);
+    return '';
   }
-  function _bicimAracGuncelle(){
-    var bar=document.getElementById('ed-bicim-arac'); if(!bar) return;
-    var sel=window.getSelection();
-    if(!sel||sel.isCollapsed||sel.rangeCount===0||!_aktifMetin()){ bar.style.display='none'; return; }
-    var r=sel.getRangeAt(0).getBoundingClientRect(); if(!r||(r.width===0&&r.height===0)){ bar.style.display='none'; return; }
-    bar.style.display='flex';
-    var bw=bar.offsetWidth||120, bh=bar.offsetHeight||34;
-    var top=r.top-bh-6; if(top<4) top=r.bottom+6;
-    var left=r.left+r.width/2-bw/2; if(left<4) left=4; if(left+bw>window.innerWidth-4) left=window.innerWidth-bw-4;
-    bar.style.top=top+'px'; bar.style.left=left+'px';
+  function _hizaBtnlar(cur){
+    var defs=[['left','Sola',['M2 4h12','M2 8h8','M2 12h10']],['center','Ortaya',['M2 4h12','M4 8h8','M3 12h10']],['right','Sağa',['M2 4h12','M6 8h8','M4 12h10']],['both','İki yana',['M2 4h12','M2 8h12','M2 12h12']]];
+    var s=''; for(var i=0;i<defs.length;i++){ var d=defs[i], paths=''; for(var j=0;j<d[2].length;j++) paths+='<path d="'+d[2][j]+'"/>';
+      s+='<button type="button" class="rt-hb'+(cur===d[0]?' aktif':'')+'" data-v="'+d[0]+'" title="'+d[1]+'"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none">'+paths+'</g></svg></button>'; }
+    return s;
+  }
+  function _sagTikGoster(info, x, y){
+    _rtInfo=info;
+    var p=document.getElementById('ed-rt-panel'); if(!p) return;
+    var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
+    var h='';
+    if(info.mode==='heading'){
+      var bi=info.bi, rol=info.rol;
+      var adv=(rol==='h1')?'Platform Adı':'İçerik Başlığı';
+      h+='<div class="rt-title">'+adv+' — yalnız bu başlık</div>';
+      h+='<label class="rt-row">Font <select class="rt-font">'+fontOpts+'</select></label>';
+      h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(_rtEff(bi,rol,'size')))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+_rtEff(bi,rol,'color')+'"></label></div>';
+      h+='<div class="rt-row rt-biu"><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'bold')?' aktif':'')+'" data-c="bold" title="Kalın"><b>B</b></button><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'italic')?' aktif':'')+'" data-c="italic" title="Eğik"><i>I</i></button><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'underline')?' aktif':'')+'" data-c="underline" title="Altı çizili"><u>U</u></button></div>';
+      h+='<div class="rt-row rt-hiza">'+_hizaBtnlar(_rtEff(bi,rol,'align'))+'</div>';
+      h+='<label class="rt-row">Word düzeyi <select class="rt-word"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
+      h+='<div class="rt-row"><button type="button" class="rt-reset">↺ Varsayılana döndür</button></div>';
+      p.innerHTML=h;
+      var fs=p.querySelector('.rt-font'); if(fs) fs.value=_rtEff(bi,rol,'font');
+      var ws=p.querySelector('.rt-word'); if(ws) ws.value=_rtEff(bi,rol,'word');
+      p.querySelector('.rt-font').addEventListener('change', function(){ XE._hOvSec(bi,rol,'font',this.value); });
+      p.querySelector('.rt-size').addEventListener('change', function(){ XE._hOvSec(bi,rol,'size',this.value); });
+      p.querySelector('.rt-color').addEventListener('change', function(){ XE._hOvSec(bi,rol,'color',this.value); });
+      p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ var c=b.getAttribute('data-c'); var nv=!_rtEff(bi,rol,c); XE._hOvSec(bi,rol,c,nv); b.classList.toggle('aktif',nv); }); });
+      p.querySelectorAll('.rt-hb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._hOvSec(bi,rol,'align',v); p.querySelectorAll('.rt-hb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
+      p.querySelector('.rt-word').addEventListener('change', function(){ XE._hOvSec(bi,rol,'word',this.value); });
+      p.querySelector('.rt-reset').addEventListener('click', function(){ XE._hOvSifirla(bi,rol); _sagTikKapat(); });
+    } else {
+      // satır-içi (metin seçimi)
+      var an=info.range&&info.range.startContainer; var pe=an&&(an.nodeType===1?an:an.parentNode);
+      var cs=pe?window.getComputedStyle(pe):null;
+      var curFont=cs?(cs.fontFamily||'').split(',')[0].replace(/['"]/g,'').trim():'';
+      var curSize=cs?Math.round(parseFloat(cs.fontSize)/1.3333):'';   // px->pt (kaba)
+      var curColor=cs?_rgbToHex(cs.color):'#000000';
+      h+='<div class="rt-title">Seçili metin</div>';
+      h+='<label class="rt-row">Font <select class="rt-font"><option value="">(değiştirme)</option>'+fontOpts+'</select></label>';
+      h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" placeholder="'+esc(String(curSize))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+curColor+'"></label></div>';
+      h+='<div class="rt-row rt-biu"><button type="button" class="rt-tgl" data-c="bold" title="Kalın"><b>B</b></button><button type="button" class="rt-tgl" data-c="italic" title="Eğik"><i>I</i></button><button type="button" class="rt-tgl" data-c="underline" title="Altı çizili"><u>U</u></button></div>';
+      h+='<div class="rt-row"><button type="button" class="rt-reset rt-temizle">↺ Biçimi temizle</button></div>';
+      p.innerHTML=h;
+      var fs2=p.querySelector('.rt-font'); if(fs2 && curFont){ for(var oi=0;oi<fs2.options.length;oi++){ if(fs2.options[oi].value===curFont){ fs2.selectedIndex=oi; break; } } }
+      p.querySelector('.rt-temizle').addEventListener('click', function(){ _inlineTemizle(); _sagTikKapat(); });
+      p.querySelector('.rt-font').addEventListener('change', function(){ if(this.value) _inlineUygula('font',this.value); });
+      p.querySelector('.rt-size').addEventListener('change', function(){ if(this.value) _inlineUygula('size',this.value); });
+      p.querySelector('.rt-color').addEventListener('change', function(){ _inlineUygula('color',this.value); });
+      p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ _inlineUygula(b.getAttribute('data-c'),null); b.classList.toggle('aktif'); }); });
+    }
+    // konumlandır (imleç yakınına, görünüm içine sıkıştır)
+    p.style.display='block'; p.style.visibility='hidden'; p.style.left='0px'; p.style.top='0px';
+    var pw=p.offsetWidth||240, ph=p.offsetHeight||200;
+    var L=x+4; if(L+pw>window.innerWidth-6) L=window.innerWidth-pw-6; if(L<6) L=6;
+    var T=y+4; if(T+ph>window.innerHeight-6) T=y-ph-4; if(T<6) T=6;
+    p.style.left=L+'px'; p.style.top=T+'px'; p.style.visibility='visible';
+  }
+  function _sagTikKapat(){ var p=document.getElementById('ed-rt-panel'); if(p){ p.style.display='none'; p.innerHTML=''; } _rtInfo=null; }
+  function _rgbToHex(c){ try{ var m=String(c).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i); if(!m) return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; function h(n){ n=(parseInt(n,10)||0).toString(16); return n.length<2?'0'+n:n; } return '#'+h(m[1])+h(m[2])+h(m[3]); }catch(e){ return '#000000'; } }
+  function _spanSar(styleObj){
+    var sel=window.getSelection(); if(!sel.rangeCount) return; var range=sel.getRangeAt(0); if(range.collapsed) return;
+    var span=document.createElement('span'); for(var k in styleObj){ if(styleObj.hasOwnProperty(k)) span.style[k]=styleObj[k]; }
+    try{ range.surroundContents(span); }
+    catch(e){ try{ var frag=range.extractContents(); span.appendChild(frag); range.insertNode(span); }catch(_){ return; } }
+    var nr=document.createRange(); nr.selectNodeContents(span); sel.removeAllRanges(); sel.addRange(nr);
+  }
+  function _inlineUygula(prop, value){
+    var el=_rtInfo&&_rtInfo.metinEl, rng=_rtInfo&&_rtInfo.range; if(!el||!rng) return;
+    XE._alanBlur();      // odak-oturumunun bekleyen anlığını bırak (sıra karışmasın)
+    XE._pushUndo();      // TEK net undo adımı (değişiklik öncesi) -> font/renk/boyut da geri alınabilir
+    _inlineBusy=true;    // execCommand'ın tetiklediği input, _alanGiris'i ÇİFT işlemesin
+    try{ el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); }catch(e){ _inlineBusy=false; return; }
+    if(prop==='bold'||prop==='italic'||prop==='underline'){
+      try{ document.execCommand('styleWithCSS', false, false); }catch(_){}
+      try{ document.execCommand(prop, false, null); }catch(_){}
+    } else {
+      var so={};
+      if(prop==='font') so.fontFamily="'"+value+"', sans-serif";
+      else if(prop==='color') so.color=value;
+      else if(prop==='size') so.fontSize=(parseInt(value,10)||12)+'pt';
+      _spanSar(so);
+    }
+    _inlineBusy=false;
+    try{ var ns=window.getSelection(); if(ns.rangeCount) _rtInfo.range=ns.getRangeAt(0).cloneRange(); }catch(_){}
+    _metinKaydet(el);
+  }
+  // Seçili metnin satır-içi biçimini temizle (font/renk/boyut/B-I-U kaldırır -> metin varsayılanına döner).
+  function _inlineTemizle(){
+    var el=_rtInfo&&_rtInfo.metinEl, rng=_rtInfo&&_rtInfo.range; if(!el||!rng) return;
+    XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
+    try{ el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); }catch(e){ _inlineBusy=false; return; }
+    try{ document.execCommand('styleWithCSS', false, false); }catch(_){}
+    try{ document.execCommand('removeFormat', false, null); }catch(_){}
+    // removeFormat bazı <span style>'leri bırakabilir -> seçimdeki biçim span'lerini elle aç.
+    try{ _spanAc(el, sel.rangeCount?sel.getRangeAt(0):rng); }catch(_){}
+    _inlineBusy=false;
+    try{ var ns=window.getSelection(); if(ns.rangeCount) _rtInfo.range=ns.getRangeAt(0).cloneRange(); }catch(_){}
+    _metinKaydet(el);
+  }
+  // Verilen aralıkla kesişen, biçim taşıyan <span>'leri aç (içeriği koru). Basit ve güvenli temizleme.
+  function _spanAc(root, range){
+    var spans=root.querySelectorAll('span[style]');
+    for(var i=spans.length-1;i>=0;i--){ var s=spans[i];
+      if(range && range.intersectsNode && !range.intersectsNode(s)) continue;
+      while(s.firstChild) s.parentNode.insertBefore(s.firstChild, s);
+      s.parentNode.removeChild(s);
+    }
+  }
+  function _sagTikKur(){
+    if(document.getElementById('ed-rt-panel')) return;
+    var p=document.createElement('div'); p.id='ed-rt-panel'; (document.body||document.documentElement).appendChild(p);
+    p.addEventListener('mousedown', function(e){ e.stopPropagation(); });   // panel içine tıklama kapatmasın
+    document.addEventListener('contextmenu', function(e){
+      var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
+      var t=e.target; if(!t||!t.closest) return;
+      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin');
+      // Başlık override'ı x_h_ov bayrağına bağlı -> kapalıysa başlık sağ-tık paneli AÇILMAZ (yazma da olmaz).
+      if(hOvAcik() && h2 && h2.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h2',bi:+h2.getAttribute('data-i')}, e.clientX, e.clientY); }
+      else if(hOvAcik() && plat && plat.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h1',bi:+plat.getAttribute('data-i')}, e.clientX, e.clientY); }
+      else if(metin){ var sel=window.getSelection(); if(sel && !sel.isCollapsed && sel.rangeCount && metin.contains(sel.anchorNode) && metin.contains(sel.focusNode)){ e.preventDefault(); _sagTikGoster({mode:'inline',metinEl:metin,range:sel.getRangeAt(0).cloneRange()}, e.clientX, e.clientY); } }
+    });
+    document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape') _sagTikKapat(); });
+    window.addEventListener('scroll', function(){ _sagTikKapat(); }, true);
   }
 
   XE._ciz = function(){
@@ -7660,7 +7872,7 @@ X_EDITOR_JS = r'''
     if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Bölüm Ekle</b> ile bir bölüm açıp içine başlık/metin/görsel/link ekleyerek rapor oluşturabilirsin.</div>'); }
     h.push(_ez('', !B.length));   // en üstteki ekleme zonu — havuz BOŞKEN daima görünür (hover gerekmez)
     for(i=0;i<B.length;i++){ var b=B[i];
-      if(b.h1) h.push('<div class="ed-plat" style="'+c1+'" title="Platform Adı stilini düzenlemek için tıkla">'+esc(b.h1)+'</div>');
+      if(b.h1) h.push('<div class="ed-plat" data-i="'+i+'" style="'+stilCssOv(o,'b1',b.h1ov)+'" title="Platform Adı stilini düzenle (tek bu başlık için: sağ tıkla)">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
       if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" style="vertical-align:-2px"><circle cx="6" cy="4" r="1.35"/><circle cx="10" cy="4" r="1.35"/><circle cx="6" cy="8" r="1.35"/><circle cx="10" cy="8" r="1.35"/><circle cx="6" cy="12" r="1.35"/><circle cx="10" cy="12" r="1.35"/></svg> taşı</div>');
@@ -7688,9 +7900,8 @@ X_EDITOR_JS = r'''
       // -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu). Kalem başlığın SAĞINDA; başlık
       // yoksa (devam öğesi) kalem küçük bir satırda kartın başında.
       if(b.h2!=null){
-        // [BAŞLIK TÜRÜ] başlık tekil "Platform Adı" (b1) seçildiyse o grubun üslubu+hizası; yoksa İçerik Başlığı (b).
-        var _h2b1=(h2GrupAcik() && b.h2grup==='b1');
-        var _hc=_h2b1?c1:c2, _ha=_h2b1?o.b1_align:o.b_align;
+        // [BAŞLIK OVERRIDE] içerik başlığı: rol varsayılanı (b) + o başlığa özel override (b.h2ov).
+        var _hc=stilCssOv(o,'b',b.h2ov), _ha=((hOvAcik()&&b.h2ov&&b.h2ov.align)||o.b_align);
         var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[_ha]||'flex-start');
         h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span><div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+_hc+'">'+esc(b.h2)+'</div></div></div>'); }
       else if(_kalemHtml){ h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span></div>'); }
@@ -7730,14 +7941,15 @@ X_EDITOR_JS = r'''
     if(_savedScroll!=null){ var _pb1=document.querySelector('#editorModal .preview-body'); if(_pb1){ try{ _pb1.scrollTop=_savedScroll; }catch(e){} } _savedScroll=null; }
 
     root.querySelectorAll('.ed-h2').forEach(function(el){
-      el.addEventListener('focus', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; var grp=(h2GrupAcik() && b && b.h2grup==='b1')?'b1':'b'; XE._seritSekmeCtx(grp,{kind:'h2',bi:bi}); XE._alanOdak(); });
+      el.addEventListener('focus', function(){ var bi=+el.getAttribute('data-i'); XE._seritSekmeCtx('b',{kind:'h2',bi:bi}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-metin').forEach(function(el){
       el.addEventListener('focus', function(){ XE._seritSekmeCtx('m',{kind:'metin'}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
-      el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
+      el.addEventListener('input', function(){ if(_inlineBusy) return;   // satır-içi biçim uygulaması kendi undo'sunu + kaydını yapar (çift işleme yok)
+        XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-link-edit').forEach(function(el){
       el.addEventListener('focus', function(){ XE._seritSekmeCtx('l',{kind:'link'}); XE._alanOdak(); });
@@ -7818,7 +8030,7 @@ X_EDITOR_JS = r'''
     });
     // Platform başlığına tıkla -> şerit "Platform Adı" (b1) kontrollerine geçer (sekmeler gizli; tıklama-bağlamı).
     root.querySelectorAll('.ed-plat').forEach(function(el){
-      el.addEventListener('click', function(){ XE._seritSekmeCtx('b1',{kind:'plat'}); });
+      el.addEventListener('click', function(){ XE._seritSekmeCtx('b1',{kind:'plat', bi:+el.getAttribute('data-i')}); });
     });
     root.querySelectorAll('.ed-bolum-ekle').forEach(function(el){
       el.addEventListener('click', function(){ XE._bolumEkle(el.getAttribute('data-after')); });
@@ -7906,7 +8118,7 @@ X_EDITOR_JS = r'''
       if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i;
       parcaKur(b.item);
       var ov=ovStore().byLink[ovKey(b.item.link)];
-      if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h2grup!=null){ b.item.h2_grup=ov.h2grup; b.h2grup=(ov.h2grup==='b1'?'b1':'b'); } }
+      if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h1ov){ b.item.h1_ov=ov.h1ov; b.h1ov=ov.h1ov; } if(ov.h2ov){ b.item.h2_ov=ov.h2ov; b.h2ov=ov.h2ov; } }
     });
     // XE._manuelEkle ile AYNI enjeksiyon (ama canlı belge yerine bu B dizisi üzerinde).
     var mc=manuelStore();
