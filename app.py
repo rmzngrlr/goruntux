@@ -7413,6 +7413,20 @@ X_EDITOR_JS = r'''
     b.item._panoBekle=false; b.item._panoBekleP=null;
     XE._ovSet(bi); XE._ciz();
   };
+  // [ÇOKLU GÖRSEL] Bir görsel parçasını editörden SİL (manuel eklenen VE eklenti/kazıma görseli).
+  // Parça kendi b64'ünü taşıyorsa yalnız parça kaldırılır. Birincil görseli (item.image_b64 — eklenti/
+  // kazıma/eski) kullanıyorsa item.image_b64 + XLocalImages de temizlenir (tekrar enjekte edilip GERİ GELMESİN).
+  XE._gorselSil = function(bi, pp){
+    var b=XE.belge.birimler[bi]; if(!b||!b.item||!b.item.parcalar) return;
+    var p=b.item.parcalar[pp]; if(!p || p.tur!=='gorsel') return;
+    XE._pushUndo();
+    if(!p.b64){   // kendi b64'ü yok -> birincil görseli (item.image_b64) kullanıyordu
+      b.item.image_b64=''; b.item.image_mime='';
+      if(b.item.link && window.XLocalImages && window.XLocalImages.remove){ try{ window.XLocalImages.remove(b.item.link); }catch(_){} }
+    }
+    b.item.parcalar.splice(pp,1);   // görsel parçasını kaldır
+    XE._ovSet(bi); XE._ciz();
+  };
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
   XE._manuelTasi = function(uid, afterUid){
@@ -7576,6 +7590,7 @@ X_EDITOR_JS = r'''
             +'<option value="baslik">Başlık yap</option></select>');
         }
         if(p.tur==='metin' || p.tur==='link') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Bu parçayı sil">&minus;</button>');
+        else if(p.tur==='gorsel') h.push('<button class="ed-metin-sil ed-gorsel-sil" data-i="'+i+'" data-p="'+k+'" title="Bu görseli sil">&minus;</button>');   // [ÇOKLU GÖRSEL] görseli editörden sil (manuel + eklenti/kazıma)
         h.push('</div>');
         h.push(_pz(i, k+1, b.manual));   // bu parçadan SONRA ekleme noktası
       }
@@ -7654,7 +7669,11 @@ X_EDITOR_JS = r'''
         else { XE._parcaEkle(bi, tur, null, pos); } });
     });
     root.querySelectorAll('.ed-metin-sil').forEach(function(el){
+      if(el.classList.contains('ed-gorsel-sil')) return;   // görsel sil -> ayrı handler (item.image_b64+XLocalImages de temizler)
       el.addEventListener('click', function(){ var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar){ XE._pushUndo(); b.item.parcalar.splice(pk,1); XE._ovSet(bi); XE._ciz(); } });
+    });
+    root.querySelectorAll('.ed-gorsel-sil').forEach(function(el){
+      el.addEventListener('click', function(){ XE._gorselSil(+el.getAttribute('data-i'), +el.getAttribute('data-p')); });
     });
     root.querySelectorAll('.ed-tur').forEach(function(el){
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
