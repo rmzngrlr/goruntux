@@ -1802,6 +1802,28 @@ HTML_TEMPLATE = """
         .swal2-dark-theme .swal2-actions {
             gap: 10px !important;
         }
+        /* ===== Faz 4: Raporlarım kart galerisi (Google-Dokümanlar tarzı) ===== */
+        .x-gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .x-gal-card { position: relative; cursor: pointer; border-radius: 10px; transition: transform .12s ease; }
+        .x-gal-card:hover { transform: translateY(-2px); }
+        .x-gal-page { position: relative; height: 150px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.28); }
+        .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); }
+        .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
+        .x-gal-pageinner { padding: 28px 14px 12px; }   /* üst dolgu: sol-üstteki birleştirme kutusunu geçsin */
+        .x-gal-fauxbaslik { font-weight: 700; font-size: 12px; line-height: 1.3; margin-bottom: 9px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+        .x-gal-fauxline { height: 4px; border-radius: 2px; background: var(--border-color, rgba(136,153,166,0.32)); margin: 6px 0; }
+        .x-gal-meta { padding: 8px 4px 2px; }
+        .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; }
+        .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); margin-top: 2px; }
+        .x-gal-rozet { position: absolute; top: 6px; right: 6px; background: var(--accent-color); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; z-index: 2; }
+        .x-gal-check { position: absolute; top: 7px; left: 7px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; }
+        .x-gal-ara { position: absolute; bottom: 7px; right: 7px; display: flex; gap: 5px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
+        .x-gal-card:hover .x-gal-ara { opacity: 1; }
+        .x-gal-ikon { width: 27px; height: 27px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); color: #fff; padding: 0; }
+        .x-gal-ikon:hover { background: var(--accent-color); }
+        .x-gal-yeni { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px; border: 2px dashed var(--border-color, rgba(136,153,166,0.45)); border-radius: 8px; color: var(--text-secondary, #8899a6); gap: 6px; transition: all .12s ease; }
+        .x-gal-card:hover .x-gal-yeni { border-color: var(--accent-color); color: var(--accent-color); }
+        .x-gal-arti { font-size: 34px; line-height: 1; font-weight: 300; }
     </style>
 </head>
 <body>
@@ -3422,6 +3444,17 @@ HTML_TEMPLATE = """
             if (n > 0) { b.textContent = String(n); b.style.display = ''; }
             else { b.style.display = 'none'; }
         }
+        // Faz 4: Raporlarım = Google-Dokümanlar tarzı KART GALERİSİ. İlk kart "➕ Boş Rapor";
+        // her rapor kartı: sahte "sayfa" küçük görünümü + ad (çift-tık yeniden adlandır) + tarih/sayı
+        // + İndir/Sil ikonları (hover) + birleştirme kutusu + aktif rozeti. Karta tıkla = Aç.
+        var _xGalFauxGenislik = ['92%', '78%', '85%', '64%', '73%'];
+        function xGalFauxLines(n) {
+            var k = Math.max(0, Math.min(4, n));
+            if (!k) { return '<div class="x-gal-alt" style="padding:0; opacity:.7;">(boş)</div>'; }
+            var s = '';
+            for (var i = 0; i < k; i++) { s += '<div class="x-gal-fauxline" style="width:' + _xGalFauxGenislik[i % _xGalFauxGenislik.length] + ';"></div>'; }
+            return s;
+        }
         async function renderSavedReports() {
             var section = document.getElementById('saved-reports-section');
             var container = document.getElementById('saved-reports-list');
@@ -3430,28 +3463,47 @@ HTML_TEMPLATE = """
             var metas = [];
             try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
             xUpdateSavedBadge(metas.length);   // sekme adindaki sayaci guncelle (0'da gizli)
-            if (!metas.length) { if (section) section.style.display = 'none'; container.innerHTML = ''; return; }
-            if (section) section.style.display = '';
-            var html = metas.map(function (m) {
+            if (section) section.style.display = '';   // Faz 4: galeri HER ZAMAN görünür (boşken bile "Boş Rapor" kartı)
+            var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
+            // İlk kart: Boş Rapor
+            var html = '<div class="x-gal-grid">' +
+                '<div class="x-gal-card" onclick="newReport()" title="Yeni boş rapor oluştur">' +
+                    '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Boş Rapor</span></div>' +
+                '</div>';
+            html += metas.map(function (m) {
                 var tarih = '';
-                try { tarih = new Date(m.updatedAt || 0).toLocaleString('tr-TR'); } catch (e) { tarih = ''; }
+                try { tarih = new Date(m.updatedAt || 0).toLocaleDateString('tr-TR'); } catch (e) { tarih = ''; }
                 var adEsc = escapeHtml(m.name || '(adsız)');
-                return '<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--border-color, rgba(136,153,166,0.2));">' +
-                    '<input type="checkbox" class="x-sr-check" data-rid="' + m.id + '" onchange="xUpdateMergeBtn()" style="width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color:var(--accent-color);" title="Birleştirmek için seç">' +
-                    '<div style="min-width:150px; flex:1;">' +
-                        '<div data-rid="' + m.id + '" ondblclick="renameSavedReport(this.dataset.rid)" title="Yeniden adlandırmak için çift tıkla" style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; user-select:none;">📄 ' + adEsc + '</div>' +
-                        '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + '</div>' +
+                var aktif = (m.id === aktifId);
+                return '<div class="x-gal-card' + (aktif ? ' aktif' : '') + '" data-rid="' + m.id + '" onclick="xGalAc(event,this)" title="Aç">' +
+                    '<input type="checkbox" class="x-sr-check x-gal-check" data-rid="' + m.id + '" onclick="event.stopPropagation()" onchange="xUpdateMergeBtn()" title="Birleştirmek için seç">' +
+                    (aktif ? '<span class="x-gal-rozet">● Açık</span>' : '') +
+                    '<div class="x-gal-page">' +
+                        '<div class="x-gal-pageinner">' +
+                            '<div class="x-gal-fauxbaslik">' + adEsc + '</div>' +
+                            xGalFauxLines(m.itemCount || 0) +
+                        '</div>' +
+                        '<div class="x-gal-ara">' +
+                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">📥</button>' +
+                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalSil(event,this)" title="Sil">🗑️</button>' +
+                        '</div>' +
                     '</div>' +
-                    '<div style="display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap;">' +
-                        '<button class="btn" style="padding:6px 12px; font-size:13px; margin:0; background:var(--accent-color); color:#fff;" data-rid="' + m.id + '" onclick="openSavedReport(this.dataset.rid)">📂 Aç</button>' +
-                        '<button class="btn btn-primary" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="downloadSavedReport(this.dataset.rid)">📥 İndir</button>' +
-                        '<button class="btn btn-secondary btn-danger" style="padding:6px 12px; font-size:13px; margin:0;" data-rid="' + m.id + '" onclick="deleteSavedReport(this.dataset.rid)">🗑️ Sil</button>' +
+                    '<div class="x-gal-meta">' +
+                        '<div class="x-gal-ad" data-rid="' + m.id + '" ondblclick="xGalRename(event,this)" title="Çift tıkla: yeniden adlandır">' + adEsc + '</div>' +
+                        '<div class="x-gal-alt">' + (m.itemCount || 0) + ' içerik · ' + tarih + '</div>' +
                     '</div>' +
                 '</div>';
             }).join('');
+            html += '</div>';
             container.innerHTML = html;
             xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, butonu guncelle
         }
+        // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
+        function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid); } catch (e) {} }
+        function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { downloadSavedReport(el.dataset.rid); } catch (e) {} }
+        function xGalSil(ev, el) { if (ev) ev.stopPropagation(); try { deleteSavedReport(el.dataset.rid); } catch (e) {} }
+        function xGalRename(ev, el) { if (ev) ev.stopPropagation(); try { renameSavedReport(el.dataset.rid); } catch (e) {} }
+        window.xGalAc = xGalAc; window.xGalIndir = xGalIndir; window.xGalSil = xGalSil; window.xGalRename = xGalRename;
         // Birlestir butonu: >=2 secili ise etkin; etiket canli sayi gosterir.
         function xUpdateMergeBtn() {
             var btn = document.getElementById('merge-selected-btn');
