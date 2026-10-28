@@ -1823,11 +1823,11 @@ HTML_TEMPLATE = """
 
             <!-- Tab Buttons -->
             <div class="tabs">
-                <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')">🤖 Otomatik Rapor Hazırla</button>
+                <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')">🤖 Rapor'matik</button>
                 <!-- #2: "Manuel Rapor Hazırla" sekmesi EMEKLİ — manuel içerik artık Rapor Editörü içinde
                      (kümeler arası "+ Ekle" ile başlık/metin/görsel/link). Havuz boşken üstteki "Rapor Editörü"
                      butonuyla açılır. (tab-manual içerik div'i erişilmez kaldı; işlevi editöre taşındı.) -->
-                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">🗂️ Kayıtlı Raporlar<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
+                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">🗂️ Raporlarım<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
             </div>
 
             <!-- Tab 1: Format Docx -->
@@ -1835,9 +1835,9 @@ HTML_TEMPLATE = """
                 <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
                      kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
                 <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
-                    <h4 style="margin: 0 0 4px 0;">🗂️ Kayıtlı Raporlar</h4>
+                    <h4 style="margin: 0 0 4px 0;">🗂️ Raporlarım</h4>
                     <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
-                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). Son kayıttan <b>1 hafta</b> sonra otomatik silinir.
+                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). İstediğin kadar rapor saklayabilirsin.
                     </div>
                     <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <button id="merge-selected-btn" class="btn" disabled style="padding: 7px 14px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; opacity: 0.5;" onclick="mergeSelectedReports()">🔗 Seçilenleri Birleştir</button>
@@ -2720,7 +2720,7 @@ HTML_TEMPLATE = """
                     }
                     await window.XSavedReports.whenReady();
                     await window.XSavedReports.save({ name: name, items: its, images: images, blob: blob, filename: filename });
-                    showToast("İndirildi ve Kayıtlı Raporlar'a eklendi: " + name, 'success');
+                    showToast("İndirildi ve Raporlarım'a eklendi: " + name, 'success');
                 } catch (saveErr) {
                     console.error('Kayıtlı rapora kaydetme hatası:', saveErr);
                     showToast('İndirildi ama kayıtlı raporlara eklenemedi: ' + (saveErr && saveErr.message ? saveErr.message : saveErr), 'warning');
@@ -3257,7 +3257,7 @@ HTML_TEMPLATE = """
                     '<input type="checkbox" class="x-sr-check" data-rid="' + m.id + '" onchange="xUpdateMergeBtn()" style="width:18px; height:18px; flex-shrink:0; cursor:pointer; accent-color:var(--accent-color);" title="Birleştirmek için seç">' +
                     '<div style="min-width:150px; flex:1;">' +
                         '<div data-rid="' + m.id + '" ondblclick="renameSavedReport(this.dataset.rid)" title="Yeniden adlandırmak için çift tıkla" style="font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; user-select:none;">📄 ' + adEsc + '</div>' +
-                        '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + ' · ⏳ ' + xKalanSureMetni(m.updatedAt) + '</div>' +
+                        '<div style="font-size:12px; color:var(--text-secondary,#8899a6);">' + (m.itemCount || 0) + ' içerik · ' + tarih + '</div>' +
                     '</div>' +
                     '<div style="display:flex; gap:6px; flex-shrink:0; flex-wrap:wrap;">' +
                         '<button class="btn" style="padding:6px 12px; font-size:13px; margin:0; background:var(--accent-color); color:#fff;" data-rid="' + m.id + '" onclick="openSavedReport(this.dataset.rid)">📂 Aç</button>' +
@@ -3466,11 +3466,9 @@ HTML_TEMPLATE = """
         function xInitSavedReports() {
             try {
                 window.addEventListener('x-saved-reports-ready', function () { renderSavedReports(); });
-                // Acilista once suresi dolanlari (1 haftadan eski) temizle, sonra listeyi ciz.
+                // [SINIRSIZ] Raporlar artık süreyle silinmez (1 hafta TTL kaldırıldı); açılışta sadece listeyi çiz.
                 if (window.XSavedReports) {
                     window.XSavedReports.whenReady()
-                        .then(function () { return window.XSavedReports.purgeExpired(X_SAVED_REPORT_TTL_MS); })
-                        .then(function (n) { if (n) { try { console.log('[KayitliRapor] süresi dolan silindi:', n); } catch (e) {} } })
                         .then(function () { return renderSavedReports(); })
                         .catch(function () {});
                 }
