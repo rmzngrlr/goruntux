@@ -3190,16 +3190,34 @@ HTML_TEMPLATE = """
         window.xOtoKayitAcik = xOtoKayitAcik;
         function xAktifRaporId() { try { return localStorage.getItem('x_active_report_id') || ''; } catch (e) { return ''; } }
         window.xAktifRaporId = xAktifRaporId;
-        function xAktifRaporKur(id, ad) {
+        // Faz 3: URL yardımcıları. Pathname'in İLK segmenti = rapor slug'ı (/<slug>).
+        function xUrlSlugOku() {
+            try { var p = (window.location.pathname || '/').replace(/^\/+/, '').split('/')[0]; return p ? decodeURIComponent(p) : ''; } catch (e) { return ''; }
+        }
+        // Adres çubuğunu aktif rapora göre güncelle (slug boşsa '/'). search korunur. Zaten oradaysa no-op.
+        function xUrlRaporaGuncelle(slug, replace) {
+            try {
+                var hedef = slug ? ('/' + encodeURIComponent(slug)) : '/';
+                if (window.location.pathname === hedef) return;
+                var tam = hedef + (window.location.search || '');
+                var st = { xslug: slug || '' };
+                if (replace) { history.replaceState(st, '', tam); } else { history.pushState(st, '', tam); }
+            } catch (e) {}
+        }
+        window.xUrlRaporaGuncelle = xUrlRaporaGuncelle;
+        function xAktifRaporKur(id, ad, slug, urlReplace) {
             try { if (id) { localStorage.setItem('x_active_report_id', id); } else { localStorage.removeItem('x_active_report_id'); } } catch (e) {}
             if (ad != null) { window.__xActiveReportName = String(ad); }
+            if (slug != null) { window.__xActiveReportSlug = String(slug); }
             window.__openReportName = window.__xActiveReportName || '';   // mevcut upsert/indir adı bununla uyumlu
             xAktifRaporCizgiCiz();
+            if (id) { xUrlRaporaGuncelle(window.__xActiveReportSlug || '', !!urlReplace); }   // Faz 3: adres çubuğu /<slug>
         }
-        function xAktifRaporTemizle() {
+        function xAktifRaporTemizle(urlReplace) {
             try { localStorage.removeItem('x_active_report_id'); } catch (e) {}
-            window.__xActiveReportName = ''; window.__openReportName = '';
+            window.__xActiveReportName = ''; window.__xActiveReportSlug = ''; window.__openReportName = '';
             xAktifRaporCizgiCiz();
+            xUrlRaporaGuncelle('', !!urlReplace);   // Faz 3: aktif yok -> '/'
         }
         // Üst çubuk (aktif rapor adı + oto-kayıt durumu). Aktif rapor yoksa gizli.
         function xAktifRaporCizgiCiz() {
@@ -3225,10 +3243,9 @@ HTML_TEMPLATE = """
             if (sb) { sb.style.display = xOtoKayitAcik() ? 'none' : ''; }
         }
         window.xOtoKayitUICiz = xOtoKayitUICiz;
-        var _xOtoKayitTimer = null, _xOtoKayitAtla = false, _xOtoKayitCalisiyor = false, _xOtoKayitTekrar = false;
+        var _xOtoKayitTimer = null, _xOtoKayitCalisiyor = false, _xOtoKayitTekrar = false;
         function xOtoKayitPlanla() {
             if (!xOtoKayitAcik()) return;
-            if (_xOtoKayitAtla) { _xOtoKayitAtla = false; return; }   // programatik yükleme sonrası tek sefer atla
             if (_xOtoKayitTimer) { clearTimeout(_xOtoKayitTimer); }
             _xOtoKayitTimer = setTimeout(function () { _xOtoKayitTimer = null; xOtoKayitYap(); }, 1500);
         }
@@ -3242,6 +3259,7 @@ HTML_TEMPLATE = """
         window.xOtoKayitFlush = xOtoKayitFlush;
         async function xOtoKayitYap() {
             if (!xOtoKayitAcik()) return;
+            if (window.__xRaporYukleniyor) { xOtoKayitPlanla(); return; }   // programatik yükleme sürüyor -> ERTELE (orta-yükleme kısmi kaydı/yarış olmasın); yükleme bitince kaydedilir
             if (_xOtoKayitCalisiyor) { _xOtoKayitTekrar = true; return; }   // çakışma: bitince bir kez daha
             _xOtoKayitCalisiyor = true;
             try {
@@ -3274,7 +3292,7 @@ HTML_TEMPLATE = """
                     items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename,
                     editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || [])
                 });
-                if (!id && meta && meta.id) { xAktifRaporKur(meta.id, meta.name); }   // oto-oluştur: ilk içerikte aktif rapor doğdu
+                if (!id && meta && meta.id) { xAktifRaporKur(meta.id, meta.name, meta.slug, true); }   // oto-oluştur: ilk içerikte aktif rapor doğdu (URL replace, sessiz)
                 xOtoKayitDurum('kaydedildi');
                 await renderSavedReports();
             } catch (err) {
@@ -3290,7 +3308,7 @@ HTML_TEMPLATE = """
             try {
                 await window.XSavedReports.whenReady();
                 await xOtoKayitFlush();   // mevcut raporun son düzenlemesini kaydet
-                _xOtoKayitAtla = true;    // temizlik sonrası boş-poll oto-kaydını atla (yeni kayıt zaten boş yazıldı)
+                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: temizlik+oluşturma sürerken oto-kaydı ERTELE
                 try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
                 window.__xEditorOverlay = { byLink: {}, style: null };
                 window.__xManualClusters = [];
@@ -3303,7 +3321,7 @@ HTML_TEMPLATE = """
                 window.lastManuelListJson = null; window.__xPoolDirty = false;
                 var ad = xTarihSaatDamgasi();
                 var meta = await window.XSavedReports.save({ name: ad, items: [], images: {}, blob: null, filename: '', editorStyle: xBuildStyleOpts(), manualClusters: [] });
-                xAktifRaporKur(meta.id, meta.name);
+                xAktifRaporKur(meta.id, meta.name, meta.slug);   // Faz 3: URL /<slug> (push)
                 xOtoKayitDurum('kaydedildi');
                 await renderSavedReports();
                 refreshStatus();
@@ -3311,6 +3329,8 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Yeni rapor hatası:', err);
                 showToast('Yeni rapor oluşturulamadı: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                window.__xRaporYukleniyor = false;
             }
         }
         window.newReport = newReport;
@@ -3323,8 +3343,8 @@ HTML_TEMPLATE = """
                 if (yeni === null) return;
                 yeni = (yeni || '').trim(); if (!yeni) return;
                 await window.XSavedReports.whenReady();
-                await window.XSavedReports.rename(id, yeni);
-                xAktifRaporKur(id, yeni);
+                var rmeta = await window.XSavedReports.rename(id, yeni);   // Faz 3: slug'ı da döndürür
+                xAktifRaporKur(id, yeni, (rmeta && rmeta.slug) || null, true);   // URL yeni slug'a (replace)
                 await renderSavedReports();
                 showToast('Rapor adı güncellendi: ' + yeni, 'success');
             } catch (e) { showToast('Ad değiştirilemedi: ' + (e && e.message ? e.message : e), 'danger'); }
@@ -3462,7 +3482,7 @@ HTML_TEMPLATE = """
                 await window.XSavedReports.remove(id);
                 // Faz 2: silinen rapor AKTİFse çalışma havuzunu da boşalt + aktif bağlamı bırak (dirilme olmasın).
                 if (_aktifti) {
-                    _xOtoKayitAtla = true;
+                    window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: silme sürerken oto-kayıt ERTELE (içerik yeni rapora dirilmesin)
                     xAktifRaporTemizle();
                     try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
                     window.__xEditorOverlay = { byLink: {}, style: null }; window.__xManualClusters = [];
@@ -3475,6 +3495,8 @@ HTML_TEMPLATE = """
                 await renderSavedReports();
             } catch (err) {
                 showToast('Silme hatası: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                window.__xRaporYukleniyor = false;
             }
         }
 
@@ -3483,7 +3505,8 @@ HTML_TEMPLATE = """
         // gorseller X_RAPOR_LOCAL_IMAGE postMessage'iyle XLocalImages'a geri yuklenir (canli havuzun
         // AYNI mekanizmasi). Sira korunur (ogeler SIRAYLA await edilir). baslik_formatla + x_temizle_link
         // idempotent oldugu icin snapshot'i manual_add'e geri gondermek guvenli.
-        async function openSavedReport(id) {
+        async function openSavedReport(id, opts) {
+            opts = opts || {};
             try {
                 var rec = await window.XSavedReports.get(id);
                 if (!rec) { showToast('Kayıtlı rapor bulunamadı.', 'danger'); return; }   // Faz 2: BOŞ rapor da açılabilir (aktif olur)
@@ -3497,7 +3520,7 @@ HTML_TEMPLATE = """
                 } else if (curItems.length) {
                     if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '📂 Raporu Aç', okText: 'Aç ve Değiştir', danger: true }))) return;
                 }
-                _xOtoKayitAtla = true;   // yüklenen içerik zaten kayıtlı -> ardından gelen oto-kaydı atla
+                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: havuz yeniden kurulurken oto-kaydı ERTELE (orta-yükleme kısmi kaydı olmasın)
                 // 1) Havuzu + yerel gorselleri temizle (temiz "acilis" durumu)
                 await fetch('/api/manual/clear', { method: 'POST' });
                 if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
@@ -3528,8 +3551,8 @@ HTML_TEMPLATE = """
                 window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
                 if (rec.editorStyle) { xApplyStyleOpts(rec.editorStyle); }
-                // 4) Faz 2: açılan rapor AKTİF olur (oto-kayıt bundan sonra buna yazar).
-                xAktifRaporKur(id, rec.name || '');
+                // 4) Faz 2: açılan rapor AKTİF olur (oto-kayıt bundan sonra buna yazar). Faz 3: URL /<slug>.
+                xAktifRaporKur(id, rec.name || '', rec.slug || null, !!opts.urlReplace);
                 xOtoKayitDurum('kaydedildi');
                 refreshStatus();
                 await renderSavedReports();
@@ -3538,6 +3561,8 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Rapor açma hatası:', err);
                 showToast('Rapor açılamadı: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                window.__xRaporYukleniyor = false;   // yükleme bitti -> ertelenmiş oto-kayıt (varsa) çalışabilir
             }
         }
 
@@ -3563,6 +3588,7 @@ HTML_TEMPLATE = """
                 }
                 // Faz 2: birleşik sonuç TEK kaynağa bağlı değil -> aktif raporu AYIR; havuz dolunca
                 // poll yeni (adsız) bir rapor OTO-OLUŞTURUR. (Kullanıcı üst çubuktan yeniden adlandırır.)
+                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: birleştirme sürerken oto-kaydı ERTELE
                 if (xOtoKayitAcik()) { xAktifRaporTemizle(); }
                 // Havuzu + yerel gorselleri BIR KEZ temizle
                 await fetch('/api/manual/clear', { method: 'POST' });
@@ -3614,6 +3640,8 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Birleştirme hatası:', err);
                 showToast('Birleştirme başarısız: ' + (err && err.message ? err.message : err), 'danger');
+            } finally {
+                window.__xRaporYukleniyor = false;   // yükleme bitti -> poll birleşik havuzdan YENİ rapor oto-oluşturur
             }
         }
         async function renameSavedReport(id) {
@@ -3625,9 +3653,9 @@ HTML_TEMPLATE = """
                 if (yeni === null) return;
                 yeni = (yeni || '').trim();
                 if (!yeni) { showToast('Ad boş olamaz.', 'warning'); return; }
-                await window.XSavedReports.rename(id, yeni);
+                var rmeta2 = await window.XSavedReports.rename(id, yeni);
                 if (window.__openReportName && cur && window.__openReportName === cur) { window.__openReportName = yeni; }
-                if (typeof xAktifRaporId === 'function' && xAktifRaporId() === id) { xAktifRaporKur(id, yeni); }   // Faz 2: aktif raporsa üst çubuğu güncelle
+                if (typeof xAktifRaporId === 'function' && xAktifRaporId() === id) { xAktifRaporKur(id, yeni, (rmeta2 && rmeta2.slug) || null, true); }   // Faz 2/3: aktif raporsa çubuğu + URL'i güncelle
                 showToast('Yeniden adlandırıldı: ' + yeni, 'success');
                 await renderSavedReports();
             } catch (err) {
@@ -3662,11 +3690,13 @@ HTML_TEMPLATE = """
                     _basladi = true;
                     window.XSavedReports.whenReady()
                         .then(function () { return renderSavedReports(); })
-                        .then(function () { return xAktifRaporYenidenBagla(); })   // Faz 2: aktif raporu geri bağla
+                        .then(function () { return xRaporRouterVeyaBagla(); })   // Faz 3: URL slug'ı varsa onu aç; yoksa Faz 2 uzlaştırma
                         .catch(function () {});
                 }
                 window.addEventListener('x-saved-reports-ready', _baslat);
                 if (window.XSavedReports) { _baslat(); }
+                // Faz 3: geri/ileri (popstate) -> URL slug'ına göre raporu aç.
+                window.addEventListener('popstate', function () { try { xPopstateYonet(xUrlSlugOku()); } catch (e) {} });
             } catch (e) {}
         }
         // Faz 2: Sayfa yüklemede aktif raporu SUNUCU havuzuyla uzlaştır (havuz ephemeral; rapor IndexedDB'de).
@@ -3679,22 +3709,48 @@ HTML_TEMPLATE = """
                 var id = xAktifRaporId();
                 if (!id) { xAktifRaporCizgiCiz(); return; }
                 var rec = null; try { rec = await window.XSavedReports.get(id); } catch (e) {}
-                if (!rec) { xAktifRaporTemizle(); return; }   // kayıt silinmiş -> aktif id'yi bırak
+                if (!rec) { xAktifRaporTemizle(true); return; }   // kayıt silinmiş -> aktif id'yi bırak (URL '/', replace)
                 window.__xActiveReportName = rec.name || '';
                 var curItems = [];
                 try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
                 var depoDolu = !!((rec.items && rec.items.length) || (rec.manualClusters && rec.manualClusters.length));
                 if (curItems.length) {
-                    xAktifRaporKur(id, rec.name || ''); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', rec.slug || null, true); xOtoKayitDurum('kaydedildi');
                 } else if (depoDolu) {
-                    _xOtoKayitAtla = true;
-                    await openSavedReport(id);   // re-hidrasyon (openSavedReport aktif id'yi de kurar)
+                    await openSavedReport(id, { urlReplace: true });   // re-hidrasyon (openSavedReport aktif id'yi + URL'i + yükleme nöbetçisini kurar)
                 } else {
-                    xAktifRaporKur(id, rec.name || ''); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', rec.slug || null, true); xOtoKayitDurum('kaydedildi');
                 }
             } catch (e) { console.error('Aktif rapor yeniden bağlama hatası:', e); }
         }
         window.xAktifRaporYenidenBagla = xAktifRaporYenidenBagla;
+        // Faz 3: Sayfa yüklemede router. URL /<slug> ise O raporu aç (aktif id'yi geçersiz kılar);
+        // slug yoksa (/) Faz 2 uzlaştırma + URL'i aktif rapora göre düzelt. Slug var ama rapor yoksa uyar + uzlaştır.
+        async function xRaporRouterVeyaBagla() {
+            try {
+                var slug = xUrlSlugOku();
+                if (slug) {
+                    var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
+                    if (meta && meta.id) { await openSavedReport(meta.id, { urlReplace: true }); return; }
+                    if (window.showToast) showToast('Bu adreste rapor yok; mevcut rapora dönüldü.', 'warning');
+                }
+                await xAktifRaporYenidenBagla();   // aktif rapor kurulursa URL'i de kendi slug'ına replace eder
+            } catch (e) { console.error('Router hatası:', e); }
+        }
+        window.xRaporRouterVeyaBagla = xRaporRouterVeyaBagla;
+        // Faz 3: popstate (geri/ileri). Yeni URL slug'ı mevcut aktif slug'dan farklıysa o raporu aç.
+        async function xPopstateYonet(slug) {
+            try {
+                if (slug) {
+                    if (slug === (window.__xActiveReportSlug || '')) return;   // zaten o rapordayız
+                    var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
+                    if (meta && meta.id) { await openSavedReport(meta.id, { urlReplace: true }); }
+                    else if (window.showToast) { showToast('Bu adreste rapor yok.', 'warning'); }
+                }
+                // slug yoksa ('/') mevcut raporda kal (ileride galeri gösterilebilir).
+            } catch (e) { console.error('Popstate hatası:', e); }
+        }
+        window.xPopstateYonet = xPopstateYonet;
 
         function xBuildStyleOpts() {
             // Güvenli okuyucular: öğe yoksa varsayılan döner (eski alanlar birebir korunur;
@@ -6983,19 +7039,49 @@ X_SAVED_REPORTS_JS = r'''
       var createdAt = existing ? (existing.createdAt||now) : now;
       // Ad: açıkça verildiyse onu kullan; verilmediyse (null) mevcut adı KORU (oto-kayıt ad göndermez).
       var _ad = (o.name!=null) ? o.name.toString().trim() : (existing ? (existing.name||'') : '');
-      var meta = { id:id, name:_ad, createdAt:createdAt,
-                   updatedAt:now, itemCount:((o.items&&o.items.length)||0) };
-      var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
-      return new Promise(function(resolve,reject){
-        try{
-          var tx=_tx([META,DATA],'readwrite');
-          tx.objectStore(META).put(meta);
-          tx.objectStore(DATA).put(data);
-          tx.oncomplete=function(){ resolve(meta); };
-          tx.onerror=function(){ reject(tx.error||new Error('kaydetme hatası')); };
-          tx.onabort=function(){ reject(tx.error||new Error('kaydetme iptal (kota?)')); };
-        }catch(e){ reject(e); }
+      // Faz 3: slug (URL /<slug>). Ad değişmediyse mevcut slug korunur; benzersizleştir (başka rapor aynı slug'ı kullanıyorsa -2,-3...).
+      return _uniqueSlug(_slugify(_ad||'rapor'), id).then(function(_slug){
+        var meta = { id:id, name:_ad, slug:_slug, createdAt:createdAt,
+                     updatedAt:now, itemCount:((o.items&&o.items.length)||0) };
+        var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
+        return new Promise(function(resolve,reject){
+          try{
+            var tx=_tx([META,DATA],'readwrite');
+            tx.objectStore(META).put(meta);
+            tx.objectStore(DATA).put(data);
+            tx.oncomplete=function(){ resolve(meta); };
+            tx.onerror=function(){ reject(tx.error||new Error('kaydetme hatası')); };
+            tx.onabort=function(){ reject(tx.error||new Error('kaydetme iptal (kota?)')); };
+          }catch(e){ reject(e); }
+        });
       });
+    });
+  }
+  // Faz 3: ad -> URL-güvenli slug (Türkçe harf çevirisi + aksan temizliği).
+  function _slugify(s){
+    s=(s==null?'':s).toString().trim().toLowerCase();
+    var m={'ç':'c','ğ':'g','ı':'i','ö':'o','ş':'s','ü':'u','â':'a','î':'i','û':'u'};
+    s=s.replace(/[çğıöşüâîû]/g,function(c){return m[c]||c;});
+    try{ s=s.normalize('NFKD').replace(/[̀-ͯ]/g,''); }catch(e){}
+    s=s.replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    return s||'rapor';
+  }
+  // base slug'ı diğer raporlara karşı benzersizleştir (self hariç).
+  function _uniqueSlug(base, selfId){
+    return list().then(function(metas){
+      var used={};
+      metas.forEach(function(mm){ if(mm.id!==selfId){ var sl=mm.slug||_slugify(mm.name); if(sl) used[sl]=true; } });
+      if(!used[base]) return base;
+      var i=2; while(used[base+'-'+i]) i++;
+      return base+'-'+i;
+    });
+  }
+  // slug -> meta (eski kayıtlarda slug yoksa ad'dan türet). Bulunamazsa null.
+  function getBySlug(slug){
+    var want=_slugify(slug);
+    return list().then(function(metas){
+      for(var i=0;i<metas.length;i++){ var sl=metas[i].slug||_slugify(metas[i].name); if(sl===want) return metas[i]; }
+      return null;
     });
   }
   function get(id){
@@ -7029,9 +7115,13 @@ X_SAVED_REPORTS_JS = r'''
     return _reqP(_tx(META,'readonly').objectStore(META).get(id)).then(function(meta){
       if(!meta) return;
       meta.name=(newName==null?'':newName).toString().trim(); meta.updatedAt=_now();
-      return new Promise(function(resolve){
-        var tx=_tx(META,'readwrite'); tx.objectStore(META).put(meta);
-        tx.oncomplete=function(){resolve();}; tx.onerror=function(){resolve();};
+      // Faz 3: ad değişti -> slug'ı da güncelle (URL ada uyar).
+      return _uniqueSlug(_slugify(meta.name||'rapor'), id).then(function(sl){
+        meta.slug=sl;
+        return new Promise(function(resolve){
+          var tx=_tx(META,'readwrite'); tx.objectStore(META).put(meta);
+          tx.oncomplete=function(){resolve(meta);}; tx.onerror=function(){resolve(meta);};
+        });
       });
     }).catch(function(){});
   }
@@ -7055,7 +7145,8 @@ X_SAVED_REPORTS_JS = r'''
   window.XSavedReports={
     whenReady:function(){ return _readyPromise||Promise.resolve(); },
     save:saveReport, list:list, get:get, getBlob:getBlob,
-    remove:remove, rename:rename, purgeExpired:purgeExpired
+    remove:remove, rename:rename, purgeExpired:purgeExpired,
+    getBySlug:getBySlug, slugify:_slugify
   };
   _readyPromise = openDb().then(function(db){ _db=db; try{ window.dispatchEvent(new CustomEvent('x-saved-reports-ready')); }catch(e){} });
 })();
@@ -8568,6 +8659,15 @@ def x_editor_js():
 # ----------------- FLASK FRONTEND ROUTES -----------------
 @app.route('/', methods=['GET'])
 def index():
+    return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
+
+# Faz 3: rapor URL'leri /<slug> -> SPA'yı sun; istemci router pathname slug'ından raporu açar.
+# TEK segment (slug / içermez) -> /api/... (çok segment) ve /x-*.js (exact route) buraya DÜŞMEZ.
+# Nokta içeren yollar (favicon.ico vb. asset istekleri) SPA'ya yönlenmez -> 404.
+@app.route('/<slug>', methods=['GET'])
+def spa_slug(slug):
+    if '.' in slug:
+        return ('', 404)
     return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
 
 @app.route('/api/tweet/oembed', methods=['GET'])
