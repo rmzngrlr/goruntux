@@ -5713,7 +5713,10 @@ LOCAL_DOCX_JS = r'''
         var _nk = (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink : function(x){ return String(x||''); };
         for (var _gi=0; _gi<items.length; _gi++){
           var _oe = _ovB[ _nk(items[_gi].link||'') ];
-          if (_oe && _oe.grup != null) items[_gi].group_override = _oe.grup;
+          if (_oe){
+            if (_oe.grup != null) items[_gi].group_override = _oe.grup;
+            if (_oe.h2 != null) items[_gi].h2_override = _oe.h2;   // başlık (açık boş '' dahil) -> plan derivation'a aynen gider (ayır boş başlık + düzenlenen başlık docx'e yansır)
+          }
         }
       } catch(e){}
     }
@@ -6109,9 +6112,13 @@ LOCAL_DOCX_JS = r'''
         // verbatim (kullanicinin gordugu gibi, numara dahil). item.title DEGISMEZ -> gruplama anahtari
         // ve '(' sezgisi bozulmaz (IG bolunmesi + kardes-ezme kök nedeni giderilir). Override YOKSA
         // ESKI davranis birebir: '(' sezgisi + fallback + numara.
-        var _ovr=(ordered[0] && ordered[0].h2_override!=null && String(ordered[0].h2_override).trim()!=='') ? String(ordered[0].h2_override) : null;
+        // [AYIR/BOŞ BAŞLIK] h2_override AÇIKÇA BOŞ ('' ) ise başlığı HESAP ADINDAN TÜRETME -> boş kalsın
+        // (kullanıcı "kendi başlığına ayır"da yeni bölüm boş başlasın; elle temizlenen başlık da boş kalır).
+        // null = hiç düzenlenmemiş -> eski türetme; dolu = verbatim.
+        var _ovr=(ordered[0] && ordered[0].h2_override!=null) ? String(ordered[0].h2_override) : null;
         var baslik='';
-        if(_ovr!=null){ baslik=_ovr; }
+        if(_ovr!=null && String(_ovr).trim()===''){ baslik=''; }   // açık boş -> başlıksız kalır (türetme yok)
+        else if(_ovr!=null){ baslik=_ovr; }
         else {
           // #2: YERLI üye (grup anahtarıyla eşleşen __native) başlığı önce gelir; kümeye elle TAŞINAN
           // yabancı öğenin başlığı kümeyi EZMEZ. Yerli yoksa eski davranış ('(' tercihi, sonra ilk).
@@ -7523,7 +7530,9 @@ X_EDITOR_JS = r'''
     // [6] no-op: mevcut küme anahtarıyla aynı hedef seçildiyse (özel komut değilse) atla.
     if(grupKey!=='__yeni' && (grupKey||'').indexOf('__solo:')!==0 && (b.item.group_override||'')===(grupKey||'')){ return; }
     XE._pushUndo();
-    if(grupKey==='__yeni'){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
+    if(grupKey==='__yeni'){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6);
+      b.item.h2_override=''; b.h2='';   // [AYIR -> BOŞ BAŞLIK] ayrılan bölüm hesap adını KOPYALAMASIN; boş başlasın, kullanıcı adlandırsın
+    }
     else if(grupKey && grupKey.indexOf('__solo:')===0){
       // C3: tek-başına bir bölümle BİRLEŞTİR — hedef ile taşınan öğeye ORTAK bir küme anahtarı ver.
       var tuid=grupKey.slice(7), tgt=null, ti=-1, B=XE.belge.birimler||[];
