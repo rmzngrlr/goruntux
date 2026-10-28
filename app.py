@@ -7976,6 +7976,19 @@ X_EDITOR_JS = r'''
     }
     return hedefler;
   }
+  // [TAŞIMA MENÜSÜ] Bir kartın (bi) "başka bölüme taşı" menü seçenekleri HTML'i — GÜNCEL hedeflerden kurulur.
+  // Menü AÇILIRKEN yeniden kurulur -> sonradan adlandırılan/eklenen bölümler de gelir, gidenler düşer.
+  function kumeMenuHtml(bi){
+    var B=XE.belge.birimler||[], b=B[bi]; if(!b||!b.item) return '';
+    var hedefler=hedeflerHesapla(B);
+    var selfKey=(b.grup!=null)?b.grup:('__solo:'+((b.item&&b.item.uid)||bi));
+    var km='';
+    for(var j=0;j<hedefler.length;j++){ if(hedefler[j].key!==selfKey) km+='<button class="ed-kume-opt" data-i="'+bi+'" data-k="'+esc(hedefler[j].key)+'">'+esc(hedefler[j].ad)+'</button>'; }
+    var grpN=0; if(b.grup!=null){ for(var g=0;g<B.length;g++){ if(B[g]&&B[g].grup===b.grup) grpN++; } }
+    var ayir=(grpN>1)||!!(b.item&&b.item.group_override);
+    if(ayir) km+='<button class="ed-kume-opt" data-i="'+bi+'" data-k="__yeni">➕ Kendi başlığı (ayır)</button>';
+    return km;
+  }
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
@@ -8158,19 +8171,22 @@ X_EDITOR_JS = r'''
         var acik=w.classList.contains('acik');
         root.querySelectorAll('.ed-pz-wrap.acik').forEach(function(x){ x.classList.remove('acik'); });
         if(!acik){
-          try{ var _cur=hedeflerHesapla(XE.belge.birimler||[]); var _m={}; _cur.forEach(function(h){ _m[h.key]=h.ad; });
-            w.querySelectorAll('.ed-kume-opt').forEach(function(opt){ var k=opt.getAttribute('data-k'); if(k==='__yeni') return;
-              if(_m[k]!=null){ opt.textContent=_m[k]; opt.style.display=''; } else { opt.style.display='none'; }   // başlıksız/yok -> gizle
-            }); }catch(_){}
+          // [#2b GECİKME FİX] menüyü AÇARKEN güncel hedeflerden TAM yeniden kur -> sonradan adlandırılan/eklenen
+          // bölümler (ör. "Deneme") ANINDA gelir, başlıksız/giden düşer. Eski "yalnız mevcut opt'ları güncelle"
+          // yolu yeni hedefi EKLEYEMİYORDU (gecikme: ancak başka bir işlem _ciz'i tetikleyince görünüyordu).
+          try{ var card=el.closest('.ed-card'); var bi=card?+card.getAttribute('data-i'):-1; var menu=w.querySelector('.ed-kume-menu'); if(menu && bi>=0) menu.innerHTML=kumeMenuHtml(bi); }catch(_){}
           w.classList.add('acik');
         }
       });
     });
-    // Menü seçeneği: öğeyi o bölüme taşı + menüyü kapat.
-    root.querySelectorAll('.ed-kume-opt').forEach(function(el){
-      el.addEventListener('click', function(e){ e.stopPropagation(); var w=el.closest('.ed-pz-wrap'); if(w) w.classList.remove('acik');
-        XE._kumeTasi(+el.getAttribute('data-i'), el.getAttribute('data-k')); });
-    });
+    // Menü seçeneği: öğeyi o bölüme taşı + menüyü kapat. DELEGASYON (menü açılışta yeniden kurulduğu için
+    // seçenekler değişir -> tek tek bağlama yerine root'ta bir kez delege et; yeniden-kurulan opt'lar da çalışır).
+    if(!window.__edKumeOptBound){ window.__edKumeOptBound=true;
+      document.addEventListener('click', function(e){ var opt=e.target && e.target.closest && e.target.closest('.ed-kume-opt'); if(!opt) return;
+        e.stopPropagation(); var w=opt.closest('.ed-pz-wrap'); if(w) w.classList.remove('acik');
+        XE._kumeTasi(+opt.getAttribute('data-i'), opt.getAttribute('data-k'));
+      });
+    }
     // Platform başlığı: TIKLA-YAZ ile metni düzenlenebilir (h1_override) + şerit "Platform Adı" (b1) bağlamı.
     root.querySelectorAll('.ed-plat').forEach(function(el){
       el.addEventListener('focus', function(){ XE._seritSekmeCtx('b1',{kind:'plat', bi:+el.getAttribute('data-i')}); XE._alanOdak(); });
