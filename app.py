@@ -5230,17 +5230,17 @@ HTML_TEMPLATE = """
     <div id="editorModal" class="modal">
         <div class="preview-modal-content">
             <div class="modal-header">
-                <div style="display: flex; gap: 14px; align-items: center;">
+                <div style="display: flex; gap: 10px; align-items: center;">
                     <h2 style="margin:0;">📝 Rapor Editörü</h2>
-                    <div class="ed-undo-grup">
-                        <button id="ed-geri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri" disabled>↺</button>
-                        <button id="ed-ileri" class="ed-undo-btn" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri" disabled>↻</button>
+                    <div style="display:inline-flex; gap:2px;">
+                        <button id="ed-geri" class="ed-ikon-btn ed-ik-nav" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri al (Ctrl+Z)" disabled><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.5h7a4 4 0 1 1 0 8H8.5"/><path d="M7.5 4.5l-3 3 3 3"/></svg></button>
+                        <button id="ed-ileri" class="ed-ikon-btn ed-ik-nav" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri al (Ctrl+Y)" disabled><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 7.5h-7a4 4 0 1 0 0 8h3"/><path d="M12.5 4.5l3 3-3 3"/></svg></button>
                     </div>
                 </div>
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px;" title="Raporu panele kaydet (indirmez; havuz commit edilir)">💾 Kaydet</button>
-                    <button class="btn btn-success btn-sm" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" style="font-size: 13px; padding: 6px 16px; border-radius: 8px; background: var(--accent-color);" title="Sadece .docx indir (kaydetmez)">📥 İndir</button>
-                    <span class="close-btn" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()">&times;</span>
+                <div style="display: flex; gap: 2px; align-items: center;">
+                    <button class="ed-ikon-btn ed-ik-kaydet" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" title="Kaydet (panele kaydet; indirmez, havuz commit edilir)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg></button>
+                    <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
+                    <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
             </div>
             <div class="preview-body">
@@ -6968,11 +6968,14 @@ X_EDITOR_JS = r'''
 #editorModal .ed-tut:active{cursor:grabbing;}
 #editorModal .ed-parca-ic{flex:1;min-width:0;}
 #editorModal .ed-parca-bos{color:#9aa3ad;font-size:12px;font-style:italic;padding:4px 0;}
-#editorModal .ed-undo-grup{display:inline-flex;border:1px solid #d7dde3;border-radius:9px;overflow:hidden;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,0.05);}
-#editorModal .ed-undo-btn{border:0;background:transparent;padding:7px 15px;font-size:16px;line-height:1;color:#3a4654;cursor:pointer;transition:background .1s,color .1s;}
-#editorModal .ed-undo-btn+.ed-undo-btn{border-left:1px solid #e6eaef;}
-#editorModal .ed-undo-btn:hover:not(:disabled){background:#eef5ff;color:#1565c0;}
-#editorModal .ed-undo-btn:disabled{opacity:.33;cursor:default;}
+/* Başlık ikon butonları (✕/Kaydet/İndir/Geri/İleri): dinlenmede TEK gri renk, hover'da semantik renk
+   CANLANIR, pasif (geri/ileri alınacak yokken) SİLİK. SVG currentColor ile renk alır. */
+#editorModal .ed-ikon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}
+#editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
+#editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
+#editorModal .ed-ik-nav:hover:not(:disabled),#editorModal .ed-ik-indir:hover:not(:disabled){color:#1565c0;}
+#editorModal .ed-ik-kaydet:hover:not(:disabled){color:#17a34a;}
+#editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
 #editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
 #editorModal .ed-img-pano .ed-img-pcsec{display:inline-flex;align-items:center;gap:4px;margin-left:12px;background:#1565c0;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;}
