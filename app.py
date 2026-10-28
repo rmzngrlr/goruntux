@@ -5616,6 +5616,24 @@ LOCAL_DOCX_JS = r'''
     });
   }
 
+  // [ÇOKLU GÖRSEL] Bir öğenin GÖRSEL parçalarını efektif görselleriyle sırayla döndür.
+  // Her 'gorsel' parçası kendi b64/mime'ını taşıyabilir (bölüm başına çok görsel); taşımıyorsa
+  // YALNIZ İLK görsel parçası öğenin birincil image_b64'üne düşer (kazıma/eski tek-görsel uyumu).
+  // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski davranış: yalnız birincil görsel).
+  // Dönen: [{k:parçaIndeksi, b64, mime}] — b64 boş olabilir (henüz doldurulmamış kutu).
+  function birimGorselleri(item){
+    var out=[], usedPrimary=false, pc=(item&&item.parcalar)||[], k, hasGorselPart=false;
+    var coklu=true; try{ coklu=(localStorage.getItem('x_coklu_gorsel')!=='0'); }catch(e){}
+    for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue; hasGorselPart=true;
+      var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
+      if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
+      out.push({k:k, b64:b64, mime:mime||'image/jpeg'});
+    }
+    // Parçasız (eski/doğrudan) öğe: 'gorsel' parçası yoksa birincil görsel k=-1 birimi (else dalı için).
+    if(!hasGorselPart && item && item.image_b64){ out.push({k:-1, b64:item.image_b64, mime:item.image_mime||'image/jpeg'}); }
+    return out;
+  }
+
   async function generateBlob(opts, providedItems){
     var items;
     if (providedItems) {
@@ -5732,16 +5750,17 @@ LOCAL_DOCX_JS = r'''
     }
 
     var rels=[], media=[], ridCounter=0, docPrId=1;
-    function addImage(item){
-      if(!item.image_b64) return null;
-      var mime=item.image_mime||'image/jpeg';
+    function addImageRaw(b64, mime){
+      if(!b64) return null;
+      mime=mime||'image/jpeg';
       var ext=(mime.indexOf('png')!==-1)?'png':'jpeg';
       var name='image'+(media.length+1)+'.'+ext;
-      media.push({name:'word/media/'+name, data:b64ToBytes(item.image_b64)});
+      media.push({name:'word/media/'+name, data:b64ToBytes(b64)});
       ridCounter++; var rid='rIdImg'+ridCounter;
       rels.push({id:rid, type:'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image', target:'media/'+name});
       return rid;
     }
+    function addImage(item){ return item ? addImageRaw(item.image_b64, item.image_mime) : null; }
     function addHyperlink(url){
       ridCounter++; var rid='rIdLnk'+ridCounter;
       rels.push({id:rid, type:'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink', target:url, mode:'External'});
@@ -5791,9 +5810,17 @@ LOCAL_DOCX_JS = r'''
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
+    function imageXmlRaw(b64, mime, wIn, hIn){
+      var rid=addImageRaw(b64, mime);
+      if(!rid) return '';
+      return _imageXmlFromRid(rid, wIn, hIn);
+    }
     function imageXml(item, wIn, hIn){
       var rid=addImage(item);
       if(!rid) return '';
+      return _imageXmlFromRid(rid, wIn, hIn);
+    }
+    function _imageXmlFromRid(rid, wIn, hIn){
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini artik
       // Word belirliyor; sabit sayfa sonu 2026-07-17'de kaldirildi).
@@ -6105,50 +6132,58 @@ LOCAL_DOCX_JS = r'''
     }
 
 
-    // ---- 2. GECIS: en-boy oranlarini oku (tek async adim; boyutlama buna dayanir)
-    var bi2;
+    // ---- 2. GECIS: GÖRSEL BİRİMLERİ (parça bazında) topla + en-boy oranlarını oku.
+    // [ÇOKLU GÖRSEL] Bir birimde birden çok 'gorsel' parçası olabilir; her biri ayrı GÖRSEL BİRİMİ
+    // ('_imgUnits') -> çiftleme/boyutlama bunların üzerinden yürür. Tek-görsel belgede her birim 1 birim
+    // üretir (unitPay==birimPay) -> eski per-birim boyutlamayla BİREBİR aynı. Görsel boşsa (kutu) atlanır.
+    var bi2, _imgUnits=[];
     for(bi2=0; bi2<birimler.length; bi2++){
       var bu=birimler[bi2];
-      bu.ar = null;
-      if(bu.item.image_b64){
-        var sz=await loadImageSize('data:'+(bu.item.image_mime||'image/jpeg')+';base64,'+bu.item.image_b64);
-        // Olcu okunamazsa (bozuk veri) eski yedek bicimin orani; wp:extent hem cx hem
-        // cy ister, biri tahmin edilmek zorunda.
-        bu.ar = (sz.w>0 && sz.h>0) ? (sz.w/sz.h) : (4.5/3.8);
+      bu._imgUnits=[];
+      var _gs=birimGorselleri(bu.item);
+      for(var _gg=0; _gg<_gs.length; _gg++){
+        if(!_gs[_gg].b64) continue;
+        var _u={bi:bi2, k:_gs[_gg].k, b64:_gs[_gg].b64, mime:_gs[_gg].mime, ar:null, w:0, h:0};
+        var _sz=await loadImageSize('data:'+(_u.mime||'image/jpeg')+';base64,'+_u.b64);
+        _u.ar=(_sz.w>0 && _sz.h>0)?(_sz.w/_sz.h):(4.5/3.8);   // bozuk veri -> eski yedek oran
+        bu._imgUnits.push(_u); _imgUnits.push(_u);
       }
     }
 
-    // ---- 3. GECIS: sayfalara ayir + her sayfanin ORTAK genisligini hesapla
-    // BOYUTLAMA: GÖRSEL birimleri (ar!=null) çiftle -> 2 görsel aynı sayfaya sığacak ORTAK genişlik.
-    // ARALARINDA metin-only (manuel bölüm) birim OLSA BİLE görseller çiftlenir (eski kod görseli
-    // metin-only ile eşleyip TAM GENİŞLİK yapıyordu -> 2-görsel-sayfada küçültme bozuluyordu). Aradaki
-    // metin-only birimlerin yüksekliği extraPay olarak sayfaya katılır; emisyon birimleri plan sırasında
-    // serbest akar (sabit sayfa sonu yok). Baslik2 grup başına bir kez (eski davranış).
+    // Bir görsel-biriminin GÖRSELSİZ dikey maliyeti: her görselin alt boşluğu (120) + (birimin İLK
+    // görseliyse) başlık+metin+link bir kez. Tek-görselde unitPay(ilk)==birimPay (uyum).
+    function unitPay(u, isFirst){
+      if(!isFirst) return 120/1440;           // ek görsel: yalnız alt boşluk
+      var bu=birimler[u.bi], p=birimPay(bu);   // başlık+metin(parcalar VEYA metin_bloklari)+link (+item.image_b64 varsa 120)
+      if(!(bu.item && bu.item.image_b64)) p += 120/1440;   // parça-görsel birincili: birimPay 120 eklemedi -> ilk görsel için ekle
+      return p;
+    }
+    function _ilkMi(u){ var iu=birimler[u.bi]._imgUnits; return !!(iu && iu.length && iu[0]===u); }
+    function araMetinPay(uA, uB){ var p=0; for(var bb=uA.bi+1; bb<uB.bi; bb++){ var bx=birimler[bb]; if(!(bx._imgUnits && bx._imgUnits.length)) p += birimPay(bx); } return p; }   // aradaki GÖRSELSİZ (metin-only) birimler
+    function ortakGenislikU(uA, uB){
+      var pay=unitPay(uA,_ilkMi(uA))+unitPay(uB,_ilkMi(uB))+araMetinPay(uA,uB);
+      var ters=0; if(uA.ar) ters+=1/uA.ar; if(uB.ar) ters+=1/uB.ar;
+      var kalan=SAYFA_H-pay-GUVENLIK_PAY;
+      if(kalan<=0) return 0; if(ters<=0) return METIN_W; return Math.min(METIN_W, kalan/ters);
+    }
+
+    // ---- 3. GECIS: GÖRSEL BİRİMLERİNİ çiftle (2 görsel/sayfa, ORTAK genişlik). Birim=görsel-parçası.
     var sayfalar=[];
-    var _imgIx=[]; for(var _z=0;_z<birimler.length;_z++){ if(birimler[_z].ar) _imgIx.push(_z); }
     var _pz=0;
-    while(_pz < _imgIx.length){
-      var _ai=_imgIx[_pz], _bi=(_pz+1<_imgIx.length)?_imgIx[_pz+1]:-1;
-      var a=birimler[_ai], b=(_bi>=0)?birimler[_bi]:null;
+    while(_pz < _imgUnits.length){
+      var _a=_imgUnits[_pz], _b=(_pz+1<_imgUnits.length)?_imgUnits[_pz+1]:null;
       var ciftKuruldu=false;
-      if(b){
-        var _araPay=0; for(var _q=_ai+1;_q<_bi;_q++){ _araPay += birimPay(birimler[_q]); }   // aradaki metin-only (manuel) yükseklik
-        var W2=ortakGenislik([a,b], _araPay);
-        if(W2 >= ESIK_W){
-          a.w=W2; a.h=a.ar?(W2/a.ar):0;
-          b.w=W2; b.h=b.ar?(W2/b.ar):0;
-          _pz+=2; ciftKuruldu=true;
-        }
+      if(_b){
+        var W2=ortakGenislikU(_a,_b);
+        if(W2 >= ESIK_W){ _a.w=W2; _a.h=_a.ar?(W2/_a.ar):0; _b.w=W2; _b.h=_b.ar?(W2/_b.ar):0; _pz+=2; ciftKuruldu=true; }
       }
       if(!ciftKuruldu){
-        // "Cok uzun" ya da tek görsel -> tek başına sayfa (tüm yükseklik ona kalır).
-        var kalan1=SAYFA_H - birimPay(a) - GUVENLIK_PAY;
-        var W1=a.ar ? Math.min(METIN_W, Math.max(0.1, kalan1)*a.ar) : METIN_W;
-        a.w=W1; a.h=a.ar?(W1/a.ar):0;
-        _pz+=1;
+        var kalan1=SAYFA_H - unitPay(_a,_ilkMi(_a)) - GUVENLIK_PAY;   // tek başına sayfa (tüm yükseklik ona)
+        var W1=_a.ar?Math.min(METIN_W, Math.max(0.1, kalan1)*_a.ar):METIN_W;
+        _a.w=W1; _a.h=_a.ar?(W1/_a.ar):0; _pz+=1;
       }
     }
-    // Emisyon sırası = plan/havuz sırası (serbest akış); boyutlar yukarıda kondu.
+    // Emisyon sırası = plan/havuz sırası (serbest akış); boyutlar görsel-birimlerine kondu.
     for(var _z2=0;_z2<birimler.length;_z2++){ sayfalar.push([birimler[_z2]]); }
 
     // ---- 4. GECIS: XML uret. SABIT SAYFA SONU YOK (kullanici istegi 2026-07-17).
@@ -6178,19 +6213,21 @@ LOCAL_DOCX_JS = r'''
         // sıra (gorsel/metin/link). Yoksa ESKI yol (metin_bloklari konum alt/ust) -> cikti birebir.
         var _pc=(u.item && u.item.parcalar) ? u.item.parcalar : null;
         if(_pc){
+          // [ÇOKLU GÖRSEL] parça-indeksi -> görsel-birimi (b64+boyut) haritası
+          var _um={}; if(u._imgUnits){ for(var _uu=0;_uu<u._imgUnits.length;_uu++){ if(u._imgUnits[_uu].b64) _um[u._imgUnits[_uu].k]=u._imgUnits[_uu]; } }
           // Grup-sonu ayraç çizgisi: son BASILAN parça link ise çizgiyi O linkin alt-kenarlığı yap
           // (eski davranış) -> link ile çizgi arasında FAZLADAN BOŞ SATIR olmaz. Link son değilse
           // (ör. "link üstte"de görsel altta) ayrı grupSonuXml paragrafı kullan.
           var _lastEmit=-1;
           for(var _q=0;_q<_pc.length;_q++){ var _pq=_pc[_q];
-            if(_pq.tur==='gorsel'){ if(u.item.image_b64) _lastEmit=_q; }
+            if(_pq.tur==='gorsel'){ if(_um[_q]) _lastEmit=_q; }
             else if(_pq.tur==='metin'){ if(String(_pq.metin||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim()) _lastEmit=_q; }
             else if(_pq.tur==='link'){ var _lq=(_pq.url!=null && String(_pq.url).trim()!=='')?String(_pq.url).trim():u.link; if(_lq) _lastEmit=_q; }
           }
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
-            if(_p.tur==='gorsel'){ if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h)); }
+            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu) body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h)); }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link;
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
@@ -6199,7 +6236,7 @@ LOCAL_DOCX_JS = r'''
         } else {
           var _mb=(u.item && u.item.metin_bloklari)||[];
           _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
-          if(u.item.image_b64) body.push(imageXml(u.item, u.w, u.h));
+          var _pu0=(u._imgUnits && u._imgUnits[0]); if(_pu0 && _pu0.b64) body.push(imageXmlRaw(_pu0.b64, _pu0.mime, _pu0.w, _pu0.h));   // parçasız öğe: birincil görsel birimi (k=-1)
           _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
           body.push(linkXml(u.link, u.cizgi?360:240, u.cizgi));
         }
@@ -6936,6 +6973,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-undo-btn:disabled{opacity:.33;cursor:default;}
 #editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
+#editorModal .ed-img-pano .ed-img-pcsec{display:inline-flex;align-items:center;gap:4px;margin-left:12px;background:#1565c0;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;}
+#editorModal .ed-img-pano .ed-img-pcsec:hover{background:#0d47a1;}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
 #editorModal .ed-metin{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
 #editorModal .ed-metin:empty:before{content:"Metin yazın…";color:#9aa3ad;}
@@ -7012,6 +7051,19 @@ X_EDITOR_JS = r'''
     mb.forEach(function(m){ if(m && m.konum!=='ust') pc.push({tur:'metin', id:yeniId(), metin:m.metin||''}); });
     if(!linkUst && linkGoster(item)) pc.push({tur:'link'});  // normal: link görselin altında
     item.parcalar=pc;
+  }
+  // [ÇOKLU GÖRSEL] Editör karşılığı (x-local-docx.js'teki birimGorselleri ikizi): her 'gorsel' parçasının
+  // efektif görseli. Parçanın kendi b64'ü yoksa YALNIZ ilk görsel parçası öğenin birincil image_b64'üne düşer.
+  // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski tek-görsel). Dönen: {parçaIndeksi: {b64,mime}}.
+  function cokluGorselAcik(){ try{ return localStorage.getItem('x_coklu_gorsel')!=='0'; }catch(e){ return true; } }
+  function edGorselHarita(item){
+    var map={}, usedPrimary=false, pc=(item&&item.parcalar)||[], k, coklu=cokluGorselAcik();
+    for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue;
+      var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
+      if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
+      map[k]={b64:b64, mime:mime||'image/jpeg'};
+    }
+    return map;
   }
   // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
   XE._linkUstteUygula = function(on){
@@ -7319,8 +7371,15 @@ X_EDITOR_JS = r'''
       // #3: pano görseli INLINE yapıştırma yuvası (popup YOK) -> boş gorsel işaretçisi ekle; _ciz onu
       // odaklı yapıştırma kutusu çizer, kullanıcı oraya Ctrl+V yapınca görsel dolar ("metin ekler gibi").
       var _gi0=-1; for(var _g0=0;_g0<b.item.parcalar.length;_g0++){ if(b.item.parcalar[_g0].tur==='gorsel'){ _gi0=_g0; break; } }
-      if(_gi0<0){ b.item.parcalar.splice(pos,0,{tur:'gorsel'}); }   // yoksa boş yuva ekle
-      b.item._panoBekle=true;   // _ciz paste kutusunu odaklasın
+      if(_gi0<0){ b.item.parcalar.splice(pos,0,{tur:'gorsel'}); _gi0=pos; }   // yoksa boş yuva ekle
+      b.item._panoBekle=true; b.item._panoBekleP=_gi0;   // _ciz paste kutusunu odaklasın
+      XE._ovSet(i); XE._ciz(); return;
+    }
+    if(tur==='gorselSlot'){
+      // [ÇOKLU GÖRSEL] HER ZAMAN yeni BOŞ görsel parçası ekle (üst üste yığılabilsin); _ciz kutuyu
+      // çizer (Ctrl+V + 📁 PC-seç) ve o parçayı odaklar. Görsel o PARÇANIN b64'üne yazılır.
+      b.item.parcalar.splice(pos,0,{tur:'gorsel'});
+      b.item._panoBekle=true; b.item._panoBekleP=pos;   // yeni eklenen kutuyu odakla
       XE._ovSet(i); XE._ciz(); return;
     }
     if(tur==='gorsel'){ if(!(ekstra&&ekstra.b64)) return; b.item.image_b64=ekstra.b64; b.item.image_mime=ekstra.mime||'image/png';
@@ -7338,6 +7397,21 @@ X_EDITOR_JS = r'''
     if(!yeni) return;
     b.item.parcalar.splice(pos,0,yeni); XE._ovSet(i); XE._ciz();
     if(tur==='metin'){ var el=document.querySelector('#editor-root .ed-card[data-i="'+i+'"] .ed-metin[data-p="'+pos+'"]'); if(el){ el.scrollIntoView({block:'center'}); el.focus(); } }
+  };
+  // [ÇOKLU GÖRSEL] Bir görsel parçasına görsel yaz (Ctrl+V ve 📁 PC-seç ortak yolu). Çoklu AÇIKSA görsel
+  // O PARÇANIN b64'üne (parcalar'da -> overlay/snapshot ile kalıcı). KAPALIYSA eski: öğenin image_b64'ü + XLocalImages.
+  XE._gorselParcaYaz = function(bi, pp, b64, mime){
+    var b=XE.belge.birimler[bi]; if(!b||!b.item) return;
+    XE._pushUndo();
+    mime=mime||'image/png';
+    if(cokluGorselAcik() && b.item.parcalar && b.item.parcalar[pp] && b.item.parcalar[pp].tur==='gorsel'){
+      b.item.parcalar[pp].b64=b64; b.item.parcalar[pp].mime=mime;   // parçanın kendi görseli (birincil item.image_b64'e dokunma)
+    } else {
+      b.item.image_b64=b64; b.item.image_mime=mime;
+      if(edManual(b.item.link) && window.XLocalImages && window.XLocalImages.put){ try{ window.XLocalImages.put(b.item.link, 'data:'+mime+';base64,'+b64, mime); }catch(_){} }
+    }
+    b.item._panoBekle=false; b.item._panoBekleP=null;
+    XE._ovSet(bi); XE._ciz();
   };
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
@@ -7453,8 +7527,10 @@ X_EDITOR_JS = r'''
     function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya ekle">+</button><span class="ed-pz-menu">'
       +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
       +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="metin">Metin</button>'
-      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="gorsel">Görsel</button>'
-      +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="pano">📋 Pano</button>'
+      // [ÇOKLU GÖRSEL] AÇIK: tek "Görsel" -> kutu açar (içinde Ctrl+V + 📁 PC-seç). KAPALI: eski Görsel+Pano.
+      +(cokluGorselAcik()
+         ? '<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="gorsel">Görsel</button>'
+         : '<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="gorsel">Görsel</button><button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="pano">📋 Pano</button>')
       +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="link">Link</button></span></span></div>'; }
     var h=['<div class="ed-root">'], i, k;
     if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Bölüm Ekle</b> ile bir bölüm açıp içine başlık/metin/görsel/link ekleyerek rapor oluşturabilirsin.</div>'); }
@@ -7479,12 +7555,16 @@ X_EDITOR_JS = r'''
       }
       if(b.h2!=null) h.push('<div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>');
       var pc=(b.item&&b.item.parcalar)||[];
+      var _gm=edGorselHarita(b.item);   // [ÇOKLU GÖRSEL] parça-indeksi -> {b64,mime}
       h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
       for(k=0;k<pc.length;k++){ var p=pc[k];
         h.push('<div class="ed-parca" data-i="'+i+'" data-p="'+k+'">');
         h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı">&#x283F;</div>');
         h.push('<div class="ed-parca-ic">');
-        if(p.tur==='gorsel'){ h.push(b.item.image_b64 ? ('<img class="ed-img" src="data:'+(b.item.image_mime||'image/jpeg')+';base64,'+b.item.image_b64+'" alt="">') : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır</div>')); }
+        if(p.tur==='gorsel'){ var _g=_gm[k];
+          h.push((_g && _g.b64)
+            ? ('<img class="ed-img" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt="">')
+            : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır<button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Bilgisayardan görsel seç">📁 Bilgisayardan seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
         h.push('</div>');
@@ -7523,7 +7603,7 @@ X_EDITOR_JS = r'''
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
-    // #3: INLINE pano yapıştırma kutusu -> buraya Ctrl+V yapınca görsel dolar (popup yok).
+    // #3: INLINE pano yapıştırma kutusu -> buraya Ctrl+V yapınca O PARÇANIN görseli dolar (popup yok).
     root.querySelectorAll('.ed-img-pano').forEach(function(el){
       el.addEventListener('paste', function(e){
         var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
@@ -7531,20 +7611,24 @@ X_EDITOR_JS = r'''
         for(j=0;j<its.length;j++){ var it=its[j];
           if(it && it.type && it.type.indexOf('image/')===0){ var blob=it.getAsFile(); if(!blob) continue;
             e.preventDefault();
-            var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item){ return; }
+            var bi=+el.getAttribute('data-i'), pp=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(!b||!b.item){ return; }
             var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return;
-              XE._pushUndo();
-              b.item.image_b64=du.slice(ci+1); b.item.image_mime=blob.type||'image/png'; b.item._panoBekle=false;
-              if(edManual(b.item.link) && window.XLocalImages && window.XLocalImages.put){ try{ window.XLocalImages.put(b.item.link, 'data:'+b.item.image_mime+';base64,'+b.item.image_b64, b.item.image_mime); }catch(_){} }
-              XE._ovSet(bi); XE._ciz();
+              XE._gorselParcaYaz(bi, pp, du.slice(ci+1), blob.type||'image/png');
             }; rd.readAsDataURL(blob); return; }
         }
         e.preventDefault(); el.innerHTML='Panoda görsel yok. Önce bir görsel kopyalayıp tekrar <b>Ctrl+V</b> yapın.';
       });
     });
-    // _panoBekle olan kartın yapıştırma kutusunu odakla (kullanıcı hemen Ctrl+V yapabilsin).
-    (function(){ var bek=-1, Bb=XE.belge.birimler||[]; for(var z=0;z<Bb.length;z++){ if(Bb[z].item && Bb[z].item._panoBekle){ bek=z; break; } }
-      if(bek>=0){ var pel=root.querySelector('.ed-card[data-i="'+bek+'"] .ed-img-pano'); if(pel){ pel.scrollIntoView({block:'center'}); try{ pel.focus(); }catch(e){} } } })();
+    // [ÇOKLU GÖRSEL] Kutu içindeki "📁 Bilgisayardan seç" -> PC dosya seçici -> AYNI parçaya yazar.
+    root.querySelectorAll('.ed-img-pcsec').forEach(function(el){
+      el.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation();
+        var bi=+el.getAttribute('data-i'), pp=+el.getAttribute('data-p');
+        XE._gorselSec(function(b64,mime){ XE._gorselParcaYaz(bi, pp, b64, mime); });
+      });
+    });
+    // _panoBekle olan kartın (varsa o PARÇANIN) yapıştırma kutusunu odakla (kullanıcı hemen Ctrl+V yapabilsin).
+    (function(){ var bek=-1, bekP=null, Bb=XE.belge.birimler||[]; for(var z=0;z<Bb.length;z++){ if(Bb[z].item && Bb[z].item._panoBekle){ bek=z; bekP=Bb[z].item._panoBekleP; break; } }
+      if(bek>=0){ var pel=(bekP!=null && root.querySelector('.ed-card[data-i="'+bek+'"] .ed-img-pano[data-p="'+bekP+'"]')) || root.querySelector('.ed-card[data-i="'+bek+'"] .ed-img-pano'); if(pel){ pel.scrollIntoView({block:'center'}); try{ pel.focus(); }catch(e){} } } })();
     // [+ menüsü tıkla-kalıcı]: "+" tıklanınca menü açılır, DIŞARI tıklayana (ya da bir seçenek seçene)
     // kadar kalır. Hover'a bağlı değil (imleç kaçınca kapanmaz).
     root.querySelectorAll('.ed-pz-art').forEach(function(el){
@@ -7560,7 +7644,12 @@ X_EDITOR_JS = r'''
     root.querySelectorAll('.ed-pe').forEach(function(el){
       el.addEventListener('click', function(){ var _w=el.closest('.ed-pz-wrap'); if(_w) _w.classList.remove('acik');   // seçince menüyü kapat
         var bi=+el.getAttribute('data-i'), tur=el.getAttribute('data-t'); var _ps=el.getAttribute('data-pos'); var pos=(_ps==null?null:+_ps);
-        if(tur==='gorsel'){ XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
+        // [ÇOKLU GÖRSEL] AÇIK: "Görsel" -> boş görsel kutusu (parça) aç (Ctrl+V + 📁 PC-seç; üst üste yığılır).
+        // KAPALI: eski -> "Görsel" PC dosya seçici, "📋 Pano" kutu.
+        if(tur==='gorsel'){
+          if(cokluGorselAcik()){ XE._parcaEkle(bi,'gorselSlot',null, pos); }
+          else { XE._gorselSec(function(b64,mime){ XE._parcaEkle(bi,'gorsel',{b64:b64,mime:mime}, pos); }); }
+        }
         else if(tur==='pano'){ XE._parcaEkle(bi,'panoSlot',null, pos); }   // #3: inline yapıştırma yuvası aç (popup yok)
         else { XE._parcaEkle(bi, tur, null, pos); } });
     });
