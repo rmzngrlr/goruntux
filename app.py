@@ -5624,6 +5624,8 @@ LOCAL_DOCX_JS = r'''
   function birimGorselleri(item){
     var out=[], usedPrimary=false, pc=(item&&item.parcalar)||[], k, hasGorselPart=false;
     var coklu=true; try{ coklu=(localStorage.getItem('x_coklu_gorsel')!=='0'); }catch(e){}
+    // Birincil görsel bir parçaya PİNLİ ise (part.b64===image_b64) fallback'i TEKRAR uygulama (edGorselHarita ikizi).
+    if(coklu && item && item.image_b64){ for(k=0;k<pc.length;k++){ if(pc[k] && pc[k].tur==='gorsel' && pc[k].b64===item.image_b64){ usedPrimary=true; break; } } }
     for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue; hasGorselPart=true;
       var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
       if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
@@ -7058,6 +7060,9 @@ X_EDITOR_JS = r'''
   function cokluGorselAcik(){ try{ return localStorage.getItem('x_coklu_gorsel')!=='0'; }catch(e){ return true; } }
   function edGorselHarita(item){
     var map={}, usedPrimary=false, pc=(item&&item.parcalar)||[], k, coklu=cokluGorselAcik();
+    // Birincil görsel (item.image_b64) bir parçaya PİNLİ ise (part.b64===image_b64) fallback'i TEKRAR
+    // uygulama (yoksa üste eklenen boş kutu birincili "çalar"). bkz. gorselSlot pinleme.
+    if(coklu && item && item.image_b64){ for(k=0;k<pc.length;k++){ if(pc[k] && pc[k].tur==='gorsel' && pc[k].b64===item.image_b64){ usedPrimary=true; break; } } }
     for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue;
       var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
       if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
@@ -7378,6 +7383,13 @@ X_EDITOR_JS = r'''
     if(tur==='gorselSlot'){
       // [ÇOKLU GÖRSEL] HER ZAMAN yeni BOŞ görsel parçası ekle (üst üste yığılabilsin); _ciz kutuyu
       // çizer (Ctrl+V + 📁 PC-seç) ve o parçayı odaklar. Görsel o PARÇANIN b64'üne yazılır.
+      // ÖNCE: birincil görsel (item.image_b64 — eklenti/kazıma/eski) bir parçada "yüzüyorsa" onu O PARÇAYA
+      // PİNLE -> yeni kutu ÜSTE de ALTA da eklense birincil görsel kaymaz/çalınmaz. (image_b64+XLocalImages
+      // DURUR -> reload güvenli; edGorselHarita/birimGorselleri pinli birincili çift kullanmaz.)
+      if(cokluGorselAcik() && b.item.image_b64){
+        var _pin=-1; for(var _pp=0;_pp<b.item.parcalar.length;_pp++){ if(b.item.parcalar[_pp].tur==='gorsel' && !b.item.parcalar[_pp].b64){ _pin=_pp; break; } }
+        if(_pin>=0){ b.item.parcalar[_pin].b64=b.item.image_b64; b.item.parcalar[_pin].mime=b.item.image_mime||'image/jpeg'; }
+      }
       b.item.parcalar.splice(pos,0,{tur:'gorsel'});
       b.item._panoBekle=true; b.item._panoBekleP=pos;   // yeni eklenen kutuyu odakla
       XE._ovSet(i); XE._ciz(); return;
@@ -7425,10 +7437,15 @@ X_EDITOR_JS = r'''
     // İLK b64'süz görsel parçası alır; edGorselHarita ikizi). Aksi halde (ör. görselin ALTINA eklenen
     // BOŞ KUTU) birincile DOKUNMA -> yalnız o boş parçayı kaldır (eklenti görseli silinmesin).
     var usesPrimary=false;
-    if(!p.b64 && b.item.image_b64){
-      var oncekiBosGorsel=false;
-      for(var q=0;q<pp;q++){ var pq=b.item.parcalar[q]; if(pq && pq.tur==='gorsel' && !pq.b64){ oncekiBosGorsel=true; break; } }
-      usesPrimary=!oncekiBosGorsel;
+    if(b.item.image_b64){
+      // Birincil görsel (item.image_b64) bir parçaya PİNLİ mi? (part.b64===image_b64)
+      var pinIdx=-1; for(var r=0;r<b.item.parcalar.length;r++){ if(b.item.parcalar[r].tur==='gorsel' && b.item.parcalar[r].b64===b.item.image_b64){ pinIdx=r; break; } }
+      if(pinIdx>=0){ usesPrimary=(pinIdx===pp); }   // PİNLİ: yalnız O parçayı silmek birincili temizler (boş kutu silinince DOKUNMA)
+      else if(!p.b64){                               // PİNSİZ: YÜZEN birincil = ilk b64'süz görsel parçası
+        var oncekiBosGorsel=false;
+        for(var q=0;q<pp;q++){ var pq=b.item.parcalar[q]; if(pq && pq.tur==='gorsel' && !pq.b64){ oncekiBosGorsel=true; break; } }
+        usesPrimary=!oncekiBosGorsel;
+      }
     }
     if(usesPrimary){
       b.item.image_b64=''; b.item.image_mime='';
