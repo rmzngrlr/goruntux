@@ -5645,6 +5645,10 @@ LOCAL_DOCX_JS = r'''
   // Efektif biçim = rol varsayılanı (b1/b global stil) ÜZERİNE override. Bayrak x_h_ov='0' -> override YOK
   // (başlık DAİMA rol varsayılanı; eski davranış birebir).
   function hOvAcik(){ try{ return localStorage.getItem('x_h_ov')!=='0'; }catch(e){ return true; } }
+  // [OTONOM WORD DÜZEYİ] Word başlık düzeyi role göre OTOMATİK: platform (h1)->Başlık 1, içerik (h2)->Başlık 2;
+  // global b_wordstyle/b1_wordstyle ayarına BAĞLI DEĞİL (kayma olmaz). Tekil değişiklik yalnız başlık override
+  // (ov.word, sağ-tık). Bayrak x_oto_word='0' -> eski davranış (global *_wordstyle ayarı belirler).
+  function otoWordAcik(){ try{ return localStorage.getItem('x_oto_word')!=='0'; }catch(e){ return true; } }
   var WORD_GECERLI={Normal:1,Heading1:1,Heading2:1,Heading3:1,Heading4:1};
 
   async function generateBlob(opts, providedItems){
@@ -5808,7 +5812,7 @@ LOCAL_DOCX_JS = r'''
       var sz=(ov.size!=null?(parseInt(ov.size,10)||14)*2:bSz);
       var bold=(ov.bold!=null?ov.bold:opts.b_bold), ital=(ov.italic!=null?ov.italic:opts.b_italic), und=(ov.underline!=null?ov.underline:opts.b_underline);
       var align=ov.align||opts.b_align;
-      var word=WORD_GECERLI[ov.word]?ov.word:(WORD_GECERLI[opts.b_wordstyle]?opts.b_wordstyle:'Heading2');
+      var word=WORD_GECERLI[ov.word]?ov.word:(otoWordAcik()?'Heading2':(WORD_GECERLI[opts.b_wordstyle]?opts.b_wordstyle:'Heading2'));   // içerik başlığı -> otonom Başlık 2 (veya tekil override)
       var rPr='<w:rFonts w:ascii="'+xmlEsc(font)+'" w:hAnsi="'+xmlEsc(font)+'"/>';
       if(bold) rPr+='<w:b/>';
       if(ital) rPr+='<w:i/>';
@@ -5823,7 +5827,7 @@ LOCAL_DOCX_JS = r'''
       var sz=(ov.size!=null?(parseInt(ov.size,10)||18)*2:b1Sz);
       var bold=(ov.bold!=null?ov.bold:opts.b1_bold), ital=(ov.italic!=null?ov.italic:opts.b1_italic), und=(ov.underline!=null?ov.underline:opts.b1_underline);
       var align=ov.align||opts.b1_align;
-      var word=WORD_GECERLI[ov.word]?ov.word:(WORD_GECERLI[opts.b1_wordstyle]?opts.b1_wordstyle:'Heading1');
+      var word=WORD_GECERLI[ov.word]?ov.word:(otoWordAcik()?'Heading1':(WORD_GECERLI[opts.b1_wordstyle]?opts.b1_wordstyle:'Heading1'));   // platform başlığı -> otonom Başlık 1 (veya tekil override)
       var rPr='<w:rFonts w:ascii="'+xmlEsc(font)+'" w:hAnsi="'+xmlEsc(font)+'"/>';
       if(bold) rPr+='<w:b/>';
       if(ital) rPr+='<w:i/>';
@@ -7145,6 +7149,8 @@ X_EDITOR_JS = r'''
   }
   // [BAŞLIK OVERRIDE] Bayrak x_h_ov='0' -> başlık-başına override kapalı (rol varsayılanı; eski davranış).
   function hOvAcik(){ try{ return localStorage.getItem('x_h_ov')!=='0'; }catch(e){ return true; } }
+  // [OTONOM WORD DÜZEYİ] platform->Başlık 1, içerik->Başlık 2 (global ayardan bağımsız). x_oto_word='0' -> eski.
+  function otoWordAcik(){ try{ return localStorage.getItem('x_oto_word')!=='0'; }catch(e){ return true; } }
   // Rol varsayılan stili (b/b1 global) ÜZERİNE başlık-başına override (ov) birleşmiş CSS döndürür.
   // ov alanları: font,size(pt),color(#hex),bold,italic,underline,align. Yoksa stilCss ile birebir aynı.
   function stilCssOv(o, pre, ov){
@@ -7375,7 +7381,9 @@ X_EDITOR_JS = r'''
     h+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
     h+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
     h+='</span>';
-    if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
+    // [OTONOM WORD DÜZEYİ] Şeritteki genel "Stil" (Word başlık düzeyi) menüsü KALDIRILDI -> düzey role göre
+    // otonom (platform=Başlık 1, içerik=Başlık 2); tekil değişiklik yalnız başlığa SAĞ TIK panelinden.
+    if(ids.wordstyle && !otoWordAcik()) h+='<label title="Microsoft Word başlık türü (eski mod).">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
     // "Başlıksız" ikon+metin toggle (tik değil; Link üstte ile aynı stil). Açık: grup başlığı Word'e basılmaz.
     if(ids.basliksiz) h+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
@@ -7706,7 +7714,7 @@ X_EDITOR_JS = r'''
     if(prop==='size') return (ov.size!=null?ov.size:o[pre+'_size'])||'';
     if(prop==='color'){ var c=(ov.color!=null?ov.color:o[pre+'_color'])||'#000000'; return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; }
     if(prop==='align') return (ov.align!=null?ov.align:o[pre+'_align'])||'left';
-    if(prop==='word') return (ov.word!=null?ov.word:o[pre+'_wordstyle'])||(rol==='h1'?'Heading1':'Heading2');
+    if(prop==='word'){ if(ov.word!=null) return ov.word; if(otoWordAcik()) return (rol==='h1'?'Heading1':'Heading2'); return o[pre+'_wordstyle']||(rol==='h1'?'Heading1':'Heading2'); }
     if(prop==='bold') return (ov.bold!=null?!!ov.bold:!!o[pre+'_bold']);
     if(prop==='italic') return (ov.italic!=null?!!ov.italic:!!o[pre+'_italic']);
     if(prop==='underline') return (ov.underline!=null?!!ov.underline:!!o[pre+'_underline']);
