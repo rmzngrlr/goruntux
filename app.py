@@ -2094,7 +2094,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔤 İçerik Başlığı Stili</h3>
+                <h3>🔤 Başlık Stili</h3>
                 <div class="form-group">
                     <label for="b_font">Yazı Tipi (Font):</label>
                     <select id="b_font">
@@ -7053,7 +7053,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-kume-gutter{flex:none;width:26px;display:inline-flex;justify-content:center;}
 #editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:center;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
 #editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0;min-width:120px;flex:0 0 auto;max-width:100%;}
-#editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
+#editorModal .ed-h2:empty:before{content:"Başlık";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
 #editorModal .ed-metin-ekle{display:block;width:fit-content;background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:0 0 10px;}
@@ -7256,7 +7256,7 @@ X_EDITOR_JS = r'''
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
-    {key:'b',  ad:'İçerik Başlığı', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz',wordstyle:'b_wordstyle'}},
+    {key:'b',  ad:'Başlık', ids:{font:'b_font',size:'b_size',color:'b_color',bold:'b_bold',italic:'b_italic',underline:'b_underline',align:'b_align',numbered:'b_numbered',basliksiz:'b_basliksiz',wordstyle:'b_wordstyle'}},
     {key:'l',  ad:'Link',     ids:{font:'l_font',size:'l_size',color:'l_color',bold:'l_bold',italic:'l_italic',underline:'l_underline',align:'l_align'}},
     {key:'m',  ad:'Metin',    ids:{font:'m_font',size:'m_size',color:'m_color',bold:'m_bold',italic:'m_italic',underline:'m_underline',align:'m_align'}}
   ];
@@ -7399,7 +7399,7 @@ X_EDITOR_JS = r'''
     // [BAĞLAM] Font'un solunda "şu an hangi öğe düzenleniyor" göstergesi (okunur etiket; tür seçtirmez).
     // Tekil (o başlığa özel) biçim için başlığa SAĞ TIKLANIR -> _hOvPanel.
     var _ctx=XE._aktifBaglam||{};
-    var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2')?'İçerik Başlığı':grupAd(key);
+    var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2')?'Başlık':grupAd(key);
     h+='<span class="ed-ctx" title="Şu an düzenlenen öğenin genel ayarları. Tek bir başlığı ayrı biçimlemek için başlığa sağ tıkla.">'+esc(_ctxAd)+'</span>';
     h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
     h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(hval('size',ids.size))+'" style="width:52px"></label>';
@@ -7774,7 +7774,7 @@ X_EDITOR_JS = r'''
     var h='';
     if(info.mode==='heading'){
       var bi=info.bi, rol=info.rol;
-      var adv=(rol==='h1')?'Platform Adı':'İçerik Başlığı';
+      var adv=(rol==='h1')?'Platform Adı':'Başlık';
       h+='<div class="rt-title">'+adv+' — yalnız bu başlık</div>';
       h+='<label class="rt-row">Font <select class="rt-font">'+fontOpts+'</select></label>';
       h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(_rtEff(bi,rol,'size')))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+_rtEff(bi,rol,'color')+'"></label></div>';
