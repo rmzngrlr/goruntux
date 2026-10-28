@@ -2084,8 +2084,7 @@ HTML_TEMPLATE = """
                 <div class="form-group">
                     <label for="b1_wordstyle">Word Başlık Türü:</label>
                     <select id="b1_wordstyle">
-                        <option value="oto" selected>Otomatik (Başlık 1)</option>
-                        <option value="Heading1">Başlık 1</option>
+                        <option value="Heading1" selected>Başlık 1</option>
                         <option value="Heading2">Başlık 2</option>
                         <option value="Heading3">Başlık 3</option>
                         <option value="Heading4">Başlık 4</option>
@@ -2145,9 +2144,8 @@ HTML_TEMPLATE = """
                 <div class="form-group">
                     <label for="b_wordstyle">Word Başlık Türü:</label>
                     <select id="b_wordstyle">
-                        <option value="oto" selected>Otomatik (Başlık 2)</option>
                         <option value="Heading1">Başlık 1</option>
-                        <option value="Heading2">Başlık 2</option>
+                        <option value="Heading2" selected>Başlık 2</option>
                         <option value="Heading3">Başlık 3</option>
                         <option value="Heading4">Başlık 4</option>
                         <option value="Normal">Normal</option>
@@ -3490,7 +3488,7 @@ HTML_TEMPLATE = """
                 b1_italic: gc('b1_italic', false),
                 b1_underline: gc('b1_underline', false),
                 b1_align: gv('b1_align', 'left'),
-                b1_wordstyle: gv('b1_wordstyle', 'oto'),
+                b1_wordstyle: gv('b1_wordstyle', 'Heading1'),
                 b_font: gv('b_font', 'Arial'),
                 b_size: gv('b_size', '14'),
                 b_color: gv('b_color', '#000000'),
@@ -3500,7 +3498,7 @@ HTML_TEMPLATE = """
                 b_italic: gc('b_italic', false),
                 b_underline: gc('b_underline', false),
                 b_align: gv('b_align', 'left'),
-                b_wordstyle: gv('b_wordstyle', 'oto'),
+                b_wordstyle: gv('b_wordstyle', 'Heading2'),
                 l_font: gv('l_font', 'Calibri'),
                 l_size: gv('l_size', '10'),
                 l_color: gv('l_color', '#1DA1F2'),
@@ -3565,15 +3563,15 @@ HTML_TEMPLATE = """
                     });
                 }
             } catch (e) {}
-            // [OTOMATİK WORD DÜZEYİ MIGRATION] Word başlık düzeyi artık "Otomatik" (içerik=Başlık 2, platform=
-            // Başlık 1) varsayılanlı. Eski kayıtlı (kaymış) b_wordstyle/b1_wordstyle değerini BİR KEZ "oto"ya
-            // çek -> kullanıcı elle düzeltmeden otomatik Başlık 2/1 gelir. Sonra genel Stil'den değiştirilebilir.
+            // [WORD DÜZEYİ MIGRATION] Varsayılan Word düzeyi: içerik=Başlık 2, platform=Başlık 1. Eski kayıtlı
+            // (kaymış ya da bir önceki sürümün 'oto' değeri) b_wordstyle/b1_wordstyle'ı BİR KEZ gerçek varsayılana
+            // çek -> kullanıcı elle düzeltmeden içerik Başlık 2 gelir. Sonra genel "Stil"den değiştirilebilir.
             try {
-                if (localStorage.getItem('x_ws_oto_migr') !== '1') {
-                    var bw = document.getElementById('b_wordstyle'); if (bw) bw.value = 'oto';
-                    var b1w = document.getElementById('b1_wordstyle'); if (b1w) b1w.value = 'oto';
+                if (localStorage.getItem('x_ws_lvl_v3') !== '1') {
+                    var bw = document.getElementById('b_wordstyle'); if (bw) bw.value = 'Heading2';
+                    var b1w = document.getElementById('b1_wordstyle'); if (b1w) b1w.value = 'Heading1';
                     if (typeof xSaveStyles === 'function') xSaveStyles();
-                    localStorage.setItem('x_ws_oto_migr', '1');
+                    localStorage.setItem('x_ws_lvl_v3', '1');
                 }
             } catch (e) {}
             try {
@@ -7391,9 +7389,9 @@ X_EDITOR_JS = r'''
     h+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
     h+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
     h+='</span>';
-    // [WORD DÜZEYİ] Genel "Stil" menüsü: "Otomatik" = role göre (içerik=Başlık 2, platform=Başlık 1). Başka
-    // seçersen o düzey geneldir. Tek bir başlığı farklı yapmak için başlığa SAĞ TIK (Word düzeyi).
-    if(ids.wordstyle) h+='<label title="Word başlık düzeyi. Otomatik: içerik=Başlık 2, platform=Başlık 1. Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="oto">Otomatik</option><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
+    // [WORD DÜZEYİ] Genel "Stil" menüsü (varsayılan: içerik=Başlık 2, platform=Başlık 1). Seçtiğin düzey o
+    // türdeki TÜM başlıklara uygulanır. Tek bir başlığı farklı yapmak için başlığa SAĞ TIK (Word düzeyi).
+    if(ids.wordstyle) h+='<label title="Word başlık düzeyi (bu türdeki tüm başlıklar). Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
     // "Başlıksız" ikon+metin toggle (tik değil; Link üstte ile aynı stil). Açık: grup başlığı Word'e basılmaz.
     if(ids.basliksiz) h+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
@@ -7401,7 +7399,7 @@ X_EDITOR_JS = r'''
     h+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
-    if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=val(ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:'oto'; } }   // geçersiz/boş -> Otomatik
+    if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=val(ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:(key==='b1'?'Heading1':'Heading2'); } }   // geçersiz/boş -> rol varsayılanı
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
       // [4]: stil kontrolüne ODAKLANINCA ön-anlık al, değişince TEK adım işle (sayı girişinde her tuşta
@@ -7749,19 +7747,19 @@ X_EDITOR_JS = r'''
       h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(_rtEff(bi,rol,'size')))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+_rtEff(bi,rol,'color')+'"></label></div>';
       h+='<div class="rt-row rt-biu"><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'bold')?' aktif':'')+'" data-c="bold" title="Kalın"><b>B</b></button><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'italic')?' aktif':'')+'" data-c="italic" title="Eğik"><i>I</i></button><button type="button" class="rt-tgl'+(_rtEff(bi,rol,'underline')?' aktif':'')+'" data-c="underline" title="Altı çizili"><u>U</u></button></div>';
       h+='<div class="rt-row rt-hiza">'+_hizaBtnlar(_rtEff(bi,rol,'align'))+'</div>';
-      h+='<label class="rt-row">Word düzeyi <select class="rt-word"><option value="oto">Otomatik</option><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
+      h+='<label class="rt-row">Word düzeyi <select class="rt-word"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
       h+='<div class="rt-row"><button type="button" class="rt-reset">↺ Varsayılana döndür</button></div>';
       p.innerHTML=h;
       var fs=p.querySelector('.rt-font'); if(fs) fs.value=_rtEff(bi,rol,'font');
-      // Word düzeyi: yalnız BU başlığın tekil override'ı varsa onu göster; yoksa "Otomatik" (genel/otonom izler).
-      var _bb=XE.belge.birimler[bi]; var _ovw=(((rol==='h1')?_bb.h1ov:_bb.h2ov)||{}).word;
-      var ws=p.querySelector('.rt-word'); if(ws) ws.value=WORD_GECERLI_ED[_ovw]?_ovw:'oto';
+      // Word düzeyi: bu başlığın efektif düzeyi (tekil override varsa o; yoksa genel/varsayılan). Değiştirince
+      // bu başlığa özel olur; genele döndürmek için "Varsayılana döndür".
+      var ws=p.querySelector('.rt-word'); if(ws) ws.value=_rtEff(bi,rol,'word');
       p.querySelector('.rt-font').addEventListener('change', function(){ XE._hOvSec(bi,rol,'font',this.value); });
       p.querySelector('.rt-size').addEventListener('change', function(){ XE._hOvSec(bi,rol,'size',this.value); });
       p.querySelector('.rt-color').addEventListener('change', function(){ XE._hOvSec(bi,rol,'color',this.value); });
       p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ var c=b.getAttribute('data-c'); var nv=!_rtEff(bi,rol,c); XE._hOvSec(bi,rol,c,nv); b.classList.toggle('aktif',nv); }); });
       p.querySelectorAll('.rt-hb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._hOvSec(bi,rol,'align',v); p.querySelectorAll('.rt-hb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
-      p.querySelector('.rt-word').addEventListener('change', function(){ XE._hOvSec(bi,rol,'word', this.value==='oto'?'':this.value); });   // Otomatik -> tekil override temizle (genel/otonom)
+      p.querySelector('.rt-word').addEventListener('change', function(){ XE._hOvSec(bi,rol,'word', this.value); });   // bu başlığa özel Word düzeyi
       p.querySelector('.rt-reset').addEventListener('click', function(){ XE._hOvSifirla(bi,rol); _sagTikKapat(); });
     } else {
       // satır-içi (metin seçimi)
