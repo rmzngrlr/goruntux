@@ -5705,6 +5705,17 @@ LOCAL_DOCX_JS = r'''
           }
         }
       } catch(e){}
+      // [AYIR / KÜME TAŞIMA KALICILIĞI] group_override GRUPLAMAYI plan ANINDA belirler; overlay'de saklanır
+      // ama sunucu havuzunda YOKTUR. Reopen'da ham havuz çekilince "kendi başlığına ayır"/küme taşıma
+      // kaybolurdu (restore plan SONRASI item'a yazdığı için geç kalır). Çözüm: plan ÖNCESİ overlay'den enjekte.
+      try {
+        var _ovB = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {};
+        var _nk = (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink : function(x){ return String(x||''); };
+        for (var _gi=0; _gi<items.length; _gi++){
+          var _oe = _ovB[ _nk(items[_gi].link||'') ];
+          if (_oe && _oe.grup != null) items[_gi].group_override = _oe.grup;
+        }
+      } catch(e){}
     }
 
     // [bitişik-dizi gruplama]: Manuel bölüm VARSA (belge-oluşturucu modu) otomatik hesap gruplaması
