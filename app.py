@@ -6948,7 +6948,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-hb.aktif{background:#1565c0;color:#fff;box-shadow:0 1px 2px rgba(21,101,192,0.4);}
 #editorModal .ed-tgl-num svg,#editorModal .ed-hb svg{display:block;}
 #editorModal .ed-root{padding:12px 18px 28px;color:#15202b;}
-#editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;}
+#editorModal .ed-plat{border-bottom:2px solid #d0d7de;padding-bottom:5px;margin:20px 0 10px;scroll-margin-top:118px;cursor:pointer;border-radius:5px;transition:background .1s;}
+#editorModal .ed-plat:hover{background:rgba(21,101,192,0.06);}
 #editorModal .ed-plat:first-child{margin-top:4px;}
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
@@ -7173,23 +7174,18 @@ X_EDITOR_JS = r'''
 
   XE._seritKur = function(){
     var host=document.getElementById('editor-serit'); if(!host) return;
-    var tabs=GRUPLAR.map(function(g,i){ return '<button class="ed-tab'+(i===1?' aktif':'')+'" data-g="'+g.key+'" type="button">'+esc(g.ad)+'</button>'; }).join('');
-    var swap='<label class="ed-ustswap" title="Açık: link görselin üstünde, görsel altında. Kapalı: görsel üstte, link altta."><input type="checkbox" id="ed-link-ust"'+(linkUstteFlag()?' checked':'')+'> Link üstte</label>';
-    host.innerHTML='<div class="ed-tabs">'+tabs+swap+'</div><div class="ed-panel" id="ed-panel"></div>';
-    host.querySelectorAll('.ed-tab').forEach(function(t){ t.addEventListener('click', function(){
-      host.querySelectorAll('.ed-tab').forEach(function(x){ x.classList.remove('aktif'); });
-      t.classList.add('aktif'); XE._panelCiz(t.getAttribute('data-g'));
-    }); });
-    var cb=host.querySelector('#ed-link-ust');
-    if(cb) cb.addEventListener('change', function(){ linkUstteSet(cb.checked); XE._linkUstteUygula(cb.checked); });
-    XE._panelCiz('b');
+    // [sekmeler GİZLİ] Stil sekmeleri (Platform Adı/İçerik Başlığı/Link/Metin) kaldırıldı; şerit artık
+    // editörde TIKLANAN öğeye göre otomatik ilgili grubun kontrollerini gösterir (_seritSekme:
+    // platform->b1, başlık->b, metin->m, link->l). "Link üstte" aşağıya, kontrollerin yanına ikon-toggle
+    // olarak taşındı (_panelCiz). Etiketsiz sade.
+    host.innerHTML='<div class="ed-panel" id="ed-panel"></div>';
+    if(!XE._aktifGrup) XE._aktifGrup='b';
+    XE._panelCiz(XE._aktifGrup);
   };
-  // Düzenlenen ögeye göre strip sekmesi otomatik geçsin (başlık->b, metin->m, link->l).
+  // Düzenlenen ögeye göre şerit otomatik geçsin (platform->b1, başlık->b, metin->m, link->l). Sekme YOK.
   XE._seritSekme = function(key){
-    var host=document.getElementById('editor-serit'); if(!host) return;
-    var t=host.querySelector('.ed-tab[data-g="'+key+'"]'); if(!t || t.classList.contains('aktif')) return;
-    host.querySelectorAll('.ed-tab').forEach(function(x){ x.classList.remove('aktif'); });
-    t.classList.add('aktif'); XE._panelCiz(key);
+    if(XE._aktifGrup===key) return;
+    XE._aktifGrup=key; XE._panelCiz(key);
   };
   XE._panelCiz = function(key){
     var g=null,i; for(i=0;i<GRUPLAR.length;i++){ if(GRUPLAR[i].key===key){ g=GRUPLAR[i]; break; } }
@@ -7217,6 +7213,8 @@ X_EDITOR_JS = r'''
     if(ids.wordstyle) h+='<label title="Microsoft Word başlık türü: Gezinme Bölmesi/İçindekiler bu seviyeleri kullanır.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
     if(ids.basliksiz) h+='<label class="ed-chk" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'> Başlıksız</label>';
+    // "Link üstte" GLOBAL toggle (numaralandırma gibi ikon-buton; tik değil). Açık: link görselin ÜSTÜNDE.
+    h+='<label class="ed-tgl ed-tgl-linkust" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg></label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=val(ids.font);
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws) ws.value=val(ids.wordstyle)||(key==='b1'?'Heading1':'Heading2'); }
@@ -7231,6 +7229,8 @@ X_EDITOR_JS = r'''
     panel.querySelectorAll('.ed-hb').forEach(function(btn){
       btn.addEventListener('click', function(){ XE._hizaSec(btn.getAttribute('data-a'), btn.getAttribute('data-v')); });
     });
+    // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
+    var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
   };
   XE._hizaSec = function(inputId, v){
     XE._pushUndo();
@@ -7580,7 +7580,7 @@ X_EDITOR_JS = r'''
     if(!B.length){ h.push('<div class="ed-bos">Henüz içerik yok. Aşağıdaki <b>+ Bölüm Ekle</b> ile bir bölüm açıp içine başlık/metin/görsel/link ekleyerek rapor oluşturabilirsin.</div>'); }
     h.push(_ez('', !B.length));   // en üstteki ekleme zonu — havuz BOŞKEN daima görünür (hover gerekmez)
     for(i=0;i<B.length;i++){ var b=B[i];
-      if(b.h1) h.push('<div class="ed-plat" style="'+c1+'">'+esc(b.h1)+'</div>');
+      if(b.h1) h.push('<div class="ed-plat" style="'+c1+'" title="Platform Adı stilini düzenlemek için tıkla">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
       h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
       if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı">&#x283F; taşı</div>');
@@ -7710,6 +7710,10 @@ X_EDITOR_JS = r'''
     });
     root.querySelectorAll('.ed-kume').forEach(function(el){
       el.addEventListener('change', function(){ var v=el.value; if(v==='__noop'){ return; } XE._kumeTasi(+el.getAttribute('data-i'), v); });
+    });
+    // Platform başlığına tıkla -> şerit "Platform Adı" (b1) kontrollerine geçer (sekmeler gizli; tıklama-bağlamı).
+    root.querySelectorAll('.ed-plat').forEach(function(el){
+      el.addEventListener('click', function(){ XE._seritSekme('b1'); });
     });
     root.querySelectorAll('.ed-bolum-ekle').forEach(function(el){
       el.addEventListener('click', function(){ XE._bolumEkle(el.getAttribute('data-after')); });
