@@ -7420,7 +7420,17 @@ X_EDITOR_JS = r'''
     var b=XE.belge.birimler[bi]; if(!b||!b.item||!b.item.parcalar) return;
     var p=b.item.parcalar[pp]; if(!p || p.tur!=='gorsel') return;
     XE._pushUndo();
-    if(!p.b64){   // kendi b64'ü yok -> birincil görseli (item.image_b64) kullanıyordu
+    // Bu parça BİRİNCİL görseli (item.image_b64 — eklenti/kazıma/eski) GERÇEKTEN mi kullanıyor?
+    // = kendi b64'ü YOK + item.image_b64 VAR + kendisinden ÖNCE b64'süz görsel parçası YOK (birincili
+    // İLK b64'süz görsel parçası alır; edGorselHarita ikizi). Aksi halde (ör. görselin ALTINA eklenen
+    // BOŞ KUTU) birincile DOKUNMA -> yalnız o boş parçayı kaldır (eklenti görseli silinmesin).
+    var usesPrimary=false;
+    if(!p.b64 && b.item.image_b64){
+      var oncekiBosGorsel=false;
+      for(var q=0;q<pp;q++){ var pq=b.item.parcalar[q]; if(pq && pq.tur==='gorsel' && !pq.b64){ oncekiBosGorsel=true; break; } }
+      usesPrimary=!oncekiBosGorsel;
+    }
+    if(usesPrimary){
       b.item.image_b64=''; b.item.image_mime='';
       if(b.item.link && window.XLocalImages && window.XLocalImages.remove){ try{ window.XLocalImages.remove(b.item.link); }catch(_){} }
     }
