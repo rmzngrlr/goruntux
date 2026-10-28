@@ -6971,7 +6971,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-parca.ed-alt{border-bottom-color:#1DA1F2;}
 #editorModal .ed-parca.ed-suruk{opacity:.45;}
 /* [titreme önleme] Taşıma tutamağı (⠿) da "+" gibi: hep yerinde, soluk; kart üstüne hafif, üstüne gelince opak. */
-#editorModal .ed-tut{flex:none;cursor:grab;user-select:none;color:#8a94a0;font-size:16px;line-height:1.1;padding:5px 6px;border:1px solid transparent;border-radius:6px;background:transparent;opacity:.3;transition:opacity .12s,background .12s,color .12s,border-color .12s;}
+#editorModal .ed-tut{flex:none;width:26px;padding:4px 0;display:inline-flex;align-items:center;justify-content:center;cursor:grab;user-select:none;color:#8a94a0;font-size:15px;line-height:1;border:1px solid transparent;border-radius:6px;background:transparent;opacity:.3;transition:opacity .12s,background .12s,color .12s,border-color .12s;}   /* sabit 26px sütun -> "+" ile hizalı */
 #editorModal .ed-card:hover .ed-tut{opacity:.6;}
 #editorModal .ed-card:hover .ed-tut:hover,#editorModal .ed-tut:active{opacity:1;}
 #editorModal .ed-tut:hover{opacity:1;background:#eef5ff;color:#1565c0;border-color:#9ec5f0;}
@@ -7034,6 +7034,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pe:hover{background:#eef5ff;color:#1565c0;}
 #editorModal .ed-pz{display:flex;justify-content:flex-start;min-height:6px;margin:0;}
 #editorModal .ed-pz-wrap{position:relative;display:inline-flex;}
+#editorModal .ed-pz>.ed-pz-wrap{width:26px;justify-content:center;}   /* "+" sabit 26px sol sütun -> ⠿ ile aynı merkez (hizalı) */
 /* [titreme önleme] display yerine OPACITY: işaret HEP yerinde durur (yerleşim kaymaz) -> mouse gezince
    titremez. Varsayılan çok saydam; bölge üstüne gelince hafif, butonun üstüne gelince tam opak. Küçültüldü. */
 #editorModal .ed-pz-art{display:inline-flex;width:18px;height:18px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:13px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
@@ -7148,7 +7149,10 @@ X_EDITOR_JS = r'''
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
     else { _savedScroll = null; }
-    var root=document.getElementById('editor-root'); if(root) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
+    // [titreme/refresh önleme] "Yükleniyor…" boş flaşını YALNIZ taze açılışta (veya içerik boşken) göster.
+    // Ekle/sil/taşı/yeniden-plan'da eski içerik EKRANDA KALSIN; _ciz hazır olunca tek seferde değiştirir ->
+    // sunucu re-fetch'i sürerken ekran boşalmaz, "refresh" hissi gitmez.
+    var root=document.getElementById('editor-root'); if(root && (opts.fresh || !root.querySelector('.ed-root'))) root.innerHTML='<div class="ed-bos">Yükleniyor…</div>';
     try {
       var stil=stilOku();
       var plan=await XE.planGetir(opts.items||null, stil);
