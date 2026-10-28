@@ -6959,8 +6959,8 @@ X_EDITOR_JS = r'''
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-#editorModal .ed-h2-sar{padding-right:76px;}   /* "✕ Sil" butonuna yer bırak; hizalama bu sarmalayıcıda */
-#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;max-width:100%;}
+#editorModal .ed-h2-sar{display:flex;align-items:flex-start;gap:4px;padding-right:76px;}   /* kalem başlığın SAĞINDA (sarsa da); "✕ Sil"e yer; hizalama justify-content */
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;flex:0 0 auto;max-width:calc(100% - 40px);}   /* flex'te büzülme -> min-content kötü sarmasını önle; kalem için 40px yer */
 #editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
@@ -6993,8 +6993,14 @@ X_EDITOR_JS = r'''
 #editorModal .ed-metin:focus{border-color:#1DA1F2;border-style:solid;background:rgba(29,161,242,0.04);}
 #editorModal .ed-tur{flex:none;display:none;align-self:flex-start;font-size:11px;padding:3px 5px;border:1px solid #d0d7de;border-radius:6px;background:#fff;color:#334;cursor:pointer;}
 #editorModal .ed-parca:hover .ed-tur{display:inline-block;}
-#editorModal .ed-kume{display:none;margin:0 0 10px;max-width:260px;font-size:11px;padding:3px 7px;border:1px solid #c0c7cf;border-radius:14px;background:#eef5ff;color:#1565c0;font-weight:600;cursor:pointer;}
-#editorModal .ed-card:hover .ed-kume{display:inline-block;}
+/* "Başka bölüme taşı": büyük açılır kutu yerine başlığın sağında KALEM ikonu + açılır menü. */
+#editorModal .ed-kume-wrap{vertical-align:middle;}
+#editorModal .ed-kume-kalem{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid #d7dde3;background:#fff;color:#8a94a0;border-radius:7px;cursor:pointer;padding:0;vertical-align:middle;margin-left:8px;transition:color .1s,background .1s,border-color .1s;}
+#editorModal .ed-kume-kalem:hover,#editorModal .ed-pz-wrap.acik .ed-kume-kalem{color:#1565c0;background:#eef5ff;border-color:#9ec5f0;}
+#editorModal .ed-kume-satir{margin:0 0 8px;}
+#editorModal .ed-kume-menu{min-width:180px;max-height:300px;overflow:auto;}
+#editorModal .ed-kume-opt{text-align:left;font-size:12px;font-weight:600;color:#334;background:transparent;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;width:100%;white-space:nowrap;}
+#editorModal .ed-kume-opt:hover{background:#eef5ff;color:#1565c0;}
 #editorModal .ed-metin-sil{flex:none;width:26px;height:26px;border:1px solid #d0d7de;background:#fff;color:#e0245e;border-radius:6px;font-size:16px;line-height:1;cursor:pointer;}
 #editorModal .ed-metin-sil:hover{background:#ffeef0;}
 #editorModal .ed-link{display:block;font-size:12px;color:#1565c0;word-break:break-all;text-decoration:none;}
@@ -7594,19 +7600,24 @@ X_EDITOR_JS = r'''
       // C (istediğin bölüme taşı): taşıma menüsü HER kartta (hover'da çıkar) — hedefte TÜM diğer
       // bölümler (kümeler + tek-başına öğeler) okunur adlarıyla. YALNIZ eski (link='') manuel bloklar
       // hariç (onlar ⠿ ile sürüklenir). Birleşik xmanual:// öğeler gerçek havuz öğesi -> menüde yer alır.
+      // C (başka bölüme taşı): büyük açılır kutu YERİNE başlığın hemen SAĞINDA KALEM ikonu -> tıklayınca
+      // hedef bölümler menüsü açılır ("+" menü deseni: ed-pz-wrap/.acik/ed-pz-menu yeniden kullanılır).
+      var _kalemHtml='';
       if(!b.manual || edManual(b.item.link)){
         var _selfKey = (b.grup!=null) ? b.grup : ('__solo:'+((b.item&&b.item.uid)||i));
         var _diger=[]; for(var _ki=0;_ki<hedefler.length;_ki++){ if(hedefler[_ki].key!==_selfKey) _diger.push(hedefler[_ki]); }
         if(_diger.length>0){
-          var _kopt='<option value="__noop" selected>⇄ Başka bölüme taşı…</option>';
-          for(var _kj=0;_kj<_diger.length;_kj++){ _kopt+='<option value="'+esc(_diger[_kj].key)+'">'+esc(_diger[_kj].ad)+'</option>'; }
-          _kopt+='<option value="__yeni">➕ Kendi başlığı (ayır)</option>';
-          h.push('<select class="ed-kume" data-i="'+i+'" title="Bu öğeyi başka bir bölüm altına taşı">'+_kopt+'</select>');
+          var _km='';
+          for(var _kj=0;_kj<_diger.length;_kj++){ _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="'+esc(_diger[_kj].key)+'">'+esc(_diger[_kj].ad)+'</button>'; }
+          _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="__yeni">➕ Kendi başlığı (ayır)</button>';
+          _kalemHtml='<span class="ed-pz-wrap ed-kume-wrap"><button class="ed-kume-kalem" title="Bu öğeyi başka bölüme taşı"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3"/><path d="M9 4L2.5 10.5V13H5L11.5 6.5z"/></svg></button><span class="ed-pz-menu ed-kume-menu">'+_km+'</span></span>';
         }
       }
-      // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ (kutu içerik-genişliğinde solda).
-      // Blok SARMALAYICIYA hizalamayı koy -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu).
-      if(b.h2!=null){ var _h2a=({left:'left',center:'center',right:'right',both:'left'}[o.b_align]||'left'); h.push('<div class="ed-h2-sar" style="text-align:'+_h2a+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div></div>'); }
+      // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ. Blok SARMALAYICIYA hizalamayı koy
+      // -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu). Kalem başlığın SAĞINDA; başlık
+      // yoksa (devam öğesi) kalem küçük bir satırda kartın başında.
+      if(b.h2!=null){ var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[o.b_align]||'flex-start'); h.push('<div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>'+_kalemHtml+'</div>'); }
+      else if(_kalemHtml){ h.push('<div class="ed-kume-satir">'+_kalemHtml+'</div>'); }
       var pc=(b.item&&b.item.parcalar)||[];
       var _gm=edGorselHarita(b.item);   // [ÇOKLU GÖRSEL] parça-indeksi -> {b64,mime}
       h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
@@ -7717,8 +7728,17 @@ X_EDITOR_JS = r'''
     root.querySelectorAll('.ed-tur').forEach(function(el){
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
     });
-    root.querySelectorAll('.ed-kume').forEach(function(el){
-      el.addEventListener('change', function(){ var v=el.value; if(v==='__noop'){ return; } XE._kumeTasi(+el.getAttribute('data-i'), v); });
+    // Kalem ikonu: tıklayınca taşıma menüsünü aç/kapa (ed-pz deseni: diğer açıkları kapat, bunu toggle).
+    root.querySelectorAll('.ed-kume-kalem').forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); var w=el.closest('.ed-pz-wrap'); if(!w) return;
+        var acik=w.classList.contains('acik');
+        root.querySelectorAll('.ed-pz-wrap.acik').forEach(function(x){ x.classList.remove('acik'); });
+        if(!acik) w.classList.add('acik'); });
+    });
+    // Menü seçeneği: öğeyi o bölüme taşı + menüyü kapat.
+    root.querySelectorAll('.ed-kume-opt').forEach(function(el){
+      el.addEventListener('click', function(e){ e.stopPropagation(); var w=el.closest('.ed-pz-wrap'); if(w) w.classList.remove('acik');
+        XE._kumeTasi(+el.getAttribute('data-i'), el.getAttribute('data-k')); });
     });
     // Platform başlığına tıkla -> şerit "Platform Adı" (b1) kontrollerine geçer (sekmeler gizli; tıklama-bağlamı).
     root.querySelectorAll('.ed-plat').forEach(function(el){
