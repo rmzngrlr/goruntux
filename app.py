@@ -6970,8 +6970,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-parca.ed-ust{border-top-color:#1DA1F2;}
 #editorModal .ed-parca.ed-alt{border-bottom-color:#1DA1F2;}
 #editorModal .ed-parca.ed-suruk{opacity:.45;}
-#editorModal .ed-tut{flex:none;cursor:grab;user-select:none;color:#8a94a0;font-size:16px;line-height:1.1;padding:5px 6px;border:1px solid #d0d7de;border-radius:6px;background:#fff;}
-#editorModal .ed-tut:hover{background:#eef5ff;color:#1565c0;}
+/* [titreme önleme] Taşıma tutamağı (⠿) da "+" gibi: hep yerinde, soluk; kart üstüne hafif, üstüne gelince opak. */
+#editorModal .ed-tut{flex:none;cursor:grab;user-select:none;color:#8a94a0;font-size:16px;line-height:1.1;padding:5px 6px;border:1px solid transparent;border-radius:6px;background:transparent;opacity:.3;transition:opacity .12s,background .12s,color .12s,border-color .12s;}
+#editorModal .ed-card:hover .ed-tut{opacity:.6;}
+#editorModal .ed-card:hover .ed-tut:hover,#editorModal .ed-tut:active{opacity:1;}
+#editorModal .ed-tut:hover{opacity:1;background:#eef5ff;color:#1565c0;border-color:#9ec5f0;}
 #editorModal .ed-tut:active{cursor:grabbing;}
 #editorModal .ed-parca-ic{flex:1;min-width:0;}
 #editorModal .ed-parca-bos{color:#9aa3ad;font-size:12px;font-style:italic;padding:4px 0;}
