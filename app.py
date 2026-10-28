@@ -7262,14 +7262,39 @@ X_EDITOR_JS = r'''
     XE._pushUndo();
     if(!unifyOn()){ return XE._bolumEkleLegacy(afterUid); }
     var uid=yeniManId(), link='xmanual://'+uid;
-    // afterUid biriminin havuz pozisyonunu (1-tabanli) ŞİMDİ, taze belge üzerinden çöz (ekleme index kaydırır).
-    var afterIndex=null;
-    if(afterUid){ var B=XE.belge.birimler||[]; for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===afterUid && B[i].item.index!=null){ afterIndex=B[i].item.index; break; } } }
+    // [GÖRSEL-SIRA normalizasyonu — commit sonrası] Havuz sırası, editörün gösterdiği GRUPLU GÖRSEL
+    // sıradan AYRI olabilir: iç içe eklenen çok-hesaplı havuzda (örn. havuz [A1,B1,A2] -> editör görsel
+    // [A1,A2,B1]) "+" ile A1-A2 arasına eklemek, manueli A1'in HAM havuz-konumuna (B1'den önce) sokup
+    // A2'yi alta düşürüyordu. Çözüm: eklemeden ÖNCE havuzu GÖRSEL sıraya diz, sonra tıklanan öğenin
+    // GÖRSEL konumunun ardına ekle. Bayrak (geri alınabilir): localStorage x_bolum_gorsel_sira='0' ->
+    // eski ham-indeks davranışı.
+    var _gorselSiraAcik=true; try{ _gorselSiraAcik=(localStorage.getItem('x_bolum_gorsel_sira')!=='0'); }catch(e){}
+    var B=XE.belge.birimler||[];
+    var afterIndex=null, _gorselKullan=false;
+    if(_gorselSiraAcik){
+      var poolB=[]; for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.index!=null) poolB.push(B[i]); }
+      var yeniSira=poolB.map(function(b){ return b.item.index-1; });   // GÖRSEL sıradaki 0-tabanlı havuz konumları
+      var _perm=(yeniSira.length>0), _srt=yeniSira.slice().sort(function(a,b){ return a-b; });   // tam permütasyon mu? (reorder bunu şart koşar)
+      for(var s=0;s<_srt.length && _perm;s++){ if(_srt[s]!==s) _perm=false; }
+      if(_perm){
+        var afterPos=-1;
+        if(afterUid){ for(var j=0;j<poolB.length;j++){ if(poolB[j].item.uid===afterUid){ afterPos=j; break; } } }
+        if(afterUid==='' || afterPos>=0){
+          var _farkli=false; for(var k=0;k<yeniSira.length;k++){ if(yeniSira[k]!==k){ _farkli=true; break; } }
+          if(_farkli){ try{ await fetch('/api/manual/reorder', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order:yeniSira})}); }catch(e){} }
+          afterIndex=(afterUid==='')?0:(afterPos+1);   // normalize sonrası havuz=görsel sıra -> görsel konumun ardı
+          _gorselKullan=true;
+        }
+      }
+    }
+    if(!_gorselKullan){   // eski yol: afterUid biriminin HAM havuz pozisyonu (1-tabanli) / en üst / bulunamazsa sona
+      if(afterUid){ for(var i2=0;i2<B.length;i2++){ if(B[i2].item && B[i2].item.uid===afterUid && B[i2].item.index!=null){ afterIndex=B[i2].item.index; break; } } }
+      else if(afterUid==='') afterIndex=0;
+    }
     // Overlay'e ŞABLON tohumu -> "+" hemen başlık+metin+link iskeleti doğursun ve havuz yeniden-fetch'inde yaşasın.
     try{ ovStore().byLink[ovKey(link)] = { parcalar:[{tur:'metin', id:yeniId(), metin:''},{tur:'link', url:''}], h2:'', grup:null }; }catch(e){}
     var body={ title:'', link:link, local:true };
-    if(afterIndex!=null) body.after_index=afterIndex;       // afterItem'ın hemen ARDINA (0-tab insert = 1-tab pozisyon)
-    else if(afterUid==='') body.after_index=0;              // en üste
+    if(afterIndex!=null) body.after_index=afterIndex;       // GÖRSEL konumun ardına (normalize edildi) ya da eski ham-indeks
     XE._dirty=true;
     _busy=true;   // [5] uçuştayken geri/ileri reddedilsin
     try{
