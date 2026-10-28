@@ -6134,15 +6134,25 @@ LOCAL_DOCX_JS = r'''
       }
     }
     if(multiPlatform){
-      // Birden fazla platform (X / Instagram / Facebook) -> Baslik 1 ile ayir
-      // (ilk gorunen platform once; havuz sirasina gore).
-      var pj, oi;
-      for(pj=0; pj<platOrder.length; pj++){
-        var plat=platOrder[pj], ilk=true;
-        for(oi=0; oi<order.length; oi++){
-          if(entryPlatform(order[oi])===plat){
-            toplaEntry(order[oi], ilk ? (PLAT_LABEL[plat] || 'X (Twitter)') : null);
-            ilk=false;
+      // [HAVUZ SIRASI + manuel araya girsin + "Manuel Bölümler" grubu YOK]: Çok platform olsa DA çıktı HAVUZ
+      // SIRASINI izler; platform başlığı (Baslik 1) yalnız taranmış platform DEĞİŞİNCE basılır; manuel ('manual')
+      // öğe BAŞLIKSIZ, bulunduğu yerde kalır (kullanıcı: "istediğim bölüm arasına dümdüz bölüm eklenebilsin").
+      // Bayrak (geri alınabilir): localStorage x_mp_poolorder='0' -> eski platform-gruplama (Manuel Bölümler grubu).
+      var _mpPool=true; try{ _mpPool=(localStorage.getItem('x_mp_poolorder')!=='0'); }catch(e){}
+      if(_mpPool){
+        var oiP, _lastPlat=null;
+        for(oiP=0; oiP<order.length; oiP++){
+          var _ep=entryPlatform(order[oiP]);
+          if(_ep==='manual'){ toplaEntry(order[oiP], null); }                 // dümdüz: başlık yok, havuz konumunda
+          else { toplaEntry(order[oiP], (_ep!==_lastPlat) ? (PLAT_LABEL[_ep] || 'X (Twitter)') : null); _lastPlat=_ep; }
+        }
+      } else {
+        // Eski davranış: platforma göre grupla (ilk görünen platform önce; 'manual' -> "Manuel Bölümler").
+        var pj, oi;
+        for(pj=0; pj<platOrder.length; pj++){
+          var plat=platOrder[pj], ilk=true;
+          for(oi=0; oi<order.length; oi++){
+            if(entryPlatform(order[oi])===plat){ toplaEntry(order[oi], ilk ? (PLAT_LABEL[plat] || 'X (Twitter)') : null); ilk=false; }
           }
         }
       }
@@ -7444,6 +7454,8 @@ X_EDITOR_JS = r'''
     if(tur==='metin'){ b.item.parcalar[pk]={tur:'metin', id:yeniId(), metin:metin}; XE._ovSet(i); XE._ciz(); }
     else if(tur==='link'){ b.item.parcalar[pk]={tur:'link', url:metin}; XE._ovSet(i); XE._ciz(); }
     else if(tur==='baslik'){
+      var _byOn=false; try{ _byOn=(localStorage.getItem('x_baslik_yap')==='1'); }catch(e){}
+      if(!_byOn) return;   // [BAŞLIK YALNIZ BÖLÜM BAŞINDA] içerik metni başlık yapılamaz
       b.item.h2_override=metin; b.item.parcalar.splice(pk,1); b.h2=metin;
       // Öğe bir kümenin ORTASINDAYSA (b.h2 yoktu) başlık görünmez -> KENDİ kümesine al.
       if(b.grup!=null){ b.item.group_override='mc-'+(b.item.uid||Date.now())+'-'+Math.floor(Math.random()*1e6); }
@@ -7938,11 +7950,14 @@ X_EDITOR_JS = r'''
         else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
         h.push('</div>');
         // #4: Word Düzenle (ve genel) için parça TÜRÜ değiştirici — hover'da çıkar (metin/link).
+        // [BAŞLIK YALNIZ BÖLÜM BAŞINDA] "Başlık yap" KALDIRILDI: bölüm içindeki bir metin başlık OLAMAZ; başlık
+        // yalnız bölüm başındaki title satırıdır (üstteki .ed-h2'den düzenlenir). Bayrak x_baslik_yap='1' -> geri.
         if(p.tur==='metin' || p.tur==='link'){
-          h.push('<select class="ed-tur" data-i="'+i+'" data-p="'+k+'" title="Bu parçanın türünü seç (Metin / Link / Başlık yap)">'
+          var _byAcik=false; try{ _byAcik=(localStorage.getItem('x_baslik_yap')==='1'); }catch(e){}
+          h.push('<select class="ed-tur" data-i="'+i+'" data-p="'+k+'" title="Bu parçanın türünü seç (Metin / Link)">'
             +'<option value="metin"'+(p.tur==='metin'?' selected':'')+'>Metin</option>'
             +'<option value="link"'+(p.tur==='link'?' selected':'')+'>Link</option>'
-            +'<option value="baslik">Başlık yap</option></select>');
+            +(_byAcik?'<option value="baslik">Başlık yap</option>':'')+'</select>');
         }
         if(p.tur==='metin' || p.tur==='link') h.push('<button class="ed-metin-sil" data-i="'+i+'" data-p="'+k+'" title="Bu parçayı sil">&minus;</button>');
         else if(p.tur==='gorsel') h.push('<button class="ed-metin-sil ed-gorsel-sil" data-i="'+i+'" data-p="'+k+'" title="Bu görseli sil">&minus;</button>');   // [ÇOKLU GÖRSEL] görseli editörden sil (manuel + eklenti/kazıma)
