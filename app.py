@@ -7558,7 +7558,11 @@ X_EDITOR_JS = r'''
       else if(afterUid==='') afterIndex=0;
     }
     // Overlay'e ŞABLON tohumu -> "+" hemen başlık+metin+link iskeleti doğursun ve havuz yeniden-fetch'inde yaşasın.
-    try{ ovStore().byLink[ovKey(link)] = { parcalar:[{tur:'metin', id:yeniId(), metin:''},{tur:'link', url:''}], h2:'', grup:null }; }catch(e){}
+    // [Link üstte] açıksa link kutusu metnin ÜSTÜNDE tohumlanır (kullanıcı isteği); kapalıysa metin üstte.
+    var _luSeed = linkUstteFlag()
+      ? [{tur:'link', url:''},{tur:'metin', id:yeniId(), metin:''}]
+      : [{tur:'metin', id:yeniId(), metin:''},{tur:'link', url:''}];
+    try{ ovStore().byLink[ovKey(link)] = { parcalar:_luSeed, h2:'', grup:null }; }catch(e){}
     var body={ title:'', link:link, local:true };
     if(afterIndex!=null) body.after_index=afterIndex;       // GÖRSEL konumun ardına (normalize edildi) ya da eski ham-indeks
     XE._dirty=true;
@@ -7569,7 +7573,7 @@ X_EDITOR_JS = r'''
     } finally { _busy=false; }
   };
   XE._bolumEkleLegacy = function(afterUid){
-    var it={ manual:true, uid:yeniManId(), link:'', h2_override:'', parcalar:[ {tur:'metin', id:yeniId(), metin:''}, {tur:'link', url:''} ] };
+    var it={ manual:true, uid:yeniManId(), link:'', h2_override:'', parcalar:(linkUstteFlag() ? [ {tur:'link', url:''}, {tur:'metin', id:yeniId(), metin:''} ] : [ {tur:'metin', id:yeniId(), metin:''}, {tur:'link', url:''} ]) };
     manuelStore().push({ afterUid: afterUid||'', item: it });
     XE._dirty=true;
     XE._yenidenPlanla();
