@@ -7938,24 +7938,31 @@ X_EDITOR_JS = r'''
     window.addEventListener('scroll', function(){ _sagTikKapat(); }, true);
   }
 
+  // [TAŞIMA HEDEFLERİ] Bir öğeyi "başka bölüme taşı" (kalem menüsü) için geçerli hedef bölümler.
+  // #2: ad = düzenlenmiş başlık (item.h2_override) öncelikli -> kalem menüsü güncel başlığı gösterir.
+  // #1: BAŞLIKSIZ bölüm (etkin başlığı boş) hedef OLMAZ -> öğe başlıksız bölüm altına dahil edilemez.
+  function hedeflerHesapla(B){
+    B=B||[]; var hedefler=[], _hg={};
+    for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi];
+      if(_bb.manual && !edManual((_bb.item&&_bb.item.link)||'')) continue;
+      var _tkey = (_bb.grup!=null) ? _bb.grup : ('__solo:'+((_bb.item&&_bb.item.uid)||_bi));
+      if(_hg[_tkey]) continue; _hg[_tkey]=1;
+      var _tad = (_bb.item && _bb.item.h2_override!=null && String(_bb.item.h2_override).trim()!=='') ? String(_bb.item.h2_override).trim()
+               : (_bb.grupBaslik && String(_bb.grupBaslik).trim()) ? String(_bb.grupBaslik).trim()
+               : (_bb.h2!=null && String(_bb.h2).trim()!=='') ? String(_bb.h2).trim()
+               : '';
+      if(!_tad) continue;   // #1: başlıksız bölüm hedef değildir
+      hedefler.push({ key:_tkey, ad:_tad });
+    }
+    return hedefler;
+  }
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
     var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
     // C (istediğin bölüme taşı): TÜM bölümler hedef olabilir — hem çok-üyeli kümeler hem de
     // tek-başına (standalone) öğeler. Okunur etiket; ham mc-/xmanual anahtarı ASLA gösterilmez.
-    var hedefler=[], _hg={}, _bosSay=0;
-    for(var _bi=0;_bi<B.length;_bi++){ var _bb=B[_bi];
-      // [11]: eski (link='') manuel bloklar group_override gruplamasına GİRMEZ (plan-sonrası enjekte edilir)
-      // -> hedef olarak gösterme (oraya taşıma sessiz no-op / yetim küme olurdu).
-      if(_bb.manual && !edManual((_bb.item&&_bb.item.link)||'')) continue;
-      var _tkey = (_bb.grup!=null) ? _bb.grup : ('__solo:'+((_bb.item&&_bb.item.uid)||_bi));
-      if(_hg[_tkey]) continue; _hg[_tkey]=1;
-      var _tad = (_bb.grupBaslik && String(_bb.grupBaslik).trim()) ? String(_bb.grupBaslik).trim()
-               : (_bb.h2 && String(_bb.h2).trim()) ? String(_bb.h2).trim()
-               : ('Başlıksız bölüm ' + (++_bosSay));
-      hedefler.push({ key:_tkey, ad:_tad });
-    }
+    var hedefler=hedeflerHesapla(B);   // #1/#2: başlıksız hedef yok + düzenlenmiş başlık adı (ortak fonksiyon)
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
     function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">'+(hep?'+ Bölüm Ekle':'+ Bölüm')+'</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
@@ -8124,12 +8131,20 @@ X_EDITOR_JS = r'''
     root.querySelectorAll('.ed-tur').forEach(function(el){
       el.addEventListener('change', function(){ XE._turDegistir(+el.getAttribute('data-i'), +el.getAttribute('data-p'), el.value); });
     });
-    // Kalem ikonu: tıklayınca taşıma menüsünü aç/kapa (ed-pz deseni: diğer açıkları kapat, bunu toggle).
+    // Kalem ikonu: tıklayınca taşıma menüsünü aç/kapa. [#2] AÇARKEN hedef adlarını GÜNCEL başlıklarla tazele
+    // (düzenlenen başlık menüde de görünsün); [#1] başlıksız olan hedefi menüden GİZLE (taşınamaz).
     root.querySelectorAll('.ed-kume-kalem').forEach(function(el){
       el.addEventListener('click', function(e){ e.stopPropagation(); var w=el.closest('.ed-pz-wrap'); if(!w) return;
         var acik=w.classList.contains('acik');
         root.querySelectorAll('.ed-pz-wrap.acik').forEach(function(x){ x.classList.remove('acik'); });
-        if(!acik) w.classList.add('acik'); });
+        if(!acik){
+          try{ var _cur=hedeflerHesapla(XE.belge.birimler||[]); var _m={}; _cur.forEach(function(h){ _m[h.key]=h.ad; });
+            w.querySelectorAll('.ed-kume-opt').forEach(function(opt){ var k=opt.getAttribute('data-k'); if(k==='__yeni') return;
+              if(_m[k]!=null){ opt.textContent=_m[k]; opt.style.display=''; } else { opt.style.display='none'; }   // başlıksız/yok -> gizle
+            }); }catch(_){}
+          w.classList.add('acik');
+        }
+      });
     });
     // Menü seçeneği: öğeyi o bölüme taşı + menüyü kapat.
     root.querySelectorAll('.ed-kume-opt').forEach(function(el){
