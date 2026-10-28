@@ -6959,18 +6959,19 @@ X_EDITOR_JS = r'''
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-/* Başlık satırı: SOL OLUKTA kalem (+/⠿ ile aynı 26px sütun, dikey hizalı) + sağında başlık (parça
-   içerikleriyle aynı hizada başlar). Kalem başlığın SEVİYESİNDE (align-items:flex-start). */
-#editorModal .ed-h2-row{display:flex;align-items:center;gap:8px;margin:0 0 2px;}   /* kalem başlıkla DİKEY ORTALI (aynı yatay hizada); x-sütunu (+/⠿) korunur */
+/* Başlık satırı: SOL OLUKTA kalem (+/⠿ ile aynı 26px sütun) + sağında başlık. Kalem başlıkla DİKEY
+   ORTALI (align-items:center); başlık alt-boşluğu SATIRA taşındı (ed-h2 margin:0) -> kalem metnin tam
+   ortasında (metin+margin değil). x-sütunu korunur (align-items yalnız dikey). */
+#editorModal .ed-h2-row{display:flex;align-items:center;gap:8px;margin:0 0 6px;}
 #editorModal .ed-kume-gutter{flex:none;width:26px;display:inline-flex;justify-content:center;}
-#editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:flex-start;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
-#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;flex:0 0 auto;max-width:100%;}
+#editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:center;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0;min-width:120px;flex:0 0 auto;max-width:100%;}
 #editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
 #editorModal .ed-metin-ekle{display:block;width:fit-content;background:#fff;border:1px dashed #9ab;color:#1565c0;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;margin:0 0 10px;}
 #editorModal .ed-metin-ekle:hover{background:#eef5ff;}
-#editorModal .ed-parca{display:flex;gap:8px;align-items:flex-start;margin:0 0 6px;border-top:3px solid transparent;border-bottom:3px solid transparent;}
+#editorModal .ed-parca{display:flex;gap:8px;align-items:flex-start;margin:0 0 3px;border-top:2px solid transparent;border-bottom:2px solid transparent;}
 #editorModal .ed-parca.ed-ust{border-top-color:#1DA1F2;}
 #editorModal .ed-parca.ed-alt{border-bottom-color:#1DA1F2;}
 #editorModal .ed-parca.ed-suruk{opacity:.45;}
@@ -7036,12 +7037,12 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pe-wrap:hover .ed-pe-menu{display:flex;}
 #editorModal .ed-pe{text-align:left;font-size:12px;font-weight:600;color:#334;background:transparent;border:none;border-radius:6px;padding:7px 10px;cursor:pointer;}
 #editorModal .ed-pe:hover{background:#eef5ff;color:#1565c0;}
-#editorModal .ed-pz{display:flex;justify-content:flex-start;min-height:6px;margin:0;}
+#editorModal .ed-pz{display:flex;justify-content:flex-start;min-height:2px;margin:-1px 0;}   /* öğeler arası boşluğu daralt */
 #editorModal .ed-pz-wrap{position:relative;display:inline-flex;}
 #editorModal .ed-pz>.ed-pz-wrap{width:26px;justify-content:center;}   /* "+" sabit 26px sol sütun -> ⠿ ile aynı merkez (hizalı) */
 /* [titreme önleme] display yerine OPACITY: işaret HEP yerinde durur (yerleşim kaymaz) -> mouse gezince
    titremez. Varsayılan çok saydam; bölge üstüne gelince hafif, butonun üstüne gelince tam opak. Küçültüldü. */
-#editorModal .ed-pz-art{display:inline-flex;width:18px;height:18px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:13px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
+#editorModal .ed-pz-art{display:inline-flex;width:16px;height:16px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:12px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
 #editorModal .ed-pz:hover .ed-pz-art{opacity:.5;}
 #editorModal .ed-pz:hover .ed-pz-art:hover,#editorModal .ed-pz-wrap.acik .ed-pz-art{opacity:1;}
 #editorModal .ed-pz-wrap.acik .ed-pz-art{background:#1565c0;color:#fff;}
