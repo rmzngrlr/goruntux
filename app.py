@@ -4034,8 +4034,11 @@ HTML_TEMPLATE = """
                     // Sürükleme sürerken yeniden çizme (drop'u bozmasın).
                     if (!window.poolDragging) {
                         const currentListJson = JSON.stringify(data.manuel_list);
-                        if (window.lastManuelListJson !== currentListJson) {
+                        // [EŞLEŞME] Editör overlay'i değiştiğinde (başlık/link/görsel) sunucu listesi AYNI kalır;
+                        // yine de havuzu yeniden çiz ki editör düzenlemeleri havuz görünümüne yansısın.
+                        if (window.lastManuelListJson !== currentListJson || window.__xPoolDirty) {
                             window.lastManuelListJson = currentListJson;
+                            window.__xPoolDirty = false;
                             renderPoolGrouped(container, data.manuel_list);
                         }
                     }
@@ -7276,7 +7279,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null), h1over:(b.item.h1_override!=null?String(b.item.h1_override):null), h1ov:(b.item.h1_ov?JSON.parse(JSON.stringify(b.item.h1_ov)):null), h2ov:(b.item.h2_ov?JSON.parse(JSON.stringify(b.item.h2_ov)):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true; try{ window.__xPoolDirty=true; }catch(e){}  /* [EŞLEŞME] havuz görünümü bir sonraki poll'da yeniden çizilsin (editör düzenlemesi yansısın) */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null), h1over:(b.item.h1_override!=null?String(b.item.h1_override):null), h1ov:(b.item.h1_ov?JSON.parse(JSON.stringify(b.item.h1_ov)):null), h2ov:(b.item.h2_ov?JSON.parse(JSON.stringify(b.item.h2_ov)):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
