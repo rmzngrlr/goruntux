@@ -4624,7 +4624,14 @@ HTML_TEMPLATE = """
         function poolEscapeHtml(s) {
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+        // [EŞLEŞME] Editör overlay'i (window.__xEditorOverlay) -> havuz görünümü: düzenlenen başlık/link/görsel
+        // havuz listesinde de görünsün (editör ile birebir eşleşme). Ham title/link'e YAZILMAZ (yalnız gösterim).
+        function poolOverlayFor(link) { try { var ov = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {}; return ov[xOvKey(link || '')] || null; } catch (e) { return null; } }
+        function poolEffLink(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'link' && p.url != null && p.url !== '') return p.url; } } return x.link || ''; }
+        function poolEffThumb(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'gorsel' && p.b64) return 'data:' + (p.mime || 'image/jpeg') + ';base64,' + p.b64; } } return null; }
         function poolBlockLabel(items, group) {
+            // [EŞLEŞME] editörde düzenlenen bölüm başlığı (overlay h2) varsa havuz blok başlığı da onu göster.
+            if (items) { for (var _k = 0; _k < items.length; _k++) { var _ov = poolOverlayFor(items[_k].link); if (_ov && _ov.h2 != null && String(_ov.h2).trim() !== '') return String(_ov.h2); } }
             var t = '';
             for (var i = 0; i < items.length; i++) {
                 var x = (items[i].title || '').trim();
@@ -4766,7 +4773,11 @@ HTML_TEMPLATE = """
                     var x = _blkItems[j];
                     var poolIdx = x.index - 1;
                     var thumb;
-                    if (xLocalImagesEnabled() && window.XLocalImages && window.XLocalImages.hasImage(x.link)) {
+                    var _ovThumb = poolEffThumb(x);   // [EŞLEŞME] editörde eklenen/değişen görsel havuzda da görünsün
+                    var _effLink = poolEffLink(x);    // [EŞLEŞME] editörde değişen link
+                    if (_ovThumb) {
+                        thumb = '<img draggable="false" src="' + _ovThumb + '" class="item-thumb" alt="Görsel">';
+                    } else if (xLocalImagesEnabled() && window.XLocalImages && window.XLocalImages.hasImage(x.link)) {
                         // Yerel modda goruntu sunucuda degil; tarayicidaki IndexedDB'den (link'e gore).
                         thumb = '<img draggable="false" src="' + window.XLocalImages.getImageUrl(x.link) + '" class="item-thumb" alt="Görsel">';
                     } else if (x.has_image) {
@@ -4774,11 +4785,14 @@ HTML_TEMPLATE = """
                     } else {
                         thumb = '<div class="item-thumb pool-noimg">Görsel yok</div>';
                     }
+                    var _linkHtml = (x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok'
+                        : (window.XPlat && XPlat.isManual(x.link)) ? ((_effLink && _effLink !== x.link) ? poolEscapeHtml(_effLink) : 'Manuel bölüm — bağlantı yok')
+                        : poolEscapeHtml(_effLink || 'Link yok');
                     html += '<div class="pool-item" draggable="false" data-pool-index="' + poolIdx + '" data-blockkey="' + poolEscapeHtml(blk.key) + '">' +
                             '<span class="pool-grip">⠿</span>' +
                             thumb +
                             '<div class="item-text"><div class="item-title">' + poolEscapeHtml(x.title || ((window.XPlat && XPlat.isManual(x.link)) ? 'Manuel bölüm' : '')) + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
-                            '<div class="item-link">' + ((x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok' : ((window.XPlat && XPlat.isManual(x.link)) ? 'Manuel bölüm — bağlantı yok' : poolEscapeHtml(x.link || 'Link yok'))) + '</div></div>' +
+                            '<div class="item-link">' + _linkHtml + '</div></div>' +
                             '<button class="btn btn-danger-action btn-sm" draggable="false" onclick="deleteManualItem(' + x.index + ')" style="background: rgba(224, 36, 94, 0.1); border: 1px solid rgba(224, 36, 94, 0.2); color: var(--danger-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;">Sil</button>' +
                             '</div>';
                 }
@@ -7044,14 +7058,24 @@ X_EDITOR_JS = r'''
 #editorModal .ed-plat:hover{background:rgba(21,101,192,0.06);}
 #editorModal .ed-plat:first-child{margin-top:4px;}
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
-#editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
+/* [BÖLÜM SIRALA] kart sağ-üst kümesi: [▲ sıra-no ▼] + ✕ Sil */
+#editorModal .ed-kart-ust{position:absolute;top:9px;right:12px;z-index:2;display:flex;align-items:center;gap:7px;}
+#editorModal .ed-sira{display:inline-flex;align-items:center;gap:2px;background:#eef1f4;border:1px solid #dfe4ea;border-radius:8px;padding:2px;opacity:.22;transition:opacity .12s;}
+#editorModal .ed-card:hover .ed-sira{opacity:.5;}
+#editorModal .ed-sira:hover,#editorModal .ed-sira:focus-within{opacity:1;}
+#editorModal .ed-sira-btn{width:20px;height:22px;border:none;background:transparent;color:#3a4654;border-radius:5px;cursor:pointer;font-size:9px;line-height:1;padding:0;display:inline-flex;align-items:center;justify-content:center;}
+#editorModal .ed-sira-btn:hover:not([disabled]){background:#d9e2ec;}
+#editorModal .ed-sira-btn[disabled]{opacity:.3;cursor:default;}
+#editorModal .ed-sira-no{width:34px;height:22px;border:1px solid #cfd7df;border-radius:5px;text-align:center;font-size:12px;font-weight:600;color:#15202b;background:#fff;padding:0 2px;box-sizing:border-box;-moz-appearance:textfield;}
+#editorModal .ed-sira-no::-webkit-outer-spin-button,#editorModal .ed-sira-no::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+#editorModal .ed-del{background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;}
 #editorModal .ed-del:hover{background:#c81e4f;}
 /* Başlık satırı: SOL OLUKTA kalem (+/⠿ ile aynı 26px sütun) + sağında başlık. Kalem başlıkla DİKEY
    ORTALI (align-items:center); başlık alt-boşluğu SATIRA taşındı (ed-h2 margin:0) -> kalem metnin tam
    ortasında (metin+margin değil). x-sütunu korunur (align-items yalnız dikey). */
 #editorModal .ed-h2-row{display:flex;align-items:center;gap:8px;margin:0 0 6px;}
 #editorModal .ed-kume-gutter{flex:none;width:26px;display:inline-flex;justify-content:center;}
-#editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:center;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
+#editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:center;padding-right:160px;}   /* sağ-üst küme ([▲ no ▼] + ✕ Sil) yer */
 #editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0;min-width:120px;flex:0 0 auto;max-width:100%;}
 #editorModal .ed-h2:empty:before{content:"Başlık";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
@@ -7583,6 +7607,27 @@ X_EDITOR_JS = r'''
     XE._dirty=true;
     XE._yenidenPlanla();
   };
+  // [BÖLÜM SIRALA] Kartı görsel sırada hedefBi konumuna taşı -> havuzu yeni görsel sıraya diz (/api/manual/
+  // reorder) -> yeniden planla. Böylece editör sırası = havuz sırası (eşleşme). hedefBi 0-tabanlı birim indeksi.
+  XE._bolumTasiYap = async function(bi, hedefBi){
+    var B=XE.belge.birimler||[];
+    if(bi<0 || bi>=B.length) return;
+    if(hedefBi<0) hedefBi=0; if(hedefBi>B.length-1) hedefBi=B.length-1;
+    if(hedefBi===bi) return;
+    XE._pushUndo();
+    var arr=B.slice(); var moved=arr.splice(bi,1)[0]; arr.splice(hedefBi,0,moved);
+    var yeniSira=[]; for(var k=0;k<arr.length;k++){ if(arr[k].item && arr[k].item.index!=null) yeniSira.push(arr[k].item.index-1); }
+    var _srt=yeniSira.slice().sort(function(a,b){return a-b;}), _perm=(yeniSira.length>0);
+    for(var s=0;s<_srt.length && _perm;s++){ if(_srt[s]!==s) _perm=false; }
+    XE._dirty=true; _busy=true;
+    try{
+      if(_perm){
+        var _farkli=false; for(var q=0;q<yeniSira.length;q++){ if(yeniSira[q]!==q){ _farkli=true; break; } }
+        if(_farkli){ try{ await fetch('/api/manual/reorder', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order:yeniSira})}); }catch(e){} }
+        await XE.ac({});   // havuzdan yeni sırayla yeniden kur
+      } else { XE.belge.birimler=arr; XE._ciz(); }   // index'siz birim (eski manuel) -> yalnız görsel diz
+    } finally { _busy=false; }
+  };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
   XE._parcaEkle = function(i, tur, ekstra, pos){
     var b=XE.belge.birimler[i]; if(!b||!b.item) return;
@@ -7925,7 +7970,13 @@ X_EDITOR_JS = r'''
     for(i=0;i<B.length;i++){ var b=B[i];
       if(b.h1) h.push('<div class="ed-plat" contenteditable="true" spellcheck="false" data-i="'+i+'" style="'+stilCssOv(o,'b1',b.h1ov)+'" title="Platform adını düzenle (tıkla-yaz). Tek bu başlığı ayrı biçimlemek için sağ tıkla.">'+esc(b.h1)+'</div>');
       h.push('<div class="ed-card'+(b.manual?' ed-card-man':'')+'" data-i="'+i+'">');
-      h.push('<button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button>');
+      // [BÖLÜM SIRALA] "✕ Sil"in hemen soluna: ▲ (yukarı) + düzenlenebilir SIRA NO (yaz+Enter) + ▼ (aşağı).
+      // Silik (düşük opaklık), üstüne/kart-hover'da opak ("+" ekle butonu gibi). No = kartın 1-tabanlı sırası.
+      h.push('<div class="ed-kart-ust"><span class="ed-sira" title="Bölümü taşı: ▲▼ ya da sıra no yaz (Enter)">'
+        +'<button class="ed-sira-btn" data-i="'+i+'" data-yon="-1" title="Yukarı taşı"'+(i===0?' disabled':'')+'>&#9650;</button>'
+        +'<input class="ed-sira-no" type="number" min="1" max="'+B.length+'" data-i="'+i+'" value="'+(i+1)+'" title="Sıra no yaz ve Enter">'
+        +'<button class="ed-sira-btn" data-i="'+i+'" data-yon="1" title="Aşağı taşı"'+(i===B.length-1?' disabled':'')+'>&#9660;</button>'
+        +'</span><button class="ed-del" data-i="'+i+'" title="Öğeyi sil">✕ Sil</button></div>');
       if(b.manual) h.push('<div class="ed-kltut" draggable="true" data-uid="'+esc(b.item.uid||'')+'" title="Bu bloğu sürükleyerek başka konuma taşı"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" style="vertical-align:-2px"><circle cx="6" cy="4" r="1.35"/><circle cx="10" cy="4" r="1.35"/><circle cx="6" cy="8" r="1.35"/><circle cx="10" cy="8" r="1.35"/><circle cx="6" cy="12" r="1.35"/><circle cx="10" cy="12" r="1.35"/></svg> taşı</div>');
       // C (istediğin bölüme taşı): taşıma menüsü HER kartta (hover'da çıkar) — hedefte TÜM diğer
       // bölümler (kümeler + tek-başına öğeler) okunur adlarıyla. YALNIZ eski (link='') manuel bloklar
@@ -8102,6 +8153,15 @@ X_EDITOR_JS = r'''
       z.addEventListener('drop', function(e){ if(_clDrag==null) return; e.preventDefault(); var u=_clDrag; _clDrag=null; XE._manuelTasi(u, z.getAttribute('data-after')); });
     });
     root.querySelectorAll('.ed-del').forEach(function(el){ el.addEventListener('click', function(){ XE._sil(+el.getAttribute('data-i')); }); });
+    // [BÖLÜM SIRALA] ▲▼ -> bir yukarı/aşağı; sıra no (Enter/blur) -> o konuma taşı.
+    root.querySelectorAll('.ed-sira-btn').forEach(function(el){
+      el.addEventListener('click', function(){ if(el.hasAttribute('disabled')) return; var bi=+el.getAttribute('data-i'), yon=+el.getAttribute('data-yon'); XE._bolumTasiYap(bi, bi+yon); });
+    });
+    root.querySelectorAll('.ed-sira-no').forEach(function(el){
+      function uygula(){ var bi=+el.getAttribute('data-i'); var no=parseInt(el.value,10); if(isNaN(no)) { el.value=bi+1; return; } XE._bolumTasiYap(bi, no-1); }
+      el.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); el.blur(); } });
+      el.addEventListener('change', uygula);
+    });
 
     // SÜRÜKLE-BIRAK: tutamaktan (⠿) sürükle, aynı kart içinde parçaları yeniden sırala.
     root.querySelectorAll('.ed-tut').forEach(function(el){
