@@ -3105,6 +3105,7 @@ HTML_TEMPLATE = """
                     if (_oe.parcalar && _oe.parcalar.length) { items[oi].parcalar = _oe.parcalar; }
                     if (_oe.h2 != null) { items[oi].h2_override = _oe.h2; }
                     if (_oe.grup != null) { items[oi].group_override = _oe.grup; }
+                    if (_oe.h2grup != null) { items[oi].h2_grup = _oe.h2grup; }
                 }
             }
             var _wopts = xBuildStyleOpts();
@@ -3126,6 +3127,7 @@ HTML_TEMPLATE = """
                 if (it.h2_override != null) { o.h2_override = it.h2_override; }
                 if (it.is_profile) { o.is_profile = true; }
                 if (it.group_override) { o.group_override = it.group_override; }
+                if (it.h2_grup != null) { o.h2_grup = it.h2_grup; }
                 return o;
             });
             return { blob: blob, filename: filename, snapItems: _snapItems, images: images };
@@ -3337,7 +3339,7 @@ HTML_TEMPLATE = """
                 var _ov2 = { byLink: {}, style: rec.editorStyle || null };
                 for (var pi = 0; pi < rec.items.length; pi++) {
                     var _it2 = rec.items[pi];
-                    if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null) }; }
+                    if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null || _it2.h2_grup != null)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), grup: (_it2.group_override != null ? _it2.group_override : null), h2grup: (_it2.h2_grup != null ? _it2.h2_grup : null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
                 window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
@@ -3400,7 +3402,7 @@ HTML_TEMPLATE = """
                             }
                             // Faz 5/6: bu öğenin parçaları/başlık-override'ı varsa overlay'e taşı (dedup'ta başta eklenen korunur).
                             var _mk = xOvKey(lk);
-                            if ((it.parcalar || it.h2_override != null || it.group_override != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null) }; }
+                            if ((it.parcalar || it.h2_override != null || it.group_override != null || it.h2_grup != null) && !_ovM.byLink[_mk]) { _ovM.byLink[_mk] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null), h2grup: (it.h2_grup != null ? it.h2_grup : null) }; }
                             if (!_ovM.style && rec.editorStyle) { _ovM.style = rec.editorStyle; }
                         } else if (resp && resp.status === 'duplicate') {
                             atlanan++;
@@ -5636,6 +5638,11 @@ LOCAL_DOCX_JS = r'''
     return out;
   }
 
+  // [BAŞLIK TÜRÜ] Bir içerik başlığı (h2) tekil olarak "Platform Adı" (b1) üslubuyla da basılabilir.
+  // item.h2_grup==='b1' -> heading1Xml (b1 font/renk/boyut/hiza + b1 Word başlık düzeyi). Varsayılan 'b'.
+  // Bayrak x_h2_grup='0' -> özellik tümden kapalı (başlık DAİMA b=İçerik Başlığı; eski davranış birebir).
+  function h2GrupAcik(){ try{ return localStorage.getItem('x_h2_grup')!=='0'; }catch(e){ return true; } }
+
   async function generateBlob(opts, providedItems){
     var items;
     if (providedItems) {
@@ -5981,7 +5988,7 @@ LOCAL_DOCX_JS = r'''
     function birimPay(b){
       var p=0;
       if(b.h1) p += 240/1440 + metinY(b.h1, b1Pt, METIN_W, 120);  // Baslik1: before 240
-      if(b.h2) p += metinY(b.h2, bPt, METIN_W, 120);              // Baslik2
+      if(b.h2) p += metinY(b.h2, ((h2GrupAcik() && b.h2grup==='b1')?b1Pt:bPt), METIN_W, 120);   // Baslik2 (b1 üsluplu ise b1Pt)
       // Faz 2/4b KRITIK: eklenen metinlerin dikey maliyeti. KATILMAZSA sayfa tasar ve Word KENDI
       // sayfa sonunu atar (tarihsel bug). Sira onemsiz (toplam ayni) -> parcalar VEYA metin_bloklari.
       var _mt=[], _k;
@@ -6067,6 +6074,7 @@ LOCAL_DOCX_JS = r'''
           // h2 YALNIZCA grubun ILK gonderisinde. _suppress ise boş '' (null DEĞİL) -> alan durur, Word'e basılmaz.
           var _h2 = opts.b_basliksiz ? null : (k===0 ? (_suppress ? '' : baslikFormatla(baslik)) : null);
           birimler.push({ h1:(k===0?h1:null), h2:_h2,
+                          h2grup:((h2GrupAcik() && ordered[0] && ordered[0].h2_grup==='b1')?'b1':'b'),   // [BAŞLIK TÜRÜ] küme başlığı (ordered[0]) tekil üslup seçimi
                           item:ordered[k], link:xRaporLinkGoster(ordered[k]), son:(k===ordered.length-1),
                           grup:val, grupBaslik:baslik });   // #2: küme anahtarı + başlığı (öğeyi farklı kümeye taşıma UI'si için)
         }
@@ -6081,6 +6089,7 @@ LOCAL_DOCX_JS = r'''
         // bos kalirsa docx'te baslik BASILMAZ (if(u.h2)). Overlay geri-yukleme de b.h2!=null ister.
         var _man2 = xIsManualLink(item2.link);
         birimler.push({ h1:h1, h2:(opts.b_basliksiz?null:(b2?baslikFormatla(b2):(_man2?'':null))),
+                        h2grup:((h2GrupAcik() && item2.h2_grup==='b1')?'b1':'b'),   // [BAŞLIK TÜRÜ] standalone başlık tekil üslup seçimi
                         item:item2, link:xRaporLinkGoster(item2), son:true,
                         grup:null, grupBaslik:b2 });   // standalone = kendi kümesi (grup anahtarı yok)
       }
@@ -6210,7 +6219,7 @@ LOCAL_DOCX_JS = r'''
       for(bj=0; bj<sayfalar[si].length; bj++){
         var u=sayfalar[si][bj];
         if(u.h1) body.push(heading1Xml(u.h1));
-        if(u.h2) body.push(headingXml(u.h2));
+        if(u.h2) body.push((h2GrupAcik() && u.h2grup==='b1') ? heading1Xml(u.h2) : headingXml(u.h2));   // [BAŞLIK TÜRÜ] tekil "Platform Adı" üslubu
         // Faz 4b: SIRALANABILIR PARÇALAR. item.parcalar varsa kullanıcının düzenlediği serbest
         // sıra (gorsel/metin/link). Yoksa ESKI yol (metin_bloklari konum alt/ust) -> cikti birebir.
         var _pc=(u.item && u.item.parcalar) ? u.item.parcalar : null;
@@ -6930,6 +6939,12 @@ X_EDITOR_JS = r'''
 #editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:4px 6px;border:1px solid #d0d7de;border-radius:7px;color:#15202b;background:#fff;height:30px;box-sizing:border-box;}
 #editorModal .ed-panel select:focus,#editorModal .ed-panel input:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
 #editorModal .ed-panel input[type=color]{width:30px;height:30px;padding:0;border:1px solid #d0d7de;border-radius:7px;background:#fff;cursor:pointer;}
+/* [BAĞLAM] Font'un solunda "şu an düzenlenen öğe" göstergesi (etiket) / başlık türü açılır menüsü. */
+#editorModal .ed-ctx{display:inline-flex;align-items:center;gap:6px;height:30px;box-sizing:border-box;padding:0 11px;margin-right:4px;border:1px solid #cfe0f5;background:#eef5ff;border-radius:7px;font-size:11px;font-weight:700;color:#1565c0;white-space:nowrap;}
+#editorModal .ed-ctx-sel{font-weight:600;}
+#editorModal .ed-ctx-sel .ed-ctx-ad{color:#57606a;font-weight:700;}
+#editorModal .ed-ctx select{height:24px;padding:2px 4px;border:1px solid #cfe0f5;border-radius:6px;background:#fff;color:#15202b;font-size:12px;font-weight:600;cursor:pointer;}
+#editorModal .ed-ctx select:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
 #editorModal .ed-biu{display:inline-flex;gap:3px;padding:2px;background:#eaeef3;border-radius:8px;}
 #editorModal .ed-tgl{position:relative;display:inline-flex;align-items:center;justify-content:center;width:30px;height:28px;border-radius:6px;cursor:pointer;color:#3a4654;transition:background .1s;}
 #editorModal .ed-tgl input{position:absolute;opacity:0;width:0;height:0;margin:0;}
@@ -7091,6 +7106,10 @@ X_EDITOR_JS = r'''
   // efektif görseli. Parçanın kendi b64'ü yoksa YALNIZ ilk görsel parçası öğenin birincil image_b64'üne düşer.
   // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski tek-görsel). Dönen: {parçaIndeksi: {b64,mime}}.
   function cokluGorselAcik(){ try{ return localStorage.getItem('x_coklu_gorsel')!=='0'; }catch(e){ return true; } }
+  // [BAŞLIK TÜRÜ] Bir içerik başlığı (h2) tekil olarak "Platform Adı" (b1) üslubuyla da gösterilir/basılır.
+  // Bayrak x_h2_grup='0' -> özellik kapalı (başlık DAİMA İçerik Başlığı; x-local-docx ikiziyle aynı).
+  function h2GrupAcik(){ try{ return localStorage.getItem('x_h2_grup')!=='0'; }catch(e){ return true; } }
+  function grupAd(key){ for(var _gi=0;_gi<GRUPLAR.length;_gi++){ if(GRUPLAR[_gi].key===key) return GRUPLAR[_gi].ad; } return ''; }
   function edGorselHarita(item){
     var map={}, usedPrimary=false, pc=(item&&item.parcalar)||[], k, coklu=cokluGorselAcik();
     // Birincil görsel (item.image_b64) bir parçaya PİNLİ ise (part.b64===image_b64) fallback'i TEKRAR
@@ -7126,7 +7145,7 @@ X_EDITOR_JS = r'''
   // editör her değişiklikte YAZAR, açılışta OKUR, panel kaydet/aç bunu snapshot'a taşır/geri yükler.
   function ovKey(link){ try{ return (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink(link||'') : String(link||''); }catch(e){ return String(link||''); } }
   function ovStore(){ window.__xEditorOverlay = window.__xEditorOverlay || { byLink:{}, style:null }; if(!window.__xEditorOverlay.byLink) window.__xEditorOverlay.byLink={}; return window.__xEditorOverlay; }
-  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null) }; }catch(e){} };
+  XE._ovSet = function(bi){ var b=XE.belge.birimler[bi]; if(!b||!b.item) return; XE._dirty=true;  /* E1: her editör değişikliği kirletir */ if(b.item.manual && !edManual(b.item.link)) return;  /* YALNIZ eski (link='') manuel bloklar overlay dışı; birleşik xmanual:// öğeler overlay'e YAZILIR (B3) */ try{ ovStore().byLink[ovKey(b.item.link)] = { parcalar: JSON.parse(JSON.stringify(b.item.parcalar||[])), h2:(b.item.h2_override!=null?String(b.item.h2_override):null), grup:(b.item.group_override!=null?String(b.item.group_override):null), h2grup:(b.item.h2_grup!=null?String(b.item.h2_grup):null) }; }catch(e){} };
 
   var GRUPLAR=[
     {key:'b1', ad:'Platform Adı', ids:{font:'b1_font',size:'b1_size',color:'b1_color',bold:'b1_bold',italic:'b1_italic',underline:'b1_underline',align:'b1_align',wordstyle:'b1_wordstyle'}},
@@ -7170,7 +7189,7 @@ X_EDITOR_JS = r'''
         // Başlık override YALNIZ başlık taşıyan birime (b.h2!=null) uygulanır -> ikincil gönderilere
         // sahte başlık basılmaz ve plandaki numara/sezgi değeri ham title ile EZİLMEZ (Faz 5 gerilemesi).
         var ov=ovStore().byLink[ovKey(b.item.link)];
-        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } }   // [9]: küme taşımayı (group_override) da geri yükle -> tam yeniden-fetch'te (ekle/sil/kart-tık) taşımalar kaybolmaz
+        if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h2grup!=null){ b.item.h2_grup=ov.h2grup; b.h2grup=(ov.h2grup==='b1'?'b1':'b'); } }   // [9]: küme taşıma (group_override) + [BAŞLIK TÜRÜ] (h2grup) geri yükle -> tam yeniden-fetch'te taşımalar/üslup kaybolmaz
       });
       XE._manuelEkle();   // #2: manuel blokları (kümeler arası eklenen) konumlarına enjekte et
       // [1]: DIŞ MOD tespiti — hiçbir öğe .index taşımıyorsa (Word Düzenle providedItems) havuz-tabanlı
@@ -7215,9 +7234,25 @@ X_EDITOR_JS = r'''
     XE._panelCiz(XE._aktifGrup);
   };
   // Düzenlenen ögeye göre şerit otomatik geçsin (platform->b1, başlık->b, metin->m, link->l). Sekme YOK.
-  XE._seritSekme = function(key){
-    if(XE._aktifGrup===key) return;
-    XE._aktifGrup=key; XE._panelCiz(key);
+  XE._seritSekme = function(key){ XE._seritSekmeCtx(key, null); };
+  // [BAĞLAM] Şeridi değiştir + "hangi öğe" bağlamını güncelle (Font solundaki gösterge/başlık-türü menüsü için).
+  // ctx: {kind:'h2'|'plat'|'metin'|'link', bi:<birim indeksi>}. Grup aynı olsa bile bağlam (ör. farklı başlık)
+  // değişebilir -> paneli yine çiz (hafif; yalnız şerit DOM'u, editör gövdesi/odağı etkilenmez).
+  XE._seritSekmeCtx = function(key, ctx){
+    XE._aktifBaglam = ctx || null;
+    XE._aktifGrup = key; XE._panelCiz(key);
+  };
+  // [BAŞLIK TÜRÜ] Bir içerik başlığının türünü (b=İçerik Başlığı / b1=Platform Adı) tekil değiştir.
+  // Öğeye h2_grup yazar (overlay'e + plana akar), başlığı yeni üslupla yeniden çizer, şeridi yeni gruba geçirir.
+  XE._h2GrupSec = function(bi, grp){
+    var b=XE.belge.birimler[bi]; if(!b||!b.item) return;
+    XE._pushUndo();
+    var val=(grp==='b1')?'b1':'b';
+    b.item.h2_grup=val; b.h2grup=val;
+    XE._ovSet(bi);
+    XE._aktifGrup=val;
+    XE._ciz();                 // başlık yeni üslupla (c1/c2) hemen yansısın
+    XE._panelCiz(val);         // şerit yeni grubun kontrollerine + bağlam menüsü güncel
   };
   XE._panelCiz = function(key){
     var g=null,i; for(i=0;i<GRUPLAR.length;i++){ if(GRUPLAR[i].key===key){ g=GRUPLAR[i]; break; } }
@@ -7227,6 +7262,16 @@ X_EDITOR_JS = r'''
     function nhex(c){ c=(c||'').trim(); return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; }
     var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
     var h='';
+    // [BAĞLAM] Font'un solunda "şu an hangi öğe düzenleniyor" göstergesi. Başlık düzenlenirken bu gösterge
+    // bir AÇILIR MENÜ olur -> başlığın türünü (Platform Adı / İçerik Başlığı) tekil olarak seçtirir.
+    var _ctx=XE._aktifBaglam||{};
+    if(h2GrupAcik() && _ctx.kind==='h2' && _ctx.bi!=null && XE.belge.birimler[_ctx.bi]){
+      var _cb=XE.belge.birimler[_ctx.bi]; var _cur=(_cb.h2grup==='b1')?'b1':'b';
+      h+='<label class="ed-ctx ed-ctx-sel" title="Bu başlığın türü: üslubu (font/boyut/renk/hiza) ve Word başlık düzeyini belirler"><span class="ed-ctx-ad">Başlık türü</span><select id="ed-ctx-grup" data-i="'+_ctx.bi+'"><option value="b"'+(_cur==='b'?' selected':'')+'>İçerik Başlığı</option><option value="b1"'+(_cur==='b1'?' selected':'')+'>Platform Adı</option></select></label>';
+    } else {
+      var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2'?'Başlık':grupAd(key));
+      h+='<span class="ed-ctx" title="Şu an düzenlenen öğenin ayarları">'+esc(_ctxAd)+'</span>';
+    }
     h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
     h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(val(ids.size))+'" style="width:52px"></label>';
     h+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(val(ids.color))+'"></label>';
@@ -7264,6 +7309,8 @@ X_EDITOR_JS = r'''
     });
     // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
     var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
+    // [BAŞLIK TÜRÜ] bağlam açılır menüsü: başlığın türünü (b/b1) tekil değiştir.
+    var _cg=panel.querySelector('#ed-ctx-grup'); if(_cg) _cg.addEventListener('change', function(){ XE._h2GrupSec(+_cg.getAttribute('data-i'), _cg.value); });
   };
   XE._hizaSec = function(inputId, v){
     XE._pushUndo();
@@ -7640,7 +7687,12 @@ X_EDITOR_JS = r'''
       // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ. Blok SARMALAYICIYA hizalamayı koy
       // -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu). Kalem başlığın SAĞINDA; başlık
       // yoksa (devam öğesi) kalem küçük bir satırda kartın başında.
-      if(b.h2!=null){ var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[o.b_align]||'flex-start'); h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span><div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div></div></div>'); }
+      if(b.h2!=null){
+        // [BAŞLIK TÜRÜ] başlık tekil "Platform Adı" (b1) seçildiyse o grubun üslubu+hizası; yoksa İçerik Başlığı (b).
+        var _h2b1=(h2GrupAcik() && b.h2grup==='b1');
+        var _hc=_h2b1?c1:c2, _ha=_h2b1?o.b1_align:o.b_align;
+        var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[_ha]||'flex-start');
+        h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span><div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+_hc+'">'+esc(b.h2)+'</div></div></div>'); }
       else if(_kalemHtml){ h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span></div>'); }
       var pc=(b.item&&b.item.parcalar)||[];
       var _gm=edGorselHarita(b.item);   // [ÇOKLU GÖRSEL] parça-indeksi -> {b64,mime}
@@ -7678,17 +7730,17 @@ X_EDITOR_JS = r'''
     if(_savedScroll!=null){ var _pb1=document.querySelector('#editorModal .preview-body'); if(_pb1){ try{ _pb1.scrollTop=_savedScroll; }catch(e){} } _savedScroll=null; }
 
     root.querySelectorAll('.ed-h2').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('b'); XE._alanOdak(); });
+      el.addEventListener('focus', function(){ var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; var grp=(h2GrupAcik() && b && b.h2grup==='b1')?'b1':'b'; XE._seritSekmeCtx(grp,{kind:'h2',bi:bi}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(b&&b.item){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-metin').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('m'); XE._alanOdak(); });
+      el.addEventListener('focus', function(){ XE._seritSekmeCtx('m',{kind:'metin'}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
     });
     root.querySelectorAll('.ed-link-edit').forEach(function(el){
-      el.addEventListener('focus', function(){ XE._seritSekme('l'); XE._alanOdak(); });
+      el.addEventListener('focus', function(){ XE._seritSekmeCtx('l',{kind:'link'}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('input', function(){ XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } });
     });
@@ -7766,7 +7818,7 @@ X_EDITOR_JS = r'''
     });
     // Platform başlığına tıkla -> şerit "Platform Adı" (b1) kontrollerine geçer (sekmeler gizli; tıklama-bağlamı).
     root.querySelectorAll('.ed-plat').forEach(function(el){
-      el.addEventListener('click', function(){ XE._seritSekme('b1'); });
+      el.addEventListener('click', function(){ XE._seritSekmeCtx('b1',{kind:'plat'}); });
     });
     root.querySelectorAll('.ed-bolum-ekle').forEach(function(el){
       el.addEventListener('click', function(){ XE._bolumEkle(el.getAttribute('data-after')); });
@@ -7854,7 +7906,7 @@ X_EDITOR_JS = r'''
       if(!b.item.uid) b.item.uid=((b.item.link||'oge'))+'#'+i;
       parcaKur(b.item);
       var ov=ovStore().byLink[ovKey(b.item.link)];
-      if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } }
+      if(ov){ if(ov.parcalar && ov.parcalar.length) b.item.parcalar=JSON.parse(JSON.stringify(ov.parcalar)); if(ov.h2!=null && b.h2!=null){ b.item.h2_override=ov.h2; b.h2=ov.h2; } if(ov.grup!=null){ b.item.group_override=ov.grup; } if(ov.h2grup!=null){ b.item.h2_grup=ov.h2grup; b.h2grup=(ov.h2grup==='b1'?'b1':'b'); } }
     });
     // XE._manuelEkle ile AYNI enjeksiyon (ama canlı belge yerine bu B dizisi üzerinde).
     var mc=manuelStore();
