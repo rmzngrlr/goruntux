@@ -7234,10 +7234,15 @@ X_EDITOR_JS = r'''
       if(!b || !b.item || !b.item.parcalar) return;
       var pc=b.item.parcalar, gi=-1, li=-1, x;
       for(x=0;x<pc.length;x++){ if(pc[x].tur==='gorsel' && gi<0) gi=x; else if(pc[x].tur==='link' && li<0) li=x; }
-      if(gi<0 || li<0) return;                      // görsel+link ikisi de yoksa dokunma
-      var linkOnce=(li<gi);
-      if(on && !linkOnce){ var el=pc.splice(li,1)[0]; pc.unshift(el); XE._ovSet(bi); }       // link üstte: en başa
-      else if(!on && linkOnce){ var el2=pc.splice(li,1)[0]; pc.push(el2); XE._ovSet(bi); }    // link altta: en sona
+      if(li<0) return;                              // link yoksa dokunma
+      if(gi>=0){                                    // görselli bölüm: link'i görsele göre konumla (eski davranış)
+        var linkOnce=(li<gi);
+        if(on && !linkOnce){ var el=pc.splice(li,1)[0]; pc.unshift(el); XE._ovSet(bi); }       // link üstte: en başa
+        else if(!on && linkOnce){ var el2=pc.splice(li,1)[0]; pc.push(el2); XE._ovSet(bi); }    // link altta: en sona
+      } else {                                      // görsel YOK (manuel/boş bölüm): link'i doğrudan başa/sona taşı
+        if(on && li!==0){ var el3=pc.splice(li,1)[0]; pc.unshift(el3); XE._ovSet(bi); }         // link üstte: en başa
+        else if(!on && li!==pc.length-1){ var el4=pc.splice(li,1)[0]; pc.push(el4); XE._ovSet(bi); }   // link altta: en sona
+      }
     });
     XE._ciz();
   };
