@@ -6961,7 +6961,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-del:hover{background:#c81e4f;}
 /* Başlık satırı: SOL OLUKTA kalem (+/⠿ ile aynı 26px sütun, dikey hizalı) + sağında başlık (parça
    içerikleriyle aynı hizada başlar). Kalem başlığın SEVİYESİNDE (align-items:flex-start). */
-#editorModal .ed-h2-row{display:flex;align-items:flex-start;gap:8px;margin:0 0 2px;}
+#editorModal .ed-h2-row{display:flex;align-items:center;gap:8px;margin:0 0 2px;}   /* kalem başlıkla DİKEY ORTALI (aynı yatay hizada); x-sütunu (+/⠿) korunur */
 #editorModal .ed-kume-gutter{flex:none;width:26px;display:inline-flex;justify-content:center;}
 #editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:flex-start;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
 #editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;flex:0 0 auto;max-width:100%;}
