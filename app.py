@@ -6959,8 +6959,12 @@ X_EDITOR_JS = r'''
 #editorModal .ed-card{position:relative;background:#f6f8fa;border:1px solid #d0d7de;border-radius:12px;padding:14px 16px;margin:0 0 12px;scroll-margin-top:118px;}
 #editorModal .ed-del{position:absolute;top:10px;right:12px;background:#e0245e;color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;z-index:1;}
 #editorModal .ed-del:hover{background:#c81e4f;}
-#editorModal .ed-h2-sar{display:flex;align-items:flex-start;gap:4px;padding-right:76px;}   /* kalem başlığın SAĞINDA (sarsa da); "✕ Sil"e yer; hizalama justify-content */
-#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;flex:0 0 auto;max-width:calc(100% - 40px);}   /* flex'te büzülme -> min-content kötü sarmasını önle; kalem için 40px yer */
+/* Başlık satırı: SOL OLUKTA kalem (+/⠿ ile aynı 26px sütun, dikey hizalı) + sağında başlık (parça
+   içerikleriyle aynı hizada başlar). Kalem başlığın SEVİYESİNDE (align-items:flex-start). */
+#editorModal .ed-h2-row{display:flex;align-items:flex-start;gap:8px;margin:0 0 2px;}
+#editorModal .ed-kume-gutter{flex:none;width:26px;display:inline-flex;justify-content:center;}
+#editorModal .ed-h2-sar{flex:1;min-width:0;display:flex;align-items:flex-start;padding-right:76px;}   /* "✕ Sil"e yer; hizalama justify-content */
+#editorModal .ed-h2{display:inline-block;outline:none;border:1px dashed transparent;border-radius:6px;padding:2px 6px;margin:0 0 8px 0;min-width:120px;flex:0 0 auto;max-width:100%;}
 #editorModal .ed-h2:empty:before{content:"İçerik Başlığı";color:#9aa3ad;font-weight:normal;}
 #editorModal .ed-h2:hover{border-color:#c0c7cf;}
 #editorModal .ed-h2:focus{border-color:#1DA1F2;background:rgba(29,161,242,0.08);}
@@ -6999,7 +7003,7 @@ X_EDITOR_JS = r'''
 /* "Başka bölüme taşı": büyük açılır kutu yerine başlığın sağında KALEM ikonu + açılır menü. */
 #editorModal .ed-kume-wrap{vertical-align:middle;}
 /* [titreme önleme] kalem hep yerinde, soluk; kart üstüne gelince hafif, buton üstünde tam opak. Küçültüldü. */
-#editorModal .ed-kume-kalem{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;background:transparent;color:#8a94a0;border-radius:6px;cursor:pointer;padding:0;vertical-align:middle;margin-left:6px;opacity:.3;transition:opacity .12s,color .12s,background .12s,border-color .12s;}
+#editorModal .ed-kume-kalem{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;background:transparent;color:#8a94a0;border-radius:6px;cursor:pointer;padding:0;opacity:.3;transition:opacity .12s,color .12s,background .12s,border-color .12s;}
 #editorModal .ed-card:hover .ed-kume-kalem{opacity:.6;}
 #editorModal .ed-card:hover .ed-kume-kalem:hover,#editorModal .ed-pz-wrap.acik .ed-kume-kalem{opacity:1;}
 #editorModal .ed-kume-kalem:hover,#editorModal .ed-pz-wrap.acik .ed-kume-kalem{color:#1565c0;background:#eef5ff;border-color:#9ec5f0;}
@@ -7635,8 +7639,8 @@ X_EDITOR_JS = r'''
       // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ. Blok SARMALAYICIYA hizalamayı koy
       // -> başlık gerçekten sola/ortaya/sağa gider (docx jc ile uyumlu). Kalem başlığın SAĞINDA; başlık
       // yoksa (devam öğesi) kalem küçük bir satırda kartın başında.
-      if(b.h2!=null){ var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[o.b_align]||'flex-start'); h.push('<div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div>'+_kalemHtml+'</div>'); }
-      else if(_kalemHtml){ h.push('<div class="ed-kume-satir">'+_kalemHtml+'</div>'); }
+      if(b.h2!=null){ var _h2j=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[o.b_align]||'flex-start'); h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span><div class="ed-h2-sar" style="justify-content:'+_h2j+'"><div class="ed-h2" contenteditable="true" data-i="'+i+'" spellcheck="false" style="'+c2+'">'+esc(b.h2)+'</div></div></div>'); }
+      else if(_kalemHtml){ h.push('<div class="ed-h2-row"><span class="ed-kume-gutter">'+_kalemHtml+'</span></div>'); }
       var pc=(b.item&&b.item.parcalar)||[];
       var _gm=edGorselHarita(b.item);   // [ÇOKLU GÖRSEL] parça-indeksi -> {b64,mime}
       h.push(_pz(i, 0, b.manual));   // ilk parçadan ÖNCE ekleme noktası
