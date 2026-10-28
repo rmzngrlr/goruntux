@@ -6995,7 +6995,10 @@ X_EDITOR_JS = r'''
 #editorModal .ed-parca:hover .ed-tur{display:inline-block;}
 /* "Başka bölüme taşı": büyük açılır kutu yerine başlığın sağında KALEM ikonu + açılır menü. */
 #editorModal .ed-kume-wrap{vertical-align:middle;}
-#editorModal .ed-kume-kalem{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border:1px solid #d7dde3;background:#fff;color:#8a94a0;border-radius:7px;cursor:pointer;padding:0;vertical-align:middle;margin-left:8px;transition:color .1s,background .1s,border-color .1s;}
+/* [titreme önleme] kalem hep yerinde, soluk; kart üstüne gelince hafif, buton üstünde tam opak. Küçültüldü. */
+#editorModal .ed-kume-kalem{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border:1px solid transparent;background:transparent;color:#8a94a0;border-radius:6px;cursor:pointer;padding:0;vertical-align:middle;margin-left:6px;opacity:.3;transition:opacity .12s,color .12s,background .12s,border-color .12s;}
+#editorModal .ed-card:hover .ed-kume-kalem{opacity:.6;}
+#editorModal .ed-card:hover .ed-kume-kalem:hover,#editorModal .ed-pz-wrap.acik .ed-kume-kalem{opacity:1;}
 #editorModal .ed-kume-kalem:hover,#editorModal .ed-pz-wrap.acik .ed-kume-kalem{color:#1565c0;background:#eef5ff;border-color:#9ec5f0;}
 #editorModal .ed-kume-satir{margin:0 0 8px;}
 #editorModal .ed-kume-menu{min-width:180px;max-height:300px;overflow:auto;}
@@ -7011,11 +7014,13 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ustswap{margin-left:6px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334;cursor:pointer;user-select:none;padding:2px 8px;border:1px solid #d0d7de;border-radius:16px;background:#f6f8fa;}
 #editorModal .ed-ustswap input{width:16px;height:16px;cursor:pointer;accent-color:#1DA1F2;}
 #editorModal .ed-line{border:0;border-top:2px solid #d0d7de;margin:2px 0 18px;}
-#editorModal .ed-ekle-zon{display:flex;justify-content:flex-start;align-items:center;min-height:14px;margin:0 0 4px;}
-#editorModal .ed-bolum-ekle{display:none;font-size:12px;font-weight:700;color:#1565c0;background:#eef5ff;border:1px dashed #9ab;border-radius:14px;padding:4px 16px;cursor:pointer;}
-#editorModal .ed-ekle-zon:hover .ed-bolum-ekle,#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{display:inline-block;}
+#editorModal .ed-ekle-zon{display:flex;justify-content:flex-start;align-items:center;min-height:18px;margin:0 0 4px;}
+/* [titreme önleme] "+ Bölüm" hep yerinde + çok saydam; bölge üstüne gelince hafif, buton üstünde tam opak. */
+#editorModal .ed-bolum-ekle{display:inline-block;font-size:11px;font-weight:700;color:#1565c0;background:#eef5ff;border:1px dashed #9ab;border-radius:13px;padding:3px 10px;cursor:pointer;opacity:.2;transition:opacity .12s,background .12s,color .12s;}
+#editorModal .ed-ekle-zon:hover .ed-bolum-ekle{opacity:.55;}
+#editorModal .ed-ekle-zon:hover .ed-bolum-ekle:hover,#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{opacity:1;}
 #editorModal .ed-ekle-zon.hep{justify-content:center;margin:10px 0;}
-#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{font-size:13px;padding:8px 22px;}
+#editorModal .ed-ekle-zon.hep .ed-bolum-ekle{font-size:13px;padding:8px 22px;opacity:1;}
 #editorModal .ed-bolum-ekle:hover{background:#1565c0;color:#fff;}
 #editorModal .ed-pe-wrap{position:relative;display:inline-block;margin:0 0 10px;}
 #editorModal .ed-pe-btn{font-size:12px;font-weight:600;color:#1565c0;background:#fff;border:1px dashed #9ab;border-radius:7px;padding:5px 12px;cursor:pointer;}
@@ -7026,8 +7031,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-pe:hover{background:#eef5ff;color:#1565c0;}
 #editorModal .ed-pz{display:flex;justify-content:flex-start;min-height:6px;margin:0;}
 #editorModal .ed-pz-wrap{position:relative;display:inline-flex;}
-#editorModal .ed-pz-art{display:none;width:24px;height:24px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:17px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;}
-#editorModal .ed-pz:hover .ed-pz-art,#editorModal .ed-pz-wrap.acik .ed-pz-art{display:inline-flex;}
+/* [titreme önleme] display yerine OPACITY: işaret HEP yerinde durur (yerleşim kaymaz) -> mouse gezince
+   titremez. Varsayılan çok saydam; bölge üstüne gelince hafif, butonun üstüne gelince tam opak. Küçültüldü. */
+#editorModal .ed-pz-art{display:inline-flex;width:18px;height:18px;border-radius:50%;border:1px solid #9ab;background:#eef5ff;color:#1565c0;font-size:13px;font-weight:700;line-height:1;cursor:pointer;padding:0;align-items:center;justify-content:center;opacity:.18;transition:opacity .12s,background .12s,color .12s;}
+#editorModal .ed-pz:hover .ed-pz-art{opacity:.5;}
+#editorModal .ed-pz:hover .ed-pz-art:hover,#editorModal .ed-pz-wrap.acik .ed-pz-art{opacity:1;}
 #editorModal .ed-pz-wrap.acik .ed-pz-art{background:#1565c0;color:#fff;}
 #editorModal .ed-pz-menu{display:none;position:absolute;top:100%;left:0;margin-top:2px;z-index:7;background:#fff;border:1px solid #d0d7de;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,0.16);padding:4px;flex-direction:column;min-width:130px;}
 #editorModal .ed-pz-wrap.acik .ed-pz-menu{display:flex;}
@@ -7579,7 +7587,7 @@ X_EDITOR_JS = r'''
       hedefler.push({ key:_tkey, ad:_tad });
     }
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
-    function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">+ Bölüm Ekle</button></div>'; }
+    function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">'+(hep?'+ Bölüm Ekle':'+ Bölüm')+'</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
     function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya ekle">+</button><span class="ed-pz-menu">'
       +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
@@ -7606,11 +7614,15 @@ X_EDITOR_JS = r'''
       if(!b.manual || edManual(b.item.link)){
         var _selfKey = (b.grup!=null) ? b.grup : ('__solo:'+((b.item&&b.item.uid)||i));
         var _diger=[]; for(var _ki=0;_ki<hedefler.length;_ki++){ if(hedefler[_ki].key!==_selfKey) _diger.push(hedefler[_ki]); }
-        if(_diger.length>0){
+        // "Ayır" anlamlı mı? = öğe grubunda BAŞKA üye var (tek grup kalsa bile içeriği ayırabilmeli) VEYA
+        // elle taşınmış (group_override). Böylece _diger=0 olsa DA kalem görünür -> "Kendi başlığına ayır"a erişilir.
+        var _grpN=0; if(b.grup!=null){ for(var _gn=0;_gn<B.length;_gn++){ if(B[_gn] && B[_gn].grup===b.grup) _grpN++; } }
+        var _ayir=(_grpN>1) || !!(b.item && b.item.group_override);
+        if(_diger.length>0 || _ayir){
           var _km='';
           for(var _kj=0;_kj<_diger.length;_kj++){ _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="'+esc(_diger[_kj].key)+'">'+esc(_diger[_kj].ad)+'</button>'; }
-          _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="__yeni">➕ Kendi başlığı (ayır)</button>';
-          _kalemHtml='<span class="ed-pz-wrap ed-kume-wrap"><button class="ed-kume-kalem" title="Bu öğeyi başka bölüme taşı"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3"/><path d="M9 4L2.5 10.5V13H5L11.5 6.5z"/></svg></button><span class="ed-pz-menu ed-kume-menu">'+_km+'</span></span>';
+          if(_ayir) _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="__yeni">➕ Kendi başlığı (ayır)</button>';
+          if(_km) _kalemHtml='<span class="ed-pz-wrap ed-kume-wrap"><button class="ed-kume-kalem" title="Bu öğeyi başka bölüme taşı / kendi başlığına ayır"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3"/><path d="M9 4L2.5 10.5V13H5L11.5 6.5z"/></svg></button><span class="ed-pz-menu ed-kume-menu">'+_km+'</span></span>';
         }
       }
       // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ. Blok SARMALAYICIYA hizalamayı koy
