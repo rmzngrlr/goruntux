@@ -2919,6 +2919,17 @@ HTML_TEMPLATE = """
             refreshStatus();
             setInterval(refreshStatus, 1500);
 
+            // [VERİ KAYBI FİX — Katman 2] Oto-kayıt debounce penceresinde (~1.5-3sn) yazılan içerik, F5/kapanış
+            // tüm zamanlayıcıları öldürdüğü için snapshot'a HİÇ ulaşmadan kaybolurdu (unload-flush YOKTU, #11/#12).
+            // Sayfa gizlenince/kapanınca bekleyen oto-kaydı HEMEN flush et (overlay sayfa belleğinde dururken).
+            // visibilitychange(hidden) genelde pagehide'dan ÖNCE ve async IndexedDB yazımına daha güvenlidir;
+            // pagehide son çare. Yalnız bekleyen iş varken (timer veya __xPoolDirty) -> sekme-değişiminde boş save yok.
+            try {
+                var _xUnloadFlush = function () { try { if (_xOtoKayitTimer || window.__xPoolDirty) { xOtoKayitFlush(); } } catch (e) {} };
+                document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') { _xUnloadFlush(); } });
+                window.addEventListener('pagehide', _xUnloadFlush);
+            } catch (e) {}
+
             // MV3 servis worker'ı uykuya dalınca "Başlat" iş almıyordu (F5 gerekiyordu).
             // Panel açık olduğu sürece her 4 sn eklentiyi dürtüp SW'yi UYANIK tutuyoruz;
             // böylece tarama her zaman F5 beklemeden başlar. (Başlat'taki anlık dürtmeye ek güvenlik ağı.)
@@ -3041,7 +3052,11 @@ HTML_TEMPLATE = """
             } catch (e) {}
             // Yeni goruntu gelince / depo hazir olunca havuzu tazele (yerel gorseller gorunsun).
             try {
-                window.addEventListener('x-local-image-added', function () { refreshStatus(); });
+                // [VERİ KAYBI FİX — Katman 2] Eklenti görseli ASENKRON düşer (widget captureArticle yavaş);
+                // eskiden yalnız refreshStatus çağrılır, __xPoolDirty kurulmazdı -> görsel ilk oto-kayıt
+                // snapshot'ından SONRA gelince yeniden-kayıt TETİKLENMEZ, snapshot/blob görseli atlardı (#17).
+                // __xPoolDirty=true -> poll (4558 civarı) oto-kaydı yeniden planlar, görsel snapshot'a girer.
+                window.addEventListener('x-local-image-added', function () { try { window.__xPoolDirty = true; } catch (e) {} refreshStatus(); });
                 window.addEventListener('x-local-images-ready', function () { refreshStatus(); });
             } catch (e) {}
         }
