@@ -1809,7 +1809,7 @@ HTML_TEMPLATE = """
         .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); }
         .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); box-shadow: 0 3px 12px rgba(0,0,0,0.30); }
         .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
-        .x-gal-pageinner { padding: 24px 15px 14px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }   /* üst dolgu: seçim kutusu/rozet içeriğe binmesin */
+        .x-gal-pageinner { padding: 16px 15px 30px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent); mask-image: linear-gradient(to bottom, #000 68%, transparent); }
         .x-gal-pbaslik { font-weight: 700; font-size: 11.5px; line-height: 1.35; margin: 0 0 5px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pmetin { font-size: 10px; line-height: 1.5; margin: 0 0 4px; color: var(--text-secondary, #8899a6); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pbos { font-size: 11px; color: var(--text-secondary, #8899a6); opacity: .55; font-style: italic; }
@@ -1817,7 +1817,7 @@ HTML_TEMPLATE = """
         .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; flex: 1; min-width: 0; }
         .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
         .x-gal-rozet { position: absolute; top: 7px; right: 7px; background: var(--accent-color); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; z-index: 2; letter-spacing: .3px; }
-        .x-gal-check { position: absolute; top: 8px; left: 8px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
+        .x-gal-check { position: absolute; bottom: 9px; left: 9px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
         .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
         .x-gal-ara { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
         .x-gal-card:hover .x-gal-ara { opacity: 1; }
@@ -1832,6 +1832,7 @@ HTML_TEMPLATE = """
         .x-secim-bar.acik { transform: translateX(-50%) translateY(0); }
         .x-secim-sayi { font-size: 13px; font-weight: 600; color: var(--text-primary, #e7e9ea); padding: 0 4px; white-space: nowrap; }
         .x-secim-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; font-size: 13px; font-weight: 600; border-radius: 9px; border: 1px solid var(--border-color, rgba(136,153,166,0.3)); background: transparent; color: var(--text-primary, #e7e9ea); cursor: pointer; transition: all .12s ease; white-space: nowrap; }
+        .x-secim-btn svg { width: 15px; height: 15px; display: block; flex-shrink: 0; }
         .x-secim-btn:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); }
         .x-secim-btn:disabled { opacity: .4; cursor: default; }
         .x-secim-btn.danger:hover:not(:disabled) { border-color: var(--danger-color, #e0245e); color: var(--danger-color, #e0245e); }
@@ -1879,9 +1880,9 @@ HTML_TEMPLATE = """
                 <!-- Seçim eylem çubuğu: rapor(lar) işaretlenince alttan belirir (Birleştir/İndir/Sil). -->
                 <div id="x-secim-bar" class="x-secim-bar">
                     <span class="x-secim-sayi" id="x-secim-sayi">0 seçili</span>
-                    <button class="x-secim-btn" id="x-secim-birlestir" onclick="mergeSelectedReports()" title="Seçili raporları tek rapora birleştir (tekrarlar elenir)">🔗 Birleştir</button>
-                    <button class="x-secim-btn" onclick="downloadSelectedReports()" title="Seçili raporların Word dosyalarını indir">📥 İndir</button>
-                    <button class="x-secim-btn danger" onclick="deleteSelectedReports()" title="Seçili raporları sil">🗑️ Sil</button>
+                    <button class="x-secim-btn" id="x-secim-birlestir" onclick="mergeSelectedReports()" title="Seçili raporları tek rapora birleştir (tekrarlar elenir)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 0 0 4.24.17l2.3-2.3a3 3 0 0 0-4.24-4.24l-1.1 1.1"/><path d="M11.5 8.5a3 3 0 0 0-4.24-.17l-2.3 2.3a3 3 0 0 0 4.24 4.24l1.1-1.1"/></svg> Birleştir</button>
+                    <button class="x-secim-btn" onclick="downloadSelectedReports()" title="Seçili raporların Word dosyalarını indir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> İndir</button>
+                    <button class="x-secim-btn danger" onclick="deleteSelectedReports()" title="Seçili raporları sil"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sil</button>
                     <button class="x-secim-kapat" onclick="xSecimTemizle()" title="Seçimi temizle">✕</button>
                 </div>
 
@@ -2051,15 +2052,9 @@ HTML_TEMPLATE = """
                 </div>
             </div>
 
-            <!-- Faz 2: Aktif rapor çubuğu (oto-kayıt durumu + Yeni Rapor). Aktif rapor yoksa gizli. -->
-            <div id="x-aktif-rapor-bar" style="display: none; margin-top: 24px; padding: 10px 14px; border-radius: 10px; background: var(--card-bg, rgba(136,153,166,0.08)); border: 1px solid var(--border-color, rgba(136,153,166,0.2)); align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
-                <div style="display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1;">
-                    <span style="font-size: 18px;">📄</span>
-                    <span id="x-aktif-rapor-ad" title="Yeniden adlandırmak için çift tıkla" ondblclick="xAktifRaporAdiDegistir()" style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;">(adsız rapor)</span>
-                    <span id="x-oto-kayit-durum" style="font-size: 12px; color: var(--text-secondary, #8899a6); opacity: 0.7; white-space: nowrap;"></span>
-                </div>
-                <button class="btn" style="padding: 6px 12px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; flex-shrink: 0;" onclick="newReport()" title="Yeni boş rapor oluştur (mevcut rapor otomatik kaydedilir)">➕ Yeni Rapor</button>
-            </div>
+            <!-- Not: Eski kalıcı "Aktif rapor çubuğu" KALDIRILDI (kullanıcı isteği). Aktif rapor + oto-kayıt
+                 durumu artık yalnız sağ-alt anlık toast ile bildirilir; aktif rapor Raporlarım'da "● Açık"
+                 rozetiyle ve adres çubuğundaki /<slug> ile görünür. -->
 
             <!-- Unified List Section -->
             <div id="manual-list-section" style="display: none; margin-top: 24px;">
@@ -3275,13 +3270,20 @@ HTML_TEMPLATE = """
             var adEl = document.getElementById('x-aktif-rapor-ad');
             if (adEl) { adEl.textContent = window.__xActiveReportName || '(adsız rapor)'; }
         }
+        // Kalıcı aktif-rapor çubuğu KALDIRILDI -> oto-kayıt durumu artık sağ-alt ANLIK TOAST ile.
+        // "kaydedildi" throttle'lı (en çok 12 sn'de bir, tarama/yazma sırasında spam olmasın);
+        // "hata" her zaman; "kaydediliyor"/boş sessiz.
+        var _xKayitToastTS = 0;
+        function xKayitBildir() {
+            var now = Date.now();
+            if (now - _xKayitToastTS < 12000) return;
+            _xKayitToastTS = now;
+            if (typeof showToast === 'function') showToast('✓ Kaydedildi', 'success');
+        }
         function xOtoKayitDurum(durum) {
-            var el = document.getElementById('x-oto-kayit-durum');
-            if (!el) return;
-            if (durum === 'kaydediliyor') { el.textContent = '⏳ Kaydediliyor…'; el.style.opacity = '0.85'; }
-            else if (durum === 'kaydedildi') { el.textContent = '✓ Kaydedildi'; el.style.opacity = '0.7'; }
-            else if (durum === 'hata') { el.textContent = '⚠ Kaydedilemedi'; el.style.opacity = '1'; }
-            else { el.textContent = ''; }
+            // "kaydedildi" toast'ı YALNIZ poll oto-kaydında verilir (xOtoKayitPlanla timer'ı) -> aç/yeni/
+            // birleştir kendi toast'ını verdiği için burada no-op; "hata" her zaman bildirilir.
+            if (durum === 'hata') { if (typeof showToast === 'function') showToast('⚠ Rapor kaydedilemedi.', 'danger'); }
         }
         // Oto-kayıt AÇIKken elle "💾 Kaydet" butonu gizlenir (kaçış kapısı: bayrak kapalıysa görünür).
         function xOtoKayitUICiz() {
@@ -3303,7 +3305,7 @@ HTML_TEMPLATE = """
         function xOtoKayitPlanla() {
             if (!xOtoKayitAcik()) return;
             if (_xOtoKayitTimer) { clearTimeout(_xOtoKayitTimer); }
-            _xOtoKayitTimer = setTimeout(function () { _xOtoKayitTimer = null; xOtoKayitYap(); }, 1500);
+            _xOtoKayitTimer = setTimeout(function () { _xOtoKayitTimer = null; xOtoKayitYap().then(function () { try { xKayitBildir(); } catch (e) {} }); }, 1500);
         }
         window.xOtoKayitPlanla = xOtoKayitPlanla;
         // Bekleyen oto-kaydı HEMEN kuyruğa al (rapor değiştirmeden önce flush — son düzenleme kaybolmasın).
@@ -3354,8 +3356,13 @@ HTML_TEMPLATE = """
                 });
                 // Oto-oluştur: havuzda içerik vardı ama aktif rapor yoktu -> yeni rapor DOĞDU. Yalnız HÂLÂ
                 // aktif yoksa benimse (bir yükleme bu arada aktifi kurduysa, içerik yine de kayıtlı kalır).
-                if (_yeniMi && meta && meta.id && xAktifRaporId() === '') { xAktifRaporKur(meta.id, meta.name, meta.slug, true); }
-                xOtoKayitDurum('kaydedildi');
+                if (_yeniMi && meta && meta.id && xAktifRaporId() === '') {
+                    xAktifRaporKur(meta.id, meta.name, meta.slug, true);
+                    if (typeof showToast === 'function') showToast('📄 Rapor oluşturuldu: ' + (meta.name || ''), 'success');
+                    _xKayitToastTS = Date.now();   // hemen ardından throttle'lı "Kaydedildi" toast'ı bastır (çift olmasın)
+                } else {
+                    xOtoKayitDurum('kaydedildi');
+                }
                 await renderSavedReports();
             } catch (err) {
                 console.error('Oto-kayıt hatası:', err); xOtoKayitDurum('hata');
@@ -3544,8 +3551,8 @@ HTML_TEMPLATE = """
             for (var qi = 0; qi < metas.length; qi++) { previews.push(await xRaporOnizleme(metas[qi])); }
             // İlk kart: Boş Rapor
             var html = '<div class="x-gal-grid">' +
-                '<div class="x-gal-card" onclick="yeniRaporVeEditor()" title="Yeni boş rapor oluştur ve editörü aç">' +
-                    '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Boş Rapor</span></div>' +
+                '<div class="x-gal-card" onclick="yeniRaporVeEditor()" title="Yeni rapor oluştur ve editörü aç">' +
+                    '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Yeni Rapor</span></div>' +
                 '</div>';
             html += metas.map(function (m, idx) {
                 var tarih = '';
