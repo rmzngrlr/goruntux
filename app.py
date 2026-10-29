@@ -1046,7 +1046,11 @@ HTML_TEMPLATE = """
             outline: none;
             transition: color 0.2s;
             border-radius: 8px 8px 0 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
         }
+        .tab-btn svg { width: 17px; height: 17px; flex-shrink: 0; }
 
         .tab-btn:hover {
             color: var(--text-primary);
@@ -1490,17 +1494,16 @@ HTML_TEMPLATE = """
             border: 1px solid var(--border-color);
             background: var(--bg-btn-secondary);
             color: var(--text-primary);
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-size: 13px;
-            font-weight: 600;
+            padding: 9px;
+            border-radius: 11px;
             cursor: pointer;
             transition: all 0.3s ease;
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 8px;
+            justify-content: center;
             outline: none;
         }
+        .theme-toggle-btn svg { width: 18px; height: 18px; display: block; }
         
         .theme-toggle-btn:hover {
             background: var(--accent-glow);
@@ -1838,6 +1841,24 @@ HTML_TEMPLATE = """
         .x-secim-btn.danger:hover:not(:disabled) { border-color: var(--danger-color, #e0245e); color: var(--danger-color, #e0245e); }
         .x-secim-kapat { background: transparent; border: none; color: var(--text-secondary, #8899a6); font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; }
         .x-secim-kapat:hover { color: var(--text-primary, #e7e9ea); }
+        /* Dolu butonlardaki (Başlat, Kaydet ve İndir vb.) SVG ikon boyutu */
+        .btn svg { width: 17px; height: 17px; flex-shrink: 0; }
+        /* Havuz aksiyon butonları (İndir / Önizle / Sıfırla) — yeni görünüm: çerçeveli/ghost + SVG */
+        .x-havuz-btn { flex: 1 1 0; min-width: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 14px; font-size: 14px; font-weight: 600; border-radius: 10px; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); cursor: pointer; transition: all .15s ease; outline: none; }
+        .x-havuz-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .x-havuz-btn:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); background: var(--accent-glow); }
+        .x-havuz-btn.vurgu { border-color: var(--accent-color); color: var(--accent-color); }
+        .x-havuz-btn.danger { color: var(--danger-color); }
+        .x-havuz-btn.danger:hover:not(:disabled) { border-color: var(--danger-color); color: var(--danger-color); background: rgba(224,36,94,0.10); }
+        /* Onay/giriş dialoglarında başlık ikonu (tek-renk SVG) */
+        .x-dlg-title { display: flex; align-items: center; gap: 9px; }
+        .x-dlg-ico { display: inline-flex; align-items: center; color: var(--text-primary); flex-shrink: 0; }
+        .x-dlg-ico svg { width: 20px; height: 20px; display: block; }
+        .x-dlg-title.danger .x-dlg-ico { color: var(--danger-color); }
+        /* Bölüm/modal başlıklarındaki tek-renk SVG ikon */
+        .x-shead { display: flex; align-items: center; gap: 8px; }
+        .x-shead svg { width: 19px; height: 19px; flex-shrink: 0; }
+        .ext-status-box svg { width: 9px; height: 9px; vertical-align: -1px; margin-right: 5px; }
     </style>
 </head>
 <body>
@@ -1849,8 +1870,8 @@ HTML_TEMPLATE = """
         <div class="main-content" style="position: relative;">
             <div class="header">
                 <div class="header-controls">
-                    <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
-                    <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
+                    <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
+                    <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
                 <p>Gönderi tarama, Word çıktısı üretme ve rapor biçimlendirme arayüzü</p>
@@ -1858,11 +1879,11 @@ HTML_TEMPLATE = """
 
             <!-- Tab Buttons -->
             <div class="tabs">
-                <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')">🤖 Rapor'matik</button>
+                <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l1.5 3.6 3.6 1.4-3.6 1.5-1.5 3.6-1.5-3.6L5.4 7.5l3.6-1.4z"/><path d="M5 12.5l.8 1.9 1.9.8-1.9.8L5 18l-.8-1.9L2.3 15.3l1.9-.9z"/></svg> Rapor'matik</button>
                 <!-- #2: "Manuel Rapor Hazırla" sekmesi EMEKLİ — manuel içerik artık Rapor Editörü içinde
                      (kümeler arası "+ Ekle" ile başlık/metin/görsel/link). Havuz boşken üstteki "Rapor Editörü"
                      butonuyla açılır. (tab-manual içerik div'i erişilmez kaldı; işlevi editöre taşındı.) -->
-                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')">🗂️ Raporlarım<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
+                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2a1 1 0 0 1 1-1h3.1l1.3 1.6h7.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/></svg> Raporlarım<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
             </div>
 
             <!-- Tab 1: Format Docx -->
@@ -1870,7 +1891,7 @@ HTML_TEMPLATE = """
                 <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
                      kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
                 <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
-                    <h4 style="margin: 0 0 4px 0;">🗂️ Raporlarım</h4>
+                    <h4 class="x-shead" style="margin: 0 0 4px 0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2a1 1 0 0 1 1-1h3.1l1.3 1.6h7.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/></svg>Raporlarım</h4>
                     <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 14px;">
                         Bu cihazda yerel olarak saklanır (sunucuya gitmez). İstediğin kadar rapor saklayabilirsin. Birden çok raporu işaretleyince alttan toplu işlem çubuğu gelir.
                     </div>
@@ -1993,7 +2014,7 @@ HTML_TEMPLATE = """
                     </p>
                 </div>
                 <div class="card" id="auto-desktop-content">
-                    <h3>🤖 Eklenti ile Otomatik Rapor Üretme</h3>
+                    <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l1.5 3.6 3.6 1.4-3.6 1.5-1.5 3.6-1.5-3.6L5.4 7.5l3.6-1.4z"/><path d="M5 12.5l.8 1.9 1.9.8-1.9.8L5 18l-.8-1.9L2.3 15.3l1.9-.9z"/></svg>Eklenti ile Otomatik Rapor Üretme</h3>
                     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">
                         Chrome tarayıcınıza yükleyeceğiniz <b>GörüntüX</b> eklentisi ile birlikte çalışır. Linkleri yapıştırdıktan sonra eklenti gönderileri tek tek ziyaret ederek ekran görüntülerini otomatik olarak çeker.
                     </p>
@@ -2031,7 +2052,7 @@ HTML_TEMPLATE = """
                         <!-- Eklenti ESKI ise refreshStatus bunu disabled yapar. Kapsayicinin
                              (auto-action-buttons) GORUNURLUGUNU tarama durumu yonetiyor -> ona
                              dokunulmaz, yalnizca butonun kendisi kilitlenir. -->
-                        <button class="btn" style="flex: 1;" id="auto-start-btn" onclick="startAutomation()">🚀 Başlat</button>
+                        <button class="btn" style="flex: 1;" id="auto-start-btn" onclick="startAutomation()"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c2.8 1.2 4.5 4 4.5 7.5 0 1.3-.3 2.5-.3 2.5H5.8s-.3-1.2-.3-2.5c0-3.5 1.7-6.3 4.5-7.5z"/><circle cx="10" cy="8" r="1.4"/><path d="M5.8 12.5l-2 2.2M14.2 12.5l2 2.2M8.3 15.5s-.3 1.8 1.7 2.5c2-.7 1.7-2.5 1.7-2.5z"/></svg> Başlat</button>
                     </div>
 
                     <div class="progress-container" id="progress-area" style="display: none;">
@@ -2059,17 +2080,17 @@ HTML_TEMPLATE = """
             <!-- Unified List Section -->
             <div id="manual-list-section" style="display: none; margin-top: 24px;">
                 <div class="card">
-                    <h4 style="margin: 0 0 12px 0;" id="manual-list-title">📋 Havuzda Bekleyen Rapor İçerikleri</h4>
+                    <h4 class="x-shead" style="margin: 0 0 12px 0;" id="manual-list-title"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4" width="11" height="13" rx="1.5"/><path d="M7.5 4V2.8h5V4"/><path d="M7.5 8.5h5M7.5 11.5h5M7.5 14.5h3"/></svg>Havuzda Bekleyen Rapor İçerikleri</h4>
                     
                     <div class="items-list" id="manual-items-container">
                         <!-- Dynamically loaded items will go here -->
                     </div>
 
                     <div class="pool-actions">
-                        <button id="save-btn" class="btn btn-success" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez.">💾 Kaydet</button>
-                        <button id="download-btn" class="btn btn-success" style="flex: 1 1 0; min-width: 0; margin: 0; background: var(--accent-color);" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur).">📥 İndir</button>
-                        <button class="btn btn-primary" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="generateManualWord(true)">👁️ Önizle</button>
-                        <button class="btn btn-secondary btn-danger" style="flex: 1 1 0; min-width: 0; margin: 0;" onclick="clearManualList()">❌ Sıfırla</button>
+                        <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
+                        <button id="download-btn" class="x-havuz-btn" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur)."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> İndir</button>
+                        <button class="x-havuz-btn vurgu" onclick="generateManualWord(true)" title="Raporu düzenleyici önizlemede aç"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.4"/></svg> Önizle</button>
+                        <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
                     </div>
                 </div>
             </div>
@@ -2084,7 +2105,7 @@ HTML_TEMPLATE = """
          xInitStyles/xSaveStyles localStorage ile eşler. Ayrı modal/buton YOK (kullanıcı: tam emeklilik). -->
     <div id="styleModal" style="display:none" aria-hidden="true">
             <div class="modal-body">
-                <h3>🏷️ Platform Adı Stili (Platform Ayracı)</h3>
+                <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 3.5h6l7 7-6 6-7-7z"/><circle cx="6.5" cy="6.5" r="1"/></svg>Platform Adı Stili (Platform Ayracı)</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
                     Yalnızca çıktıda <b>birden fazla platform</b> varsa görünür: gönderiler
                     "X (Twitter)", "Instagram" ve "Facebook" başlıklarıyla ayrılır
@@ -2140,7 +2161,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔤 Başlık Stili</h3>
+                <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5v11M13 4.5v11M5 10h8"/></svg>Başlık Stili</h3>
                 <div class="form-group">
                     <label for="b_font">Yazı Tipi (Font):</label>
                     <select id="b_font">
@@ -2200,7 +2221,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>🔗 Gönderi Linki Stili</h3>
+                <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 0 0 4.24.17l2.3-2.3a3 3 0 0 0-4.24-4.24l-1.1 1.1"/><path d="M11.5 8.5a3 3 0 0 0-4.24-.17l-2.3 2.3a3 3 0 0 0 4.24 4.24l1.1-1.1"/></svg>Gönderi Linki Stili</h3>
                 <div class="form-group">
                     <label for="l_font">Yazı Tipi (Font):</label>
                     <select id="l_font">
@@ -2242,7 +2263,7 @@ HTML_TEMPLATE = """
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
-                <h3>📝 Eklenen Metin Stili</h3>
+                <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6V4.5h12V6"/><path d="M10 4.5v11"/><path d="M7.5 15.5h5"/></svg>Eklenen Metin Stili</h3>
                 <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
                     Editörde <b>görsellerin altına</b> eklediğiniz serbest metinlere uygulanır.
                 </div>
@@ -2290,21 +2311,21 @@ HTML_TEMPLATE = """
     <div id="extModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>🧩 GörüntüX Eklentisi</h2>
+                <h2 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.3 3.2a1.6 1.6 0 0 1 3.2 0c0 .4-.1.8-.2 1.3h3v3c.5-.1.9-.2 1.3-.2a1.6 1.6 0 0 1 0 3.2c-.4 0-.8-.1-1.3-.2v3.4h-3.4c.1-.5.2-.9.2-1.3a1.6 1.6 0 0 0-3.2 0c0 .4.1.8.2 1.3H3.5v-3c-.5.1-.9.2-1.3.2a1.6 1.6 0 0 1 0-3.2c.4 0 .8.1 1.3.2v-3h3c-.1-.5-.2-.9-.2-1.3z"/></svg>GörüntüX Eklentisi</h2>
                 <span class="close-btn" onclick="closeExtModal()">&times;</span>
             </div>
             <div class="modal-body">
                 <!-- Eklenti ESKI iken (sarı durum) gösterilir; openExtModal doldurur. -->
                 <div id="ext-modal-warning" style="display: none; background: rgba(255, 176, 32, 0.12); border: 1px solid rgba(255, 176, 32, 0.35); color: #ffb020; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; font-weight: 600;"></div>
                 <div style="text-align: center; margin-bottom: 22px;">
-                    <a href="/api/extension/download_zip" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px;">📥 Eklentiyi İndir (.zip)</a>
+                    <a href="/api/extension/download_zip" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> Eklentiyi İndir (.zip)</a>
                 </div>
-                <h3 style="margin: 0 0 10px;">📖 Kurulum ve Kullanım Kılavuzu</h3>
+                <h3 class="x-shead" style="margin: 0 0 10px;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.5S8.5 4 4 4v11c4.5 0 6 1.5 6 1.5S11.5 15 16 15V4c-4.5 0-6 1.5-6 1.5z"/><path d="M10 5.5v11"/></svg>Kurulum ve Kullanım Kılavuzu</h3>
                 <ol style="font-size: 13px; line-height: 1.75; color: var(--text-secondary); padding-left: 20px; margin: 0;">
                     <li><b>İndir:</b> Yukarıdaki <b>Eklentiyi İndir</b> ile <code>x-word.zip</code> iner. Sabit bir klasöre çıkar (ör. Masaüstü/GörüntüX). <b>Klasörü taşıma ya da silme</b> — Chrome eklentiyi bu klasör yolundan tanır.</li>
                     <li><b>Kur (ilk kez):</b> Chrome'da <code>chrome://extensions</code> aç → sağ üstten <b>Geliştirici modu</b>'nu aç → <b>Paketlenmemiş öğe yükle</b> → çıkardığın klasörü seç. GörüntüX listeye eklenir.</li>
                     <li><b>Güncelle (yeni sürüm çıkınca):</b> Yeni .zip'i <b>aynı klasörün üzerine</b> çıkar → <code>chrome://extensions</code>'ta GörüntüX kartındaki <b>↻ (yenile)</b> düğmesine bas → açık bir X sekmen varsa <b>F5</b> ile yenile.</li>
-                    <li><b>Kullan:</b> Bir gönderi sayfasında (X, Instagram, Facebook, TikTok, YouTube) sağ alttaki <b>Rapora Ekle</b> ile havuza ekle; ya da bu panele link yapıştırıp <b>🚀 Başlat</b> ile otomatik taramayı çalıştır.</li>
+                    <li><b>Kullan:</b> Bir gönderi sayfasında (X, Instagram, Facebook, TikTok, YouTube) sağ alttaki <b>Rapora Ekle</b> ile havuza ekle; ya da bu panele link yapıştırıp <b>Başlat</b> ile otomatik taramayı çalıştır.</li>
                 </ol>
             </div>
         </div>
@@ -2426,19 +2447,22 @@ HTML_TEMPLATE = """
         });
 
         // Theme Toggle Functionality
+        // Tema ikonları (tek-renk SVG). Koyu modda GÜNEŞ (açığa geç), açık modda AY (koyuya geç).
+        var _XSVG_GUNES = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>';
+        var _XSVG_AY = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"/></svg>';
         function toggleTheme() {
             try {
                 const body = document.body;
                 const btn = document.getElementById('theme-btn');
                 if (body.classList.contains('light-theme')) {
                     body.classList.remove('light-theme');
-                    if (btn) btn.innerHTML = '☀️ Açık Tema';
+                    if (btn) { btn.innerHTML = _XSVG_GUNES; btn.title = 'Açık temaya geç'; }
                     try {
                         localStorage.setItem('theme', 'dark');
                     } catch(e) {}
                 } else {
                     body.classList.add('light-theme');
-                    if (btn) btn.innerHTML = '🌙 Koyu Tema';
+                    if (btn) { btn.innerHTML = _XSVG_AY; btn.title = 'Koyu temaya geç'; }
                     try {
                         localStorage.setItem('theme', 'light');
                     } catch(e) {}
@@ -2457,10 +2481,10 @@ HTML_TEMPLATE = """
                 const themeBtn = document.getElementById('theme-btn');
                 if (savedTheme === 'light') {
                     body.classList.add('light-theme');
-                    if (themeBtn) themeBtn.innerHTML = '🌙 Koyu Tema';
+                    if (themeBtn) { themeBtn.innerHTML = _XSVG_AY; themeBtn.title = 'Koyu temaya geç'; }
                 } else {
                     body.classList.remove('light-theme');
-                    if (themeBtn) themeBtn.innerHTML = '☀️ Açık Tema';
+                    if (themeBtn) { themeBtn.innerHTML = _XSVG_GUNES; themeBtn.title = 'Açık temaya geç'; }
                 }
             } catch(e) {
                 console.error("Theme restore error:", e);
@@ -2747,7 +2771,7 @@ HTML_TEMPLATE = """
                 }
                 // "Kaydet ve Indir": ad sor -> indir -> KAYITLI RAPOR olarak da kaydet (sekmedeki sayac artar).
                 var def = xTarihSaatDamgasi();
-                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet ve İndir', okText: 'Kaydet' });
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: 'Kaydet ve İndir', icon: _XSVG_KAYDET, okText: 'Kaydet' });
                 if (name === null) { showToast('İptal edildi.', 'info'); return; }
                 name = (name || '').trim() || def;
                 var filename = xRaporDosyaAdi(name);
@@ -2938,7 +2962,7 @@ HTML_TEMPLATE = """
             // Onay iste; sunucu havuzu + overlay + manuel bloklar + editör belgesi + YEREL GÖRSELLER birlikte silinsin
             // (yoksa IndexedDB'de yetim görsel + bayat overlay kalır).
             var onay = (typeof xConfirm === 'function')
-                ? await xConfirm('Havuzdaki tüm içerik (ve eklenen görseller) silinsin mi? Bu geri alınamaz.', { title: '❌ Sıfırla', okText: 'Sıfırla', danger: true })
+                ? await xConfirm('Havuzdaki tüm içerik (ve eklenen görseller) silinsin mi? Bu geri alınamaz.', { title: 'Sıfırla', icon: _XSVG_COP, okText: 'Sıfırla', danger: true })
                 : confirm('Havuzdaki tüm içerik silinsin mi?');
             if (!onay) return;
             window.__xOtoKayitBosaltOnayTS = Date.now();   // Faz 2: kullanıcı AÇIKÇA boşalttı -> oto-kayıt boş durumu yazsın
@@ -3047,6 +3071,13 @@ HTML_TEMPLATE = """
         // Panel-ici STILLI dialog (kullanici istegi: native prompt/confirm degil, panelin .modal
         // gorunumu). xConfirm(msg,opts)->Promise<bool>; xPrompt(msg,def,opts)->Promise<string|null>.
         // Baslik/mesaj textContent ile konur -> kullanici icerigi (rapor adi) guvenli.
+        // Onay/giriş dialoglarının başlık ikonları (tek-renk SVG; danger'da kırmızı tonlanır).
+        var _XSVG_COP = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg>';
+        var _XSVG_KAYDET = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg>';
+        var _XSVG_KALEM = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3-9 9H4.5v-3z"/><path d="M11.5 5.5l3 3"/></svg>';
+        var _XSVG_ARTI = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v12M4 10h12"/></svg>';
+        var _XSVG_ACAC = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 15.5v-9a1 1 0 0 1 1-1h3.1l1.3 1.6h7a1 1 0 0 1 1 1"/><path d="M2.6 15.5l1.9-6.5h13l-1.9 6.5z"/></svg>';
+        var _XSVG_ZINCIR = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 0 0 4.24.17l2.3-2.3a3 3 0 0 0-4.24-4.24l-1.1 1.1"/><path d="M11.5 8.5a3 3 0 0 0-4.24-.17l-2.3 2.3a3 3 0 0 0 4.24 4.24l1.1-1.1"/></svg>';
         function xDialog(opts) {
             opts = opts || {};
             return new Promise(function (resolve) {
@@ -3058,7 +3089,7 @@ HTML_TEMPLATE = """
                 overlay.style.zIndex = '3000';
                 overlay.innerHTML =
                     '<div class="modal-content" style="max-width:440px;">' +
-                        '<div class="modal-header"><h2 class="x-dlg-title"></h2>' +
+                        '<div class="modal-header"><h2 class="x-dlg-title' + (opts.danger ? ' danger' : '') + '"><span class="x-dlg-ico"></span><span class="x-dlg-ttxt"></span></h2>' +
                             '<span class="close-btn" data-act="cancel">&times;</span></div>' +
                         '<div class="modal-body">' +
                             '<div class="x-dlg-msg" style="color:var(--text-primary); line-height:1.5; white-space:pre-wrap;"></div>' +
@@ -3072,7 +3103,9 @@ HTML_TEMPLATE = """
                         '</div>' +
                     '</div>';
                 document.body.appendChild(overlay);
-                overlay.querySelector('.x-dlg-title').textContent = opts.title || '';
+                overlay.querySelector('.x-dlg-ttxt').textContent = opts.title || '';
+                var _dlgIco = overlay.querySelector('.x-dlg-ico');
+                if (_dlgIco) { if (opts.icon) { _dlgIco.innerHTML = opts.icon; } else { _dlgIco.style.display = 'none'; } }
                 overlay.querySelector('.x-dlg-msg').textContent = opts.message || '';
                 overlay.querySelector('.x-dlg-ok').textContent = opts.okText || 'Tamam';
                 overlay.querySelector('.x-dlg-cancel').textContent = opts.cancelText || 'Vazgeç';
@@ -3115,12 +3148,12 @@ HTML_TEMPLATE = """
         }
         function xConfirm(message, opts) {
             opts = opts || {};
-            return xDialog({ title: opts.title || 'Onay', message: message, input: false,
+            return xDialog({ title: opts.title || 'Onay', message: message, input: false, icon: opts.icon,
                 okText: opts.okText || 'Evet', cancelText: opts.cancelText || 'Vazgeç', danger: opts.danger });
         }
         function xPrompt(message, defaultValue, opts) {
             opts = opts || {};
-            return xDialog({ title: opts.title || 'Giriş', message: message, input: true, defaultValue: defaultValue,
+            return xDialog({ title: opts.title || 'Giriş', message: message, input: true, defaultValue: defaultValue, icon: opts.icon,
                 okText: opts.okText || 'Tamam', cancelText: opts.cancelText || 'Vazgeç', checkbox: opts.checkbox });
         }
 
@@ -3375,7 +3408,7 @@ HTML_TEMPLATE = """
                 var _curN = [];
                 try { _curN = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
                 if (_curN.length && typeof xConfirm === 'function') {
-                    if (!(await xConfirm('Havuzda ' + _curN.length + ' içerik var ve kaydedilmedi. Yeni boş rapor açmak bunları siler. Devam edilsin mi?', { title: '➕ Yeni Rapor', okText: 'Devam', danger: true }))) return;
+                    if (!(await xConfirm('Havuzda ' + _curN.length + ' içerik var ve kaydedilmedi. Yeni boş rapor açmak bunları siler. Devam edilsin mi?', { title: 'Yeni Rapor', icon: _XSVG_ARTI, okText: 'Devam', danger: true }))) return;
                 }
             }
             return xSiraya(_newReportImpl);
@@ -3423,7 +3456,7 @@ HTML_TEMPLATE = """
             var id = xAktifRaporId(); if (!id) return;
             try {
                 var cur = window.__xActiveReportName || '';
-                var yeni = await xPrompt('Rapor adı:', cur, { title: '✏️ Yeniden Adlandır', okText: 'Kaydet' });
+                var yeni = await xPrompt('Rapor adı:', cur, { title: 'Yeniden Adlandır', icon: _XSVG_KALEM, okText: 'Kaydet' });
                 if (yeni === null) return;
                 yeni = (yeni || '').trim(); if (!yeni) return;
                 await window.XSavedReports.whenReady();
@@ -3443,7 +3476,7 @@ HTML_TEMPLATE = """
                 var _manVar = !!(window.__xManualClusters && window.__xManualClusters.length);
                 if (!((_d0 && _d0.items && _d0.items.length) || _manVar)) { showToast('İçerik yok — kaydedilecek bir şey yok.', 'warning'); return; }
                 var def = (window.__openReportName && window.__openReportName.trim()) ? window.__openReportName : xTarihSaatDamgasi();
-                var name = await xPrompt('Rapor için bir ad girin:', def, { title: '💾 Kaydet', okText: 'Kaydet' });
+                var name = await xPrompt('Rapor için bir ad girin:', def, { title: 'Kaydet', icon: _XSVG_KAYDET, okText: 'Kaydet' });
                 if (name === null) return;
                 name = (name || '').trim() || def;
                 if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Kaydediliyor...'; }
@@ -3560,9 +3593,9 @@ HTML_TEMPLATE = """
                 var adEsc = escapeHtml(m.name || '(adsız)');
                 var aktif = (m.id === aktifId);
                 return '<div class="x-gal-card' + (aktif ? ' aktif' : '') + '" data-rid="' + m.id + '" onclick="xGalAc(event,this)" title="Aç">' +
-                    '<input type="checkbox" class="x-sr-check x-gal-check" data-rid="' + m.id + '" onclick="event.stopPropagation()" onchange="xUpdateMergeBtn()" title="Seç (toplu işlem)">' +
-                    (aktif ? '<span class="x-gal-rozet">● Açık</span>' : '') +
                     '<div class="x-gal-page">' +
+                        '<input type="checkbox" class="x-sr-check x-gal-check" data-rid="' + m.id + '" onclick="event.stopPropagation()" onchange="xUpdateMergeBtn()" title="Seç (toplu işlem)">' +
+                        (aktif ? '<span class="x-gal-rozet">● Açık</span>' : '') +
                         '<div class="x-gal-pageinner">' + xGalOnizlemeHtml(previews[idx]) + '</div>' +
                         '<div class="x-gal-ara">' +
                             '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">' + _SVG_INDIR + '</button>' +
@@ -3614,7 +3647,7 @@ HTML_TEMPLATE = """
         async function deleteSelectedReports() {
             var ids = xSecimIdler();
             if (!ids.length) { return; }
-            if (!(await xConfirm(ids.length + ' raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: '🗑️ Seçilenleri Sil', okText: 'Sil', danger: true }))) return;
+            if (!(await xConfirm(ids.length + ' raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: 'Seçilenleri Sil', icon: _XSVG_COP, okText: 'Sil', danger: true }))) return;
             for (var i = 0; i < ids.length; i++) {
                 try { await xSiraya((function (rid) { return function () { return _deleteSavedReportImpl(rid); }; })(ids[i])); } catch (e) {}
             }
@@ -3637,7 +3670,7 @@ HTML_TEMPLATE = """
             }
         }
         async function deleteSavedReport(id) {
-            if (!(await xConfirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: '🗑️ Raporu Sil', okText: 'Sil', danger: true }))) return;
+            if (!(await xConfirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: 'Raporu Sil', icon: _XSVG_COP, okText: 'Sil', danger: true }))) return;
             return xSiraya(function () { return _deleteSavedReportImpl(id); });   // kuyruk: in-flight oto-kayıt BİTMİŞ olur -> silinen rapor dirilmez
         }
         async function _deleteSavedReportImpl(id) {
@@ -3691,7 +3724,7 @@ HTML_TEMPLATE = """
                     var curItems = [];
                     try { curItems = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
                     if (curItems.length) {
-                        if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '📂 Raporu Aç', okText: 'Aç ve Değiştir', danger: true }))) return;
+                        if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: 'Raporu Aç', icon: _XSVG_ACAC, okText: 'Aç ve Değiştir', danger: true }))) return;
                     }
                 }
                 // 1) Havuzu + yerel gorselleri temizle (temiz "acilis" durumu)
@@ -3753,7 +3786,7 @@ HTML_TEMPLATE = """
                 var _curM = [];
                 try { _curM = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
                 if (_curM.length && typeof xConfirm === 'function') {
-                    if (!(await xConfirm('Havuzda şu an ' + _curM.length + ' içerik var. Seçili ' + ids.length + ' raporu birleştirmek havuzu bunlarla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '🔗 Raporları Birleştir', okText: 'Birleştir', danger: true }))) return;
+                    if (!(await xConfirm('Havuzda şu an ' + _curM.length + ' içerik var. Seçili ' + ids.length + ' raporu birleştirmek havuzu bunlarla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: 'Raporları Birleştir', icon: _XSVG_ZINCIR, okText: 'Birleştir', danger: true }))) return;
                 }
             }
             return xSiraya(function () { return _mergeSelectedReportsImpl(ids); });   // kuyruk: yarış/dirilme yok
@@ -3820,7 +3853,7 @@ HTML_TEMPLATE = """
                 var metas = await window.XSavedReports.list();
                 var m = null; for (var i = 0; i < metas.length; i++) { if (metas[i].id === id) { m = metas[i]; break; } }
                 var cur = (m && m.name) || '';
-                var yeni = await xPrompt('Yeni rapor adı:', cur, { title: '✏️ Yeniden Adlandır', okText: 'Kaydet' });
+                var yeni = await xPrompt('Yeni rapor adı:', cur, { title: 'Yeniden Adlandır', icon: _XSVG_KALEM, okText: 'Kaydet' });
                 if (yeni === null) return;
                 yeni = (yeni || '').trim();
                 if (!yeni) { showToast('Ad boş olamaz.', 'warning'); return; }
@@ -4449,15 +4482,15 @@ HTML_TEMPLATE = """
                 if (kutu) {
                     if (!connected) {
                         kutu.className = 'ext-status-box ext-err';
-                        kutu.innerHTML = '🔴 Eklenti yok — kur';
+                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti yok — kur';
                         window.extBoxClickable = true;
                     } else if (eskiMi) {
                         kutu.className = 'ext-status-box ext-warn';
-                        kutu.innerHTML = '🟡 Güncelleme gerekli (v' + kuruluSurum + ' → v' + sonSurum + ')';
+                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Güncelleme gerekli (v' + kuruluSurum + ' → v' + sonSurum + ')';
                         window.extBoxClickable = true;
                     } else {
                         kutu.className = 'ext-status-box ext-ok';
-                        kutu.innerHTML = '🟢 Eklenti bağlandı (Hazır)';
+                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti bağlandı (Hazır)';
                         window.extBoxClickable = false;
                         // Eklenti (yeni) HAZIR: kırmızı/sarıda açılmış modal artık anlamsız -> otomatik
                         // kapat. (Kullanıcı güncelleyip panele dönünce açık modal takılı kalmasın.)
@@ -4474,7 +4507,7 @@ HTML_TEMPLATE = """
                 //      Raporlarım'daki "➕ Boş Rapor" kartından (yeni rapor + editör açılır).
                 if (data.manuel_count > 0) {
                     if (titleEl) {
-                        titleEl.innerText = `📋 Havuzda Bekleyen Rapor İçerikleri (${data.manuel_count} Adet)`;
+                        titleEl.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4" width="11" height="13" rx="1.5"/><path d="M7.5 4V2.8h5V4"/><path d="M7.5 8.5h5M7.5 11.5h5M7.5 14.5h3"/></svg><span>Havuzda Bekleyen Rapor İçerikleri (' + data.manuel_count + ' Adet)</span>';
                     }
                     // v4.1: Havuz TÜM sekmelerde görünür. Eskiden tab-format'ta gizliydi ("Word Düzenle"
                     // sekmesiydi, havuz alakasızdı); artık "Kayıtlı Raporlar" -> Aç/Birleştir sonrası havuz
@@ -5721,14 +5754,13 @@ HTML_TEMPLATE = """
         <div class="preview-modal-content">
             <div class="modal-header">
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <h2 style="margin:0;">📝 Rapor Editörü</h2>
+                    <h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 3.5l3 3-9 9H4.5v-3z"/><path d="M11.5 5.5l3 3"/></svg>Rapor Editörü</h2>
                     <div style="display:inline-flex; gap:2px;">
                         <button id="ed-geri" class="ed-ikon-btn ed-ik-nav" onclick="window.XEditor &amp;&amp; window.XEditor.geriAl()" title="Geri al (Ctrl+Z)" disabled><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.5h7a4 4 0 1 1 0 8H8.5"/><path d="M7.5 4.5l-3 3 3 3"/></svg></button>
                         <button id="ed-ileri" class="ed-ikon-btn ed-ik-nav" onclick="window.XEditor &amp;&amp; window.XEditor.ileriAl()" title="İleri al (Ctrl+Y)" disabled><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 7.5h-7a4 4 0 1 0 0 8h3"/><path d="M12.5 4.5l3 3-3 3"/></svg></button>
                     </div>
                 </div>
                 <div style="display: flex; gap: 2px; align-items: center;">
-                    <button class="ed-ikon-btn ed-ik-kaydet" onclick="window.XEditor &amp;&amp; window.XEditor.kaydet()" title="Kaydet (panele kaydet; indirmez, havuz commit edilir)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
@@ -7632,7 +7664,6 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
 #editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
 #editorModal .ed-ik-nav:hover:not(:disabled),#editorModal .ed-ik-indir:hover:not(:disabled){color:#1565c0;}
-#editorModal .ed-ik-kaydet:hover:not(:disabled){color:#17a34a;}
 #editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
 #editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
@@ -8289,7 +8320,7 @@ X_EDITOR_JS = r'''
     var done=false;
     var ov=document.createElement('div'); ov.className='modal active'; ov.style.zIndex='3200';
     ov.innerHTML='<div class="modal-content" style="max-width:460px;">'
-      +'<div class="modal-header"><h2 style="margin:0;">📋 Panodan Görsel</h2><span class="close-btn" data-x="1">&times;</span></div>'
+      +'<div class="modal-header"><h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2 2 2"/></svg>Panodan Görsel</h2><span class="close-btn" data-x="1">&times;</span></div>'
       +'<div class="modal-body">'
         +'<div class="x-pano-hedef" contenteditable="true" spellcheck="false" style="min-height:130px; border:2px dashed #9ab; border-radius:12px; display:flex; align-items:center; justify-content:center; text-align:center; color:#57606a; font-size:14px; padding:16px; outline:none; background:#f7fafd; cursor:text;">Görseli buraya <b style="margin:0 5px;">Ctrl+V</b> (⌘V) ile yapıştırın</div>'
       +'</div>'
