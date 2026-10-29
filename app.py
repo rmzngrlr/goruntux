@@ -4570,6 +4570,28 @@ HTML_TEMPLATE = """
                     if (_vardiMi) { try { xOtoKayitPlanla(); } catch (e) {} }
                 }
 
+                // CANLI EDİTÖR: editör AÇIKken havuza YENİ içerik düşünce (eklenti/tarama -> öğe sayısı arttı)
+                // editörü bozmadan yenile (XE.ac({}) -> scroll korunur, overlay'den düzenlemeler geri yüklenir,
+                // "Yükleniyor" flaşı yok) -> yeni içerik editör ekranına da "tık" diye düşsün. Kullanıcı o an
+                // editörde bir alana YAZIYORSA bu tur atlanır (yazımı bozma; sayaç güncellenmez -> sonraki
+                // poll'da tekrar denenir). Bir XE.ac zaten çalışıyorsa (editörün kendi aksiyonu) atlanır.
+                try {
+                    var _edM = document.getElementById('editorModal');
+                    var _edAcik = !!(_edM && _edM.classList.contains('active') && window.XEditor && window.XEditor.ac);
+                    var _simdikiSayi = (data.manuel_count || 0);
+                    if (_edAcik && _simdikiSayi > (window.__xSonHavuzSayi || 0) && !window.__xEdAcCalisiyor) {
+                        var _ae = document.activeElement;
+                        var _yaziyor = !!(_ae && (_ae.isContentEditable || _ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA') && _ae.closest && _ae.closest('#editorModal'));
+                        if (!_yaziyor) {
+                            Promise.resolve(window.XEditor.ac({})).catch(function () {});
+                            window.__xSonHavuzSayi = _simdikiSayi;   // yenilendi -> sayacı güncelle
+                        }
+                        // yazıyorsa sayacı GÜNCELLEME -> içerik kaybolmasın, sonraki poll'da yenilensin
+                    } else {
+                        window.__xSonHavuzSayi = _simdikiSayi;   // artış yok / editör kapalı -> senkronla
+                    }
+                } catch (e) {}
+
                 // Update automation progress
                 const progressArea = document.getElementById('progress-area');
                 const downloadArea = document.getElementById('auto-download-area');
@@ -7891,6 +7913,7 @@ X_EDITOR_JS = r'''
 
   XE.ac = async function(opts){
     opts = opts||{};
+    try{ window.__xEdAcCalisiyor = true; }catch(e){}   // poll canlı-yenilemesi bununla çakışmasın
     stilEnjekte();
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
@@ -7928,6 +7951,7 @@ X_EDITOR_JS = r'''
       _geriBtnGuncelle();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
+    finally { try{ window.__xEdAcCalisiyor = false; }catch(e){} }
   };
 
   // ✕ ile kapat: SORMADAN kapat (kullanıcı isteği). Havuz "Kaydet" artık temizlemediği için çıkınca
