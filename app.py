@@ -5818,6 +5818,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div style="display: flex; gap: 2px; align-items: center;">
+                    <button class="ed-ikon-btn ed-ik-galeri" onclick="window.XEditor &amp;&amp; window.XEditor.galeriToggle()" title="Galeri / Sırala: bölümleri kart ızgarasında sürükleyip sırala"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
@@ -7748,6 +7749,27 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
 #editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
 #editorModal .ed-ik-nav:hover:not(:disabled),#editorModal .ed-ik-indir:hover:not(:disabled){color:#1565c0;}
+#editorModal .ed-ik-galeri:hover:not(:disabled){color:#1565c0;}
+#editorModal .ed-ik-galeri.aktif{color:#1d9bf0;background:#e8f4fd;}
+/* Galeri / Sırala görünümü — bölüm kartları ızgarası + sürükle-bırak (araya ekle / üste bırak=yer değiştir) */
+#editorModal .ed-gal-ipucu{font-size:12px;color:#5b6b7b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:9px 13px;margin:0 0 16px;line-height:1.5;}
+#editorModal .ed-gal-ipucu b{color:#1d4a6b;}
+#editorModal .ed-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding-bottom:24px;}
+#editorModal .ed-gal-card{position:relative;background:#fff;border:1px solid #dfe4ea;border-radius:11px;padding:11px;padding-top:36px;cursor:grab;transition:box-shadow .12s,border-color .12s,transform .12s;user-select:none;}
+#editorModal .ed-gal-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-1px);}
+#editorModal .ed-gal-card:active{cursor:grabbing;}
+#editorModal .ed-gal-card.suruklenen{opacity:.35;}
+#editorModal .ed-gal-card.swap-hedef{border-color:#f7931e;box-shadow:0 0 0 2px #f7931e;}
+#editorModal .ed-gal-card.ekle-sol::before,#editorModal .ed-gal-card.ekle-sag::after{content:'';position:absolute;top:4px;bottom:4px;width:4px;border-radius:3px;background:#1d9bf0;box-shadow:0 0 6px rgba(29,155,240,.6);}
+#editorModal .ed-gal-card.ekle-sol::before{left:-10px;}
+#editorModal .ed-gal-card.ekle-sag::after{right:-10px;}
+#editorModal .ed-gal-no{position:absolute;top:9px;left:9px;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#1d9bf0;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+#editorModal .ed-gal-bas{font-weight:700;font-size:12px;line-height:1.3;color:#15202b;margin:0 0 9px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+#editorModal .ed-gal-bassiz{color:#94a3b8;font-weight:500;font-style:italic;}
+#editorModal .ed-gal-img{border-radius:7px;overflow:hidden;border:1px solid #eef1f4;background:#f8fafc;}
+#editorModal .ed-gal-img img{display:block;width:100%;max-height:130px;object-fit:cover;pointer-events:none;}
+#editorModal .ed-gal-imgyok{height:58px;display:flex;align-items:center;justify-content:center;color:#b6c0cb;font-size:11px;border-style:dashed;}
+#editorModal .ed-gal-metin{font-size:11px;color:#64748b;line-height:1.5;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 #editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
 #editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
@@ -7975,7 +7997,11 @@ X_EDITOR_JS = r'''
       // snapshot işe yaramaz; snapshot belge item'larını tutar, restore ac({items}) ile replay eder.
       XE._externalMode = ((XE.belge.birimler||[]).length>0) && !(XE.belge.birimler||[]).some(function(b){ return b.item && b.item.index!=null; });
       XE._seritKur();
-      XE._ciz();
+      if(opts.fresh){ XE._galeriModu=false; }   // taze açılış -> normal (düzenleme) modda başla (galeri'de takılı kalma)
+      // GÖRÜNÜM DAĞITIMI: galeri modundaysa kart ızgarası, değilse normal editör. Şerit galeri modunda gizli.
+      var _serit=document.getElementById('editor-serit'); if(_serit){ _serit.style.display = XE._galeriModu ? 'none' : ''; }
+      var _gbtn=document.querySelector('#editorModal .ed-ik-galeri'); if(_gbtn){ if(XE._galeriModu){ _gbtn.classList.add('aktif'); } else { _gbtn.classList.remove('aktif'); } }
+      if(XE._galeriModu && XE._galeriCiz){ XE._galeriCiz(); } else { XE._ciz(); }
       if(opts.fresh){ XE._dirty=false; XE._geriSifirla(); }   // FIX-DIRTY + geçmiş: yalnız GERÇEK taze açılışta sıfırla (yeniden-plan/ekle/sil/geri-al DEĞİL)
       _geriBtnGuncelle();
       if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
@@ -8288,6 +8314,72 @@ X_EDITOR_JS = r'''
         if(_farkli){ try{ await fetch('/api/manual/reorder', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order:yeniSira})}); }catch(e){} }
         await XE.ac({});   // havuzdan yeni sırayla yeniden kur
       } else { XE.belge.birimler=arr; XE._ciz(); }   // index'siz birim (eski manuel) -> yalnız görsel diz
+    } finally { _busy=false; }
+  };
+  // ===== GALERİ / SIRALA görünümü: bölümleri kart ızgarasında göster + sürükle-bırak ile sırala.
+  // İKİ MOD: iki kartın ARASINA bırak = araya ekle (kaydırma); bir kartın ÜSTÜNE bırak = yer değiştir (swap).
+  // Profil-önce kuralı XE.ac re-plan'inde ZATEN uygulanır (profil kartı grubunun en üstünde kalır). =====
+  XE._galeriModu = false;
+  XE.galeriToggle = function(){
+    XE._galeriModu = !XE._galeriModu;
+    var serit=document.getElementById('editor-serit'); if(serit){ serit.style.display = XE._galeriModu ? 'none' : ''; }
+    var btn=document.querySelector('#editorModal .ed-ik-galeri'); if(btn){ if(XE._galeriModu){ btn.classList.add('aktif'); } else { btn.classList.remove('aktif'); } }
+    if(XE._galeriModu){ XE._galeriCiz(); } else { XE._ciz(); }
+  };
+  XE._galeriCiz = function(){
+    var root=document.getElementById('editor-root'); if(!root) return;
+    var B=XE.belge.birimler||[];
+    if(!B.length){ root.innerHTML='<div class="ed-bos">Henüz bölüm yok. Düzenleme görünümünde "+ Bölüm" ile ekleyebilirsin.</div>'; return; }
+    var h='<div class="ed-gal-ipucu">Kartları sürükleyip sırala: iki kartın <b>arasına</b> bırak = araya ekle; bir kartın <b>üstüne</b> bırak = yer değiştir. (Profil kartı her zaman grubunun en üstünde kalır.)</div><div class="ed-gal-grid">';
+    for(var i=0;i<B.length;i++){
+      var b=B[i]||{}, it=b.item||{};
+      var bas = (b.h2!=null && String(b.h2).trim()!=='') ? String(b.h2) : ((b.h1!=null && String(b.h1).trim()!=='') ? String(b.h1) : (it.title||''));
+      var imgUrl='';   // x-editor.js scope: birincil görsel (item.image_b64) + edGorselHarita (parça-görsel) ikizini kullan
+      if(it.image_b64){ imgUrl='data:'+(it.image_mime||'image/jpeg')+';base64,'+it.image_b64; }
+      else { try{ var gm=edGorselHarita(it); for(var gk in gm){ if(gm[gk] && gm[gk].b64){ imgUrl='data:'+(gm[gk].mime||'image/jpeg')+';base64,'+gm[gk].b64; break; } } }catch(_g){} }
+      var metin='';
+      if(!bas && !imgUrl && it.parcalar){ for(var pp=0;pp<it.parcalar.length;pp++){ var pc=it.parcalar[pp]; if(pc && pc.tur==='metin' && pc.metin){ metin=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,100); if(metin) break; } if(pc && pc.tur==='link' && pc.url && !metin){ metin=(''+pc.url).slice(0,100); } } }
+      var ust = bas ? ('<div class="ed-gal-bas">'+esc(bas)+'</div>') : '';
+      var gorsel = imgUrl ? ('<div class="ed-gal-img"><img src="'+imgUrl+'" alt=""></div>') : '';
+      var govde = '';
+      if(!ust && !gorsel){ govde = metin ? ('<div class="ed-gal-metin">'+esc(metin)+'</div>') : '<div class="ed-gal-bas ed-gal-bassiz">(içeriksiz bölüm)</div>'; }
+      h+='<div class="ed-gal-card" draggable="true" data-i="'+i+'"><div class="ed-gal-no">'+(i+1)+'</div>'+ust+gorsel+govde+'</div>';
+    }
+    h+='</div>';
+    root.innerHTML=h;
+    XE._galeriDndKur(root);
+  };
+  XE._galeriDndKur = function(root){
+    var grid=root.querySelector('.ed-gal-grid'); if(!grid) return;
+    var _from=-1;
+    function _temizle(){ var ks=grid.querySelectorAll('.ed-gal-card'); for(var z=0;z<ks.length;z++){ ks[z].classList.remove('swap-hedef','ekle-sol','ekle-sag'); } }
+    function _zon(card, clientX){ var r=card.getBoundingClientRect(); var x=clientX-r.left; var w=r.width||1; if(x < w*0.28) return 'once'; if(x > w*0.72) return 'sonra'; return 'swap'; }
+    grid.addEventListener('dragstart', function(e){ var c=(e.target && e.target.closest) ? e.target.closest('.ed-gal-card') : null; if(!c) return; _from=+c.getAttribute('data-i'); c.classList.add('suruklenen'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain', String(_from)); }catch(_){} });
+    grid.addEventListener('dragover', function(e){ var c=(e.target && e.target.closest) ? e.target.closest('.ed-gal-card') : null; if(!c || _from<0) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_){} var to=+c.getAttribute('data-i'); _temizle(); if(to===_from) return; var z=_zon(c, e.clientX); if(z==='swap'){ c.classList.add('swap-hedef'); } else if(z==='once'){ c.classList.add('ekle-sol'); } else { c.classList.add('ekle-sag'); } });
+    grid.addEventListener('drop', function(e){ var c=(e.target && e.target.closest) ? e.target.closest('.ed-gal-card') : null; if(!c || _from<0) return; e.preventDefault(); var to=+c.getAttribute('data-i'); var z=_zon(c, e.clientX); _temizle(); var f=_from; _from=-1; if(to===f) return; XE._galeriTasi(f, to, z); });
+    grid.addEventListener('dragend', function(){ _from=-1; var ks=grid.querySelectorAll('.ed-gal-card'); for(var z=0;z<ks.length;z++){ ks[z].classList.remove('suruklenen','swap-hedef','ekle-sol','ekle-sag'); } });
+  };
+  XE._galeriTasi = function(from, to, mod){
+    var B=XE.belge.birimler||[]; if(from<0||from>=B.length||to<0||to>=B.length) return;
+    var arr=B.slice();
+    if(mod==='swap'){ var t=arr[from]; arr[from]=arr[to]; arr[to]=t; }
+    else { var hedef=(mod==='sonra')?to+1:to; var moved=arr.splice(from,1)[0]; if(from<hedef) hedef--; arr.splice(hedef,0,moved); }
+    XE._galeriUygula(arr);
+  };
+  XE._galeriUygula = async function(arr){
+    var B=XE.belge.birimler||[]; if(!arr || arr.length!==B.length) return;
+    var ayni=true; for(var z=0;z<arr.length;z++){ if(arr[z]!==B[z]){ ayni=false; break; } } if(ayni) return;
+    XE._pushUndo();
+    var yeniSira=[]; for(var k=0;k<arr.length;k++){ if(arr[k].item && arr[k].item.index!=null) yeniSira.push(arr[k].item.index-1); }
+    var _srt=yeniSira.slice().sort(function(a,b){return a-b;}), _perm=(yeniSira.length>0);
+    for(var s=0;s<_srt.length && _perm;s++){ if(_srt[s]!==s) _perm=false; }
+    XE._dirty=true; _busy=true;
+    try{
+      if(_perm){
+        var _farkli=false; for(var q=0;q<yeniSira.length;q++){ if(yeniSira[q]!==q){ _farkli=true; break; } }
+        if(_farkli){ try{ await fetch('/api/manual/reorder', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order:yeniSira})}); }catch(e){} }
+        await XE.ac({});   // havuzdan yeni sırayla yeniden kur (profil-önce re-plan'de uygulanır; galeri yeniden çizilir)
+      } else { XE.belge.birimler=arr; if(XE._galeriModu){ XE._galeriCiz(); } else { XE._ciz(); } }
     } finally { _busy=false; }
   };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
