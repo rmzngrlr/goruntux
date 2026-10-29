@@ -2945,11 +2945,13 @@ HTML_TEMPLATE = """
 
         // Delete a single manual item by index
         function deleteManualItem(index) {
-            window.__xOtoKayitBosaltOnayTS = Date.now();   // Faz 2: kullanıcı silme işlemi -> boşalırsa oto-kayıt boş durumu yazabilir
             fetch('/api/manual/delete/' + index, { method: 'POST' })
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success') {
+                    // Faz 2 (düzeltme): boşaltma iznini YALNIZ havuz GERÇEKTEN boşaldığında ver (son öğe silindi).
+                    // Aksi halde içerik taşıyan raporu koruyan boş-ezme güvenliği 10 sn gereksiz devre dışı kalır.
+                    if (data.remaining === 0) { window.__xOtoKayitBosaltOnayTS = Date.now(); }
                     showToast('Icerik silindi.', 'success');
                     refreshStatus();
                 } else {
@@ -3265,25 +3267,35 @@ HTML_TEMPLATE = """
             if (sb) { sb.style.display = xOtoKayitAcik() ? 'none' : ''; }
         }
         window.xOtoKayitUICiz = xOtoKayitUICiz;
-        var _xOtoKayitTimer = null, _xOtoKayitCalisiyor = false, _xOtoKayitTekrar = false;
+        var _xOtoKayitTimer = null;
+        // ===== TEK SERİ KUYRUK: tüm havuz-mutasyon işlemleri (oto-kayıt / aç / yeni / birleştir / sil-aktif)
+        // bu kuyruktan GEÇER -> ASLA çakışmazlar. Böylece stale-id ile yazma, orta-yükleme kısmi kaydı,
+        // çift-açılış (çift-tık / hızlı geri-ileri) ve silinen raporun dirilmesi KÖKTEN önlenir. =====
+        var _xIslemZinciri = Promise.resolve();
+        function xSiraya(fn) {
+            var p = _xIslemZinciri.then(fn, fn);
+            _xIslemZinciri = p.catch(function () {});   // zincir hatada kırılmasın
+            return p;
+        }
+        window.xSiraya = xSiraya;
         function xOtoKayitPlanla() {
             if (!xOtoKayitAcik()) return;
             if (_xOtoKayitTimer) { clearTimeout(_xOtoKayitTimer); }
             _xOtoKayitTimer = setTimeout(function () { _xOtoKayitTimer = null; xOtoKayitYap(); }, 1500);
         }
         window.xOtoKayitPlanla = xOtoKayitPlanla;
-        // Bekleyen oto-kaydı HEMEN çalıştır (rapor değiştirmeden önce flush — son düzenleme kaybolmasın).
-        async function xOtoKayitFlush() {
-            if (!xOtoKayitAcik()) return;
+        // Bekleyen oto-kaydı HEMEN kuyruğa al (rapor değiştirmeden önce flush — son düzenleme kaybolmasın).
+        function xOtoKayitFlush() {
+            if (!xOtoKayitAcik()) return Promise.resolve();
             if (_xOtoKayitTimer) { clearTimeout(_xOtoKayitTimer); _xOtoKayitTimer = null; }
-            if (xAktifRaporId()) { try { await xOtoKayitYap(); } catch (e) {} }
+            return xSiraya(_xOtoKayitYapImpl);
         }
         window.xOtoKayitFlush = xOtoKayitFlush;
-        async function xOtoKayitYap() {
+        // Poll/public giriş: kuyruğa alır (kuyruktaki yükleme impl'leri flush için _xOtoKayitYapImpl'i DOĞRUDAN çağırır).
+        function xOtoKayitYap() { if (!xOtoKayitAcik()) return Promise.resolve(); return xSiraya(_xOtoKayitYapImpl); }
+        window.xOtoKayitYap = xOtoKayitYap;
+        async function _xOtoKayitYapImpl() {
             if (!xOtoKayitAcik()) return;
-            if (window.__xRaporYukleniyor) { xOtoKayitPlanla(); return; }   // programatik yükleme sürüyor -> ERTELE (orta-yükleme kısmi kaydı/yarış olmasın); yükleme bitince kaydedilir
-            if (_xOtoKayitCalisiyor) { _xOtoKayitTekrar = true; return; }   // çakışma: bitince bir kez daha
-            _xOtoKayitCalisiyor = true;
             try {
                 await window.XSavedReports.whenReady();
                 var id = xAktifRaporId();
@@ -3308,29 +3320,42 @@ HTML_TEMPLATE = """
                     } else { xOtoKayitDurum(''); }
                     return;
                 }
+                // Aktif id varsa O id'ye upsert; yoksa (oto-oluştur) TAZE id ver -> ad çakışması (aynı saniye
+                // zaman-damgası) ad-bazlı upsert ile başka raporu EZMESİN.
+                var _yeniMi = !id;
+                var _kayitId = id || generateUUID();
                 var meta = await window.XSavedReports.save({
-                    id: (id || null),
+                    id: _kayitId,
                     name: (id ? (window.__xActiveReportName || null) : (ad || xTarihSaatDamgasi())),
                     items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename,
                     editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || [])
                 });
-                if (!id && meta && meta.id) { xAktifRaporKur(meta.id, meta.name, meta.slug, true); }   // oto-oluştur: ilk içerikte aktif rapor doğdu (URL replace, sessiz)
+                // Oto-oluştur: havuzda içerik vardı ama aktif rapor yoktu -> yeni rapor DOĞDU. Yalnız HÂLÂ
+                // aktif yoksa benimse (bir yükleme bu arada aktifi kurduysa, içerik yine de kayıtlı kalır).
+                if (_yeniMi && meta && meta.id && xAktifRaporId() === '') { xAktifRaporKur(meta.id, meta.name, meta.slug, true); }
                 xOtoKayitDurum('kaydedildi');
                 await renderSavedReports();
             } catch (err) {
                 console.error('Oto-kayıt hatası:', err); xOtoKayitDurum('hata');
-            } finally {
-                _xOtoKayitCalisiyor = false;
-                if (_xOtoKayitTekrar) { _xOtoKayitTekrar = false; xOtoKayitPlanla(); }
             }
         }
-        window.xOtoKayitYap = xOtoKayitYap;
-        // ➕ Yeni Rapor: mevcut aktif raporu flush et, sonra BOŞ yeni aktif rapor oluştur + havuzu/yan-durumları temizle.
+        // ➕ Yeni Rapor (kuyruk): mevcut havuzu KAYBETMEDEN boş yeni aktif rapor oluştur.
         async function newReport() {
+            // Oto-kayıt KAPALIysa (kaçış kapısı) havuz kalıcı değil -> dolu havuzu onaysız silme.
+            if (!xOtoKayitAcik()) {
+                var _curN = [];
+                try { _curN = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
+                if (_curN.length && typeof xConfirm === 'function') {
+                    if (!(await xConfirm('Havuzda ' + _curN.length + ' içerik var ve kaydedilmedi. Yeni boş rapor açmak bunları siler. Devam edilsin mi?', { title: '➕ Yeni Rapor', okText: 'Devam', danger: true }))) return;
+                }
+            }
+            return xSiraya(_newReportImpl);
+        }
+        window.newReport = newReport;
+        async function _newReportImpl() {
             try {
                 await window.XSavedReports.whenReady();
-                await xOtoKayitFlush();   // mevcut raporun son düzenlemesini kaydet
-                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: temizlik+oluşturma sürerken oto-kaydı ERTELE
+                await _xOtoKayitYapImpl();   // flush (DOĞRUDAN, zaten kuyruktayız): mevcut havuz/aktif rapor KAYBOLMASIN (gerekirse oto-oluşturur)
                 try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
                 window.__xEditorOverlay = { byLink: {}, style: null };
                 window.__xManualClusters = [];
@@ -3342,7 +3367,9 @@ HTML_TEMPLATE = """
                 try { if (window.XEditor && window.XEditor.kapat) { window.XEditor.kapat(true); } } catch (e) {}
                 window.lastManuelListJson = null; window.__xPoolDirty = false;
                 var ad = xTarihSaatDamgasi();
-                var meta = await window.XSavedReports.save({ name: ad, items: [], images: {}, blob: null, filename: '', editorStyle: xBuildStyleOpts(), manualClusters: [] });
+                // TAZE id: flush bu arada aynı saniye zaman-damgalı bir rapor oto-oluşturmuş olabilir;
+                // ad-bazlı kayıt onu EZMESİN -> yeni boş rapora benzersiz id ver.
+                var meta = await window.XSavedReports.save({ id: generateUUID(), name: ad, items: [], images: {}, blob: null, filename: '', editorStyle: xBuildStyleOpts(), manualClusters: [] });
                 xAktifRaporKur(meta.id, meta.name, meta.slug);   // Faz 3: URL /<slug> (push)
                 xOtoKayitDurum('kaydedildi');
                 await renderSavedReports();
@@ -3351,8 +3378,6 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Yeni rapor hatası:', err);
                 showToast('Yeni rapor oluşturulamadı: ' + (err && err.message ? err.message : err), 'danger');
-            } finally {
-                window.__xRaporYukleniyor = false;
             }
         }
         window.newReport = newReport;
@@ -3529,13 +3554,15 @@ HTML_TEMPLATE = """
         }
         async function deleteSavedReport(id) {
             if (!(await xConfirm('Bu kayıtlı raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: '🗑️ Raporu Sil', okText: 'Sil', danger: true }))) return;
+            return xSiraya(function () { return _deleteSavedReportImpl(id); });   // kuyruk: in-flight oto-kayıt BİTMİŞ olur -> silinen rapor dirilmez
+        }
+        async function _deleteSavedReportImpl(id) {
             try {
-                var _aktifti = (typeof xAktifRaporId === 'function' && xAktifRaporId() === id);
+                var _aktifti = (xAktifRaporId() === id);
                 await window.XSavedReports.remove(id);
                 // Faz 2: silinen rapor AKTİFse çalışma havuzunu da boşalt + aktif bağlamı bırak (dirilme olmasın).
                 if (_aktifti) {
-                    window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: silme sürerken oto-kayıt ERTELE (içerik yeni rapora dirilmesin)
-                    xAktifRaporTemizle();
+                    xAktifRaporTemizle();   // aktif bağlam + URL '/'
                     try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
                     window.__xEditorOverlay = { byLink: {}, style: null }; window.__xManualClusters = [];
                     try { if (window.XLocalImages && window.XLocalImages.clear) { await window.XLocalImages.clear(); } } catch (e) {}
@@ -3547,8 +3574,6 @@ HTML_TEMPLATE = """
                 await renderSavedReports();
             } catch (err) {
                 showToast('Silme hatası: ' + (err && err.message ? err.message : err), 'danger');
-            } finally {
-                window.__xRaporYukleniyor = false;
             }
         }
 
@@ -3557,22 +3582,26 @@ HTML_TEMPLATE = """
         // gorseller X_RAPOR_LOCAL_IMAGE postMessage'iyle XLocalImages'a geri yuklenir (canli havuzun
         // AYNI mekanizmasi). Sira korunur (ogeler SIRAYLA await edilir). baslik_formatla + x_temizle_link
         // idempotent oldugu icin snapshot'i manual_add'e geri gondermek guvenli.
-        async function openSavedReport(id, opts) {
+        function openSavedReport(id, opts) { return xSiraya(function () { return _openSavedReportImpl(id, opts); }); }   // kuyruk: çift-açılış/yarış yok
+        window.openSavedReport = openSavedReport;
+        async function _openSavedReportImpl(id, opts) {
             opts = opts || {};
             try {
+                // Oto-kayıt AÇIK: rapor değiştirmeden/yeniden yüklemeden ÖNCE mevcut havuzu/aktif raporu
+                // KALICILAŞTIR (farklı rapor -> eski aktifi kaydet; aynı rapor -> son düzenlemeyi kaydet;
+                // aktif yok ama havuz dolu -> oto-oluştur). Zaten kuyruktayız -> impl'i DOĞRUDAN çağır.
+                if (xOtoKayitAcik()) { await _xOtoKayitYapImpl(); }
                 var rec = await window.XSavedReports.get(id);
                 if (!rec) { showToast('Kayıtlı rapor bulunamadı.', 'danger'); return; }   // Faz 2: BOŞ rapor da açılabilir (aktif olur)
                 if (!rec.items) { rec.items = []; }
-                // Faz 2 (oto-kayıt AÇIK): havuz zaten aktif rapora kayıtlı -> uyarı sorma; BAŞKA bir aktif
-                // rapordan geçiyorsak önce onu flush et. Oto-kayıt KAPALIysa eski "değişiklik kaybolur" uyarısı.
-                var curItems = [];
-                try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
-                if (xOtoKayitAcik()) {
-                    if (xAktifRaporId() && xAktifRaporId() !== id) { await xOtoKayitFlush(); }
-                } else if (curItems.length) {
-                    if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '📂 Raporu Aç', okText: 'Aç ve Değiştir', danger: true }))) return;
+                // Oto-kayıt KAPALIysa (kaçış kapısı) eski "değişiklik kaybolur" uyarısı.
+                if (!xOtoKayitAcik()) {
+                    var curItems = [];
+                    try { curItems = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
+                    if (curItems.length) {
+                        if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. "' + (rec.name || '') + '" raporunu açmak havuzu bununla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '📂 Raporu Aç', okText: 'Aç ve Değiştir', danger: true }))) return;
+                    }
                 }
-                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: havuz yeniden kurulurken oto-kaydı ERTELE (orta-yükleme kısmi kaydı olmasın)
                 // 1) Havuzu + yerel gorselleri temizle (temiz "acilis" durumu)
                 await fetch('/api/manual/clear', { method: 'POST' });
                 if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
@@ -3603,8 +3632,9 @@ HTML_TEMPLATE = """
                 window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
                 if (rec.editorStyle) { xApplyStyleOpts(rec.editorStyle); }
-                // 4) Faz 2: açılan rapor AKTİF olur (oto-kayıt bundan sonra buna yazar). Faz 3: URL /<slug>.
-                xAktifRaporKur(id, rec.name || '', rec.slug || null, !!opts.urlReplace);
+                // 4) Faz 2: açılan rapor AKTİF olur (oto-kayıt bundan sonra buna yazar). Faz 3: URL /<slug>
+                // (eski/slug'sız kayıtlarda ad'dan türet -> adres çubuğu getBySlug ile uyumlu kalsın).
+                xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), !!opts.urlReplace);
                 xOtoKayitDurum('kaydedildi');
                 refreshStatus();
                 await renderSavedReports();
@@ -3613,8 +3643,6 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Rapor açma hatası:', err);
                 showToast('Rapor açılamadı: ' + (err && err.message ? err.message : err), 'danger');
-            } finally {
-                window.__xRaporYukleniyor = false;   // yükleme bitti -> ertelenmiş oto-kayıt (varsa) çalışabilir
             }
         }
 
@@ -3624,24 +3652,25 @@ HTML_TEMPLATE = """
         // atlar (gorsel de yalniz "success"te yuklenir -> atlanan tekrarin gorseli orphan olmaz).
         // Kullanici karari: yukle+gozden gecir; sonlandirma mevcut "Kaydet ve Indir" ile. Kaynaklar KORUNUR.
         async function mergeSelectedReports() {
-            try {
-                var checks = document.querySelectorAll('.x-sr-check:checked');
-                var ids = [];
-                for (var c = 0; c < checks.length; c++) { var r = checks[c].getAttribute('data-rid'); if (r) { ids.push(r); } }
-                if (ids.length < 2) { showToast('Birleştirmek için en az 2 rapor seçin.', 'warning'); return; }
-                // Faz 2: oto-kayıt AÇIKsa mevcut aktif rapor zaten kayıtlı -> uyarı sorma, önce flush et;
-                // KAPALIysa eski "değişiklik kaybolur" uyarısı.
-                var curItems = [];
-                try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
-                if (xOtoKayitAcik()) {
-                    if (xAktifRaporId()) { await xOtoKayitFlush(); }
-                } else if (curItems.length) {
-                    if (!(await xConfirm('Havuzda şu an ' + curItems.length + ' içerik var. Seçili ' + ids.length + ' raporu birleştirmek havuzu bunlarla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '🔗 Raporları Birleştir', okText: 'Birleştir', danger: true }))) return;
+            var checks = document.querySelectorAll('.x-sr-check:checked');
+            var ids = [];
+            for (var c = 0; c < checks.length; c++) { var r = checks[c].getAttribute('data-rid'); if (r) { ids.push(r); } }
+            if (ids.length < 2) { showToast('Birleştirmek için en az 2 rapor seçin.', 'warning'); return; }
+            // Oto-kayıt KAPALIysa (kaçış kapısı) dolu havuzu onaysız değiştirme.
+            if (!xOtoKayitAcik()) {
+                var _curM = [];
+                try { _curM = (await fetch('/api/pool/data').then(function (r) { return r.json(); })).items || []; } catch (e) {}
+                if (_curM.length && typeof xConfirm === 'function') {
+                    if (!(await xConfirm('Havuzda şu an ' + _curM.length + ' içerik var. Seçili ' + ids.length + ' raporu birleştirmek havuzu bunlarla DEĞİŞTİRİR (kaydedilmemiş değişiklikler kaybolur). Devam edilsin mi?', { title: '🔗 Raporları Birleştir', okText: 'Birleştir', danger: true }))) return;
                 }
-                // Faz 2: birleşik sonuç TEK kaynağa bağlı değil -> aktif raporu AYIR; havuz dolunca
-                // poll yeni (adsız) bir rapor OTO-OLUŞTURUR. (Kullanıcı üst çubuktan yeniden adlandırır.)
-                window.__xRaporYukleniyor = true;   // yükleme nöbetçisi: birleştirme sürerken oto-kaydı ERTELE
-                if (xOtoKayitAcik()) { xAktifRaporTemizle(); }
+            }
+            return xSiraya(function () { return _mergeSelectedReportsImpl(ids); });   // kuyruk: yarış/dirilme yok
+        }
+        async function _mergeSelectedReportsImpl(ids) {
+            try {
+                // Oto-kayıt AÇIK: mevcut havuzu/aktifi flush (DOĞRUDAN, kuyruktayız) -> KAYBOLMASIN; sonra AYIR
+                // (birleşik sonuç tek kaynağa bağlı değil) -> havuz dolunca poll YENİ rapor OTO-OLUŞTURUR.
+                if (xOtoKayitAcik()) { await _xOtoKayitYapImpl(); xAktifRaporTemizle(); }
                 // Havuzu + yerel gorselleri BIR KEZ temizle
                 await fetch('/api/manual/clear', { method: 'POST' });
                 if (window.XLocalImages && window.XLocalImages.clear) { try { await window.XLocalImages.clear(); } catch (e) {} }
@@ -3692,8 +3721,6 @@ HTML_TEMPLATE = """
             } catch (err) {
                 console.error('Birleştirme hatası:', err);
                 showToast('Birleştirme başarısız: ' + (err && err.message ? err.message : err), 'danger');
-            } finally {
-                window.__xRaporYukleniyor = false;   // yükleme bitti -> poll birleşik havuzdan YENİ rapor oto-oluşturur
             }
         }
         async function renameSavedReport(id) {
@@ -3767,11 +3794,11 @@ HTML_TEMPLATE = """
                 try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
                 var depoDolu = !!((rec.items && rec.items.length) || (rec.manualClusters && rec.manualClusters.length));
                 if (curItems.length) {
-                    xAktifRaporKur(id, rec.name || '', rec.slug || null, true); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), true); xOtoKayitDurum('kaydedildi');
                 } else if (depoDolu) {
                     await openSavedReport(id, { urlReplace: true });   // re-hidrasyon (openSavedReport aktif id'yi + URL'i + yükleme nöbetçisini kurar)
                 } else {
-                    xAktifRaporKur(id, rec.name || '', rec.slug || null, true); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), true); xOtoKayitDurum('kaydedildi');
                 }
             } catch (e) { console.error('Aktif rapor yeniden bağlama hatası:', e); }
         }
@@ -3783,7 +3810,13 @@ HTML_TEMPLATE = """
                 var slug = xUrlSlugOku();
                 if (slug) {
                     var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
-                    if (meta && meta.id) { await openSavedReport(meta.id, { urlReplace: true }); return; }
+                    if (meta && meta.id) {
+                        // Slug ZATEN aktif rapora çözülüyorsa (normal F5): openSavedReport havuzu ezer ve
+                        // henüz kaydedilmemiş canlı havuzu kaybedebilir -> bunun yerine uzlaştırma kullan
+                        // (dolu havuzu KORUR, yalnız boşsa re-hidre eder). Farklı rapora geçişte aç.
+                        if (meta.id === xAktifRaporId()) { await xAktifRaporYenidenBagla(); return; }
+                        await openSavedReport(meta.id, { urlReplace: true }); return;
+                    }
                     if (window.showToast) showToast('Bu adreste rapor yok; mevcut rapora dönüldü.', 'warning');
                 }
                 await xAktifRaporYenidenBagla();   // aktif rapor kurulursa URL'i de kendi slug'ına replace eder
