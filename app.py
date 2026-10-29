@@ -1803,27 +1803,40 @@ HTML_TEMPLATE = """
             gap: 10px !important;
         }
         /* ===== Faz 4: Raporlarım kart galerisi (Google-Dokümanlar tarzı) ===== */
-        .x-gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .x-gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 18px; }
         .x-gal-card { position: relative; cursor: pointer; border-radius: 10px; transition: transform .12s ease; }
         .x-gal-card:hover { transform: translateY(-2px); }
-        .x-gal-page { position: relative; height: 150px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.28); }
-        .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); }
+        .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); }
+        .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); box-shadow: 0 3px 12px rgba(0,0,0,0.30); }
         .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
-        .x-gal-pageinner { padding: 28px 14px 12px; }   /* üst dolgu: sol-üstteki birleştirme kutusunu geçsin */
-        .x-gal-fauxbaslik { font-weight: 700; font-size: 12px; line-height: 1.3; margin-bottom: 9px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-        .x-gal-fauxline { height: 4px; border-radius: 2px; background: var(--border-color, rgba(136,153,166,0.32)); margin: 6px 0; }
-        .x-gal-meta { padding: 8px 4px 2px; }
-        .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; }
-        .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); margin-top: 2px; }
-        .x-gal-rozet { position: absolute; top: 6px; right: 6px; background: var(--accent-color); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; z-index: 2; }
-        .x-gal-check { position: absolute; top: 7px; left: 7px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; }
-        .x-gal-ara { position: absolute; bottom: 7px; right: 7px; display: flex; gap: 5px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
+        .x-gal-pageinner { padding: 24px 15px 14px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent); mask-image: linear-gradient(to bottom, #000 70%, transparent); }   /* üst dolgu: seçim kutusu/rozet içeriğe binmesin */
+        .x-gal-pbaslik { font-weight: 700; font-size: 11.5px; line-height: 1.35; margin: 0 0 5px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .x-gal-pmetin { font-size: 10px; line-height: 1.5; margin: 0 0 4px; color: var(--text-secondary, #8899a6); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .x-gal-pbos { font-size: 11px; color: var(--text-secondary, #8899a6); opacity: .55; font-style: italic; }
+        .x-gal-meta { padding: 9px 2px 2px; display: flex; align-items: baseline; gap: 7px; }
+        .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; flex: 1; min-width: 0; }
+        .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
+        .x-gal-rozet { position: absolute; top: 7px; right: 7px; background: var(--accent-color); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; z-index: 2; letter-spacing: .3px; }
+        .x-gal-check { position: absolute; top: 8px; left: 8px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
+        .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
+        .x-gal-ara { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
         .x-gal-card:hover .x-gal-ara { opacity: 1; }
-        .x-gal-ikon { width: 27px; height: 27px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); color: #fff; padding: 0; }
-        .x-gal-ikon:hover { background: var(--accent-color); }
-        .x-gal-yeni { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 150px; border: 2px dashed var(--border-color, rgba(136,153,166,0.45)); border-radius: 8px; color: var(--text-secondary, #8899a6); gap: 6px; transition: all .12s ease; }
+        .x-gal-ikon { width: 28px; height: 28px; border: 1px solid var(--border-color, rgba(136,153,166,0.3)); border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: var(--card-bg, #15202b); color: var(--text-secondary, #8899a6); padding: 0; transition: all .12s ease; }
+        .x-gal-ikon:hover { color: var(--accent-color); border-color: var(--accent-color); }
+        .x-gal-ikon svg { width: 15px; height: 15px; display: block; }
+        .x-gal-yeni { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 176px; border: 2px dashed var(--border-color, rgba(136,153,166,0.45)); border-radius: 8px; color: var(--text-secondary, #8899a6); gap: 6px; transition: all .12s ease; }
         .x-gal-card:hover .x-gal-yeni { border-color: var(--accent-color); color: var(--accent-color); }
         .x-gal-arti { font-size: 34px; line-height: 1; font-weight: 300; }
+        /* Seçim eylem çubuğu — rapor işaretlenince alttan belirir */
+        .x-secim-bar { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(160%); display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.3)); box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 1200; transition: transform .22s cubic-bezier(.2,.8,.2,1); }
+        .x-secim-bar.acik { transform: translateX(-50%) translateY(0); }
+        .x-secim-sayi { font-size: 13px; font-weight: 600; color: var(--text-primary, #e7e9ea); padding: 0 4px; white-space: nowrap; }
+        .x-secim-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 13px; font-size: 13px; font-weight: 600; border-radius: 9px; border: 1px solid var(--border-color, rgba(136,153,166,0.3)); background: transparent; color: var(--text-primary, #e7e9ea); cursor: pointer; transition: all .12s ease; white-space: nowrap; }
+        .x-secim-btn:hover:not(:disabled) { border-color: var(--accent-color); color: var(--accent-color); }
+        .x-secim-btn:disabled { opacity: .4; cursor: default; }
+        .x-secim-btn.danger:hover:not(:disabled) { border-color: var(--danger-color, #e0245e); color: var(--danger-color, #e0245e); }
+        .x-secim-kapat { background: transparent; border: none; color: var(--text-secondary, #8899a6); font-size: 18px; cursor: pointer; padding: 0 2px; line-height: 1; }
+        .x-secim-kapat:hover { color: var(--text-primary, #e7e9ea); }
     </style>
 </head>
 <body>
@@ -1857,17 +1870,24 @@ HTML_TEMPLATE = """
                      kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
                 <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
                     <h4 style="margin: 0 0 4px 0;">🗂️ Raporlarım</h4>
-                    <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 12px;">
-                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). İstediğin kadar rapor saklayabilirsin.
-                    </div>
-                    <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                        <button id="merge-selected-btn" class="btn" disabled style="padding: 7px 14px; font-size: 13px; margin: 0; background: var(--accent-color); color: #fff; opacity: 0.5;" onclick="mergeSelectedReports()">🔗 Seçilenleri Birleştir</button>
-                        <span style="font-size: 12px; color: var(--text-secondary, #8899a6);">Birden çok raporu işaretle → tek rapora birleştir (tekrarlar elenir).</span>
+                    <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 14px;">
+                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). İstediğin kadar rapor saklayabilirsin. Birden çok raporu işaretleyince alttan toplu işlem çubuğu gelir.
                     </div>
                     <div id="saved-reports-list"></div>
                 </div>
 
-                <div class="card">
+                <!-- Seçim eylem çubuğu: rapor(lar) işaretlenince alttan belirir (Birleştir/İndir/Sil). -->
+                <div id="x-secim-bar" class="x-secim-bar">
+                    <span class="x-secim-sayi" id="x-secim-sayi">0 seçili</span>
+                    <button class="x-secim-btn" id="x-secim-birlestir" onclick="mergeSelectedReports()" title="Seçili raporları tek rapora birleştir (tekrarlar elenir)">🔗 Birleştir</button>
+                    <button class="x-secim-btn" onclick="downloadSelectedReports()" title="Seçili raporların Word dosyalarını indir">📥 İndir</button>
+                    <button class="x-secim-btn danger" onclick="deleteSelectedReports()" title="Seçili raporları sil">🗑️ Sil</button>
+                    <button class="x-secim-kapat" onclick="xSecimTemizle()" title="Seçimi temizle">✕</button>
+                </div>
+
+                <!-- EMEKLİ (kullanıcı isteği): "Mevcut Bir Word Dosyasını Yeniden Biçimlendirin" paneli
+                     gizlendi. Kod + /api/upload/format ucu arka planda DURUYOR; yalnız UI'da görünmüyor. -->
+                <div class="card" style="display: none;">
                     <h3 id="word-arac-baslik" onclick="xToggleWordArac()" style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;">
                         <span id="word-arac-ok" style="display: inline-block; transition: transform 0.2s ease; font-size: 14px;">▸</span>
                         Mevcut Bir Word Dosyasını Yeniden Biçimlendirin
@@ -2362,7 +2382,10 @@ HTML_TEMPLATE = """
             
             if (activeBtn) activeBtn.classList.add('active');
             if (activeContent) activeContent.classList.add('active');
-            
+
+            // Raporlarım'dan ayrılınca rapor seçimini (ve alt çubuğu) temizle -> çubuk başka sekmede takılı kalmasın.
+            if (tabId !== 'tab-format' && typeof xSecimTemizle === 'function') { try { xSecimTemizle(); } catch (e) {} }
+
             refreshStatus();
         }
 
@@ -3480,12 +3503,30 @@ HTML_TEMPLATE = """
         // Faz 4: Raporlarım = Google-Dokümanlar tarzı KART GALERİSİ. İlk kart "➕ Boş Rapor";
         // her rapor kartı: sahte "sayfa" küçük görünümü + ad (çift-tık yeniden adlandır) + tarih/sayı
         // + İndir/Sil ikonları (hover) + birleştirme kutusu + aktif rozeti. Karta tıkla = Aç.
-        var _xGalFauxGenislik = ['92%', '78%', '85%', '64%', '73%'];
-        function xGalFauxLines(n) {
-            var k = Math.max(0, Math.min(4, n));
-            if (!k) { return '<div class="x-gal-alt" style="padding:0; opacity:.7;">(boş)</div>'; }
+        // Tek-renk (currentColor) SVG ikonlar -> kart indir/sil butonları temaya uyar.
+        var _SVG_INDIR = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg>';
+        var _SVG_SIL = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg>';
+        // Kart içerik önizlemesi (Google-Docs tarzı küçük sayfa). meta.preview yoksa (eski kayıt) bir kez
+        // get() ile hesapla + updatedAt'e göre önbellekle (blob tekrar tekrar okunmasın).
+        var _xOnizlemeCache = {};
+        async function xRaporOnizleme(m) {
+            if (m && m.preview) return m.preview;
+            if (!m) return [];
+            var c = _xOnizlemeCache[m.id];
+            if (c && c.u === m.updatedAt) return c.p;
+            var p = [];
+            try { var full = await window.XSavedReports.get(m.id); p = (window.XSavedReports.buildPreview ? window.XSavedReports.buildPreview((full && full.items) || []) : []); } catch (e) {}
+            _xOnizlemeCache[m.id] = { u: m.updatedAt, p: p };
+            return p;
+        }
+        function xGalOnizlemeHtml(prev) {
+            if (!prev || !prev.length) return '<div class="x-gal-pbos">Boş rapor</div>';
             var s = '';
-            for (var i = 0; i < k; i++) { s += '<div class="x-gal-fauxline" style="width:' + _xGalFauxGenislik[i % _xGalFauxGenislik.length] + ';"></div>'; }
+            for (var i = 0; i < prev.length && i < 6; i++) {
+                var ln = prev[i] || {};
+                if (ln.t === 'h') { s += '<div class="x-gal-pbaslik">' + escapeHtml(ln.s || '') + '</div>'; }
+                else { s += '<div class="x-gal-pmetin">' + escapeHtml(ln.s || '') + '</div>'; }
+            }
             return s;
         }
         async function renderSavedReports() {
@@ -3496,40 +3537,40 @@ HTML_TEMPLATE = """
             var metas = [];
             try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
             xUpdateSavedBadge(metas.length);   // sekme adindaki sayaci guncelle (0'da gizli)
-            if (section) section.style.display = '';   // Faz 4: galeri HER ZAMAN görünür (boşken bile "Boş Rapor" kartı)
+            if (section) section.style.display = '';   // galeri HER ZAMAN görünür (boşken bile "Boş Rapor" kartı)
             var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
+            // Önizlemeleri topla (meta.preview varsa anında; eski kayıtta lazy get, önbellekli).
+            var previews = [];
+            for (var qi = 0; qi < metas.length; qi++) { previews.push(await xRaporOnizleme(metas[qi])); }
             // İlk kart: Boş Rapor
             var html = '<div class="x-gal-grid">' +
                 '<div class="x-gal-card" onclick="yeniRaporVeEditor()" title="Yeni boş rapor oluştur ve editörü aç">' +
                     '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Boş Rapor</span></div>' +
                 '</div>';
-            html += metas.map(function (m) {
+            html += metas.map(function (m, idx) {
                 var tarih = '';
                 try { tarih = new Date(m.updatedAt || 0).toLocaleDateString('tr-TR'); } catch (e) { tarih = ''; }
                 var adEsc = escapeHtml(m.name || '(adsız)');
                 var aktif = (m.id === aktifId);
                 return '<div class="x-gal-card' + (aktif ? ' aktif' : '') + '" data-rid="' + m.id + '" onclick="xGalAc(event,this)" title="Aç">' +
-                    '<input type="checkbox" class="x-sr-check x-gal-check" data-rid="' + m.id + '" onclick="event.stopPropagation()" onchange="xUpdateMergeBtn()" title="Birleştirmek için seç">' +
+                    '<input type="checkbox" class="x-sr-check x-gal-check" data-rid="' + m.id + '" onclick="event.stopPropagation()" onchange="xUpdateMergeBtn()" title="Seç (toplu işlem)">' +
                     (aktif ? '<span class="x-gal-rozet">● Açık</span>' : '') +
                     '<div class="x-gal-page">' +
-                        '<div class="x-gal-pageinner">' +
-                            '<div class="x-gal-fauxbaslik">' + adEsc + '</div>' +
-                            xGalFauxLines(m.itemCount || 0) +
-                        '</div>' +
+                        '<div class="x-gal-pageinner">' + xGalOnizlemeHtml(previews[idx]) + '</div>' +
                         '<div class="x-gal-ara">' +
-                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">📥</button>' +
-                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalSil(event,this)" title="Sil">🗑️</button>' +
+                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">' + _SVG_INDIR + '</button>' +
+                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalSil(event,this)" title="Sil">' + _SVG_SIL + '</button>' +
                         '</div>' +
                     '</div>' +
                     '<div class="x-gal-meta">' +
                         '<div class="x-gal-ad" data-rid="' + m.id + '" ondblclick="xGalRename(event,this)" title="Çift tıkla: yeniden adlandır">' + adEsc + '</div>' +
-                        '<div class="x-gal-alt">' + (m.itemCount || 0) + ' içerik · ' + tarih + '</div>' +
+                        '<div class="x-gal-alt">' + (m.itemCount || 0) + ' · ' + tarih + '</div>' +
                     '</div>' +
                 '</div>';
             }).join('');
             html += '</div>';
             container.innerHTML = html;
-            xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, butonu guncelle
+            xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, çubuğu güncelle
         }
         // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
         function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid); } catch (e) {} }
@@ -3537,15 +3578,43 @@ HTML_TEMPLATE = """
         function xGalSil(ev, el) { if (ev) ev.stopPropagation(); try { deleteSavedReport(el.dataset.rid); } catch (e) {} }
         function xGalRename(ev, el) { if (ev) ev.stopPropagation(); try { renameSavedReport(el.dataset.rid); } catch (e) {} }
         window.xGalAc = xGalAc; window.xGalIndir = xGalIndir; window.xGalSil = xGalSil; window.xGalRename = xGalRename;
-        // Birlestir butonu: >=2 secili ise etkin; etiket canli sayi gosterir.
-        function xUpdateMergeBtn() {
-            var btn = document.getElementById('merge-selected-btn');
-            if (!btn) return;
-            var n = document.querySelectorAll('.x-sr-check:checked').length;
-            btn.disabled = (n < 2);
-            btn.style.opacity = (n < 2) ? '0.5' : '1';
-            btn.textContent = '🔗 Seçilenleri Birleştir' + (n > 0 ? ' (' + n + ')' : '');
+        // --- Seçim eylem çubuğu (alttan belirir): Birleştir / İndir / Sil ---
+        function xSecimIdler() {
+            var chks = document.querySelectorAll('.x-sr-check:checked'); var ids = [];
+            for (var i = 0; i < chks.length; i++) { var r = chks[i].getAttribute('data-rid'); if (r) ids.push(r); }
+            return ids;
         }
+        function xUpdateMergeBtn() {   // (ad korundu: renderSavedReports + onchange çağırıyor) -> seçim çubuğunu güncelle
+            var n = document.querySelectorAll('.x-sr-check:checked').length;
+            var bar = document.getElementById('x-secim-bar');
+            if (bar) { if (n > 0) { bar.classList.add('acik'); } else { bar.classList.remove('acik'); } }
+            var sayi = document.getElementById('x-secim-sayi'); if (sayi) { sayi.textContent = n + ' seçili'; }
+            var mb = document.getElementById('x-secim-birlestir'); if (mb) { mb.disabled = (n < 2); mb.title = (n < 2) ? 'Birleştirmek için en az 2 rapor seç' : 'Seçili raporları tek rapora birleştir'; }
+        }
+        window.xUpdateMergeBtn = xUpdateMergeBtn;
+        function xSecimTemizle() {
+            var chks = document.querySelectorAll('.x-sr-check:checked');
+            for (var i = 0; i < chks.length; i++) { chks[i].checked = false; }
+            xUpdateMergeBtn();
+        }
+        window.xSecimTemizle = xSecimTemizle;
+        async function downloadSelectedReports() {
+            var ids = xSecimIdler();
+            if (!ids.length) { return; }
+            for (var i = 0; i < ids.length; i++) { try { await downloadSavedReport(ids[i]); } catch (e) {} await new Promise(function (r) { setTimeout(r, 400); }); }
+        }
+        window.downloadSelectedReports = downloadSelectedReports;
+        async function deleteSelectedReports() {
+            var ids = xSecimIdler();
+            if (!ids.length) { return; }
+            if (!(await xConfirm(ids.length + ' raporu silmek istediğine emin misin? Bu işlem geri alınamaz.', { title: '🗑️ Seçilenleri Sil', okText: 'Sil', danger: true }))) return;
+            for (var i = 0; i < ids.length; i++) {
+                try { await xSiraya((function (rid) { return function () { return _deleteSavedReportImpl(rid); }; })(ids[i])); } catch (e) {}
+            }
+            showToast(ids.length + ' rapor silindi.', 'success');
+            await renderSavedReports();
+        }
+        window.deleteSelectedReports = deleteSelectedReports;
         async function downloadSavedReport(id) {
             try {
                 var rec = await window.XSavedReports.getBlob(id);
@@ -7127,6 +7196,19 @@ X_SAVED_REPORTS_JS = r'''
   // o = {name, items, images, blob, filename}. Ayni isim varsa GUNCELLER (id+createdAt korunur,
   // updatedAt tazelenir) -> tekrar kaydetme cop kayit uretmez. Yoksa yeni kayit.
   function _getMeta(id){ try{ return _reqP(_tx(META,'readonly').objectStore(META).get(id)).catch(function(){return null;}); }catch(e){ return Promise.resolve(null); } }
+  // Kart önizlemesi: öğelerden kısa başlık+metin satırları çıkar (Google-Docs tarzı küçük görünüm).
+  // META'ya yazılır (blob OKUNMADAN galeri çizilir). [{t:'h'|'p', s:'...'}]
+  function _buildPreview(items){
+    var lines=[]; if(!items||!items.length) return lines;
+    for(var i=0;i<items.length && lines.length<6;i++){
+      var it=items[i]||{};
+      if(it.h1_override!=null && (''+it.h1_override).trim()!==''){ lines.push({t:'h', s:(''+it.h1_override).trim().slice(0,70)}); }
+      var h=(it.h2_override!=null && (''+it.h2_override).trim()!=='') ? (''+it.h2_override) : (it.title||'');
+      if(h && h.trim() && lines.length<6){ lines.push({t:'h', s:h.trim().slice(0,70)}); }
+      if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<6;p++){ var pc=it.parcalar[p]; if(pc && pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } } } }
+    }
+    return lines;
+  }
   function saveReport(o){
     if(!_db) return Promise.reject(new Error('Yerel depo açılamadı'));
     var now=_now();
@@ -7142,7 +7224,7 @@ X_SAVED_REPORTS_JS = r'''
       // Faz 3: slug (URL /<slug>). Ad değişmediyse mevcut slug korunur; benzersizleştir (başka rapor aynı slug'ı kullanıyorsa -2,-3...).
       return _uniqueSlug(_slugify(_ad||'rapor'), id).then(function(_slug){
         var meta = { id:id, name:_ad, slug:_slug, createdAt:createdAt,
-                     updatedAt:now, itemCount:((o.items&&o.items.length)||0) };
+                     updatedAt:now, itemCount:((o.items&&o.items.length)||0), preview:_buildPreview(o.items) };
         var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
         return new Promise(function(resolve,reject){
           try{
@@ -7246,7 +7328,7 @@ X_SAVED_REPORTS_JS = r'''
     whenReady:function(){ return _readyPromise||Promise.resolve(); },
     save:saveReport, list:list, get:get, getBlob:getBlob,
     remove:remove, rename:rename, purgeExpired:purgeExpired,
-    getBySlug:getBySlug, slugify:_slugify
+    getBySlug:getBySlug, slugify:_slugify, buildPreview:_buildPreview
   };
   _readyPromise = openDb().then(function(db){ _db=db; try{ window.dispatchEvent(new CustomEvent('x-saved-reports-ready')); }catch(e){} });
 })();
