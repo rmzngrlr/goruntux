@@ -3390,7 +3390,8 @@ HTML_TEMPLATE = """
                 if (yeni === null) return;
                 yeni = (yeni || '').trim(); if (!yeni) return;
                 await window.XSavedReports.whenReady();
-                var rmeta = await window.XSavedReports.rename(id, yeni);   // Faz 3: slug'ı da döndürür
+                // KUYRUK: uçuştaki oto-kayıtla META yazma yarışı olmasın (rename aksi halde ezilebilir).
+                var rmeta = await xSiraya(function () { return window.XSavedReports.rename(id, yeni); });
                 xAktifRaporKur(id, yeni, (rmeta && rmeta.slug) || null, true);   // URL yeni slug'a (replace)
                 await renderSavedReports();
                 showToast('Rapor adı güncellendi: ' + yeni, 'success');
@@ -3582,6 +3583,14 @@ HTML_TEMPLATE = """
         // gorseller X_RAPOR_LOCAL_IMAGE postMessage'iyle XLocalImages'a geri yuklenir (canli havuzun
         // AYNI mekanizmasi). Sira korunur (ogeler SIRAYLA await edilir). baslik_formatla + x_temizle_link
         // idempotent oldugu icin snapshot'i manual_add'e geri gondermek guvenli.
+        // Faz 3 (düzeltme): bir raporun URL slug'ını çöz. Kayıtta slug YOKSA (eski/Faz-3-öncesi kayıt)
+        // BENZERSİZ bir slug atayıp KALICILAŞTIR (rename aynı adla _uniqueSlug hesaplar) -> aynı adlı iki
+        // eski kayıtta adres çubuğu getBySlug ile hep DOĞRU rapora dönsün. Son çare: ad'dan türet.
+        async function xRaporSlugCoz(id, rec) {
+            if (rec && rec.slug) return rec.slug;
+            try { var _hm = await window.XSavedReports.rename(id, (rec && rec.name) || ''); if (_hm && _hm.slug) return _hm.slug; } catch (e) {}
+            return (window.XSavedReports && window.XSavedReports.slugify) ? window.XSavedReports.slugify((rec && rec.name) || '') : null;
+        }
         function openSavedReport(id, opts) { return xSiraya(function () { return _openSavedReportImpl(id, opts); }); }   // kuyruk: çift-açılış/yarış yok
         window.openSavedReport = openSavedReport;
         async function _openSavedReportImpl(id, opts) {
@@ -3633,8 +3642,8 @@ HTML_TEMPLATE = """
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
                 if (rec.editorStyle) { xApplyStyleOpts(rec.editorStyle); }
                 // 4) Faz 2: açılan rapor AKTİF olur (oto-kayıt bundan sonra buna yazar). Faz 3: URL /<slug>
-                // (eski/slug'sız kayıtlarda ad'dan türet -> adres çubuğu getBySlug ile uyumlu kalsın).
-                xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), !!opts.urlReplace);
+                // (eski/slug'sız kayıtta benzersiz slug atanıp kalıcılaşır -> getBySlug hep doğru rapora döner).
+                xAktifRaporKur(id, rec.name || '', await xRaporSlugCoz(id, rec), !!opts.urlReplace);
                 xOtoKayitDurum('kaydedildi');
                 refreshStatus();
                 await renderSavedReports();
@@ -3732,7 +3741,8 @@ HTML_TEMPLATE = """
                 if (yeni === null) return;
                 yeni = (yeni || '').trim();
                 if (!yeni) { showToast('Ad boş olamaz.', 'warning'); return; }
-                var rmeta2 = await window.XSavedReports.rename(id, yeni);
+                // KUYRUK: uçuştaki oto-kayıtla META yazma yarışı olmasın.
+                var rmeta2 = await xSiraya(function () { return window.XSavedReports.rename(id, yeni); });
                 if (window.__openReportName && cur && window.__openReportName === cur) { window.__openReportName = yeni; }
                 if (typeof xAktifRaporId === 'function' && xAktifRaporId() === id) { xAktifRaporKur(id, yeni, (rmeta2 && rmeta2.slug) || null, true); }   // Faz 2/3: aktif raporsa çubuğu + URL'i güncelle
                 showToast('Yeniden adlandırıldı: ' + yeni, 'success');
@@ -3794,11 +3804,11 @@ HTML_TEMPLATE = """
                 try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
                 var depoDolu = !!((rec.items && rec.items.length) || (rec.manualClusters && rec.manualClusters.length));
                 if (curItems.length) {
-                    xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), true); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', await xRaporSlugCoz(id, rec), true); xOtoKayitDurum('kaydedildi');
                 } else if (depoDolu) {
                     await openSavedReport(id, { urlReplace: true });   // re-hidrasyon (openSavedReport aktif id'yi + URL'i + yükleme nöbetçisini kurar)
                 } else {
-                    xAktifRaporKur(id, rec.name || '', (rec.slug || (window.XSavedReports && window.XSavedReports.slugify ? window.XSavedReports.slugify(rec.name || '') : null)), true); xOtoKayitDurum('kaydedildi');
+                    xAktifRaporKur(id, rec.name || '', await xRaporSlugCoz(id, rec), true); xOtoKayitDurum('kaydedildi');
                 }
             } catch (e) { console.error('Aktif rapor yeniden bağlama hatası:', e); }
         }
