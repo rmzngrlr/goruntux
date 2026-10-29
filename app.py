@@ -3306,6 +3306,7 @@ HTML_TEMPLATE = """
         // [VERİ KAYBI FİX K3/#9] AÇIK boşaltma onayını (Sıfırla/son öğe silme) rapor-id'ye BAĞLA -> başka raporun
         // snapshot'ı 10sn penceresinde yanlışlıkla boşla ezilmesin. Kayıtlı id yoksa (eski) eski davranış korunur.
         function xBosaltOnayVer() { try { window.__xOtoKayitBosaltOnayTS = Date.now(); window.__xOtoKayitBosaltOnayId = xAktifRaporId(); } catch (e) {} }
+        window.xBosaltOnayVer = xBosaltOnayVer;   // x-editor.js (XE._sil son-bölüm silme) de çağırır (ayrı scope)
         function xBosaltIzni(id) {
             try {
                 if ((Date.now() - (window.__xOtoKayitBosaltOnayTS || 0)) >= 10000) return false;
@@ -9074,8 +9075,15 @@ X_EDITOR_JS = r'''
     XE._pushUndo();
     var it=B[i].item;
     XE._dirty=true;   // E1: silme de değişikliktir
+    // [VERİ KAYBI FİX] Bu SON bölümse silmek raporu BOŞALTIR. XE._sil, deleteManualItem'ın remaining===0
+    // açık-boşaltma onayını ATLIYORDU -> boş-ezme koruması boş kaydı engelleyip silmeyi GERİ ALIYORDU
+    // (kullanıcı: tek bölümü sildim, galeride + aç-kapa'da GERİ GELDİ). Son bölümde onayı ver. (_sonOge yanlış
+    // pozitifi zararsız: onay yalnız BOŞ build'e izin verir; içerik varsa boş build olmaz.)
+    var _sonOge = (B.length === 1);
+    function _bosaltOnay(){ if(_sonOge && window.xBosaltOnayVer){ try{ window.xBosaltOnayVer(); }catch(e){} } }
     if(it && it.manual){   // #2: manuel blok -> __xManualClusters'tan çıkar
       var mc=manuelStore(); for(var m=0;m<mc.length;m++){ if(mc[m].item.uid===it.uid){ mc.splice(m,1); break; } }
+      _bosaltOnay();
       XE._yenidenPlanla(); return;
     }
     var idx=(it && it.index);
@@ -9085,12 +9093,14 @@ X_EDITOR_JS = r'''
       try{
         try{ await fetch('/api/manual/delete/'+idx, { method:'POST' }); }catch(e){}
         try{ if(window.XLocalImages && window.XLocalImages.remove && it.link){ window.XLocalImages.remove(it.link); } }catch(e){}
+        _bosaltOnay();   // son havuz öğesi silindi -> boş kayda izin
         await XE.ac({});   // havuz yeniden indexlendi -> taze havuzdan kur (indexler güncel kalsın)
       } finally { _busy=false; }
       return;
     }
     // Havuz tabanlı değil (Word Düzenle dış öğeleri) -> yalnız bellekten çıkar.
     var kalan=[], j; for(j=0;j<B.length;j++){ if(j!==i && B[j].item) kalan.push(B[j].item); }
+    _bosaltOnay();
     _busy=true; try{ await XE.ac({ items: kalan }); } finally { _busy=false; }
   };
 
