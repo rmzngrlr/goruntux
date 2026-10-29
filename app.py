@@ -1101,9 +1101,12 @@ HTML_TEMPLATE = """
             display: block;
         }
 
+        /* [SEÇİM ÇUBUĞU FLAŞ FİX] transform KALDIRILDI: sekme fadeIn'inde ata transform'u olunca,
+           içindeki position:fixed seçim çubuğu (#x-secim-bar) viewport yerine o ataya göre konumlanıp
+           sekme geçişinde 0.3sn ekranda beliriyordu (flaş). Sade opacity-fade -> ata transform'suz -> flaş yok. */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* Card panels */
@@ -6297,6 +6300,10 @@ LOCAL_DOCX_JS = r'''
 
   // [ÇOKLU GÖRSEL] Bir öğenin GÖRSEL parçalarını efektif görselleriyle sırayla döndür.
   // Her 'gorsel' parçası kendi b64/mime'ını taşıyabilir (bölüm başına çok görsel); taşımıyorsa
+  // [SORUN 2] (x-editor.js ikizi) Yeni eklenen link alanı BOŞ -> item.link'e düşme YALNIZ İLK link parçasına.
+  function yeniLinkBosAcik(){ try{ return localStorage.getItem('x_yeni_link_bos')!=='0'; }catch(e){ return true; } }
+  // parcalar içinde idx'ten ÖNCE link parçası var mı? (yoksa idx = İLK/asıl link)
+  function _oncekiLinkVar(pc, idx){ for(var _z=0;_z<idx;_z++){ if(pc[_z] && pc[_z].tur==='link') return true; } return false; }
   // YALNIZ İLK görsel parçası öğenin birincil image_b64'üne düşer (kazıma/eski tek-görsel uyumu).
   // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski davranış: yalnız birincil görsel).
   // Dönen: [{k:parçaIndeksi, b64, mime}] — b64 boş olabilir (henüz doldurulmamış kutu).
@@ -6967,14 +6974,14 @@ LOCAL_DOCX_JS = r'''
           for(var _q=0;_q<_pc.length;_q++){ var _pq=_pc[_q];
             if(_pq.tur==='gorsel'){ if(_um[_q]) _lastEmit=_q; }
             else if(_pq.tur==='metin'){ if(String(_pq.metin||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim()) _lastEmit=_q; }
-            else if(_pq.tur==='link'){ var _lq=(_pq.url!=null && String(_pq.url).trim()!=='')?String(_pq.url).trim():u.link; if(_lq) _lastEmit=_q; }
+            else if(_pq.tur==='link'){ var _lq=(_pq.url!=null && String(_pq.url).trim()!=='')?String(_pq.url).trim():((yeniLinkBosAcik() && _oncekiLinkVar(_pc,_q))?'':u.link); if(_lq) _lastEmit=_q; }
           }
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
             if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu) body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h)); }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh)); }
-            else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():u.link;
+            else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _oncekiLinkVar(_pc,_pi))?'':u.link);
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
           }
           if(u.cizgi && !_cizgiKondu) body.push(grupSonuXml());   // link son değilse: ayrı ayraç (parça sırası serbest)
@@ -7651,6 +7658,9 @@ X_EDITOR_JS = r'''
   XE._dirty = false;   // E1: kaydedilmemis degisiklik -> kapanista sorulur
   var _manSeq = 0;     // monotonik sayac: ayni ms uid cakismasini onler
   function linkGoster(it){ var lk=(it&&it.link)||''; return (String(lk).indexOf('rt:')===0 || edManual(lk)) ? '' : lk; }
+  // [SORUN 2] Yeni eklenen link alanı BOŞ gelsin (eklenti tweet linki otomatik dolmasın). Boş url -> item.link
+  // düşmesi YALNIZ bölümün İLK (asıl) link parçasına uygulanır. Bayrak kapalı ('0') -> eski davranış (hep düşer).
+  function yeniLinkBosAcik(){ try{ return localStorage.getItem('x_yeni_link_bos')!=='0'; }catch(e){ return true; } }
   function stilOku(){ try { return (typeof window.xBuildStyleOpts==='function') ? window.xBuildStyleOpts() : {}; } catch(e){ return {}; } }
   function yeniId(){ return 'm'+Date.now()+Math.floor(Math.random()*100000); }
 
@@ -8897,7 +8907,11 @@ X_EDITOR_JS = r'''
             ? ('<img class="ed-img" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt="">')
             : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır<button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Bilgisayardan görsel seç">📁 Bilgisayardan seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
-        else if(p.tur==='link'){ var lk=linkGoster(b.item); var shown=(p.url!=null && p.url!=='')?p.url:lk; h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
+        else if(p.tur==='link'){ var lk=linkGoster(b.item);
+          // [SORUN 2] boş url -> item.link YALNIZ İLK (asıl) link parçasına düşsün; sonradan eklenen ek link boş kalsın.
+          var _ilkLink=true; for(var _zi=0;_zi<k;_zi++){ var _pLnk=b.item.parcalar[_zi]; if(_pLnk && _pLnk.tur==='link'){ _ilkLink=false; break; } }
+          var shown=(p.url!=null && p.url!=='') ? p.url : ((yeniLinkBosAcik() && !_ilkLink) ? '' : lk);
+          h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
         h.push('</div>');
         // #4: Word Düzenle (ve genel) için parça TÜRÜ değiştirici — hover'da çıkar (metin/link).
         // [BAŞLIK YALNIZ BÖLÜM BAŞINDA] "Başlık yap" KALDIRILDI: bölüm içindeki bir metin başlık OLAMAZ; başlık
