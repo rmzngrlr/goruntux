@@ -1813,6 +1813,7 @@ HTML_TEMPLATE = """
         .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); box-shadow: 0 3px 12px rgba(0,0,0,0.30); }
         .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
         .x-gal-pageinner { padding: 16px 15px 30px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent); mask-image: linear-gradient(to bottom, #000 68%, transparent); }
+        .x-gal-card.aktif .x-gal-pageinner { padding-top: 32px; }   /* "● Açık" rozeti başlığa binmesin: aktif kartta içeriği rozetin altından başlat */
         .x-gal-pbaslik { font-weight: 700; font-size: 11.5px; line-height: 1.35; margin: 0 0 5px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pmetin { font-size: 10px; line-height: 1.5; margin: 0 0 4px; color: var(--text-secondary, #8899a6); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pbos { font-size: 11px; color: var(--text-secondary, #8899a6); opacity: .55; font-style: italic; }
