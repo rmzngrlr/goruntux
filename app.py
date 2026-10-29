@@ -1817,6 +1817,7 @@ HTML_TEMPLATE = """
         .x-gal-pbaslik { font-weight: 700; font-size: 11.5px; line-height: 1.35; margin: 0 0 5px; color: var(--text-primary, #e7e9ea); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pmetin { font-size: 10px; line-height: 1.5; margin: 0 0 4px; color: var(--text-secondary, #8899a6); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pbos { font-size: 11px; color: var(--text-secondary, #8899a6); opacity: .55; font-style: italic; }
+        .x-gal-pimg { display: block; width: 100%; max-height: 78px; object-fit: cover; border-radius: 5px; margin: 6px 0; border: 1px solid var(--border-color, rgba(136,153,166,0.28)); }
         .x-gal-meta { padding: 9px 2px 2px; display: flex; align-items: baseline; gap: 7px; }
         .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; flex: 1; min-width: 0; }
         .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
@@ -3584,16 +3585,17 @@ HTML_TEMPLATE = """
             var c = _xOnizlemeCache[m.id];
             if (c && c.u === m.updatedAt) return c.p;
             var p = [];
-            try { var full = await window.XSavedReports.get(m.id); p = (window.XSavedReports.buildPreview ? window.XSavedReports.buildPreview((full && full.items) || []) : []); } catch (e) {}
+            try { var full = await window.XSavedReports.get(m.id); p = (window.XSavedReports.buildPreview ? await window.XSavedReports.buildPreview({ items: (full && full.items) || [], images: (full && full.images) || {} }) : []); } catch (e) {}
             _xOnizlemeCache[m.id] = { u: m.updatedAt, p: p };
             return p;
         }
         function xGalOnizlemeHtml(prev) {
             if (!prev || !prev.length) return '<div class="x-gal-pbos">Boş rapor</div>';
             var s = '';
-            for (var i = 0; i < prev.length && i < 6; i++) {
+            for (var i = 0; i < prev.length && i < 8; i++) {
                 var ln = prev[i] || {};
                 if (ln.t === 'h') { s += '<div class="x-gal-pbaslik">' + escapeHtml(ln.s || '') + '</div>'; }
+                else if (ln.t === 'img') { s += '<img class="x-gal-pimg" src="' + (ln.s || '') + '" alt="">'; }
                 else { s += '<div class="x-gal-pmetin">' + escapeHtml(ln.s || '') + '</div>'; }
             }
             return s;
@@ -7290,16 +7292,41 @@ X_SAVED_REPORTS_JS = r'''
   // o = {name, items, images, blob, filename}. Ayni isim varsa GUNCELLER (id+createdAt korunur,
   // updatedAt tazelenir) -> tekrar kaydetme cop kayit uretmez. Yoksa yeni kayit.
   function _getMeta(id){ try{ return _reqP(_tx(META,'readonly').objectStore(META).get(id)).catch(function(){return null;}); }catch(e){ return Promise.resolve(null); } }
-  // Kart önizlemesi: öğelerden kısa başlık+metin satırları çıkar (Google-Docs tarzı küçük görünüm).
-  // META'ya yazılır (blob OKUNMADAN galeri çizilir). [{t:'h'|'p', s:'...'}]
-  function _buildPreview(items){
-    var lines=[]; if(!items||!items.length) return lines;
-    for(var i=0;i<items.length && lines.length<6;i++){
+  // Kart önizlemesi: öğelerden SIRAYLA başlık + GÖRSEL (küçük thumbnail) + metin satırları çıkar
+  // (Google-Docs tarzı küçük sayfa). META'ya yazılır (blob OKUNMADAN galeri çizilir).
+  // [{t:'h'|'img'|'p', s:'...'}]. Görsel: images[normLink(link)].dataUrl'den küçük JPEG thumbnail
+  // (canvas) üretilir ve normLink'e göre önbelleklenir (her kayıtta tekrar üretilmesin). ASYNC.
+  var _onizThumbCache = {};
+  function _onizThumb(key, dataUrl){
+    if(_onizThumbCache[key]) return Promise.resolve(_onizThumbCache[key]);
+    return new Promise(function(resolve){
+      try{
+        var img=new Image();
+        img.onload=function(){ try{
+          var maxW=150, iw=img.width||maxW, ih=img.height||maxW, s=Math.min(1, maxW/iw);
+          var cw=Math.max(1,Math.round(iw*s)), ch=Math.max(1,Math.round(ih*s));
+          var c=document.createElement('canvas'); c.width=cw; c.height=ch;
+          c.getContext('2d').drawImage(img,0,0,cw,ch);
+          var t=c.toDataURL('image/jpeg',0.62); _onizThumbCache[key]=t; resolve(t);
+        }catch(e){ resolve(null); } };
+        img.onerror=function(){ resolve(null); };
+        img.src=dataUrl;
+      }catch(e){ resolve(null); }
+    });
+  }
+  async function _buildPreview(o){
+    o = o || {};
+    var items = o.items||[]; var images = o.images||{}; var lines=[];
+    if(!items.length) return lines;
+    var nk = (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink : function(x){ return (x==null?'':''+x); };
+    for(var i=0;i<items.length && lines.length<8;i++){
       var it=items[i]||{};
       if(it.h1_override!=null && (''+it.h1_override).trim()!==''){ lines.push({t:'h', s:(''+it.h1_override).trim().slice(0,70)}); }
       var h=(it.h2_override!=null && (''+it.h2_override).trim()!=='') ? (''+it.h2_override) : (it.title||'');
-      if(h && h.trim() && lines.length<6){ lines.push({t:'h', s:h.trim().slice(0,70)}); }
-      if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<6;p++){ var pc=it.parcalar[p]; if(pc && pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } } } }
+      if(h && h.trim() && lines.length<8){ lines.push({t:'h', s:h.trim().slice(0,70)}); }
+      // GÖRSEL (rapordaki sırasına göre): images[normLink] varsa küçük thumbnail
+      try{ var ik=nk(it.link||''); var im=images[ik]; if(im && im.dataUrl && lines.length<8){ var th=await _onizThumb(ik, im.dataUrl); if(th){ lines.push({t:'img', s:th}); } } }catch(e){}
+      if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<8;p++){ var pc=it.parcalar[p]; if(pc && pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } } } }
     }
     return lines;
   }
@@ -7317,8 +7344,9 @@ X_SAVED_REPORTS_JS = r'''
       var _ad = (o.name!=null) ? o.name.toString().trim() : (existing ? (existing.name||'') : '');
       // Faz 3: slug (URL /<slug>). Ad değişmediyse mevcut slug korunur; benzersizleştir (başka rapor aynı slug'ı kullanıyorsa -2,-3...).
       return _uniqueSlug(_slugify(_ad||'rapor'), id).then(function(_slug){
+       return _buildPreview(o).then(function(_prev){
         var meta = { id:id, name:_ad, slug:_slug, createdAt:createdAt,
-                     updatedAt:now, itemCount:((o.items&&o.items.length)||0), preview:_buildPreview(o.items) };
+                     updatedAt:now, itemCount:((o.items&&o.items.length)||0), preview:_prev };
         var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
         return new Promise(function(resolve,reject){
           try{
@@ -7330,6 +7358,7 @@ X_SAVED_REPORTS_JS = r'''
             tx.onabort=function(){ reject(tx.error||new Error('kaydetme iptal (kota?)')); };
           }catch(e){ reject(e); }
         });
+       });
       });
     });
   }
