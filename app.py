@@ -1836,7 +1836,6 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn">☀️ Açık Tema</button>
-                    <button class="theme-toggle-btn" id="rapor-editoru-btn" style="display:none; background:var(--accent-color); color:#fff; border-color:var(--accent-color);" onclick="window.XEditor && window.XEditor.ac({fresh:true})" title="Havuz boşken elle rapor oluşturmak için Rapor Editörü'nü aç">📝 Rapor Editörü</button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()">🔴 Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -3381,6 +3380,14 @@ HTML_TEMPLATE = """
             }
         }
         window.newReport = newReport;
+        // "➕ Boş Rapor" (Raporlarım): yeni boş rapor oluştur + doğrudan Rapor Editörü'nü aç (Google-Docs tarzı).
+        async function yeniRaporVeEditor() {
+            try {
+                await newReport();   // boş aktif rapor + havuzu temizle (kuyruk)
+                if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({ fresh: true }); }   // editörü boş havuzda aç
+            } catch (e) { console.error('Yeni rapor+editör hatası:', e); }
+        }
+        window.yeniRaporVeEditor = yeniRaporVeEditor;
         // Üst çubuktaki aktif rapor adını çift-tıkla yeniden adlandır.
         async function xAktifRaporAdiDegistir() {
             var id = xAktifRaporId(); if (!id) return;
@@ -3493,7 +3500,7 @@ HTML_TEMPLATE = """
             var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
             // İlk kart: Boş Rapor
             var html = '<div class="x-gal-grid">' +
-                '<div class="x-gal-card" onclick="newReport()" title="Yeni boş rapor oluştur">' +
+                '<div class="x-gal-card" onclick="yeniRaporVeEditor()" title="Yeni boş rapor oluştur ve editörü aç">' +
                     '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Boş Rapor</span></div>' +
                 '</div>';
             html += metas.map(function (m) {
@@ -4387,10 +4394,8 @@ HTML_TEMPLATE = """
                 const manualListSec = document.getElementById('manual-list-section');
                 const container = document.getElementById('manual-items-container');
                 const titleEl = document.getElementById('manual-list-title');
-                // #3: Havuz BOŞken üst-sağda "Rapor Editörü" butonu görünür (elle rapor oluşturma);
-                //     havuza içerik düşünce gizlenir (o zaman Önizle ile açılır).
-                var _reBtn = document.getElementById('rapor-editoru-btn');
-                if (_reBtn) { _reBtn.style.display = (data.manuel_count > 0) ? 'none' : ''; }
+                // Not: Eski üst-sağ "Rapor Editörü" butonu KALDIRILDI. Elle rapor oluşturma artık
+                //      Raporlarım'daki "➕ Boş Rapor" kartından (yeni rapor + editör açılır).
                 if (data.manuel_count > 0) {
                     if (titleEl) {
                         titleEl.innerText = `📋 Havuzda Bekleyen Rapor İçerikleri (${data.manuel_count} Adet)`;
