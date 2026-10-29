@@ -3264,6 +3264,28 @@ HTML_TEMPLATE = """
         // ============================================================================
         function xOtoKayitAcik() { try { return localStorage.getItem('x_oto_kayit') !== '0'; } catch (e) { return true; } }
         window.xOtoKayitAcik = xOtoKayitAcik;
+        // [VERİ KAYBI FİX] Overlay (sayfa belleği) F5/yeniden-bağlanmada silinir ama HAVUZ (sunucu belleği)
+        // yaşar -> uzlaştırmanın "havuz-koru" dalı eskiden overlay'i geri KURMUYORDU; manuel metin boşalır +
+        // ilk poll oto-kayıtı boş overlay'i snapshot'a yazıp KALICI siler. Bayrak (varsayılan AÇIK) geri alınabilirlik.
+        function xRehidrateAcik() { try { return localStorage.getItem('x_overlay_rehidrate') !== '0'; } catch (e) { return true; } }
+        // Snapshot'tan editör overlay'ini (+ manuel kümeler + stil) geri yükle — HAVUZA DOKUNMADAN
+        // (havuz zaten canlı/doğru; XLocalImages IndexedDB'de duruyor). openSavedReport 4b adımının (3782-3790)
+        // havuz-korumalı ikizi; __xManualClusters (3788) ve editorStyle (3790) DAHİL aynalanır (bulgu #2/#7/#14).
+        function xRaporOverlayGeriYukle(rec) {
+            if (!rec) return;
+            var items = rec.items || [];
+            var _ov = { byLink: {}, style: rec.editorStyle || null };
+            for (var i = 0; i < items.length; i++) {
+                var it = items[i];
+                if (it && (it.parcalar || it.h2_override != null || it.group_override != null || it.h1_override != null || it.h1_ov || it.h2_ov)) {
+                    _ov.byLink[xOvKey(it.link || '')] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null), h1over: (it.h1_override != null ? it.h1_override : null), h1ov: (it.h1_ov || null), h2ov: (it.h2_ov || null) };
+                }
+            }
+            window.__xEditorOverlay = _ov;
+            window.__xManualClusters = (rec.manualClusters || []);
+            try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
+            if (rec.editorStyle) { try { xApplyStyleOpts(rec.editorStyle); } catch (e) {} }
+        }
         function xAktifRaporId() { try { return localStorage.getItem('x_active_report_id') || ''; } catch (e) { return ''; } }
         window.xAktifRaporId = xAktifRaporId;
         // Faz 3: URL yardımcıları. Pathname'in İLK segmenti = rapor slug'ı (/<slug>).
@@ -3355,6 +3377,11 @@ HTML_TEMPLATE = """
         window.xOtoKayitYap = xOtoKayitYap;
         async function _xOtoKayitYapImpl() {
             if (!xOtoKayitAcik()) return;
+            // [VERİ KAYBI FİX] Yükleme/uzlaştırma bitene kadar ERTELE: overlay snapshot'tan geri kurulmadan
+            // oto-kayıt çalışırsa boş overlay'i snapshot'a yazıp sağlam raporu ezer (bulgu #3/#6/#15). Nöbetçi
+            // _xOtoKayitYapImpl'in İÇİNDE -> wrapper'ları (xOtoKayitPlanla/Yap/Flush) atlayan doğrudan-flush
+            // yolları (_newReportImpl/_openSavedReportImpl/_raporuKapatImpl/_mergeSelectedReportsImpl/editör Kaydet) de kapanır.
+            if (window.__xRaporYukleniyor) { try { xOtoKayitDurum('kaydedildi'); } catch (e) {} return; }
             try {
                 await window.XSavedReports.whenReady();
                 var id = xAktifRaporId();
@@ -3378,6 +3405,29 @@ HTML_TEMPLATE = """
                         xOtoKayitDurum('kaydedildi'); await renderSavedReports();
                     } else { xOtoKayitDurum(''); }
                     return;
+                }
+                // [VERİ KAYBI FİX — YAPISAL KORUMA / BACKSTOP] Overlay TAMAMEN boşken (hidre olmamış: F5/router/
+                // init-yarışı/istisna yolu) xBuildReport havuzda öğe var diye NON-NULL ama "fakir" (metinsiz) build
+                // üretir; eski koruma (yukarıda) yalnız r===null'da çalıştığından bu fakir build sağlam snapshot'ı
+                // ezerdi (bulgu #1/#4/#5/#8/#10). KORU: havuzda DURAN (silinmemiş) bir öğenin overlay-içeriği
+                // (parcalar/başlık/link override) snapshot'ta VARDI ama yeni build'de YOKSA -> YAZMA, zengin snapshot
+                // korunur. Meşru silmeyi engellemez (silinen öğe build'de yoktur); açık boşaltma 10sn penceresinde izinli.
+                // Yanlış-blok (nadir) içeriği KORUR, kaybı değil -> veri-kaybı fix'inde güvenli taraf.
+                if (id && xRehidrateAcik()
+                    && Object.keys(((window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {})).length === 0
+                    && !(window.__xManualClusters && window.__xManualClusters.length)
+                    && (Date.now() - (window.__xOtoKayitBosaltOnayTS || 0)) >= 10000) {
+                    var _recC = null; try { _recC = await window.XSavedReports.get(id); } catch (e) {}
+                    if (_recC) {
+                        var _ovVar = function (o) { return !!(o && (o.parcalar || o.h2_override != null || o.h1_override != null || o.group_override || o.h1_ov || o.h2_ov)); };
+                        var _recMap = {}; (_recC.items || []).forEach(function (_it) { if (_it && _it.link != null) _recMap[xOvKey(_it.link || '')] = _it; });
+                        var _fakir = false;
+                        for (var _ci = 0; _ci < (r.snapItems || []).length; _ci++) {
+                            if (_ovVar(_recMap[xOvKey(r.snapItems[_ci].link || '')]) && !_ovVar(r.snapItems[_ci])) { _fakir = true; break; }
+                        }
+                        if (!_fakir && (_recC.manualClusters && _recC.manualClusters.length) && (r.snapItems || []).length) { _fakir = true; }   // eski-stil bloklar: snapshot'ta vardı, şimdi hiç yok -> hidre değil
+                        if (_fakir) { xOtoKayitDurum('kaydedildi'); return; }   // FAKİR build -> sağlam snapshot KORUNUR
+                    }
                 }
                 // Aktif id varsa O id'ye upsert; yoksa (oto-oluştur) TAZE id ver -> ad çakışması (aynı saniye
                 // zaman-damgası) ad-bazlı upsert ile başka raporu EZMESİN.
@@ -3920,6 +3970,16 @@ HTML_TEMPLATE = """
         }
         function xInitSavedReports() {
             try {
+                // [VERİ KAYBI FİX] Yükleme-nöbetçisini EN BAŞTA SENKRON kur (xInitSavedReports, refreshStatus'tan
+                // ÖNCE çağrılır: satır ~2910 vs ~2919) -> uzlaştırma overlay'i snapshot'tan geri kurana dek oto-kayıt
+                // ERTELENİR, boş overlay sağlam snapshot'ı ezemez (bulgu #3/#15). Bekleyen timer'ı da iptal et.
+                if (xRehidrateAcik() && xOtoKayitAcik()) {
+                    try { window.__xRaporYukleniyor = true; } catch (e) {}
+                    try { if (_xOtoKayitTimer) { clearTimeout(_xOtoKayitTimer); _xOtoKayitTimer = null; } } catch (e) {}
+                    // GÜVENLİK AĞI (bulgu #16): nöbetçi hata/olay-gelmeme yolunda takılıp oto-kaydı KALICI
+                    // kapatmasın -> en geç 10sn sonra kesin temizle.
+                    try { setTimeout(function () { try { window.__xRaporYukleniyor = false; } catch (e) {} }, 10000); } catch (e) {}
+                }
                 try { xOtoKayitUICiz(); } catch (e) {}   // Faz 2: oto-kayıt açıkken elle "Kaydet" butonunu gizle
                 // [SINIRSIZ] Raporlar artık süreyle silinmez (1 hafta TTL kaldırıldı).
                 // x-saved-reports.js AYRI <script src> -> DOMContentLoaded'da window.XSavedReports henüz
@@ -3931,7 +3991,8 @@ HTML_TEMPLATE = """
                     window.XSavedReports.whenReady()
                         .then(function () { return renderSavedReports(); })
                         .then(function () { return xRaporRouterVeyaBagla(); })   // Faz 3: URL slug'ı varsa onu aç; yoksa Faz 2 uzlaştırma
-                        .catch(function () {});
+                        .catch(function () {})
+                        .then(function () { try { window.__xRaporYukleniyor = false; } catch (e) {} });   // [VERİ KAYBI FİX] uzlaştırma bitti -> nöbetçiyi KESİN kaldır (başarı + hata)
                 }
                 window.addEventListener('x-saved-reports-ready', _baslat);
                 if (window.XSavedReports) { _baslat(); }
@@ -3955,6 +4016,9 @@ HTML_TEMPLATE = """
                 try { var cur = await fetch('/api/pool/data').then(function (r) { return r.json(); }); curItems = (cur && cur.items) || []; } catch (e) {}
                 var depoDolu = !!((rec.items && rec.items.length) || (rec.manualClusters && rec.manualClusters.length));
                 if (curItems.length) {
+                    // [VERİ KAYBI FİX] Havuz canlı/dolu -> KORU; ama overlay'i snapshot'tan geri yükle
+                    // (manuel metin/başlık/link/görsel-parça yalnız overlay'deydi, F5'te uçtu). Havuza dokunmaz.
+                    if (xRehidrateAcik()) { try { xRaporOverlayGeriYukle(rec); } catch (e) {} }
                     xAktifRaporKur(id, rec.name || '', await xRaporSlugCoz(id, rec), true); xOtoKayitDurum('kaydedildi');
                 } else if (depoDolu) {
                     await openSavedReport(id, { urlReplace: true });   // re-hidrasyon (openSavedReport aktif id'yi + URL'i + yükleme nöbetçisini kurar)
