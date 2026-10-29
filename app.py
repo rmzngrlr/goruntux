@@ -1880,15 +1880,14 @@ HTML_TEMPLATE = """
 
             <!-- Tab Buttons -->
             <div class="tabs">
-                <button class="tab-btn active" data-tab="tab-auto" onclick="switchTab('tab-auto')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l1.5 3.6 3.6 1.4-3.6 1.5-1.5 3.6-1.5-3.6L5.4 7.5l3.6-1.4z"/><path d="M5 12.5l.8 1.9 1.9.8-1.9.8L5 18l-.8-1.9L2.3 15.3l1.9-.9z"/></svg> Rapor'matik</button>
-                <!-- #2: "Manuel Rapor Hazırla" sekmesi EMEKLİ — manuel içerik artık Rapor Editörü içinde
-                     (kümeler arası "+ Ekle" ile başlık/metin/görsel/link). Havuz boşken üstteki "Rapor Editörü"
-                     butonuyla açılır. (tab-manual içerik div'i erişilmez kaldı; işlevi editöre taşındı.) -->
-                <button class="tab-btn" data-tab="tab-format" onclick="switchTab('tab-format')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2a1 1 0 0 1 1-1h3.1l1.3 1.6h7.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/></svg> Raporlarım<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
+                <!-- Sıra değişti (kullanıcı isteği): Raporlarım ÖNCE ve varsayılan (açılış) sekmesi. İç id'ler
+                     (tab-format / tab-auto) AYNEN korundu; yalnız görünen sıra + varsayılan 'active' değişti. -->
+                <button class="tab-btn active" data-tab="tab-format" onclick="switchTab('tab-format')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2a1 1 0 0 1 1-1h3.1l1.3 1.6h7.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/></svg> Raporlarım<span id="saved-count-badge" class="tab-count-badge" style="display: none;">0</span></button>
+                <button class="tab-btn" data-tab="tab-auto" onclick="switchTab('tab-auto')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l1.5 3.6 3.6 1.4-3.6 1.5-1.5 3.6-1.5-3.6L5.4 7.5l3.6-1.4z"/><path d="M5 12.5l.8 1.9 1.9.8-1.9.8L5 18l-.8-1.9L2.3 15.3l1.9-.9z"/></svg> Rapor'matik</button>
             </div>
 
             <!-- Tab 1: Format Docx -->
-            <div id="tab-format" class="tab-content">
+            <div id="tab-format" class="tab-content active">
                 <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
                      kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
                 <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
@@ -2002,7 +2001,7 @@ HTML_TEMPLATE = """
             </div>
 
             <!-- Tab 3: Automation -->
-            <div id="tab-auto" class="tab-content active">
+            <div id="tab-auto" class="tab-content">
                 <!-- Mobilde eklenti çalışmadığından YALNIZ bu sekme "Masaüstü Gerekli" gösterir; gerçek
                      tarama içeriği (#auto-desktop-content) html.x-mobile CSS'iyle gizlenir. Diğer sekmeler
                      mobilde çalışır. -->
@@ -2091,6 +2090,7 @@ HTML_TEMPLATE = """
                         <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
                         <button id="download-btn" class="x-havuz-btn" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur)."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> İndir</button>
                         <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici önizlemede aç"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.4"/></svg> Önizle</button>
+                        <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
                         <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
                     </div>
                 </div>
@@ -3452,6 +3452,34 @@ HTML_TEMPLATE = """
             } catch (e) { console.error('Yeni rapor+editör hatası:', e); }
         }
         window.yeniRaporVeEditor = yeniRaporVeEditor;
+        // ✓ Kapat: açık raporu SİLMEDEN kapat. Son düzenlemeyi kaydeder, raporu AYIRIR (ÖNCE ayır -> sonra
+        // havuzu temizle; böylece boşalan havuz rapora yazılmaz, rapor DOLU kalır), çalışma havuzunu/editörü
+        // temizler. Rapor Raporlarım'da durur; karttan tekrar açılır. (Seri kuyruktan geçer -> yarış yok.)
+        async function raporuKapat() {
+            if (!xAktifRaporId()) { if (typeof showToast === 'function') showToast('Açık rapor yok.', 'warning'); return; }
+            return xSiraya(_raporuKapatImpl);
+        }
+        window.raporuKapat = raporuKapat;
+        async function _raporuKapatImpl() {
+            try {
+                await _xOtoKayitYapImpl();   // flush: son düzenlemeyi aktif rapora yaz (kuyruktayız -> doğrudan)
+                xAktifRaporTemizle();         // ÖNCE ayır (+ URL '/') -> ardından gelen boş havuz rapora yazılmaz
+                try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
+                window.__xEditorOverlay = { byLink: {}, style: null }; window.__xManualClusters = [];
+                try { if (window.XLocalImages && window.XLocalImages.clear) { await window.XLocalImages.clear(); } } catch (e) {}
+                try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; window.XEditor._dirty = false; if (window.XEditor.kapat) window.XEditor.kapat(true); } } catch (e) {}
+                window.accumulatedLinks = [];
+                var inputEl = document.getElementById('tweet_links_input');
+                if (inputEl) { inputEl.value = ''; if (typeof updateLinksPreview === 'function') { updateLinksPreview(); } if (typeof autoResizeTextarea === 'function') { autoResizeTextarea(inputEl); } }
+                window.lastManuelListJson = null; window.__xPoolDirty = false;
+                refreshStatus();
+                await renderSavedReports();
+                showToast('Rapor kapatıldı — Raporlarım bölümünde duruyor.', 'success');
+            } catch (err) {
+                console.error('Rapor kapatma hatası:', err);
+                showToast('Kapatılamadı: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
         // Üst çubuktaki aktif rapor adını çift-tıkla yeniden adlandır.
         async function xAktifRaporAdiDegistir() {
             var id = xAktifRaporId(); if (!id) return;
