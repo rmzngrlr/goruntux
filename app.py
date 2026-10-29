@@ -2090,8 +2090,8 @@ HTML_TEMPLATE = """
                         <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
                         <button id="download-btn" class="x-havuz-btn" onclick="downloadPoolReport()" title="Havuzdan .docx üret ve indir (kaydetmez, havuzu korur)."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> İndir</button>
                         <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici önizlemede aç"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.4"/></svg> Önizle</button>
-                        <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
                         <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
+                        <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
                     </div>
                 </div>
             </div>
@@ -3642,7 +3642,7 @@ HTML_TEMPLATE = """
             xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, çubuğu güncelle
         }
         // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
-        function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid); } catch (e) {} }
+        function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid, { editorBosAc: true }); } catch (e) {} }
         function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { downloadSavedReport(el.dataset.rid); } catch (e) {} }
         function xGalSil(ev, el) { if (ev) ev.stopPropagation(); try { deleteSavedReport(el.dataset.rid); } catch (e) {} }
         function xGalRename(ev, el) { if (ev) ev.stopPropagation(); try { renameSavedReport(el.dataset.rid); } catch (e) {} }
@@ -3793,7 +3793,11 @@ HTML_TEMPLATE = """
                 refreshStatus();
                 await renderSavedReports();
                 xHavuzaKaydir();   // havuz bu sekmede acildi -> kullaniciyi ona goturur
-                showToast('Rapor açıldı: ' + (rec.name || '') + ' — ' + rec.items.length + ' içerik.', 'success');
+                // BOŞ rapor (havuzda içerik yok) -> editörü OTOMATİK aç; aksi halde pool aksiyonları
+                // (Önizle=editör) görünmez olduğu için boş rapora bir daha editör açılamıyordu.
+                var _bosRapor = !(rec.items && rec.items.length) && !(rec.manualClusters && rec.manualClusters.length);
+                if (opts.editorBosAc && _bosRapor) { try { if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({ fresh: true }); } } catch (e) {} }
+                showToast('Rapor açıldı: ' + (rec.name || '') + (_bosRapor ? ' — boş (düzenlemeye başla)' : ' — ' + rec.items.length + ' içerik'), 'success');
             } catch (err) {
                 console.error('Rapor açma hatası:', err);
                 showToast('Rapor açılamadı: ' + (err && err.message ? err.message : err), 'danger');
