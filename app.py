@@ -7762,7 +7762,12 @@ X_EDITOR_JS = r'''
   var CSS = `
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
 #editorModal .preview-modal-content{width:100%;max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;}
-#editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;}
+#editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b6c0cb #eef1f4;}
+/* GÖRÜNÜR/KALICI scroll çubuğu (editör uzun; overlay-scrollbar gizli kalıyordu -> kullanıcı kaydırabildiğini görmüyordu) */
+#editorModal .preview-body::-webkit-scrollbar{width:13px;height:13px;}
+#editorModal .preview-body::-webkit-scrollbar-track{background:#eef1f4;}
+#editorModal .preview-body::-webkit-scrollbar-thumb{background:#b6c0cb;border-radius:8px;border:3px solid #eef1f4;background-clip:padding-box;min-height:40px;}
+#editorModal .preview-body::-webkit-scrollbar-thumb:hover{background:#8a94a0;background-clip:padding-box;border:3px solid #eef1f4;}
 #editorModal .ed-serit{position:sticky;top:0;z-index:5;background:linear-gradient(#ffffff,#f2f5f9);border-bottom:1px solid #d0d7de;padding:10px 16px;box-shadow:0 1px 4px rgba(16,24,40,0.05);}
 #editorModal .ed-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
 #editorModal .ed-tab{border:1px solid #d7dde3;background:#fff;color:#3a4654;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s;}
