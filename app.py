@@ -2978,7 +2978,7 @@ HTML_TEMPLATE = """
                 ? await xConfirm('Havuzdaki tüm içerik (ve eklenen görseller) silinsin mi? Bu geri alınamaz.', { title: 'Sıfırla', icon: _XSVG_COP, okText: 'Sıfırla', danger: true })
                 : confirm('Havuzdaki tüm içerik silinsin mi?');
             if (!onay) return;
-            window.__xOtoKayitBosaltOnayTS = Date.now();   // Faz 2: kullanıcı AÇIKÇA boşalttı -> oto-kayıt boş durumu yazsın
+            xBosaltOnayVer();   // Faz 2: kullanıcı AÇIKÇA boşalttı -> oto-kayıt boş durumu yazsın (K3/#9: rapor-id'ye bağlı)
             try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
             window.__openReportName = '';
             window.__xEditorOverlay = { byLink: {}, style: null };
@@ -3005,7 +3005,7 @@ HTML_TEMPLATE = """
                 if (data.status === 'success') {
                     // Faz 2 (düzeltme): boşaltma iznini YALNIZ havuz GERÇEKTEN boşaldığında ver (son öğe silindi).
                     // Aksi halde içerik taşıyan raporu koruyan boş-ezme güvenliği 10 sn gereksiz devre dışı kalır.
-                    if (data.remaining === 0) { window.__xOtoKayitBosaltOnayTS = Date.now(); }
+                    if (data.remaining === 0) { xBosaltOnayVer(); }   // K3/#9: rapor-id'ye bağlı açık-boşaltma onayı
                     showToast('Icerik silindi.', 'success');
                     refreshStatus();
                 } else {
@@ -3303,6 +3303,16 @@ HTML_TEMPLATE = """
         }
         function xAktifRaporId() { try { return localStorage.getItem('x_active_report_id') || ''; } catch (e) { return ''; } }
         window.xAktifRaporId = xAktifRaporId;
+        // [VERİ KAYBI FİX K3/#9] AÇIK boşaltma onayını (Sıfırla/son öğe silme) rapor-id'ye BAĞLA -> başka raporun
+        // snapshot'ı 10sn penceresinde yanlışlıkla boşla ezilmesin. Kayıtlı id yoksa (eski) eski davranış korunur.
+        function xBosaltOnayVer() { try { window.__xOtoKayitBosaltOnayTS = Date.now(); window.__xOtoKayitBosaltOnayId = xAktifRaporId(); } catch (e) {} }
+        function xBosaltIzni(id) {
+            try {
+                if ((Date.now() - (window.__xOtoKayitBosaltOnayTS || 0)) >= 10000) return false;
+                var _bi = window.__xOtoKayitBosaltOnayId;
+                return (_bi == null || _bi === '' || _bi === id);
+            } catch (e) { return false; }
+        }
         // Faz 3: URL yardımcıları. Pathname'in İLK segmenti = rapor slug'ı (/<slug>).
         function xUrlSlugOku() {
             try { var p = (window.location.pathname || '/').replace(/^\/+/, '').split('/')[0]; return p ? decodeURIComponent(p) : ''; } catch (e) { return ''; }
@@ -3320,6 +3330,7 @@ HTML_TEMPLATE = """
         window.xUrlRaporaGuncelle = xUrlRaporaGuncelle;
         function xAktifRaporKur(id, ad, slug, urlReplace) {
             try { if (id) { localStorage.setItem('x_active_report_id', id); } else { localStorage.removeItem('x_active_report_id'); } } catch (e) {}
+            try { window.__xYukluRaporId = id || ''; } catch (e) {}   // [VERİ KAYBI FİX K3/#18] bu SEKMENİN yüklediği rapor (in-memory; çok-sekme guard'ı)
             if (ad != null) { window.__xActiveReportName = String(ad); }
             if (slug != null) { window.__xActiveReportSlug = String(slug); }
             window.__openReportName = window.__xActiveReportName || '';   // mevcut upsert/indir adı bununla uyumlu
@@ -3328,6 +3339,7 @@ HTML_TEMPLATE = """
         }
         function xAktifRaporTemizle(urlReplace) {
             try { localStorage.removeItem('x_active_report_id'); } catch (e) {}
+            try { window.__xYukluRaporId = ''; } catch (e) {}   // [VERİ KAYBI FİX K3/#18]
             window.__xActiveReportName = ''; window.__xActiveReportSlug = ''; window.__openReportName = '';
             xAktifRaporCizgiCiz();
             xUrlRaporaGuncelle('', !!urlReplace);   // Faz 3: aktif yok -> '/'
@@ -3400,6 +3412,13 @@ HTML_TEMPLATE = """
             try {
                 await window.XSavedReports.whenReady();
                 var id = xAktifRaporId();
+                // [VERİ KAYBI FİX K3/#18] Çok-sekme: x_active_report_id localStorage'ta PAYLAŞILIR. Başka sekme
+                // aktif raporu değiştirdiyse bu sekmenin (bellekteki) overlay'i YANLIŞ rapora yazılıp çapraz
+                // bozulurdu. Bu sekmenin yüklediği rapor (in-memory __xYukluRaporId) paylaşılan aktif id'den
+                // FARKLIYSA YAZMA. (undefined ise eski davranış; id='' oto-oluşturmada guard atlanır.)
+                if (id && window.__xYukluRaporId != null && window.__xYukluRaporId !== '' && window.__xYukluRaporId !== id) {
+                    try { xOtoKayitDurum('kaydedildi'); } catch (e) {} return;
+                }
                 var ad = window.__xActiveReportName || '';
                 xOtoKayitDurum('kaydediliyor');
                 var r = null;
@@ -3410,7 +3429,7 @@ HTML_TEMPLATE = """
                         // GÜVENLİK: içerik taşıyan raporu BOŞ ile EZME. Havuz "gizlice" boşaldıysa (sunucu
                         // yeniden başladı / Docker rebuild) bu GEÇİCİ kayıptır -> rapor korunur. Yalnız kullanıcı
                         // AÇIKÇA boşalttıysa (Sıfırla/sil, son 10 sn) boş durum yazılır.
-                        var _izin = (Date.now() - (window.__xOtoKayitBosaltOnayTS || 0)) < 10000;
+                        var _izin = xBosaltIzni(id);   // K3/#9: yalnız BU rapor için açık boşaltma (10sn)
                         if (!_izin) {
                             var _rec = null; try { _rec = await window.XSavedReports.get(id); } catch (e) {}
                             var _depoDolu = !!(_rec && ((_rec.items && _rec.items.length) || (_rec.manualClusters && _rec.manualClusters.length)));
@@ -3431,7 +3450,7 @@ HTML_TEMPLATE = """
                 if (id && xRehidrateAcik()
                     && Object.keys(((window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {})).length === 0
                     && !(window.__xManualClusters && window.__xManualClusters.length)
-                    && (Date.now() - (window.__xOtoKayitBosaltOnayTS || 0)) >= 10000) {
+                    && !xBosaltIzni(id)) {   // K3/#9: açık-boşaltma rapor-id'ye bağlı
                     var _recC = null; try { _recC = await window.XSavedReports.get(id); } catch (e) {}
                     if (_recC) {
                         var _ovVar = function (o) { return !!(o && (o.parcalar || o.h2_override != null || o.h1_override != null || o.group_override || o.h1_ov || o.h2_ov)); };
