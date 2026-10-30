@@ -2241,7 +2241,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="form-group">
                     <label for="l_color">Link Rengi:</label>
-                    <input type="text" id="l_color" value="#000000" placeholder="#000000">
+                    <input type="text" id="l_color" value="#1565c0" placeholder="#1565c0">
                 </div>
                 
                 <div class="checkbox-group">
@@ -4132,7 +4132,7 @@ HTML_TEMPLATE = """
                 b_wordstyle: gv('b_wordstyle', 'Heading2'),
                 l_font: gv('l_font', 'Arial'),
                 l_size: gv('l_size', '12'),
-                l_color: gv('l_color', '#000000'),
+                l_color: gv('l_color', '#1565c0'),
                 l_bold: gc('l_bold', false),
                 l_italic: gc('l_italic', false),
                 l_underline: gc('l_underline', true),
@@ -4170,7 +4170,7 @@ HTML_TEMPLATE = """
         var STANDART_STIL = {
             b1_font: 'Arial', b1_size: '18', b1_color: '#000000', b1_bold: true, b1_italic: false, b1_underline: false, b1_align: 'left', b1_wordstyle: 'Heading1',
             b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2',
-            l_font: 'Arial', l_size: '12', l_color: '#000000', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',
+            l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
             m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left'
         };
         function xStandartStiliUygula() { try { xApplyStyleOpts(STANDART_STIL); } catch (e) {} }
