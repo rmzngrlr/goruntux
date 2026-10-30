@@ -3423,6 +3423,10 @@ HTML_TEMPLATE = """
                 if (id && window.__xYukluRaporId != null && window.__xYukluRaporId !== '' && window.__xYukluRaporId !== id) {
                     try { xOtoKayitDurum('kaydedildi'); } catch (e) {} return;
                 }
+                // [STANDART STİL] Aktif rapor YOKKEN (id==='') içerik oto-oluşturacak -> standart stille başlasın
+                // (eklenti/tarama ile oto-oluşan rapor önceki raporun stilini DEVRALMASIN; "Yeni Rapor" butonu +
+                // rapor-kapat zaten standartlıyor, bu da fresh-sayfa/kapatmasız yolu kapatır). Yalnız oto-oluştur.
+                if (id === '') { try { xStandartStiliUygula(); } catch (e) {} }
                 var ad = window.__xActiveReportName || '';
                 xOtoKayitDurum('kaydediliyor');
                 var r = null;
@@ -3562,6 +3566,7 @@ HTML_TEMPLATE = """
                 var inputEl = document.getElementById('tweet_links_input');
                 if (inputEl) { inputEl.value = ''; if (typeof updateLinksPreview === 'function') { updateLinksPreview(); } if (typeof autoResizeTextarea === 'function') { autoResizeTextarea(inputEl); } }
                 window.lastManuelListJson = null; window.__xPoolDirty = false;
+                try { xStandartStiliUygula(); } catch (e) {}   // [STANDART STİL] rapor kapatılınca şerit standarda dönsün -> sonraki (oto-oluşan) rapor son stili devralmasın
                 refreshStatus();
                 await renderSavedReports();
                 showToast('Rapor kapatıldı — Raporlarım bölümünde duruyor.', 'success');
