@@ -3314,6 +3314,9 @@ HTML_TEMPLATE = """
             window.__xManualClusters = (rec.manualClusters || []);
             try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
             if (rec.editorStyle) { try { xApplyStyleOpts(rec.editorStyle); } catch (e) {} }
+            // [MANUEL HAVUZ] Overlay re-hidre edildi -> havuz bir sonraki poll'da YENİDEN çizilsin ki manuel
+            // bölümün başlığı/metni/görseli (overlay'den) havuz kartında görünsün (yenileme sonrası boş kalmasın).
+            try { window.__xPoolDirty = true; } catch (e) {}
         }
         function xAktifRaporId() { try { return localStorage.getItem('x_active_report_id') || ''; } catch (e) { return ''; } }
         window.xAktifRaporId = xAktifRaporId;
@@ -5308,6 +5311,9 @@ HTML_TEMPLATE = """
         function poolEscapeHtml(s) {
             return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         }
+        // [MANUEL HAVUZ] Manuel (xmanual://) tespiti XPlat'tan BAĞIMSIZ (yükleme yarışı: XPlat henüz
+        // yüklenmeden havuz render edilirse manuel ham link olarak sızıyordu -> "Tekil öğe" + xmanual://).
+        function poolIsManual(link) { return !!link && String(link).toLowerCase().indexOf('xmanual://') === 0; }
         // [EŞLEŞME] Editör overlay'i (window.__xEditorOverlay) -> havuz görünümü: düzenlenen başlık/link/görsel
         // havuz listesinde de görünsün (editör ile birebir eşleşme). Ham title/link'e YAZILMAZ (yalnız gösterim).
         function poolOverlayFor(link) { try { var ov = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {}; return ov[xOvKey(link || '')] || null; } catch (e) { return null; } }
@@ -5343,7 +5349,7 @@ HTML_TEMPLATE = """
             if (t) return t;
             // [MANUEL HAVUZ] Mavi grup başlığı DAİMA başlıktır: başlık (overlay h2 / title) yoksa BOŞ kalır.
             // (Metin önizlemesi YALNIZ kartın alt satırında; grup başlığına metin/"Manuel bölüm" KOYMA.)
-            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) return '';
+            if (items && items[0] && poolIsManual(items[0].link)) return '';
             // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
             // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
             if (group) return (window.XPlat ? XPlat.groupFallbackTitle(group)
@@ -5389,7 +5395,7 @@ HTML_TEMPLATE = """
             // yana içerikleri birleşir ama araya manuel/başka hesap girince O NOKTADA bölünür (editör/Word ile
             // aynı). Manuel yoksa eski tam-birleşme (hash) davranışı korunur.
             var _poolHasManual = false;
-            for (var _ph = 0; _ph < list.length; _ph++) { if (list[_ph] && list[_ph].link && window.XPlat && XPlat.isManual(list[_ph].link)) { _poolHasManual = true; break; } }
+            for (var _ph = 0; _ph < list.length; _ph++) { if (list[_ph] && poolIsManual(list[_ph].link)) { _poolHasManual = true; break; } }
             var blocks = [], byKey = {};
             if (_poolHasManual) {
                 var _prevG = null, _curBlk = null;
@@ -5488,7 +5494,7 @@ HTML_TEMPLATE = """
                         thumb = '<div class="item-thumb pool-noimg">Görsel yok</div>';
                     }
                     // [MANUEL HAVUZ] Manuel bölüm kartı artık GERÇEK içeriğini gösterir: başlık (varsa) + metin önizlemesi (alt satır) + ilk görsel (thumb).
-                    var _isMan = !!(window.XPlat && XPlat.isManual(x.link));
+                    var _isMan = poolIsManual(x.link);
                     var _manMetin = _isMan ? poolEffMetin(x, 120) : '';
                     var _linkHtml = (x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok'
                         : _isMan ? (_manMetin ? poolEscapeHtml(_manMetin) : ((_effLink && _effLink !== x.link) ? poolEscapeHtml(_effLink) : ''))
@@ -5512,6 +5518,7 @@ HTML_TEMPLATE = """
         // XPlat yoksa 'x'e duser (eski davranis: tek bolum, gorunum bozulmaz).
         function poolPlatformOf(item) {
             try {
+                if (poolIsManual(item && item.link)) return 'manual';   // XPlat yüklü olmasa da manuel doğru bölümlenir
                 if (window.XPlat && item && item.link) return XPlat.platform(item.link);
             } catch (e) {}
             return 'x';
