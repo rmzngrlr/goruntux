@@ -8044,6 +8044,46 @@ X_EDITOR_JS = r'''
     }
     try{ if(window.xEdRaporAdiDoldur) window.xEdRaporAdiDoldur(); }catch(_){ }   // açılışta mevcut adla doldur
   }
+  // [TOOLTIP] Temaya uygun özel tooltip: native 'title' yerine tek yüzen #ed-tip. Delegasyon -> tüm
+  // butonlar/etiketler otomatik kapsanır (dinamik render dahil). title -> data-tip'e taşınır (native sustur).
+  var _tipEl=null, _tipTmr=null;
+  function _edAktifMi(){ var m=document.getElementById('editorModal'); return !!(m && m.classList.contains('active')); }
+  function _tipHedef(t){ return (t && t.closest) ? t.closest('[title],[data-tip]') : null; }
+  function _tipMetin(el){ var t=el.getAttribute('data-tip'); if(t==null){ t=el.getAttribute('title'); if(t!=null){ el.setAttribute('data-tip', t); el.removeAttribute('title'); } } return t||''; }
+  function _tipGoster(el, text){
+    var tip=document.getElementById('ed-tip'); if(!tip) return;
+    tip.textContent=text; tip.style.display='block'; tip.style.visibility='hidden'; tip.style.left='0px'; tip.style.top='0px'; tip.style.removeProperty('--ok');
+    var r=el.getBoundingClientRect(); var tw=tip.offsetWidth, th=tip.offsetHeight;
+    var cx=r.left + r.width/2;
+    var left=cx - tw/2; if(left<6) left=6; if(left+tw>window.innerWidth-6) left=window.innerWidth-tw-6;
+    var top=r.bottom + 9, pos='alt';
+    if(top+th>window.innerHeight-6){ top=r.top - th - 9; pos='ust'; }   // yer yoksa üstüne
+    var ok=cx-left; if(ok<12) ok=12; if(ok>tw-12) ok=tw-12;             // ok öğenin ortasına baksın
+    tip.style.left=Math.round(left)+'px'; tip.style.top=Math.round(top)+'px';
+    tip.setAttribute('data-pos', pos); tip.style.setProperty('--ok', Math.round(ok)+'px');
+    tip.style.visibility='visible';
+  }
+  function _tipGizle(){ var tip=document.getElementById('ed-tip'); if(tip) tip.style.display='none'; }
+  function _tooltipKur(){
+    if(window.__edTipKur) return; window.__edTipKur=true;
+    var tip=document.createElement('div'); tip.id='ed-tip'; tip.style.display='none'; (document.body||document.documentElement).appendChild(tip);
+    document.addEventListener('mouseover', function(e){
+      if(!_edAktifMi()) return;
+      var el=_tipHedef(e.target); if(!el || !_edAktifMi() || !document.getElementById('editorModal').contains(el)) return;
+      if(el===_tipEl) return; _tipEl=el;
+      var t=_tipMetin(el); clearTimeout(_tipTmr); _tipGizle();
+      if(!t) return;
+      _tipTmr=setTimeout(function(){ if(_tipEl===el) _tipGoster(el, t); }, 350);
+    });
+    document.addEventListener('mouseout', function(e){
+      var el=_tipHedef(e.target); if(!el) return;
+      if(e.relatedTarget && el.contains(e.relatedTarget)) return;   // çocuğa geçiş -> gizleme
+      if(el===_tipEl) _tipEl=null;
+      clearTimeout(_tipTmr); _tipGizle();
+    });
+    document.addEventListener('mousedown', function(){ clearTimeout(_tipTmr); _tipGizle(); _tipEl=null; }, true);
+    window.addEventListener('scroll', function(){ clearTimeout(_tipTmr); _tipGizle(); }, true);
+  }
   // [SAYFA NO] Şeritteki "Sayfa no" menüsünü doldurur (butona tıklayınca açılır; bağlama _panelCiz post-render'da).
   // Değerler gizli backing input'lara (pn_on/pn_pos/pn_align/pn_fmt) yazılır -> xBuildStyleOpts -> docx. Yalnız Word çıktısı.
   function _sayfaNoMenuCiz(){
@@ -8089,6 +8129,12 @@ X_EDITOR_JS = r'''
 /* [ŞERİT GRUPLARI] Word gibi ayraçlı gruplar: her grup kendi içinde sıkı, gruplar arası dikey çizgi. */
 #editorModal .ed-grp{display:inline-flex;align-items:center;gap:7px;padding-right:12px;border-right:1px solid #bcc6d1;min-height:30px;}
 #editorModal .ed-grp:last-child{border-right:none;padding-right:0;}
+/* [TOOLTIP] Temaya uygun özel tooltip (native 'title' yerine). Koyu, oklu, yumuşak giriş; body'ye eklenir. */
+#ed-tip{position:fixed;z-index:3000;background:#1f2a37;color:#f2f6f9;font-size:12px;font-weight:600;line-height:1.38;padding:7px 11px;border-radius:9px;max-width:270px;box-shadow:0 8px 22px rgba(10,16,24,0.34);pointer-events:none;letter-spacing:.1px;white-space:normal;animation:edTipIn .12s ease;}
+#ed-tip::after{content:'';position:absolute;left:var(--ok,50%);transform:translateX(-50%);border:6px solid transparent;}
+#ed-tip[data-pos="alt"]::after{bottom:100%;border-bottom-color:#1f2a37;}
+#ed-tip[data-pos="ust"]::after{top:100%;border-top-color:#1f2a37;}
+@keyframes edTipIn{from{opacity:0;transform:translateY(-2px);}to{opacity:1;transform:translateY(0);}}
 #editorModal .ed-panel label{display:flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;}
 #editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:4px 6px;border:1px solid #d0d7de;border-radius:7px;color:#15202b;background:#fff;height:30px;box-sizing:border-box;}
 #editorModal .ed-panel select:focus,#editorModal .ed-panel input:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
@@ -8434,6 +8480,7 @@ X_EDITOR_JS = r'''
     _sagTikKur();       // SAĞ-TIK biçim paneli: başlık (tüm başlık) + metin seçimi (satır-içi) (bir kez)
     _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
     _raporAdiKur();     // [RAPOR ADI] üst çubuk inline ad alanı: dinleyiciler (bir kez) + mevcut adla doldur
+    _tooltipKur();      // [TOOLTIP] temaya uygun özel tooltip sistemi (bir kez)
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
@@ -8858,7 +8905,7 @@ X_EDITOR_JS = r'''
       var gorsel = imgUrl ? ('<div class="ed-gal-img"><img src="'+imgUrl+'" alt=""></div>') : '';
       var govde = '';
       if(!ust && !gorsel){ govde = metin ? ('<div class="ed-gal-metin">'+esc(metin)+'</div>') : '<div class="ed-gal-bas ed-gal-bassiz">(içeriksiz bölüm)</div>'; }
-      h+='<div class="ed-gal-card" draggable="true" data-i="'+i+'"><div class="ed-gal-no">'+(i+1)+'</div>'+ust+gorsel+govde+'</div>';
+      h+='<div class="ed-gal-card" draggable="true" data-i="'+i+'" title="Sürükleyerek bölümün sırasını değiştir"><div class="ed-gal-no">'+(i+1)+'</div>'+ust+gorsel+govde+'</div>';
     }
     h+='</div>';
     root.innerHTML=h;
@@ -9405,7 +9452,7 @@ X_EDITOR_JS = r'''
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
     function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">'+(hep?'+ Bölüm Ekle':'+ Bölüm')+'</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
-    function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya ekle">+</button><span class="ed-pz-menu">'
+    function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya içerik ekle — başlık, metin, görsel veya link">+</button><span class="ed-pz-menu">'
       +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
       +'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="metin">Metin</button>'
       // [ÇOKLU GÖRSEL] AÇIK: tek "Görsel" -> kutu açar (içinde Ctrl+V + 📁 PC-seç). KAPALI: eski Görsel+Pano.
