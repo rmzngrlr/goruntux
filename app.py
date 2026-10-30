@@ -7631,10 +7631,31 @@ X_EDITOR_JS = r'''
     if((m=st.match(/font-size\s*:\s*([\d.]+)(pt|px)/i))){ var num=parseFloat(m[1]); var pt=(m[2].toLowerCase()==='px')?Math.round(num/1.3333):num; if(pt) out+='font-size:'+pt+'pt;'; }
     return out;
   }
+  // [YAPIŞTIRMA SATIR SONU] Blok elemanları (<div>/<p>/...) SATIR SINIRIDIR. Eskiden sanitizeMetin bunları
+  // açıp atıyordu -> çok-satırlı/boşluklu yapıştırma kapat-aç'ta BİRLEŞİYORDU. Blokları <br>'ye çevir:
+  // her bloğun önüne (önceki içerik varsa) sınır <br>; boş-blok placeholder <br>'ini KALDIR (çift sayma yok).
+  // İç içe bloklar önce düzlenir; inline biçim (b/i/u/span) sonraki walk'ta korunur.
+  var _BLOK_ET={div:1,p:1,li:1,ul:1,ol:1,section:1,article:1,header:1,footer:1,main:1,aside:1,nav:1,h1:1,h2:1,h3:1,h4:1,h5:1,h6:1,blockquote:1,pre:1,figure:1,figcaption:1,table:1,thead:1,tbody:1,tr:1,dl:1,dt:1,dd:1};
+  function _oncekiIcerikVar(c){ var p=c.previousSibling; while(p){ if(p.nodeType===1) return true; if(p.nodeType===3 && String(p.nodeValue).replace(/\s+/g,'')!=='') return true; p=p.previousSibling; } return false; }
+  function _blokDuzle(node){
+    var kids=Array.prototype.slice.call(node.childNodes);
+    kids.forEach(function(c){
+      if(c.nodeType!==1) return;
+      var tag=c.tagName.toLowerCase();
+      if(_BLOK_ET[tag]){
+        _blokDuzle(c);   // önce iç içe blokları düzle
+        if(c.childNodes.length===1 && c.firstChild.nodeType===1 && c.firstChild.tagName && c.firstChild.tagName.toLowerCase()==='br'){ c.removeChild(c.firstChild); }   // boş-blok placeholder <br>'i
+        if(_oncekiIcerikVar(c)){ node.insertBefore(document.createElement('br'), c); }   // satır sınırı
+        while(c.firstChild) node.insertBefore(c.firstChild, c);   // bloğu aç
+        node.removeChild(c);
+      } else { _blokDuzle(c); }   // inline içinde iç içe blok (nadir)
+    });
+  }
   // Zengin metin: b/strong/i/em/u/br + font/renk/boyut taşıyan span'ler korunur (seçime özel biçim).
   // Diğer etiketler açılır (içerik kalır); stil-tabanlı kalın/eğik/altçizgi b/i/u'ya sarılır.
   function sanitizeMetin(html){
     try{ var d=document.createElement('div'); d.innerHTML=String(html==null?'':html);
+      _blokDuzle(d);   // [YAPIŞTIRMA SATIR SONU] blokları <br>'ye çevir (inline walk'tan ÖNCE)
       (function walk(n){ var kids=Array.prototype.slice.call(n.childNodes);
         kids.forEach(function(c){
           if(c.nodeType===1){ var tag=c.tagName.toLowerCase();
