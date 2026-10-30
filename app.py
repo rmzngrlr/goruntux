@@ -3341,6 +3341,26 @@ HTML_TEMPLATE = """
                 return (_bi == null || _bi === '' || _bi === id);
             } catch (e) { return false; }
         }
+        // [VERİ KAYBI FİX — REBUILD] Havuz geri-yükleme özelliği açık mı ('0' -> eski davranış, geri-alınabilir).
+        function xHavuzGeriYukleAcik() { try { return localStorage.getItem('x_havuz_geri_yukle') !== '0'; } catch (e) { return true; } }
+        // [VERİ KAYBI FİX — REBUILD] Sunucu havuzu (Docker rebuild ile) sıfırlanınca aktif raporun öğelerini
+        // snapshot'tan SUNUCU HAVUZUNA re-push eder (openSavedReport'un AĞIR yolu DEĞİL: overlay/editör belgesine
+        // DOKUNMAZ, flush ETMEZ). Böylece xBuildReport havuzdan tam öğeleri tekrar okur -> boş/kısmi ezme olmaz.
+        // Görseller XLocalImages'ta (IndexedDB, sunucu-reset'ten etkilenmez) -> yalnız title/link re-push yeter.
+        async function xHavuzuSnapshottanGeriYukle(id) {
+            try { var _cur = ((await fetch('/api/pool/data').then(function (r) { return r.json(); })).items) || []; if (_cur.length) return true; } catch (e) {}   // kuyruk beklerken dolduysa no-op
+            var rec = null; try { rec = await window.XSavedReports.get(id); } catch (e) {}
+            if (!rec || !rec.items || !rec.items.length) return false;   // snapshot'ta re-push edilecek havuz öğesi yok
+            try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
+            for (var j = 0; j < rec.items.length; j++) {
+                var it = rec.items[j];
+                var body = { title: it.title || '', link: it.link || '', local: true };
+                if (it.is_profile) { body.is_profile = true; }
+                if (it.group_override) { body.group_override = it.group_override; }
+                try { await fetch('/api/manual/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); } catch (e) {}
+            }
+            return true;
+        }
         // Faz 3: URL yardımcıları. Pathname'in İLK segmenti = rapor slug'ı (/<slug>).
         function xUrlSlugOku() {
             try { var p = (window.location.pathname || '/').replace(/^\/+/, '').split('/')[0]; return p ? decodeURIComponent(p) : ''; } catch (e) { return ''; }
@@ -4730,6 +4750,7 @@ HTML_TEMPLATE = """
                 // Not: Eski üst-sağ "Rapor Editörü" butonu KALDIRILDI. Elle rapor oluşturma artık
                 //      Raporlarım'daki "➕ Boş Rapor" kartından (yeni rapor + editör açılır).
                 if (data.manuel_count > 0) {
+                    window.__xBosPollSayac = 0;   // [VERİ KAYBI FİX — REBUILD] havuz dolu -> beklenmedik-boş sayacını sıfırla (geçici iç-temizleme elendi)
                     if (titleEl) {
                         titleEl.innerHTML = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4" width="11" height="13" rx="1.5"/><path d="M7.5 4V2.8h5V4"/><path d="M7.5 8.5h5M7.5 11.5h5M7.5 14.5h3"/></svg><span>Havuzda Bekleyen Rapor İçerikleri (' + data.manuel_count + ' Adet)</span>';
                     }
@@ -4752,13 +4773,46 @@ HTML_TEMPLATE = """
                         }
                     }
                 } else {
-                    manualListSec.style.display = 'none';
-                    container.innerHTML = '';
                     // Faz 2: içerik DOLUyken boşaldıysa (silme/sıfırla) aktif rapora boş durumu da yaz.
                     var _vardiMi = (window.lastManuelListJson !== null) || window.__xPoolDirty;
-                    window.lastManuelListJson = null;
-                    window.__xPoolDirty = false;
-                    if (_vardiMi) { try { xOtoKayitPlanla(); } catch (e) {} }
+                    var _aktId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
+                    // [VERİ KAYBI FİX — REBUILD] Havuz BEKLENMEDİK boşaldıysa (önceden doluydu + aktif rapor + AÇIK
+                    // boşaltma DEĞİL + geri-yükleme uçuşta DEĞİL) muhtemelen sunucu-reset (Docker rebuild). Geçici
+                    // iç-temizlemeleri (openSavedReport/merge) elemek için 2 ARDIŞIK boş poll bekle; sonra havuzu
+                    // snapshot'tan re-push ile GERİ YÜKLE ve BU ARADA boş/kısmi oto-kaydı YAPMA (snapshot korunur).
+                    var _rebuildAday = (xHavuzGeriYukleAcik() && _vardiMi && _aktId && !window.__xPoolRestoreBusy
+                        && !window.__xRaporYukleniyor && !(typeof xBosaltIzni === 'function' && xBosaltIzni(_aktId)));
+                    if (window.__xPoolRestoreBusy) {
+                        // geri-yükleme uçuşta -> bu poll'da HİÇBİR ŞEY yapma (gizleme YOK, boş-kayıt YOK, içeriği KORU).
+                    } else if (_rebuildAday) {
+                        window.__xBosPollSayac = (window.__xBosPollSayac || 0) + 1;
+                        if (window.__xBosPollSayac >= 2) {
+                            window.__xPoolRestoreBusy = true;
+                            try { window.__xRaporYukleniyor = true; } catch (e) {}   // geri-yükleme boyunca TÜM auto-save BLOKE (boş-ezme olmaz)
+                            (function () {
+                                var _geri = false;
+                                xSiraya(function () { return xHavuzuSnapshottanGeriYukle(_aktId); })
+                                    .then(function (ok) { _geri = !!ok; try { if (ok && typeof showToast === 'function') showToast('Havuz sunucudan sıfırlanmış — rapor geri yüklendi.', 'warning'); } catch (e) {} })
+                                    .catch(function (e) { console.error('Havuz geri-yükleme hatası:', e); })
+                                    .then(function () {
+                                        try { window.__xRaporYukleniyor = false; } catch (e) {}
+                                        window.__xPoolRestoreBusy = false;
+                                        window.__xBosPollSayac = 0;
+                                        if (_geri) { try { refreshStatus(); } catch (e) {} }   // havuz doldu -> hemen yeniden çiz
+                                        else { window.lastManuelListJson = null; window.__xPoolDirty = false; }   // snapshot'ta pool öğesi yok -> gerçek boş, bırak
+                                    });
+                            })();
+                        }
+                        // sayac < 2 -> bu poll bekle: gizleme/boş-kayıt YAPMA (önceki havuz görünümü KORUNUR).
+                    } else {
+                        // Kasıtlı boşaltma (Sıfırla/son-öğe-silme) veya gerçek boş -> eski davranış.
+                        window.__xBosPollSayac = 0;
+                        manualListSec.style.display = 'none';
+                        container.innerHTML = '';
+                        window.lastManuelListJson = null;
+                        window.__xPoolDirty = false;
+                        if (_vardiMi) { try { xOtoKayitPlanla(); } catch (e) {} }
+                    }
                 }
 
                 // CANLI EDİTÖR: editör AÇIKken havuza YENİ içerik düşünce (eklenti/tarama -> öğe sayısı arttı)
