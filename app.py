@@ -5313,6 +5313,23 @@ HTML_TEMPLATE = """
         function poolOverlayFor(link) { try { var ov = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {}; return ov[xOvKey(link || '')] || null; } catch (e) { return null; } }
         function poolEffLink(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'link' && p.url != null && p.url !== '') return p.url; } } return x.link || ''; }
         function poolEffThumb(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'gorsel' && p.b64) return 'data:' + (p.mime || 'image/jpeg') + ';base64,' + p.b64; } } return null; }
+        // [MANUEL HAVUZ] Manuel bölümün efektif başlığı: editör overlay başlığı (h2) -> yoksa ham title -> yoksa ''. "Manuel bölüm" sabiti YOK.
+        function poolEffTitle(x) { var ov = poolOverlayFor(x.link); if (ov && ov.h2 != null && String(ov.h2).trim() !== '') return String(ov.h2).trim(); return (x.title || '').trim(); }
+        // [MANUEL HAVUZ] Manuel metninden birkaç cümlelik önizleme (overlay parcalar 'metin' -> HTML temizle -> kırp). Metin yoksa ''.
+        function poolEffMetin(x, maxLen) {
+            maxLen = maxLen || 120;
+            var ov = poolOverlayFor(x.link); if (!ov || !ov.parcalar) return '';
+            var t = '';
+            for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i];
+                if (p && p.tur === 'metin' && p.metin) {
+                    var s = String(p.metin).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&lt;/gi, '<').replace(/&gt;/gi, '>').replace(/\s+/g, ' ').trim();
+                    if (s) t += (t ? ' ' : '') + s;
+                }
+                if (t.length >= maxLen) break;
+            }
+            if (t.length > maxLen) t = t.slice(0, maxLen).replace(/\s+\S*$/, '') + '…';
+            return t;
+        }
         function poolBlockLabel(items, group) {
             // [EŞLEŞME] editörde düzenlenen bölüm başlığı (overlay h2) varsa havuz blok başlığı da onu göster.
             if (items) { for (var _k = 0; _k < items.length; _k++) { var _ov = poolOverlayFor(items[_k].link); if (_ov && _ov.h2 != null && String(_ov.h2).trim() !== '') return String(_ov.h2); } }
@@ -5324,8 +5341,8 @@ HTML_TEMPLATE = """
                 if (x.indexOf('(') !== -1) { t = x; break; }
             }
             if (t) return t;
-            // Manuel (xmanual://) öğe: başlığı boşsa "Manuel bölüm" göster (ham link gösterme).
-            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) return 'Manuel bölüm';
+            // [MANUEL HAVUZ] Manuel (xmanual://) öğe: başlık yoksa metin önizlemesi; o da yoksa '' (artık "Manuel bölüm" demeyiz).
+            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) { var _mt = poolEffMetin(items[0], 48); return _mt || ''; }
             // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
             // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
             if (group) return (window.XPlat ? XPlat.groupFallbackTitle(group)
@@ -5469,13 +5486,16 @@ HTML_TEMPLATE = """
                     } else {
                         thumb = '<div class="item-thumb pool-noimg">Görsel yok</div>';
                     }
+                    // [MANUEL HAVUZ] Manuel bölüm kartı artık GERÇEK içeriğini gösterir: başlık (varsa) + metin önizlemesi (alt satır) + ilk görsel (thumb).
+                    var _isMan = !!(window.XPlat && XPlat.isManual(x.link));
+                    var _manMetin = _isMan ? poolEffMetin(x, 120) : '';
                     var _linkHtml = (x.link && x.link.indexOf('rt:') === 0) ? 'RT gönderisi — bağlantı yok'
-                        : (window.XPlat && XPlat.isManual(x.link)) ? ((_effLink && _effLink !== x.link) ? poolEscapeHtml(_effLink) : 'Manuel bölüm — bağlantı yok')
+                        : _isMan ? (_manMetin ? poolEscapeHtml(_manMetin) : ((_effLink && _effLink !== x.link) ? poolEscapeHtml(_effLink) : ''))
                         : poolEscapeHtml(_effLink || 'Link yok');
                     html += '<div class="pool-item" draggable="false" data-pool-index="' + poolIdx + '" data-blockkey="' + poolEscapeHtml(blk.key) + '">' +
                             '<span class="pool-grip">⠿</span>' +
                             thumb +
-                            '<div class="item-text"><div class="item-title">' + poolEscapeHtml(x.title || ((window.XPlat && XPlat.isManual(x.link)) ? 'Manuel bölüm' : '')) + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
+                            '<div class="item-text"><div class="item-title">' + poolEscapeHtml(_isMan ? poolEffTitle(x) : (x.title || '')) + (x.is_profile ? '<span class="pool-badge">profil</span>' : '') + '</div>' +
                             '<div class="item-link">' + _linkHtml + '</div></div>' +
                             '<button class="btn btn-danger-action btn-sm" draggable="false" onclick="deleteManualItem(' + x.index + ')" style="background: rgba(224, 36, 94, 0.1); border: 1px solid rgba(224, 36, 94, 0.2); color: var(--danger-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;">Sil</button>' +
                             '</div>';
