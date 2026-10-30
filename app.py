@@ -1707,6 +1707,8 @@ HTML_TEMPLATE = """
             justify-content: flex-end;
             background: rgba(10, 15, 24, 0.5);
         }
+        /* [TEMA] Diyalog/modal altbilgisi açık temada beyaz gövdeyle uyumlu olsun (koyu yarı-saydam -> gri kalıyordu). */
+        body.light-theme .modal-footer { background: #f5f8fa; }
 
         /* Tweet Hover Preview Popover Styles */
         #tweet-preview-popover {
