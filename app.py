@@ -4792,7 +4792,7 @@ HTML_TEMPLATE = """
                             (function () {
                                 var _geri = false;
                                 xSiraya(function () { return xHavuzuSnapshottanGeriYukle(_aktId); })
-                                    .then(function (ok) { _geri = !!ok; try { if (ok && typeof showToast === 'function') showToast('Havuz sunucudan sıfırlanmış — rapor geri yüklendi.', 'warning'); } catch (e) {} })
+                                    .then(function (ok) { _geri = !!ok; })   // [SESSİZ] geri-yükleme bildirimi kaldırıldı (kullanıcı isteği)
                                     .catch(function (e) { console.error('Havuz geri-yükleme hatası:', e); })
                                     .then(function () {
                                         try { window.__xRaporYukleniyor = false; } catch (e) {}
