@@ -8793,6 +8793,11 @@ X_EDITOR_JS = r'''
       h+='<label class="rt-row">Font <select class="rt-font"><option value="">(değiştirme)</option>'+fontOpts+'</select></label>';
       h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(curSize))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+curColor+'"></label></div>';
       h+='<div class="rt-row rt-biu"><button type="button" class="rt-tgl" data-c="bold" title="Kalın"><b>B</b></button><button type="button" class="rt-tgl" data-c="italic" title="Eğik"><i>I</i></button><button type="button" class="rt-tgl" data-c="underline" title="Altı çizili"><u>U</u></button></div>';
+      // [HARF DÜZENİ] Word'deki "Aa" -> seçili metnin büyük/küçük harf düzeni (biçimi korur). Bayrak x_harf_duzeni='0' gizler.
+      var _harfAcik=true; try{ if(localStorage.getItem('x_harf_duzeni')==='0') _harfAcik=false; }catch(_){}
+      if(_harfAcik){
+        h+='<label class="rt-row">Harf <select class="rt-harf"><option value="">Aa (düzen)</option><option value="sentence">Tümce düzeni</option><option value="lower">küçük harf</option><option value="upper">BÜYÜK HARF</option><option value="title">Her Sözcüğü Büyük Harfle Başlat</option><option value="toggle">tOGGLE (ters çevir)</option></select></label>';
+      }
       // [SATIR-İÇİ LİNK] seçim link içindeyse "Linki kaldır", değilse URL girişi (seçim URL ise ön-dolu) + "Link yap"
       var _selTxt2=(info.range?String(info.range).trim():'');
       var _preUrl2=(/^\S+\.\S+/.test(_selTxt2) && !/\s/.test(_selTxt2)) ? _selTxt2 : '';
@@ -8810,6 +8815,8 @@ X_EDITOR_JS = r'''
       p.querySelector('.rt-size').addEventListener('change', function(){ if(this.value) _inlineUygula('size',this.value); });
       p.querySelector('.rt-color').addEventListener('input', function(){ _inlineUygula('color',this.value); });   // [RENK ANLIK] seçerken uygula
       p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ _inlineUygula(b.getAttribute('data-c'),null); b.classList.toggle('aktif'); }); });
+      // [HARF DÜZENİ] seçimden uygula, sonra seçimi '' yap ki aynı seçenek tekrar tetiklenebilsin + panel açık kalsın
+      var _hf=p.querySelector('.rt-harf'); if(_hf){ _hf.addEventListener('change', function(){ if(this.value){ _inlineHarf(this.value); this.value=''; } }); }
       // [SATIR-İÇİ LİNK] handler'lar
       var _lkYap=p.querySelector('.rt-linkyap'), _lkInput=p.querySelector('.rt-linkurl'), _lkSil=p.querySelector('.rt-linksil');
       if(_lkYap && _lkInput){ _lkYap.addEventListener('click', function(){ _inlineLink(_lkInput.value); _sagTikKapat(); }); _lkInput.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); _inlineLink(_lkInput.value); _sagTikKapat(); } }); }
@@ -8867,6 +8874,47 @@ X_EDITOR_JS = r'''
     _inlineBusy=false;
     try{ var ns=window.getSelection(); if(ns.rangeCount) _rtInfo.range=ns.getRangeAt(0).cloneRange(); }catch(_){}
     _metinKaydet(el);
+  }
+  // [HARF DÜZENİ] Seçili metnin harf düzenini değiştir. Biçimi (link/renk/font span) KORUR:
+  // seçimdeki metin düğümlerini (text node) topla -> tek metin gibi dönüştür (karakter sayısı sabit) -> aynı düğümlere geri yaz.
+  function _inlineHarf(mode){
+    var el=_rtInfo&&_rtInfo.metinEl, rng=_rtInfo&&_rtInfo.range; if(!el||!rng) return;
+    XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
+    try{ el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); }catch(e){ _inlineBusy=false; return; }
+    try{
+      var range=sel.getRangeAt(0); if(range.collapsed){ _inlineBusy=false; return; }
+      var pieces=[], full='';
+      var walker=document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+      var n;
+      while(n=walker.nextNode()){
+        if(!range.intersectsNode(n)) continue;
+        var s=0, e=n.data.length;
+        if(n===range.startContainer && range.startContainer.nodeType===3) s=range.startOffset;
+        if(n===range.endContainer && range.endContainer.nodeType===3) e=range.endOffset;
+        if(s>=e) continue;
+        pieces.push({node:n,s:s,e:e,base:full.length}); full+=n.data.substring(s,e);
+      }
+      if(pieces.length){
+        var out=_harfDonustur(full, mode);
+        for(var i=0;i<pieces.length;i++){ var pc=pieces[i]; var seg=out.substr(pc.base, pc.e-pc.s); pc.node.data = pc.node.data.substring(0,pc.s)+seg+pc.node.data.substring(pc.e); }
+        try{ var first=pieces[0], last=pieces[pieces.length-1]; var nr=document.createRange(); nr.setStart(first.node, first.s); nr.setEnd(last.node, last.e); sel.removeAllRanges(); sel.addRange(nr); }catch(_){}
+      }
+    }catch(e){}
+    _inlineBusy=false;
+    try{ var ns=window.getSelection(); if(ns.rangeCount) _rtInfo.range=ns.getRangeAt(0).cloneRange(); }catch(_){}
+    _metinKaydet(el);
+  }
+  // [HARF DÜZENİ] Türkçe-duyarlı dönüşüm (i<->İ, ı<->I doğru). Karakter SAYISINI değiştirmez.
+  function _harfDonustur(t, mode){
+    function U(x){ try{ return x.toLocaleUpperCase('tr-TR'); }catch(_){ return x.toUpperCase(); } }
+    function L(x){ try{ return x.toLocaleLowerCase('tr-TR'); }catch(_){ return x.toLowerCase(); } }
+    function harfMi(c){ return U(c)!==L(c); }   // harf = büyük/küçük karşılığı farklı olan karakter
+    if(mode==='upper') return U(t);
+    if(mode==='lower') return L(t);
+    if(mode==='toggle'){ var o=''; for(var i=0;i<t.length;i++){ var c=t.charAt(i), cu=U(c), cl=L(c); o+=(c===cu && c!==cl)?cl:cu; } return o; }
+    if(mode==='title'){ var low=L(t), r='', yeni=true; for(var j=0;j<low.length;j++){ var ch=low.charAt(j); if(/\s/.test(ch)){ r+=ch; yeni=true; } else if(yeni && harfMi(ch)){ r+=U(ch); yeni=false; } else { r+=ch; if(harfMi(ch)) yeni=false; } } return r; }
+    if(mode==='sentence'){ var lw=L(t), s2='', cap=true; for(var k=0;k<lw.length;k++){ var d=lw.charAt(k); if(cap && harfMi(d)){ s2+=U(d); cap=false; } else { s2+=d; } if(/[.!?…]/.test(d)||/[\r\n]/.test(d)) cap=true; } return s2; }
+    return t;
   }
   // [SATIR-İÇİ LİNK] Seçim bir <a> içinde mi? (Link kaldır seçeneğini göstermek için.)
   function _linkIcinde(range){ try{ var n=range&&range.commonAncestorContainer; n=(n&&n.nodeType===1)?n:(n&&n.parentNode); return !!(n&&n.closest&&n.closest('a')); }catch(e){ return false; } }
