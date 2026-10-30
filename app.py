@@ -1872,6 +1872,9 @@ HTML_TEMPLATE = """
     <!-- Mobil tespiti: <html>'e x-mobile sınıfı ekle (UA; iPadOS 'masaüstü' UA -> dokunmatik+Mac kalıbı).
          Body'den ÖNCE çalışır -> CSS anında uygular, FLASH olmaz. YALNIZ Otomatik(eklenti) sekmesini etkiler. -->
     <script>(function(){try{var ua=navigator.userAgent||'';if(/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints&&navigator.maxTouchPoints>1)){document.documentElement.classList.add('x-mobile');}}catch(e){}})();</script>
+    <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
+         yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
+    <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
     <div class="container">
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
