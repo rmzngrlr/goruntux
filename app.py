@@ -8053,6 +8053,8 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-tgl b{font-weight:800;} #ed-rt-panel .rt-tgl i{font-style:italic;font-family:Georgia,serif;} #ed-rt-panel .rt-tgl u{text-decoration:underline;}
 #ed-rt-panel .rt-reset{width:100%;border:1px solid #d7dde3;background:#f6f8fa;color:#3a4654;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:600;cursor:pointer;}
 #ed-rt-panel .rt-reset:hover{background:#fdecef;border-color:#f3b6c4;color:#c81e4f;}
+#ed-rt-panel .rt-reset:disabled{opacity:.45;cursor:default;}
+#ed-rt-panel .rt-reset:disabled:hover{background:#f6f8fa;border-color:#d7dde3;color:#3a4654;}
 #ed-rt-panel .rt-reset.rt-linksil{display:inline-flex;align-items:center;justify-content:center;gap:6px;color:#1565c0;}
 #ed-rt-panel .rt-reset.rt-linksil:hover{background:#fdecef;border-color:#f3b6c4;color:#c81e4f;}
 #ed-rt-panel .rt-linkrow{display:flex;align-items:center;gap:6px;}
@@ -8830,9 +8832,11 @@ X_EDITOR_JS = r'''
       }
       h+='</div>';
       h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-tum">Tüm görsellere uygula</button></div>';
-      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-genel">↺ Genel ayara dön</button></div>';
+      // [GÖRSEL HİZA] override yoksa (zaten genel ayarda) "Genel ayara dön" PASİF -> dönülecek bir şey yok.
+      var _hasOv=(_gp.align!=null);
+      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-genel"'+(_hasOv?'':' disabled')+'>↺ Genel ayara dön</button></div>';
       p.innerHTML=h;
-      p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
+      p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); var _gb=p.querySelector('.rt-img-genel'); if(_gb) _gb.disabled=false; }); });   // hiza seçilince override oluştu -> "Genel ayara dön" aktifleşir
       p.querySelector('.rt-img-tum').addEventListener('click', function(){ var _gp2=(XE.belge.birimler[info.bi].item.parcalar||[])[info.pp]||{}; XE._gorselHizaTum(gorselEfHiza(_gp2.align,stilOku())); _sagTikKapat(); });
       p.querySelector('.rt-img-genel').addEventListener('click', function(){ XE._gorselHiza(info.bi,info.pp,''); _sagTikKapat(); });
     } else if(info.mode==='heading'){
