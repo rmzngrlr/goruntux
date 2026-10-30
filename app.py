@@ -1895,10 +1895,6 @@ HTML_TEMPLATE = """
                 <!-- Kayıtlı Raporlar (yerel, çoklu, 1 hafta). Görünürlüğünü renderSavedReports() yönetir;
                      kayıt yoksa gizli. v4.0'da bu sekmenin ÜSTÜNE taşındı (Word aracı altta). -->
                 <div id="saved-reports-section" class="card" style="display: none; margin-bottom: 24px;">
-                    <h4 class="x-shead" style="margin: 0 0 4px 0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2a1 1 0 0 1 1-1h3.1l1.3 1.6h7.6a1 1 0 0 1 1 1v6.4a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1z"/></svg>Raporlarım</h4>
-                    <div style="font-size: 12px; color: var(--text-secondary, #8899a6); margin-bottom: 14px;">
-                        Bu cihazda yerel olarak saklanır (sunucuya gitmez). İstediğin kadar rapor saklayabilirsin. Birden çok raporu işaretleyince alttan toplu işlem çubuğu gelir.
-                    </div>
                     <div id="saved-reports-list"></div>
                 </div>
 
