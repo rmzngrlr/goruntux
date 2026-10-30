@@ -7882,7 +7882,7 @@ X_EDITOR_JS = r'''
 /* [BAĞLAM] Font'un solunda "şu an düzenlenen öğe" göstergesi (etiket) / başlık türü açılır menüsü. */
 /* [ŞERİT SABİT HİZA] Etiket metni (Başlık/Link/Metin/Platform Adı) farklı genişlikte -> şerit kayıyordu.
    Sabit genişlik + ORTALI metin -> "Font" ve sonrası DAİMA aynı yatay konumda kalır, yalnız etiket değişir. */
-#editorModal .ed-ctx{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;box-sizing:border-box;width:96px;flex:none;padding:0 10px;margin-right:4px;border:1px solid #cfe0f5;background:#eef5ff;border-radius:7px;font-size:11px;font-weight:700;color:#1565c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#editorModal .ed-ctx{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:30px;box-sizing:border-box;width:106px;flex:none;padding:0 10px;margin-right:4px;border:1px solid #cfe0f5;background:#eef5ff;border-radius:7px;font-size:13px;font-weight:700;color:#1565c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 #editorModal .ed-ctx-sel{font-weight:600;}
 #editorModal .ed-ctx-sel .ed-ctx-ad{color:#57606a;font-weight:700;}
 #editorModal .ed-ctx select{height:24px;padding:2px 4px;border:1px solid #cfe0f5;border-radius:6px;background:#fff;color:#15202b;font-size:12px;font-weight:600;cursor:pointer;}
