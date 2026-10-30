@@ -8324,7 +8324,7 @@ X_EDITOR_JS = r'''
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=hval('font',ids.font);
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=hval('word',ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:(key==='b1'?'Heading1':'Heading2'); } }   // başlık odaklıysa efektif düzey; değilse genel
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
-      var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox'||ctrl.type==='color')?'change':'input';
+      var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox')?'change':'input';   // [RENK ANLIK] color da 'input' -> seçerken uygulanır
       // [4]: stil kontrolüne ODAKLANINCA ön-anlık al, değişince TEK adım işle (sayı girişinde her tuşta
       // yığını taşırma). Eski çift 'input' bağlaması (number) KALDIRILDI (ev zaten 'input').
       ctrl.addEventListener('focus', function(){ XE._alanOdak(); });
@@ -8777,7 +8777,7 @@ X_EDITOR_JS = r'''
       var ws=p.querySelector('.rt-word'); if(ws) ws.value=_rtEff(bi,rol,'word');
       p.querySelector('.rt-font').addEventListener('change', function(){ XE._hOvSec(bi,rol,'font',this.value); });
       p.querySelector('.rt-size').addEventListener('change', function(){ XE._hOvSec(bi,rol,'size',this.value); });
-      p.querySelector('.rt-color').addEventListener('change', function(){ XE._hOvSec(bi,rol,'color',this.value); });
+      p.querySelector('.rt-color').addEventListener('input', function(){ XE._hOvSec(bi,rol,'color',this.value); });   // [RENK ANLIK] seçerken uygula
       p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ var c=b.getAttribute('data-c'); var nv=!_rtEff(bi,rol,c); XE._hOvSec(bi,rol,c,nv); b.classList.toggle('aktif',nv); }); });
       p.querySelectorAll('.rt-hb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._hOvSec(bi,rol,'align',v); p.querySelectorAll('.rt-hb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
       p.querySelector('.rt-word').addEventListener('change', function(){ XE._hOvSec(bi,rol,'word', this.value); });   // bu başlığa özel Word düzeyi
@@ -8808,7 +8808,7 @@ X_EDITOR_JS = r'''
       p.querySelector('.rt-temizle').addEventListener('click', function(){ _inlineTemizle(); _sagTikKapat(); });
       p.querySelector('.rt-font').addEventListener('change', function(){ if(this.value) _inlineUygula('font',this.value); });
       p.querySelector('.rt-size').addEventListener('change', function(){ if(this.value) _inlineUygula('size',this.value); });
-      p.querySelector('.rt-color').addEventListener('change', function(){ _inlineUygula('color',this.value); });
+      p.querySelector('.rt-color').addEventListener('input', function(){ _inlineUygula('color',this.value); });   // [RENK ANLIK] seçerken uygula
       p.querySelectorAll('.rt-tgl').forEach(function(b){ b.addEventListener('click', function(){ _inlineUygula(b.getAttribute('data-c'),null); b.classList.toggle('aktif'); }); });
       // [SATIR-İÇİ LİNK] handler'lar
       var _lkYap=p.querySelector('.rt-linkyap'), _lkInput=p.querySelector('.rt-linkurl'), _lkSil=p.querySelector('.rt-linksil');
@@ -8840,10 +8840,14 @@ X_EDITOR_JS = r'''
     if(prop==='bold'||prop==='italic'||prop==='underline'){
       try{ document.execCommand('styleWithCSS', false, false); }catch(_){}
       try{ document.execCommand(prop, false, null); }catch(_){}
+    } else if(prop==='color'){
+      // [RENK ANLIK] execCommand foreColor -> renk seçicide ANLIK (input) uygulanınca tekrar tekrar İÇ İÇE span
+      // oluşmaz (browser var olan rengi günceller; _spanSar her input'ta yeni span sarardı).
+      try{ document.execCommand('styleWithCSS', false, true); }catch(_){}
+      try{ document.execCommand('foreColor', false, value); }catch(_){}
     } else {
       var so={};
       if(prop==='font') so.fontFamily="'"+value+"', sans-serif";
-      else if(prop==='color') so.color=value;
       else if(prop==='size') so.fontSize=(parseInt(value,10)||12)+'pt';
       _spanSar(so);
     }
@@ -9080,16 +9084,20 @@ X_EDITOR_JS = r'''
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('click', function(e){ var a=e.target&&e.target.closest?e.target.closest('a'):null; if(a){ e.preventDefault(); } });   // [SATIR-İÇİ LİNK] editörde link'e tıklayınca gezinme (düzenleme için)
       el.addEventListener('paste', function(e){
-        // [DÜZ-METİN YAPIŞTIR] Normal Ctrl+V kaynağın font/renk/boyut/arka-plan biçimini getirip metni "bozuyordu"
-        // (X'ten yapıştırınca arka bant vb.) -> VARSAYILAN "stili eşleştir": DÜZ METİN ekle, satır sonlarını koru.
-        // Bayrak x_duz_yapistir='0' -> eski zengin yapıştırma (sanitizeMetin font/renk/boyut korur). Biçimi SONRADAN
-        // seçip araç çubuğundan uygulayabilirsin.
-        try{ if(localStorage.getItem('x_duz_yapistir')==='0') return; }catch(_){}
         try{
           var cd=e.clipboardData||window.clipboardData; if(!cd||!cd.getData) return;
           var txt=cd.getData('text/plain');
           if(txt==null||txt===''){ var _h=cd.getData('text/html'); if(_h){ var _tmp=document.createElement('div'); _tmp.innerHTML=_h; txt=_tmp.innerText||_tmp.textContent||''; } }
-          if(txt==null||txt==='') return;   // metin yok (ör. görsel) -> varsayılan davranış
+          if(txt==null||txt===''){
+            // [GÖRSELİ METNE YAPIŞTIRMA] metin yok + panoda GÖRSEL var -> metin ögesine YAPIŞTIRMA (görsel kutusuna yapıştır).
+            var hasImg=false; try{ var its=cd.items||[]; for(var j=0;j<its.length;j++){ if(its[j]&&its[j].type&&its[j].type.indexOf('image/')===0){ hasImg=true; break; } } }catch(_){}
+            if(hasImg){ e.preventDefault(); try{ if(window.showToast) window.showToast('Görsel metin alanına yapıştırılamaz — bir görsel kutusuna yapıştırın.','warning'); }catch(_){} }
+            return;   // görselse engellendi; ne metin ne görselse varsayılan
+          }
+          // [DÜZ-METİN YAPIŞTIR] Normal Ctrl+V kaynağın font/renk/boyut/arka-plan biçimini getirip metni "bozuyordu"
+          // (X'ten yapıştırınca arka bant vb.) -> VARSAYILAN "stili eşleştir": DÜZ METİN ekle, satır sonlarını koru.
+          // Bayrak x_duz_yapistir='0' -> eski zengin yapıştırma. Biçimi SONRADAN seçip araç çubuğundan uygula.
+          if(localStorage.getItem('x_duz_yapistir')==='0') return;
           e.preventDefault();
           var html=esc(String(txt)).replace(/\r\n?/g,'\n').replace(/\n/g,'<br>');
           document.execCommand('insertHTML', false, html);
