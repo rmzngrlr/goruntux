@@ -8129,6 +8129,30 @@ X_EDITOR_JS = r'''
     document.addEventListener('mousedown', function(){ clearTimeout(_tipTmr); _tipGizle(); _tipEl=null; }, true);
     window.addEventListener('scroll', function(){ clearTimeout(_tipTmr); _tipGizle(); }, true);
   }
+  // [LIGHTBOX] Görsele çift tık -> tam ekran görüntüleyici: görsel ekran sınırlarına SIĞDIRILIR (contain),
+  // boşluklar aynı görselin BLUR'lu dolgusu; X ya da ESC ile çıkış (arka plana tıklama da kapatır).
+  function _lightboxKur(){
+    if(window.__edLbKur) return; window.__edLbKur=true;
+    document.addEventListener('dblclick', function(e){
+      var m=document.getElementById('editorModal'); if(!m || !m.classList.contains('active')) return;
+      var img=(e.target && e.target.closest) ? e.target.closest('.ed-img') : null;
+      if(img && img.getAttribute('src')){ e.preventDefault(); _lightboxAc(img.getAttribute('src')); }
+    });
+    document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ var lb=document.getElementById('ed-lightbox'); if(lb && lb.classList.contains('acik')){ e.preventDefault(); _lightboxKapat(); } } });
+  }
+  function _lightboxAc(src){
+    var lb=document.getElementById('ed-lightbox');
+    if(!lb){ lb=document.createElement('div'); lb.id='ed-lightbox'; (document.body||document.documentElement).appendChild(lb);
+      lb.addEventListener('click', function(e){ if(!(e.target && e.target.closest && e.target.closest('.ed-lb-img'))) _lightboxKapat(); });   // görsel dışına tıkla -> kapat
+    }
+    var bg=document.createElement('img'); bg.className='ed-lb-bg'; bg.setAttribute('aria-hidden','true'); bg.src=src;
+    var im=document.createElement('img'); im.className='ed-lb-img'; im.src=src;
+    var btn=document.createElement('button'); btn.className='ed-lb-kapat'; btn.type='button'; btn.title='Kapat (ESC)'; btn.innerHTML='&#10005;';
+    btn.addEventListener('click', function(e){ e.stopPropagation(); _lightboxKapat(); });
+    lb.innerHTML=''; lb.appendChild(bg); lb.appendChild(im); lb.appendChild(btn);
+    lb.classList.add('acik');
+  }
+  function _lightboxKapat(){ var lb=document.getElementById('ed-lightbox'); if(lb){ lb.classList.remove('acik'); lb.innerHTML=''; } }
   // [SAYFA NO] Şeritteki "Sayfa no" menüsünü doldurur (butona tıklayınca açılır; bağlama _panelCiz post-render'da).
   // Değerler gizli backing input'lara (pn_on/pn_pos/pn_align/pn_fmt) yazılır -> xBuildStyleOpts -> docx. Yalnız Word çıktısı.
   function _sayfaNoMenuCiz(){
@@ -8398,6 +8422,14 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-linkyap{flex:none;width:34px;height:28px;border:1px solid #cfe0f5;background:#eef5ff;color:#1565c0;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
 #ed-rt-panel .rt-linkyap:hover{background:#1565c0;color:#fff;border-color:#1565c0;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
+/* [LIGHTBOX] Görsele çift tık -> tam ekran: görsel contain (ekrana sığar), boşluklar aynı görselin blur dolgusu. X/ESC/arka-plan kapatır. */
+#ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#05070b;cursor:zoom-out;}
+#ed-lightbox.acik{display:flex;animation:edLbIn .16s ease;}
+#ed-lightbox .ed-lb-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(30px) brightness(.5);transform:scale(1.12);pointer-events:none;}
+#ed-lightbox .ed-lb-img{position:relative;max-width:94vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 14px 50px rgba(0,0,0,0.6);cursor:default;}
+#ed-lightbox .ed-lb-kapat{position:fixed;top:16px;right:18px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .12s;}
+#ed-lightbox .ed-lb-kapat:hover{background:rgba(0,0,0,0.78);}
+@keyframes edLbIn{from{opacity:0;}to{opacity:1;}}
 
 /* ================= [DARK TEMA] Editör karanlık tema (app dark iken; body.light-theme'de orijinal açık CSS kalır) ================= */
 body:not(.light-theme) #editorModal.modal{background:#0f1621;}
@@ -8599,6 +8631,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
     _raporAdiKur();     // [RAPOR ADI] üst çubuk inline ad alanı: dinleyiciler (bir kez) + mevcut adla doldur
     _tooltipKur();      // [TOOLTIP] temaya uygun özel tooltip sistemi (bir kez)
+    _lightboxKur();     // [LIGHTBOX] görsele çift tık -> tam ekran görüntüleyici (bir kez)
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
