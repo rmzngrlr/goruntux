@@ -5766,13 +5766,13 @@ HTML_TEMPLATE = """
                 // K'inci oge. Havuz DOM'u da ayni sirada (renderPoolGrouped + .docx AYNI gruplama/
                 // profil-once) -> tiklanan .pool-item'in DOM indexi = onizlemedeki img indexi.
                 try {
-                    if (item && container) {
-                        var _tumOgeler = Array.prototype.slice.call(container.querySelectorAll('.pool-item'));
-                        var _k = _tumOgeler.indexOf(item);
-                        if (_k >= 0) {
-                            // Faz 7: havuz kartına tıklama -> editörü aç + o karta kaydır.
-                            if (window.XEditor) { window.XEditor.ac({ scrollIndex: _k, fresh: true }); }
-                        }
+                    if (item) {
+                        // [KAYDIRMA FİX] XE._kaydir item.index (1-tabanlı) eşler; data-pool-index = item.index-1 (0-tabanlı)
+                        // -> +1 ile gerçek item.index'i geç (DOM pozisyonu _k off-by-one + grup/profil-sırası hatalıydı).
+                        var _pi = parseInt(item.getAttribute('data-pool-index'), 10);
+                        var _idx = isNaN(_pi) ? null : (_pi + 1);
+                        // Faz 7: havuz kartına tıklama -> editörü aç + o bölümün BAŞLIĞI üst sınırda olacak şekilde kaydır.
+                        if (window.XEditor) { window.XEditor.ac(_idx != null ? { scrollIndex: _idx, fresh: true } : { fresh: true }); }
                     }
                 } catch (e) {}
             }
@@ -8711,7 +8711,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       if(XE._galeriModu && XE._galeriCiz){ XE._galeriCiz(); } else { XE._ciz(); }
       if(opts.fresh){ XE._dirty=false; XE._geriSifirla(); }   // FIX-DIRTY + geçmiş: yalnız GERÇEK taze açılışta sıfırla (yeniden-plan/ekle/sil/geri-al DEĞİL)
       _geriBtnGuncelle();
-      if(opts.scrollIndex!=null) setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 60);
+      if(opts.scrollIndex!=null){ setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 120); setTimeout(function(){ XE._kaydir(opts.scrollIndex); }, 360); }   // layout/görsel otursun diye iki kez (anlık)
     } catch(e){ if(root) root.innerHTML='<div class="ed-bos" style="color:#e0245e">Editör yüklenemedi: '+esc(e&&e.message||e)+'</div>'; }
     finally { try{ window.__xEdAcCalisiyor = false; }catch(e){} }
   };
@@ -9957,7 +9957,17 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     var B=XE.belge.birimler||[], hedef=-1, i;
     for(i=0;i<B.length;i++){ if(B[i].item && B[i].item.index===idx){ hedef=i; break; } }
     if(hedef<0) hedef=Math.max(0, Math.min(B.length-1, idx|0));
-    var card=root.querySelector('.ed-card[data-i="'+hedef+'"]'); if(card) card.scrollIntoView({behavior:'smooth', block:'start'});
+    // [BAŞLIK ÜST SINIR] bölümün BAŞLIĞI sticky şeridin HEMEN ALTINA gelsin (önceki bölüm görünmesin).
+    // Platform başlığı (ed-plat) varsa ondan, yoksa kart (ed-card, başlığı içinde) üstünden hesapla.
+    var card=root.querySelector('.ed-plat[data-i="'+hedef+'"]') || root.querySelector('.ed-card[data-i="'+hedef+'"]');
+    if(!card) return;
+    var pb=document.querySelector('#editorModal .preview-body');
+    if(!pb){ card.scrollIntoView({behavior:'smooth', block:'start'}); return; }
+    var serit=document.querySelector('#editorModal .ed-serit');
+    var seritH=serit?Math.round(serit.getBoundingClientRect().height):92;
+    var cardTop=card.getBoundingClientRect().top, pbTop=pb.getBoundingClientRect().top;
+    var hedefScroll=Math.max(0, Math.round(pb.scrollTop + (cardTop - pbTop) - seritH - 8));   // başlık şeridin hemen altında (8px nefes)
+    pb.scrollTop=hedefScroll;   // ANLIK (smooth bu bağlamda güvenilmez -> kaydırmıyordu)
   };
 
   // toItems: YALNIZ havuz öğeleri (manuel bloklar hariç -> onlar __birimler ile docx'e gider, gruplamaya girmez).
