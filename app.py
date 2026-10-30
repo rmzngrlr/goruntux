@@ -8163,11 +8163,10 @@ X_EDITOR_JS = r'''
   function _lightboxAc(src){
     var lb=document.getElementById('ed-lightbox');
     if(!lb){ lb=document.createElement('div'); lb.id='ed-lightbox'; (document.body||document.documentElement).appendChild(lb); }   // kapanış YALNIZ X / ESC (arka-plan tıklaması YOK)
-    var bg=document.createElement('img'); bg.className='ed-lb-bg'; bg.setAttribute('aria-hidden','true'); bg.src=src;
     var im=document.createElement('img'); im.className='ed-lb-img'; im.src=src;
     var btn=document.createElement('button'); btn.className='ed-lb-kapat'; btn.type='button'; btn.title='Kapat (ESC)'; btn.innerHTML='&#10005;';
     btn.addEventListener('click', function(e){ e.stopPropagation(); _lightboxKapat(); });
-    lb.innerHTML=''; lb.appendChild(bg); lb.appendChild(im); lb.appendChild(btn);
+    lb.innerHTML=''; lb.appendChild(im); lb.appendChild(btn);   // arka plan = backdrop-filter ile BLUR'LU EDİTÖR (ayrı görsel yok)
     lb.classList.add('acik');
   }
   function _lightboxKapat(){ var lb=document.getElementById('ed-lightbox'); if(lb){ lb.classList.remove('acik'); lb.innerHTML=''; } }
@@ -8464,9 +8463,9 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-linkyap:hover{background:#1565c0;color:#fff;border-color:#1565c0;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 /* [LIGHTBOX] Görsele çift tık -> tam ekran: görsel contain (ekrana sığar), boşluklar aynı görselin blur dolgusu. X/ESC/arka-plan kapatır. */
-#ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#05070b;}
+/* Arka plan = backdrop-filter ile ARKADAKİ EDİTÖR ekranının blur'u (boşluklar blurlu editör); görsel sharp üstte. */
+#ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:rgba(6,9,14,0.55);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);}
 #ed-lightbox.acik{display:flex;animation:edLbIn .16s ease;}
-#ed-lightbox .ed-lb-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(30px) brightness(.5);transform:scale(1.12);pointer-events:none;}
 #ed-lightbox .ed-lb-img{position:relative;max-width:94vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 14px 50px rgba(0,0,0,0.6);cursor:default;}
 #ed-lightbox .ed-lb-kapat{position:fixed;top:16px;right:18px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .12s;}
 #ed-lightbox .ed-lb-kapat:hover{background:rgba(0,0,0,0.78);}
