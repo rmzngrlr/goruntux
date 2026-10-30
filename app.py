@@ -8023,7 +8023,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
 #editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
 /* [RAPOR ADI] Üst çubukta (galeri butonunun solunda) tek-tıkla düzenlenen rapor adı. Koyu başlıkta açık metin. */
-#editorModal .ed-rapor-adi{background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;padding:6px 10px;min-width:150px;max-width:300px;margin-right:8px;outline:none;transition:background .12s,border-color .12s;box-sizing:border-box;}
+#editorModal .ed-rapor-adi{background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;text-align:right;padding:6px 10px;min-width:150px;max-width:300px;margin-right:8px;outline:none;transition:background .12s,border-color .12s;box-sizing:border-box;}
 #editorModal .ed-rapor-adi::placeholder{color:var(--text-secondary,#8899a6);font-weight:500;}
 #editorModal .ed-rapor-adi:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.14);}
 #editorModal .ed-rapor-adi:focus{background:rgba(255,255,255,0.11);border-color:#1d9bf0;}
