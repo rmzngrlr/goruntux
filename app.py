@@ -1812,7 +1812,7 @@ HTML_TEMPLATE = """
         .x-gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 18px; }
         .x-gal-card { position: relative; cursor: pointer; border-radius: 10px; }
         /* [KART HOVER] kutu ZIPLAMASIN (translateY kaldırıldı) -> hover'da yalnız çerçeve mavilensin. */
-        .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); transition: border-color .12s ease; }
+        .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--bg-card); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); transition: border-color .12s ease; }
         .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); }
         .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
         .x-gal-pageinner { padding: 16px 15px 30px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent); mask-image: linear-gradient(to bottom, #000 68%, transparent); }
@@ -1831,7 +1831,7 @@ HTML_TEMPLATE = """
         .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
         .x-gal-ara { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
         .x-gal-card:hover .x-gal-ara { opacity: 1; }
-        .x-gal-ikon { width: 28px; height: 28px; border: 1px solid var(--border-color, rgba(136,153,166,0.3)); border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: var(--card-bg, #15202b); color: var(--text-secondary, #8899a6); padding: 0; transition: all .12s ease; }
+        .x-gal-ikon { width: 28px; height: 28px; border: 1px solid var(--border-color, rgba(136,153,166,0.3)); border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; background: var(--bg-card); color: var(--text-secondary, #8899a6); padding: 0; transition: all .12s ease; }
         .x-gal-ikon:hover { color: var(--accent-color); border-color: var(--accent-color); }
         .x-gal-ikon svg { width: 15px; height: 15px; display: block; }
         .x-gal-yeni { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 176px; border: 2px dashed var(--border-color, rgba(136,153,166,0.45)); border-radius: 8px; color: var(--text-secondary, #8899a6); gap: 6px; transition: all .12s ease; }
@@ -8393,6 +8393,71 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-linkyap{flex:none;width:34px;height:28px;border:1px solid #cfe0f5;background:#eef5ff;color:#1565c0;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
 #ed-rt-panel .rt-linkyap:hover{background:#1565c0;color:#fff;border-color:#1565c0;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
+
+/* ================= [DARK TEMA] Editör karanlık tema (app dark iken; body.light-theme'de orijinal açık CSS kalır) ================= */
+body:not(.light-theme) #editorModal.modal{background:#0f1621;}
+body:not(.light-theme) #editorModal .preview-body{background:#0f1621;scrollbar-color:#3a4a5c #17212e;}
+body:not(.light-theme) #editorModal .preview-body::-webkit-scrollbar-track{background:#17212e;}
+body:not(.light-theme) #editorModal .preview-body::-webkit-scrollbar-thumb{background:#3a4a5c;border-color:#17212e;}
+body:not(.light-theme) #editorModal .preview-body::-webkit-scrollbar-thumb:hover{background:#4a5c70;border-color:#17212e;}
+body:not(.light-theme) #editorModal .ed-serit{background:linear-gradient(#17212e,#141d28);border-bottom-color:#2c3a4a;box-shadow:0 1px 4px rgba(0,0,0,0.3);}
+body:not(.light-theme) #editorModal .ed-root{color:#e7e9ea;}
+body:not(.light-theme) #editorModal .ed-panel label{color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-panel select,body:not(.light-theme) #editorModal .ed-panel input[type=number],body:not(.light-theme) #editorModal .ed-panel input[type=color],body:not(.light-theme) #editorModal .ed-ctx select,body:not(.light-theme) #editorModal .ed-sira-no,body:not(.light-theme) #editorModal .ed-metin-sil,body:not(.light-theme) #editorModal .ed-tur{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-ls-btn,body:not(.light-theme) #editorModal .ed-sn-opt,body:not(.light-theme) #editorModal .ed-tab{background:#1b2735;color:#c5cfda;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-ls-btn b{color:#e7e9ea;}
+body:not(.light-theme) #editorModal .ed-ls-menu,body:not(.light-theme) #editorModal .ed-sn-menu,body:not(.light-theme) #editorModal .ed-pz-menu,body:not(.light-theme) #editorModal .ed-pe-menu,body:not(.light-theme) #ed-rt-panel{background:#17212e;border-color:#2c3a4a;color:#e7e9ea;box-shadow:0 10px 30px rgba(0,0,0,0.55);}
+body:not(.light-theme) #editorModal .ed-ls-opt,body:not(.light-theme) #editorModal .ed-pe,body:not(.light-theme) #editorModal .ed-kume-opt{color:#c5cfda;}
+body:not(.light-theme) #editorModal .ed-ls-opt:hover,body:not(.light-theme) #editorModal .ed-pe:hover,body:not(.light-theme) #editorModal .ed-kume-opt:hover,body:not(.light-theme) #editorModal .ed-sn-opt:hover,body:not(.light-theme) #editorModal .ed-ls-btn:hover,body:not(.light-theme) #editorModal .ed-tab:hover{background:#1e3650;border-color:#2f5f8a;color:#e7e9ea;}
+body:not(.light-theme) #editorModal .ed-ls-sep,body:not(.light-theme) #editorModal .ed-sn-sep{background:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-sn-lbl,body:not(.light-theme) #editorModal .ed-ls-ok{color:#8a97a5;}
+body:not(.light-theme) #editorModal .ed-biu,body:not(.light-theme) #editorModal .ed-hiza{background:#222d3a;}
+body:not(.light-theme) #editorModal .ed-tgl,body:not(.light-theme) #editorModal .ed-hb,body:not(.light-theme) #editorModal .ed-sira-btn{color:#c5cfda;}
+body:not(.light-theme) #editorModal .ed-tgl:hover,body:not(.light-theme) #editorModal .ed-hb:hover,body:not(.light-theme) #editorModal .ed-sira-btn:hover:not([disabled]){background:#2f3e4e;}
+body:not(.light-theme) #editorModal .ed-tgl-metinli,body:not(.light-theme) #editorModal .ed-chk,body:not(.light-theme) #editorModal .ed-ustswap{background:#1b2735;border-color:#2c3a4a;color:#c5cfda;}
+body:not(.light-theme) #editorModal .ed-tgl-metinli:hover:not(:has(input:checked)){background:#1e3650;}
+body:not(.light-theme) #editorModal .ed-sira{background:#222d3a;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-ctx{background:#14314a;border-color:#2f5f8a;color:#6fb4ef;}
+body:not(.light-theme) #editorModal .ed-ctx select{background:#1b2735;color:#e7e9ea;border-color:#2f5f8a;}
+body:not(.light-theme) #editorModal .ed-grp{border-right-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-card{background:#17212e;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-plat{border-bottom-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-plat:hover{background:rgba(29,155,240,0.1);}
+body:not(.light-theme) #editorModal .ed-metin,body:not(.light-theme) #editorModal .ed-link-edit{background:#121b26;border-color:#2c3a4a;color:#e7e9ea;}
+body:not(.light-theme) #editorModal .ed-metin:focus,body:not(.light-theme) #editorModal .ed-link-edit:focus{background:rgba(29,161,242,0.08);border-color:#1d9bf0;}
+body:not(.light-theme) #editorModal .ed-metin a,body:not(.light-theme) #editorModal .ed-link{color:#4ea3ec;}
+body:not(.light-theme) #editorModal .ed-h2:hover{border-color:#3a4a5c;}
+body:not(.light-theme) #editorModal .ed-h2:focus{background:rgba(29,161,242,0.1);}
+body:not(.light-theme) #editorModal .ed-h2:empty:before,body:not(.light-theme) #editorModal .ed-metin:empty:before,body:not(.light-theme) #editorModal .ed-link-edit:empty:before,body:not(.light-theme) #editorModal .ed-parca-bos{color:#6b7785;}
+body:not(.light-theme) #editorModal .ed-img-pano{background:#15202d;border-color:#3a4a5c;color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-img-pano:focus{background:#1e3650;border-color:#1d9bf0;}
+body:not(.light-theme) #editorModal .ed-metin-ekle,body:not(.light-theme) #editorModal .ed-pe-btn{background:#1b2735;color:#4ea3ec;border-color:#3a4a5c;}
+body:not(.light-theme) #editorModal .ed-metin-ekle:hover,body:not(.light-theme) #editorModal .ed-pe-wrap:hover .ed-pe-btn{background:#1e3650;}
+body:not(.light-theme) #editorModal .ed-metin-sil:hover{background:#3a1f28;}
+body:not(.light-theme) #editorModal .ed-line{border-top-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-ikon-btn:hover:not(:disabled){background:#222d3a;}
+body:not(.light-theme) #editorModal .ed-tut:hover{background:#1e3650;color:#6fb4ef;border-color:#2f5f8a;}
+body:not(.light-theme) #editorModal .ed-kume-kalem:hover,body:not(.light-theme) #editorModal .ed-pz-wrap.acik .ed-kume-kalem{color:#6fb4ef;background:#1e3650;border-color:#2f5f8a;}
+body:not(.light-theme) #editorModal .ed-bolum-ekle,body:not(.light-theme) #editorModal .ed-pz-art,body:not(.light-theme) #editorModal .ed-kltut{background:#17314a;color:#6fb4ef;border-color:#2f5f8a;}
+body:not(.light-theme) #editorModal .ed-ekle-zon.ed-drop{background:#17314a;border-color:#1d9bf0;}
+body:not(.light-theme) #editorModal .ed-gal-card{background:#17212e;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-gal-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.4);}
+body:not(.light-theme) #editorModal .ed-gal-bas{color:#e7e9ea;}
+body:not(.light-theme) #editorModal .ed-gal-metin{color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-gal-img{background:#15202d;border-color:#2c3a4a;}
+body:not(.light-theme) #editorModal .ed-gal-ipucu{background:#15202d;border-color:#2c3a4a;color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-gal-ipucu b{color:#6fb4ef;}
+body:not(.light-theme) #editorModal .ed-ik-galeri.aktif{background:#15314a;}
+body:not(.light-theme) #editorModal .ed-bos{color:#9aa6b2;}
+body:not(.light-theme) #ed-rt-panel .rt-row{color:#9aa6b2;}
+body:not(.light-theme) #ed-rt-panel .rt-title{border-bottom-color:#2c3a4a;}
+body:not(.light-theme) #ed-rt-panel select,body:not(.light-theme) #ed-rt-panel input[type=number],body:not(.light-theme) #ed-rt-panel input[type=color],body:not(.light-theme) #ed-rt-panel .rt-linkurl{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}
+body:not(.light-theme) #ed-rt-panel .rt-biu,body:not(.light-theme) #ed-rt-panel .rt-hiza{background:#222d3a;}
+body:not(.light-theme) #ed-rt-panel .rt-tgl,body:not(.light-theme) #ed-rt-panel .rt-hb{color:#c5cfda;}
+body:not(.light-theme) #ed-rt-panel .rt-tgl:hover,body:not(.light-theme) #ed-rt-panel .rt-hb:hover{background:#2f3e4e;}
+body:not(.light-theme) #ed-rt-panel .rt-reset{background:#1b2735;color:#c5cfda;border-color:#2c3a4a;}
+body:not(.light-theme) #ed-rt-panel .rt-reset:hover{background:#3a1f28;border-color:#7a3a4a;color:#f08ca0;}
+body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:#2f5f8a;color:#6fb4ef;}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
 
