@@ -5341,8 +5341,9 @@ HTML_TEMPLATE = """
                 if (x.indexOf('(') !== -1) { t = x; break; }
             }
             if (t) return t;
-            // [MANUEL HAVUZ] Manuel (xmanual://) öğe: başlık yoksa metin önizlemesi; o da yoksa '' (artık "Manuel bölüm" demeyiz).
-            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) { var _mt = poolEffMetin(items[0], 48); return _mt || ''; }
+            // [MANUEL HAVUZ] Mavi grup başlığı DAİMA başlıktır: başlık (overlay h2 / title) yoksa BOŞ kalır.
+            // (Metin önizlemesi YALNIZ kartın alt satırında; grup başlığına metin/"Manuel bölüm" KOYMA.)
+            if (items && items[0] && window.XPlat && XPlat.isManual(items[0].link)) return '';
             // Faz FB-1: FB anahtarlari 'fb:' onekli -> XPlat onegi soyar/etiketler.
             // X/IG icin ifade BIREBIR ayni kalir (XPlat yoksa eski davranisa duser).
             if (group) return (window.XPlat ? XPlat.groupFallbackTitle(group)
