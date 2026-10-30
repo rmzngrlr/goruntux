@@ -3353,6 +3353,7 @@ HTML_TEMPLATE = """
             if (slug != null) { window.__xActiveReportSlug = String(slug); }
             window.__openReportName = window.__xActiveReportName || '';   // mevcut upsert/indir adı bununla uyumlu
             xAktifRaporCizgiCiz();
+            try { if (typeof xEdRaporAdiDoldur === 'function') xEdRaporAdiDoldur(); } catch (e) {}   // [RAPOR ADI] editör input'u senkron
             if (id) { xUrlRaporaGuncelle(window.__xActiveReportSlug || '', !!urlReplace); }   // Faz 3: adres çubuğu /<slug>
         }
         function xAktifRaporTemizle(urlReplace) {
@@ -3606,6 +3607,34 @@ HTML_TEMPLATE = """
             } catch (e) { showToast('Ad değiştirilemedi: ' + (e && e.message ? e.message : e), 'danger'); }
         }
         window.xAktifRaporAdiDegistir = xAktifRaporAdiDegistir;
+        // [RAPOR ADI] Editör üst çubuğundaki inline alandan rapor adını kaydet (PROMPT YOK): rename + URL /<slug> + liste.
+        // Enter veya blur (başka yere tıklama) çağırır. Boş/aynı ise mevcut ada geri döner (no-op). Arka planda snapshot'a yazılır.
+        async function xEdRaporAdiKaydet(yeni) {
+            var id = xAktifRaporId();
+            var input = document.getElementById('ed-rapor-adi');
+            var cur = window.__xActiveReportName || '';
+            yeni = (yeni || '').trim();
+            if (!id || !yeni || yeni === cur) { if (input) input.value = cur; return; }
+            try {
+                await window.XSavedReports.whenReady();
+                // KUYRUK: uçuştaki oto-kayıtla META yazma yarışı olmasın (rename ezilmesin).
+                var rmeta = await xSiraya(function () { return window.XSavedReports.rename(id, yeni); });
+                xAktifRaporKur(id, yeni, (rmeta && rmeta.slug) || null, true);   // ad + adres çubuğu /<slug> (replace)
+                if (input && document.activeElement !== input) input.value = window.__xActiveReportName || yeni;
+                try { await renderSavedReports(); } catch (e) {}
+            } catch (e) {
+                if (input) input.value = cur;   // hata -> eski ada dön
+                if (typeof showToast === 'function') showToast('Ad değiştirilemedi: ' + (e && e.message ? e.message : e), 'danger');
+            }
+        }
+        window.xEdRaporAdiKaydet = xEdRaporAdiKaydet;
+        // [RAPOR ADI] Editör açılınca / ad başka yerden değişince input'u aktif rapor adıyla doldur (kullanıcı yazarken EZME).
+        function xEdRaporAdiDoldur() {
+            var input = document.getElementById('ed-rapor-adi'); if (!input) return;
+            if (document.activeElement === input) return;
+            input.value = window.__xActiveReportName || '';
+        }
+        window.xEdRaporAdiDoldur = xEdRaporAdiDoldur;
         // Panel "💾 Kaydet" (indirmez): ad sor -> snapshot -> havuzu temizle.
         async function savePoolReport() {
             var btn = document.getElementById('save-btn');
@@ -5981,6 +6010,7 @@ HTML_TEMPLATE = """
                     </div>
                 </div>
                 <div style="display: flex; gap: 2px; align-items: center;">
+                    <input id="ed-rapor-adi" class="ed-rapor-adi" type="text" autocomplete="off" spellcheck="false" placeholder="Rapor adı" title="Rapor adını düzenle — Enter'a bas ya da başka yere tıkla; arka planda ve URL'de de güncellenir">
                     <button class="ed-ikon-btn ed-ik-galeri" onclick="window.XEditor &amp;&amp; window.XEditor.galeriToggle()" title="Galeri / Sırala: bölümleri kart ızgarasında sürükleyip sırala"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
@@ -7883,6 +7913,19 @@ X_EDITOR_JS = r'''
       else if(key==='y' || (key==='z' && e.shiftKey)){ e.preventDefault(); XE.ileriAl(); }
     });
   }
+  // [RAPOR ADI] Üst çubuktaki inline rapor adı alanı: Enter/blur -> kaydet (ana script window.xEdRaporAdiKaydet),
+  // Escape -> iptal. Dinleyiciler bir kez; her açılışta mevcut adla doldurulur (xEdRaporAdiDoldur).
+  function _raporAdiKur(){
+    var inp=document.getElementById('ed-rapor-adi'); if(!inp) return;
+    if(!inp._xKur){ inp._xKur=true;
+      inp.addEventListener('keydown', function(e){
+        if(e.key==='Enter'){ e.preventDefault(); inp.blur(); }                 // Enter -> blur -> kaydet
+        else if(e.key==='Escape'){ e.preventDefault(); try{ if(window.xEdRaporAdiDoldur) window.xEdRaporAdiDoldur(); }catch(_){ } inp.blur(); }   // iptal: eski ada dön
+      });
+      inp.addEventListener('blur', function(){ try{ if(window.xEdRaporAdiKaydet) window.xEdRaporAdiKaydet(inp.value); }catch(_){ } });
+    }
+    try{ if(window.xEdRaporAdiDoldur) window.xEdRaporAdiDoldur(); }catch(_){ }   // açılışta mevcut adla doldur
+  }
 
   var CSS = `
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
@@ -7979,6 +8022,11 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ikon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
 #editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
+/* [RAPOR ADI] Üst çubukta (galeri butonunun solunda) tek-tıkla düzenlenen rapor adı. Koyu başlıkta açık metin. */
+#editorModal .ed-rapor-adi{background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;padding:6px 10px;min-width:150px;max-width:300px;margin-right:8px;outline:none;transition:background .12s,border-color .12s;box-sizing:border-box;}
+#editorModal .ed-rapor-adi::placeholder{color:var(--text-secondary,#8899a6);font-weight:500;}
+#editorModal .ed-rapor-adi:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.14);}
+#editorModal .ed-rapor-adi:focus{background:rgba(255,255,255,0.11);border-color:#1d9bf0;}
 #editorModal .ed-ik-nav:hover:not(:disabled),#editorModal .ed-ik-indir:hover:not(:disabled){color:#1565c0;}
 #editorModal .ed-ik-galeri:hover:not(:disabled){color:#1565c0;}
 #editorModal .ed-ik-galeri.aktif{color:#1d9bf0;background:#e8f4fd;}
@@ -8214,6 +8262,7 @@ X_EDITOR_JS = r'''
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
     _sagTikKur();       // SAĞ-TIK biçim paneli: başlık (tüm başlık) + metin seçimi (satır-içi) (bir kez)
     _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
+    _raporAdiKur();     // [RAPOR ADI] üst çubuk inline ad alanı: dinleyiciler (bir kez) + mevcut adla doldur
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
