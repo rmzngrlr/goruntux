@@ -2310,6 +2310,11 @@ HTML_TEMPLATE = """
                 <input type="checkbox" id="m_space_before" style="display:none">
                 <input type="checkbox" id="m_space_after" style="display:none">
                 <input type="hidden" id="b_after" value="6">   <!-- [BAŞLIK–PARAGRAF] başlık–paragraf boşluğu (pt); şeritte Başlık grubundan ayarlanır -->
+                <!-- [SAYFA NO] Üst çubuk "Sayfa no" menüsünden ayarlanır; burada yalnız kalıcılık için gizli backing. Yalnız Word çıktısı. -->
+                <input type="checkbox" id="pn_on" style="display:none">
+                <input type="hidden" id="pn_pos" value="footer">
+                <input type="hidden" id="pn_align" value="right">
+                <input type="hidden" id="pn_fmt" value="plain">
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -4196,7 +4201,11 @@ HTML_TEMPLATE = """
                 m_line: gv('m_line', '1.0'),              // [SATIR ARALIĞI] metin satır aralığı (Word w:line; çıktı)
                 m_space_before: gc('m_space_before', false),   // [SATIR ARALIĞI] paragraftan önce boşluk
                 m_space_after: gc('m_space_after', false),     // [SATIR ARALIĞI] paragraftan sonra boşluk
-                g_align: gv('g_align', 'left')   // [GÖRSEL HİZA] genel görsel hizalaması (Sol/Orta/Sağ)
+                g_align: gv('g_align', 'left'),   // [GÖRSEL HİZA] genel görsel hizalaması (Sol/Orta/Sağ)
+                pn_on: gc('pn_on', false),        // [SAYFA NO] sayfa numarası açık mı (Word çıktısı)
+                pn_pos: gv('pn_pos', 'footer'),   // footer(altta)/header(üstte)
+                pn_align: gv('pn_align', 'right'),// left/center/right
+                pn_fmt: gv('pn_fmt', 'plain')     // plain="1" / sayfa="Sayfa 1" / xofn="1 / N"
             };
         }
 
@@ -4209,7 +4218,7 @@ HTML_TEMPLATE = """
         // Anahtarlar input id'leriyle birebir (b1_font -> #b1_font). Onay kutuları .checked, diğerleri .value.
         function xApplyStyleOpts(o) {
             if (!o) return;
-            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1,b_basliksiz:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1, m_space_before:1,m_space_after:1 };
+            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1,b_basliksiz:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1, m_space_before:1,m_space_after:1, pn_on:1 };
             Object.keys(o).forEach(function (k) {
                 var e = document.getElementById(k); if (!e) return;
                 if (checks[k]) { e.checked = !!o[k]; } else { e.value = o[k]; }
@@ -4226,7 +4235,8 @@ HTML_TEMPLATE = """
             l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
             m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left',
             m_line: '1.0', m_space_before: false, m_space_after: false,   // [SATIR ARALIĞI] standart: tek satır, boşluk yok (eski çıktı birebir)
-            g_align: 'left'   // [GÖRSEL HİZA] standart: sola (mevcut çıktı birebir korunur)
+            g_align: 'left',   // [GÖRSEL HİZA] standart: sola (mevcut çıktı birebir korunur)
+            pn_on: false, pn_pos: 'footer', pn_align: 'right', pn_fmt: 'plain'   // [SAYFA NO] standart: kapalı (altta sağda "1" açıldığında)
         };
         function xStandartStiliUygula() { try { xApplyStyleOpts(STANDART_STIL); } catch (e) {} }
         window.xStandartStiliUygula = xStandartStiliUygula;
@@ -4241,7 +4251,8 @@ HTML_TEMPLATE = """
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
                     'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align',
                     'm_line','m_space_before','m_space_after',
-                    'g_align'];
+                    'g_align',
+                    'pn_on','pn_pos','pn_align','pn_fmt'];
         }
         function xSaveStyles() {
             try {
@@ -6022,6 +6033,10 @@ HTML_TEMPLATE = """
                 </div>
                 <div style="display: flex; gap: 2px; align-items: center;">
                     <input id="ed-rapor-adi" class="ed-rapor-adi" type="text" autocomplete="off" spellcheck="false" placeholder="Rapor adı" title="Rapor adını düzenle — Enter'a bas ya da başka yere tıkla; arka planda ve URL'de de güncellenir">
+                    <div class="ed-sn">
+                        <button id="ed-sayfano-btn" class="ed-ikon-btn ed-ik-sayfano" title="Sayfa numarası (yalnız Word çıktısı)"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M7.3 3.5L5.7 16.5"/><path d="M14.3 3.5L12.7 16.5"/><path d="M4 7.5h13"/><path d="M3 12.5h13"/></svg></button>
+                        <div id="ed-sayfano-menu" class="ed-sn-menu" style="display:none"></div>
+                    </div>
                     <button class="ed-ikon-btn ed-ik-galeri" onclick="window.XEditor &amp;&amp; window.XEditor.galeriToggle()" title="Galeri / Sırala: bölümleri kart ızgarasında sürükleyip sırala"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
@@ -7125,7 +7140,35 @@ LOCAL_DOCX_JS = r'''
       }
     }
 
-    var sectPr='<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
+    // [SAYFA NO] opts.pn_on -> altbilgi/üstbilgi parçası ( PAGE alanı ) + sectPr referansı + rels + content-type.
+    // Varsayılan kapalı -> hiçbir şey eklenmez (eski çıktı birebir). Konum footer/header, hizalama, biçim seçilir.
+    var _pnRef='', _pnPart=null, _pnRel='', _pnCT='';
+    if(opts.pn_on){
+      var _pnHeader=(opts.pn_pos==='header');
+      var _pnAl=(opts.pn_align==='left'||opts.pn_align==='center')?opts.pn_align:'right';
+      var _pnFmt=opts.pn_fmt||'plain';
+      var _pnTag=_pnHeader?'w:hdr':'w:ftr';
+      var _pnFile=_pnHeader?'header1.xml':'footer1.xml';
+      var _pnRefTag=_pnHeader?'w:headerReference':'w:footerReference';
+      var _pnRelType=_pnHeader?'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header':'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer';
+      var _pnCTType=_pnHeader?'application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml':'application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml';
+      var _pnId='rIdPageNo';
+      function _pnFld(instr){ return '<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> '+instr+' </w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>'; }
+      function _pnTxt(t){ return '<w:r><w:t xml:space="preserve">'+xmlEsc(t)+'</w:t></w:r>'; }
+      var _pnInner=(_pnFmt==='sayfa') ? (_pnTxt('Sayfa ')+_pnFld('PAGE'))
+                 : (_pnFmt==='xofn') ? (_pnFld('PAGE')+_pnTxt(' / ')+_pnFld('NUMPAGES'))
+                 : _pnFld('PAGE');
+      var _pnXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        +'<'+_pnTag+' xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        +'<w:p><w:pPr><w:jc w:val="'+_pnAl+'"/></w:pPr>'+_pnInner+'</w:p>'
+        +'</'+_pnTag+'>';
+      _pnRef='<'+_pnRefTag+' w:type="default" r:id="'+_pnId+'"/>';
+      _pnPart={name:'word/'+_pnFile, data:enc.encode(_pnXml)};
+      _pnRel='<Relationship Id="'+_pnId+'" Type="'+_pnRelType+'" Target="'+_pnFile+'"/>';
+      _pnCT='<Override PartName="/word/'+_pnFile+'" ContentType="'+_pnCTType+'"/>';
+    }
+    // sectPr öğe sırası: (header/footer)Reference -> pgSz -> pgMar (şema sırası).
+    var sectPr='<w:sectPr>'+_pnRef+'<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
     var documentXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
       + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
@@ -7141,6 +7184,7 @@ LOCAL_DOCX_JS = r'''
       var r=rels[ri];
       relsXml += '<Relationship Id="'+r.id+'" Type="'+r.type+'" Target="'+xmlEsc(r.target)+'"'+(r.mode?(' TargetMode="'+r.mode+'"'):'')+'/>';
     }
+    relsXml += _pnRel;   // [SAYFA NO] footer/header ilişkisi (varsa)
     relsXml += '</Relationships>';
 
     var stylesXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -7162,6 +7206,7 @@ LOCAL_DOCX_JS = r'''
       + '<Default Extension="jpg" ContentType="image/jpeg"/>'
       + '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'
       + '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>'
+      + _pnCT   // [SAYFA NO] footer/header content-type (varsa)
       + '</Types>';
 
     var rootRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
@@ -7176,6 +7221,7 @@ LOCAL_DOCX_JS = r'''
       {name:'word/styles.xml', data:enc.encode(stylesXml)},
       {name:'word/_rels/document.xml.rels', data:enc.encode(relsXml)}
     ];
+    if(_pnPart) files.push(_pnPart);   // [SAYFA NO] footer/header parçası (varsa)
     var mi;
     for(mi=0; mi<media.length; mi++){ files.push(media[mi]); }
     var zipBytes=zipStore(files);
@@ -7948,6 +7994,39 @@ X_EDITOR_JS = r'''
     }
     try{ if(window.xEdRaporAdiDoldur) window.xEdRaporAdiDoldur(); }catch(_){ }   // açılışta mevcut adla doldur
   }
+  // [SAYFA NO] Üst çubuk "Sayfa no" açılır menüsü: butona tıkla aç/kapa; içinde sayfa numarasını aç + konum/hizalama/biçim.
+  // Değerler gizli backing input'lara (pn_on/pn_pos/pn_align/pn_fmt) yazılır -> xBuildStyleOpts -> docx. Yalnız Word çıktısı.
+  function _sayfaNoKur(){
+    var btn=document.getElementById('ed-sayfano-btn'); if(!btn) return;
+    if(!btn._xKur){ btn._xKur=true;
+      btn.addEventListener('click', function(e){ e.stopPropagation(); var m=document.getElementById('ed-sayfano-menu'); if(!m) return; if(m.style.display!=='block'){ _sayfaNoMenuCiz(); m.style.display='block'; } else { m.style.display='none'; } });
+      if(!window.__edSnClose){ window.__edSnClose=true; document.addEventListener('mousedown', function(e){ var m=document.getElementById('ed-sayfano-menu'); if(m && m.style.display==='block' && !(e.target.closest && e.target.closest('.ed-sn'))) m.style.display='none'; }); }
+    }
+  }
+  function _sayfaNoMenuCiz(){
+    var m=document.getElementById('ed-sayfano-menu'); if(!m) return;
+    function g(id,d){ var e=document.getElementById(id); return e?(e.type==='checkbox'?e.checked:e.value):d; }
+    var on=!!g('pn_on',false), pos=g('pn_pos','footer'), al=g('pn_align','right'), fmt=g('pn_fmt','plain');
+    function grp(baslik, key, cur, secs){ var s='<div class="ed-sn-grp'+(on?'':' pasif')+'"><div class="ed-sn-lbl">'+baslik+'</div><div class="ed-sn-opts">'; for(var i=0;i<secs.length;i++){ s+='<button type="button" class="ed-sn-opt'+(cur===secs[i][0]?' aktif':'')+'" data-k="'+key+'" data-v="'+secs[i][0]+'">'+secs[i][1]+'</button>'; } return s+'</div></div>'; }
+    var h='';
+    h+='<label class="ed-sn-on-row"><input type="checkbox" class="ed-sn-on"'+(on?' checked':'')+'> Sayfa numarası (Word çıktısı)</label>';
+    h+='<div class="ed-sn-sep"></div>';
+    h+=grp('Konum','pos',pos,[['footer','Altta'],['header','Üstte']]);
+    h+=grp('Hizalama','align',al,[['left','Sol'],['center','Orta'],['right','Sağ']]);
+    h+=grp('Biçim','fmt',fmt,[['plain','1'],['sayfa','Sayfa 1'],['xofn','1 / N']]);
+    m.innerHTML=h;
+    var cb=m.querySelector('.ed-sn-on'); if(cb) cb.addEventListener('change', function(){ XE._sayfaNoUygula('on', cb.checked); });
+    m.querySelectorAll('.ed-sn-opt').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); XE._sayfaNoUygula(b.getAttribute('data-k'), b.getAttribute('data-v')); }); });
+  }
+  XE._sayfaNoUygula = function(prop, v){
+    XE._pushUndo();
+    var map={on:'pn_on', pos:'pn_pos', align:'pn_align', fmt:'pn_fmt'}, id=map[prop]; if(!id) return;
+    var el=document.getElementById(id); if(el){ if(el.type==='checkbox') el.checked=!!v; else el.value=v; }
+    if(typeof window.xSaveStyles==='function'){ try{ window.xSaveStyles(); }catch(_){} }
+    try{ window.__xPoolDirty=true; }catch(_){}
+    XE._dirty=true;
+    _sayfaNoMenuCiz();   // menüyü tazele (aktif durum + pasif/aktif)
+  };
 
   var CSS = `
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
@@ -7978,6 +8057,19 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ls-opt:hover{background:#eef5ff;}
 #editorModal .ed-ls-tik{display:inline-flex;width:14px;justify-content:center;color:#1565c0;font-weight:800;}
 #editorModal .ed-ls-sep{height:1px;background:#e3e8ee;margin:5px 4px;}
+/* [SAYFA NO] Üst çubuk "Sayfa no" açılır menüsü (aç/kapa + konum + hizalama + biçim). */
+#editorModal .ed-sn{position:relative;display:inline-flex;}
+#editorModal .ed-sn-menu{position:absolute;top:40px;right:0;z-index:40;min-width:236px;background:#fff;border:1px solid #d0d7de;border-radius:11px;box-shadow:0 10px 30px rgba(16,24,40,0.2);padding:11px 12px;color:#15202b;text-align:left;}
+#editorModal .ed-sn-on-row{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;color:#15202b;cursor:pointer;}
+#editorModal .ed-sn-on-row input{width:15px;height:15px;cursor:pointer;}
+#editorModal .ed-sn-sep{height:1px;background:#e3e8ee;margin:9px 0;}
+#editorModal .ed-sn-grp{margin:9px 0;}
+#editorModal .ed-sn-lbl{font-size:10px;font-weight:700;color:#8a94a0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+#editorModal .ed-sn-opts{display:flex;gap:5px;flex-wrap:wrap;}
+#editorModal .ed-sn-opt{border:1px solid #d7dde3;background:#fff;color:#3a4654;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .1s,border-color .1s;}
+#editorModal .ed-sn-opt:hover{background:#eef5ff;border-color:#9ec5f0;}
+#editorModal .ed-sn-opt.aktif{background:#1565c0;color:#fff;border-color:#1565c0;}
+#editorModal .ed-sn-grp.pasif{opacity:.4;}
 #editorModal .ed-panel input[type=color]{width:30px;height:30px;padding:0;border:1px solid #d0d7de;border-radius:7px;background:#fff;cursor:pointer;}
 /* [BAĞLAM] Font'un solunda "şu an düzenlenen öğe" göstergesi (etiket) / başlık türü açılır menüsü. */
 /* [ŞERİT SABİT HİZA] Etiket metni (Başlık/Link/Metin/Platform Adı) farklı genişlikte -> şerit kayıyordu.
@@ -8296,6 +8388,7 @@ X_EDITOR_JS = r'''
     _sagTikKur();       // SAĞ-TIK biçim paneli: başlık (tüm başlık) + metin seçimi (satır-içi) (bir kez)
     _klavyeKur();       // geri/ileri klavye kısayolları (bir kez)
     _raporAdiKur();     // [RAPOR ADI] üst çubuk inline ad alanı: dinleyiciler (bir kez) + mevcut adla doldur
+    _sayfaNoKur();      // [SAYFA NO] üst çubuk "Sayfa no" menüsü dinleyicisi (bir kez)
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
