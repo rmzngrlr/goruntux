@@ -2309,6 +2309,21 @@ HTML_TEMPLATE = """
                         <option value="both">İki yana</option>
                     </select>
                 </div>
+
+                <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
+
+                <h3 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><path d="M3 13l4-4 3 3 3-3 4 4"/><circle cx="7.5" cy="8" r="1.1"/></svg>Görsel</h3>
+                <div style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 10px; line-height: 1.4;">
+                    Rapordaki tüm görsellere uygulanır. Tek bir görseli ayrı hizalamak için editörde o görsele <b>sağ tıklayın</b>.
+                </div>
+                <div class="form-group">
+                    <label for="g_align">Hizalama:</label>
+                    <select id="g_align">
+                        <option value="left" selected>Sola</option>
+                        <option value="center">Ortaya</option>
+                        <option value="right">Sağa</option>
+                    </select>
+                </div>
             </div>
     </div>
 
@@ -4143,7 +4158,8 @@ HTML_TEMPLATE = """
                 m_bold: gc('m_bold', false),
                 m_italic: gc('m_italic', false),
                 m_underline: gc('m_underline', false),
-                m_align: gv('m_align', 'left')
+                m_align: gv('m_align', 'left'),
+                g_align: gv('g_align', 'left')   // [GÖRSEL HİZA] genel görsel hizalaması (Sol/Orta/Sağ)
             };
         }
 
@@ -4171,7 +4187,8 @@ HTML_TEMPLATE = """
             b1_font: 'Arial', b1_size: '18', b1_color: '#000000', b1_bold: true, b1_italic: false, b1_underline: false, b1_align: 'left', b1_wordstyle: 'Heading1',
             b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2',
             l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
-            m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left'
+            m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left',
+            g_align: 'left'   // [GÖRSEL HİZA] standart: sola (mevcut çıktı birebir korunur)
         };
         function xStandartStiliUygula() { try { xApplyStyleOpts(STANDART_STIL); } catch (e) {} }
         window.xStandartStiliUygula = xStandartStiliUygula;
@@ -4184,7 +4201,8 @@ HTML_TEMPLATE = """
             return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align','b1_wordstyle',
                     'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align','b_wordstyle',
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
-                    'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align'];
+                    'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align',
+                    'g_align'];
         }
         function xSaveStyles() {
             try {
@@ -6335,10 +6353,10 @@ LOCAL_DOCX_JS = r'''
     for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue; hasGorselPart=true;
       var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
       if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
-      out.push({k:k, b64:b64, mime:mime||'image/jpeg'});
+      out.push({k:k, b64:b64, mime:mime||'image/jpeg', align:(pc[k].align||'')});   // [GÖRSEL HİZA] parça-bazlı hizalama
     }
     // Parçasız (eski/doğrudan) öğe: 'gorsel' parçası yoksa birincil görsel k=-1 birimi (else dalı için).
-    if(!hasGorselPart && item && item.image_b64){ out.push({k:-1, b64:item.image_b64, mime:item.image_mime||'image/jpeg'}); }
+    if(!hasGorselPart && item && item.image_b64){ out.push({k:-1, b64:item.image_b64, mime:item.image_mime||'image/jpeg', align:''}); }
     return out;
   }
 
@@ -6551,21 +6569,29 @@ LOCAL_DOCX_JS = r'''
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
-    function imageXmlRaw(b64, mime, wIn, hIn){
+    function imageXmlRaw(b64, mime, wIn, hIn, align){
       var rid=addImageRaw(b64, mime);
       if(!rid) return '';
-      return _imageXmlFromRid(rid, wIn, hIn);
+      return _imageXmlFromRid(rid, wIn, hIn, align);
     }
-    function imageXml(item, wIn, hIn){
+    function imageXml(item, wIn, hIn, align){
       var rid=addImage(item);
       if(!rid) return '';
-      return _imageXmlFromRid(rid, wIn, hIn);
+      return _imageXmlFromRid(rid, wIn, hIn, align);
     }
-    function _imageXmlFromRid(rid, wIn, hIn){
+    // [GÖRSEL HİZA] efektif hizalama = parça override -> yoksa genel g_align -> yoksa left.
+    // Bayrak x_gorsel_hiza='0' -> daima left (eski çıktı birebir). Görselde 'both' anlamsız -> jc coerce eder.
+    function _gorselJc(align){
+      var al=align||(opts.g_align||'left');
+      try{ if(localStorage.getItem('x_gorsel_hiza')==='0') al='left'; }catch(_){}
+      if(al==='both') al='left';
+      return jc(al);
+    }
+    function _imageXmlFromRid(rid, wIn, hIn, align){
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini artik
       // Word belirliyor; sabit sayfa sonu 2026-07-17'de kaldirildi).
-      return '<w:p><w:pPr><w:keepNext/><w:jc w:val="left"/><w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
+      return '<w:p><w:pPr><w:keepNext/>'+_gorselJc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
         + '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
@@ -6922,7 +6948,7 @@ LOCAL_DOCX_JS = r'''
       var _gs=birimGorselleri(bu.item);
       for(var _gg=0; _gg<_gs.length; _gg++){
         if(!_gs[_gg].b64) continue;
-        var _u={bi:bi2, k:_gs[_gg].k, b64:_gs[_gg].b64, mime:_gs[_gg].mime, ar:null, w:0, h:0};
+        var _u={bi:bi2, k:_gs[_gg].k, b64:_gs[_gg].b64, mime:_gs[_gg].mime, align:(_gs[_gg].align||''), ar:null, w:0, h:0};
         var _sz=await loadImageSize('data:'+(_u.mime||'image/jpeg')+';base64,'+_u.b64);
         _u.ar=(_sz.w>0 && _sz.h>0)?(_sz.w/_sz.h):(4.5/3.8);   // bozuk veri -> eski yedek oran
         bu._imgUnits.push(_u); _imgUnits.push(_u);
@@ -7007,7 +7033,7 @@ LOCAL_DOCX_JS = r'''
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
-            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu) body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h)); }
+            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu) body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align)); }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _pi!==_asilL)?'':u.link);
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord)); if(_bord) _cizgiKondu=true; } }
@@ -7016,7 +7042,7 @@ LOCAL_DOCX_JS = r'''
         } else {
           var _mb=(u.item && u.item.metin_bloklari)||[];
           _mb.forEach(function(mb){ if(mb && mb.konum==='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
-          var _pu0=(u._imgUnits && u._imgUnits[0]); if(_pu0 && _pu0.b64) body.push(imageXmlRaw(_pu0.b64, _pu0.mime, _pu0.w, _pu0.h));   // parçasız öğe: birincil görsel birimi (k=-1)
+          var _pu0=(u._imgUnits && u._imgUnits[0]); if(_pu0 && _pu0.b64) body.push(imageXmlRaw(_pu0.b64, _pu0.mime, _pu0.w, _pu0.h, _pu0.align));   // parçasız öğe: birincil görsel birimi (k=-1)
           _mb.forEach(function(mb){ if(mb && mb.konum!=='ust' && String(mb.metin||'').trim()) body.push(textXml(mb.metin)); });
           body.push(linkXml(u.link, u.cizgi?360:240, u.cizgi));
         }
@@ -8090,6 +8116,10 @@ X_EDITOR_JS = r'''
   // efektif görseli. Parçanın kendi b64'ü yoksa YALNIZ ilk görsel parçası öğenin birincil image_b64'üne düşer.
   // Bayrak x_coklu_gorsel='0' -> part.b64 yok sayılır (eski tek-görsel). Dönen: {parçaIndeksi: {b64,mime}}.
   function cokluGorselAcik(){ try{ return localStorage.getItem('x_coklu_gorsel')!=='0'; }catch(e){ return true; } }
+  // [GÖRSEL HİZA] görsel hizalama özelliği açık mı (global g_align + görsel-başına sağ-tık). '0' -> kapalı (daima sola).
+  function gorselHizaAcik(){ try{ return localStorage.getItem('x_gorsel_hiza')!=='0'; }catch(e){ return true; } }
+  // [GÖRSEL HİZA] bir görsel parçasının efektif hizalaması: parça override -> genel g_align -> left. Bayrak kapalı -> left.
+  function gorselEfHiza(pAlign, o){ if(!gorselHizaAcik()) return 'left'; var a=pAlign||((o&&o.g_align)||'left'); return (a==='center'||a==='right')?a:'left'; }
   function grupAd(key){ for(var _gi=0;_gi<GRUPLAR.length;_gi++){ if(GRUPLAR[_gi].key===key) return GRUPLAR[_gi].ad; } return ''; }
   function edGorselHarita(item){
     var map={}, usedPrimary=false, pc=(item&&item.parcalar)||[], k, coklu=cokluGorselAcik();
@@ -8099,7 +8129,7 @@ X_EDITOR_JS = r'''
     for(k=0;k<pc.length;k++){ if(!pc[k] || pc[k].tur!=='gorsel') continue;
       var b64=(coklu && pc[k].b64)?pc[k].b64:'', mime=(coklu && pc[k].mime)?pc[k].mime:'';
       if(!b64 && !usedPrimary && item.image_b64){ b64=item.image_b64; mime=item.image_mime||'image/jpeg'; usedPrimary=true; }
-      map[k]={b64:b64, mime:mime||'image/jpeg'};
+      map[k]={b64:b64, mime:mime||'image/jpeg', align:(pc[k].align||'')};   // [GÖRSEL HİZA]
     }
     return map;
   }
@@ -8660,6 +8690,32 @@ X_EDITOR_JS = r'''
     b.item.parcalar.splice(pp,1);   // görsel parçasını kaldır
     XE._ovSet(bi); XE._ciz();
   };
+  // [GÖRSEL HİZA] Bir görsel parçasının hizasını ayarla (Sol/Orta/Sağ). v boş -> override kaldır (genel g_align miras).
+  XE._gorselHiza = function(bi, pp, v){
+    if(!gorselHizaAcik()) return;
+    var b=XE.belge.birimler[bi]; if(!b||!b.item||!b.item.parcalar) return;
+    var p=b.item.parcalar[pp]; if(!p || p.tur!=='gorsel') return;
+    XE._pushUndo();
+    if(v==='center'||v==='right'||v==='left'){ p.align=v; } else { try{ delete p.align; }catch(_){ p.align=''; } }
+    XE._ovSet(bi); XE._dirty=true; XE._ciz();
+  };
+  // [GÖRSEL HİZA] Seçilen hizayı TÜM görsellere uygula: genel g_align'ı yaz (per-rapor editorStyle'a gider) +
+  // her görselin parça override'ını temizle -> hepsi genel hizayı izler ("en üstten").
+  XE._gorselHizaTum = function(v){
+    if(!gorselHizaAcik()) return;
+    v=(v==='center'||v==='right')?v:'left';
+    XE._pushUndo();
+    var el=document.getElementById('g_align'); if(el){ el.value=v; }
+    if(typeof window.xSaveStyles==='function'){ try{ window.xSaveStyles(); }catch(_){} }
+    (XE.belge.birimler||[]).forEach(function(b, bi){
+      if(!b || !b.item || !b.item.parcalar) return;
+      var vardi=false;
+      b.item.parcalar.forEach(function(pp){ if(pp && pp.tur==='gorsel' && pp.align!=null){ try{ delete pp.align; }catch(_){ pp.align=''; } vardi=true; } });
+      if(vardi) XE._ovSet(bi);
+    });
+    try{ window.__xPoolDirty=true; }catch(_){}
+    XE._dirty=true; XE._ciz();
+  };
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
   XE._manuelTasi = function(uid, afterUid){
@@ -8760,7 +8816,26 @@ X_EDITOR_JS = r'''
     var p=document.getElementById('ed-rt-panel'); if(!p) return;
     var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
     var h='';
-    if(info.mode==='heading'){
+    if(info.mode==='image'){
+      // [GÖRSEL HİZA] bu görselin hizası (parça override -> genel). Sol/Orta/Sağ + tümüne uygula + genele dön.
+      var _gb=XE.belge.birimler[info.bi], _gpc=(_gb&&_gb.item&&_gb.item.parcalar)||[], _gp=_gpc[info.pp]||{};
+      var _go=stilOku(); var _gcur=gorselEfHiza(_gp.align,_go);
+      var _gdefs=[['left','Sola'],['center','Ortaya'],['right','Sağa']];
+      h+='<div class="rt-title">Görsel hizalama</div>';
+      h+='<div class="rt-row rt-hiza">';
+      for(var _gi=0;_gi<_gdefs.length;_gi++){ var _gv=_gdefs[_gi][0];
+        var _paths=({left:['M2 4h12','M2 8h8','M2 12h10'],center:['M2 4h12','M4 8h8','M3 12h10'],right:['M2 4h12','M6 8h8','M4 12h10']})[_gv];
+        var _ps=''; for(var _gj=0;_gj<_paths.length;_gj++) _ps+='<path d="'+_paths[_gj]+'"/>';
+        h+='<button type="button" class="rt-hb rt-ghb'+(_gcur===_gv?' aktif':'')+'" data-v="'+_gv+'" title="'+_gdefs[_gi][1]+'"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none">'+_ps+'</g></svg></button>';
+      }
+      h+='</div>';
+      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-tum">Tüm görsellere uygula</button></div>';
+      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-genel">↺ Genel ayara dön</button></div>';
+      p.innerHTML=h;
+      p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
+      p.querySelector('.rt-img-tum').addEventListener('click', function(){ var _gp2=(XE.belge.birimler[info.bi].item.parcalar||[])[info.pp]||{}; XE._gorselHizaTum(gorselEfHiza(_gp2.align,stilOku())); _sagTikKapat(); });
+      p.querySelector('.rt-img-genel').addEventListener('click', function(){ XE._gorselHiza(info.bi,info.pp,''); _sagTikKapat(); });
+    } else if(info.mode==='heading'){
       var bi=info.bi, rol=info.rol;
       var adv=(rol==='h1')?'Platform Adı':'Başlık';
       h+='<div class="rt-title">'+adv+' — yalnız bu başlık</div>';
@@ -8960,10 +9035,12 @@ X_EDITOR_JS = r'''
     document.addEventListener('contextmenu', function(e){
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
       var t=e.target; if(!t||!t.closest) return;
-      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin');
+      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img');
       // Başlık override'ı x_h_ov bayrağına bağlı -> kapalıysa başlık sağ-tık paneli AÇILMAZ (yazma da olmaz).
       if(hOvAcik() && h2 && h2.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h2',bi:+h2.getAttribute('data-i')}, e.clientX, e.clientY); }
       else if(hOvAcik() && plat && plat.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h1',bi:+plat.getAttribute('data-i')}, e.clientX, e.clientY); }
+      // [GÖRSEL HİZA] görsele sağ-tık -> hizalama paneli (bu görsel + tüm görsellere/genele dön). Bayrak x_gorsel_hiza.
+      else if(gorselHizaAcik() && gorsel && gorsel.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorsel.getAttribute('data-i'), pp:+gorsel.getAttribute('data-p')}, e.clientX, e.clientY); }
       else if(metin){ var sel=window.getSelection(); if(sel && !sel.isCollapsed && sel.rangeCount && metin.contains(sel.anchorNode) && metin.contains(sel.focusNode)){ e.preventDefault(); _sagTikGoster({mode:'inline',metinEl:metin,range:sel.getRangeAt(0).cloneRange()}, e.clientX, e.clientY); } }
     });
     // [KEŞİF] Metin SEÇİLİNCE biçim/link panelini OTOMATİK göster (sağ-tık'a gerek yok; tarayıcıdan bağımsız).
@@ -9087,8 +9164,11 @@ X_EDITOR_JS = r'''
         h.push('<div class="ed-tut" draggable="true" data-i="'+i+'" data-p="'+k+'" title="Sürükleyerek taşı"><svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><circle cx="6" cy="4" r="1.35"/><circle cx="10" cy="4" r="1.35"/><circle cx="6" cy="8" r="1.35"/><circle cx="10" cy="8" r="1.35"/><circle cx="6" cy="12" r="1.35"/><circle cx="10" cy="12" r="1.35"/></svg></div>');
         h.push('<div class="ed-parca-ic">');
         if(p.tur==='gorsel'){ var _g=_gm[k];
+          // [GÖRSEL HİZA] efektif hiza (parça override -> genel) -> margin ile editörde yansıt (sağ-tıkla değiştirilir).
+          var _gAl=(_g?gorselEfHiza(_g.align,o):'left');
+          var _gSty=(_gAl==='center')?'margin-left:auto;margin-right:auto':(_gAl==='right')?'margin-left:auto;margin-right:0':'';
           h.push((_g && _g.b64)
-            ? ('<img class="ed-img" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt="">')
+            ? ('<img class="ed-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>')
             : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır<button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Bilgisayardan görsel seç">📁 Bilgisayardan seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item);
