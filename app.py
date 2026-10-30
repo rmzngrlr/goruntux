@@ -2309,6 +2309,7 @@ HTML_TEMPLATE = """
                 <input type="hidden" id="m_line" value="1.0">
                 <input type="checkbox" id="m_space_before" style="display:none">
                 <input type="checkbox" id="m_space_after" style="display:none">
+                <input type="hidden" id="b_after" value="6">   <!-- [BAŞLIK–PARAGRAF] başlık–paragraf boşluğu (pt); şeritte Başlık grubundan ayarlanır -->
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -4177,6 +4178,7 @@ HTML_TEMPLATE = """
                 b_underline: gc('b_underline', false),
                 b_align: gv('b_align', 'left'),
                 b_wordstyle: gv('b_wordstyle', 'Heading2'),
+                b_after: gv('b_after', '6'),   // [BAŞLIK–PARAGRAF] başlık–paragraf boşluğu (pt; Word çıktısı)
                 l_font: gv('l_font', 'Arial'),
                 l_size: gv('l_size', '12'),
                 l_color: gv('l_color', '#1565c0'),
@@ -4220,7 +4222,7 @@ HTML_TEMPLATE = """
         // editorStyle'ına yazılır; kayıtlı rapor açılınca kendi stili uygulanır). Platform başlığı 18 / içerik 16.
         var STANDART_STIL = {
             b1_font: 'Arial', b1_size: '18', b1_color: '#000000', b1_bold: true, b1_italic: false, b1_underline: false, b1_align: 'left', b1_wordstyle: 'Heading1',
-            b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2',
+            b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2', b_after: '6',
             l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
             m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left',
             m_line: '1.0', m_space_before: false, m_space_after: false,   // [SATIR ARALIĞI] standart: tek satır, boşluk yok (eski çıktı birebir)
@@ -4235,7 +4237,7 @@ HTML_TEMPLATE = """
         //     stil girdisi değişince localStorage'a yazılır, açılışta geri yüklenir. ---
         function xStyleInputIds() {
             return ['b1_font','b1_size','b1_color','b1_bold','b1_italic','b1_underline','b1_align','b1_wordstyle',
-                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align','b_wordstyle',
+                    'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align','b_wordstyle','b_after',
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
                     'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align',
                     'm_line','m_space_before','m_space_after',
@@ -6613,7 +6615,9 @@ LOCAL_DOCX_JS = r'''
       if(ital) rPr+='<w:i/>';
       if(und) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>';
-      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/><w:keepNext/><w:keepLines/>'+jc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      // [BAŞLIK–PARAGRAF] başlık ile altındaki paragraf arası boşluk = b_after (pt -> twip ×20). Varsayılan 6pt=120 (eski birebir).
+      var _bAfterPt=parseInt(opts.b_after,10); if(isNaN(_bAfterPt)||_bAfterPt<0) _bAfterPt=6;
+      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/><w:keepNext/><w:keepLines/>'+jc(align)+'<w:spacing w:after="'+(_bAfterPt*20)+'"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     function heading1Xml(text, ov){
       ov = (hOvAcik() && ov) ? ov : {};
@@ -7963,6 +7967,17 @@ X_EDITOR_JS = r'''
 #editorModal .ed-panel label{display:flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;}
 #editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:4px 6px;border:1px solid #d0d7de;border-radius:7px;color:#15202b;background:#fff;height:30px;box-sizing:border-box;}
 #editorModal .ed-panel select:focus,#editorModal .ed-panel input:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
+/* [SATIR ARALIĞI] Word benzeri açılır menü (sayılar + altında paragraf önce/sonra boşluk). */
+#editorModal .ed-ls{position:relative;display:inline-flex;}
+#editorModal .ed-ls-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid #d0d7de;border-radius:7px;background:#fff;color:#3a4654;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;}
+#editorModal .ed-ls-btn:hover{background:#eef5ff;border-color:#9ec5f0;}
+#editorModal .ed-ls-btn b{color:#15202b;}
+#editorModal .ed-ls-ok{color:#8a94a0;font-size:10px;}
+#editorModal .ed-ls-menu{position:absolute;top:34px;left:0;z-index:30;min-width:230px;background:#fff;border:1px solid #d0d7de;border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,0.16);padding:5px;}
+#editorModal .ed-ls-opt{display:flex;align-items:center;gap:7px;width:100%;text-align:left;border:none;background:transparent;color:#334;font-size:12px;font-weight:600;padding:7px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;box-sizing:border-box;}
+#editorModal .ed-ls-opt:hover{background:#eef5ff;}
+#editorModal .ed-ls-tik{display:inline-flex;width:14px;justify-content:center;color:#1565c0;font-weight:800;}
+#editorModal .ed-ls-sep{height:1px;background:#e3e8ee;margin:5px 4px;}
 #editorModal .ed-panel input[type=color]{width:30px;height:30px;padding:0;border:1px solid #d0d7de;border-radius:7px;background:#fff;cursor:pointer;}
 /* [BAĞLAM] Font'un solunda "şu an düzenlenen öğe" göstergesi (etiket) / başlık türü açılır menüsü. */
 /* [ŞERİT SABİT HİZA] Etiket metni (Başlık/Link/Metin/Platform Adı) farklı genişlikte -> şerit kayıyordu.
@@ -8441,9 +8456,22 @@ X_EDITOR_JS = r'''
     // çıktısını etkiler (editör görünümü değişmez). Bayrak x_satir_aralik='0' gizler.
     var _saAcikEd=true; try{ _saAcikEd=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(e){}
     if(key==='m' && _saAcikEd){
-      h+='<label title="Satır aralığı — yalnız Word çıktısı (editör görünümü değişmez)">Satır aralığı <select data-t="m_line"><option value="1.0">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2.0">2,0</option><option value="2.5">2,5</option><option value="3.0">3,0</option></select></label>';
-      h+='<label class="ed-tgl ed-tgl-metinli" title="Paragraftan ÖNCE boşluk ekle (yalnız Word çıktısı)"><input type="checkbox" data-t="m_space_before" '+(val('m_space_before')?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3.2v4"/><path d="M6 5l2-2 2 2"/><path d="M3 9.5h10"/><path d="M3 12.5h10"/></svg><span>¶ önce</span></label>';
-      h+='<label class="ed-tgl ed-tgl-metinli" title="Paragraftan SONRA boşluk ekle (yalnız Word çıktısı)"><input type="checkbox" data-t="m_space_after" '+(val('m_space_after')?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 3.5h10"/><path d="M3 6.5h10"/><path d="M8 9v4"/><path d="M6 11l2 2 2-2"/></svg><span>¶ sonra</span></label>';
+      // [SATIR ARALIĞI] Word benzeri TEK açılır menü: sayılar ÜSTTE, altında paragraf önce/sonra boşluk. Yalnız Word çıktısı.
+      var _mL=val('m_line')||'1.0', _mB=!!val('m_space_before'), _mA=!!val('m_space_after');
+      var _lsEt={'1.0':'1,0','1.15':'1,15','1.5':'1,5','2.0':'2,0','2.5':'2,5','3.0':'3,0'};
+      var _lsIco='<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h3"/><path d="M2 8h3"/><path d="M2 12h3"/><path d="M8 3.5h6"/><path d="M8 7h6"/><path d="M8 10.5h6"/></svg>';
+      h+='<div class="ed-ls">';
+      h+='<button type="button" class="ed-ls-btn" title="Satır aralığı ve paragraf boşluğu (yalnız Word çıktısı)">'+_lsIco+' Satır aralığı: <b>'+(_lsEt[_mL]||_mL)+'</b> <span class="ed-ls-ok">▾</span></button>';
+      h+='<div class="ed-ls-menu" style="display:none">';
+      ['1.0','1.15','1.5','2.0','2.5','3.0'].forEach(function(v){ h+='<button type="button" class="ed-ls-opt" data-ls="'+v+'"><span class="ed-ls-tik">'+(v===_mL?'✓':'')+'</span>'+_lsEt[v]+'</button>'; });
+      h+='<div class="ed-ls-sep"></div>';
+      h+='<button type="button" class="ed-ls-opt" data-tgl="before"><span class="ed-ls-tik">'+(_mB?'✓':'')+'</span>Paragraftan önce boşluk ekle</button>';
+      h+='<button type="button" class="ed-ls-opt" data-tgl="after"><span class="ed-ls-tik">'+(_mA?'✓':'')+'</span>Paragraftan sonra boşluk ekle</button>';
+      h+='</div></div>';
+    }
+    if(key==='b'){
+      // [BAŞLIK–PARAGRAF] İçerik başlığı ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı).
+      h+='<label title="Başlık ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı)">Alt boşluk <input type="number" data-t="b_after" min="0" max="72" value="'+esc(val('b_after')||'6')+'" style="width:50px">pt</label>';
     }
     // [WORD DÜZEYİ] Genel "Stil" menüsü (varsayılan: içerik=Başlık 2, platform=Başlık 1). Seçtiğin düzey o
     // türdeki TÜM başlıklara uygulanır. Tek bir başlığı farklı yapmak için başlığa SAĞ TIK (Word düzeyi).
@@ -8470,6 +8498,28 @@ X_EDITOR_JS = r'''
     });
     // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
     var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
+    // [SATIR ARALIĞI] Word-benzeri açılır menü: butona tıkla aç/kapa; seçenekler satır aralığı / paragraf boşluğu.
+    var _lsWrap=panel.querySelector('.ed-ls');
+    if(_lsWrap){
+      var _lsBtn=_lsWrap.querySelector('.ed-ls-btn'), _lsMenu=_lsWrap.querySelector('.ed-ls-menu');
+      _lsBtn.addEventListener('click', function(e){ e.stopPropagation(); _lsMenu.style.display=(_lsMenu.style.display==='none')?'block':'none'; });
+      _lsWrap.querySelectorAll('.ed-ls-opt').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation();
+        if(b.hasAttribute('data-ls')) XE._satirAralikUygula('line', b.getAttribute('data-ls'));
+        else XE._satirAralikUygula(b.getAttribute('data-tgl'), null);
+      }); });
+    }
+    // dışarı tıklayınca menüyü kapat (bir kez bağla)
+    if(!window.__edLsCloseKur){ window.__edLsCloseKur=true; document.addEventListener('mousedown', function(e){ var o=document.querySelector('#editorModal .ed-ls-menu'); if(o && o.style.display!=='none' && !(e.target.closest && e.target.closest('.ed-ls'))) o.style.display='none'; }); }
+  };
+  // [SATIR ARALIĞI] Menüden satır aralığı/paragraf boşluğu uygula (gizli backing input + kaydet + per-rapor). Panel tazelenir (etiket/tik).
+  XE._satirAralikUygula = function(prop, v){
+    XE._pushUndo();
+    if(prop==='line'){ var el=document.getElementById('m_line'); if(el) el.value=v; }
+    else { var id=(prop==='before')?'m_space_before':'m_space_after'; var el2=document.getElementById(id); if(el2) el2.checked=!el2.checked; }
+    if(typeof window.xSaveStyles==='function'){ try{ window.xSaveStyles(); }catch(_){} }
+    try{ window.__xPoolDirty=true; }catch(_){}
+    XE._dirty=true;
+    XE._panelCiz(XE._aktifGrup);   // etiket + ✓ tazele (menü kapanır — Word gibi)
   };
   XE._hizaSec = function(inputId, v){
     XE._pushUndo();
