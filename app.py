@@ -981,6 +981,7 @@ HTML_TEMPLATE = """
             padding: var(--content-pad);
             box-sizing: border-box;
             overflow-y: auto;
+            overscroll-behavior: none;   /* [ESNEME FİX] yukarı/aşağı uçta elastik overscroll (bounce) olmasın */
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -1883,6 +1884,7 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
+                    <button class="theme-toggle-btn" onclick="toggleFullscreen()" id="fs-btn" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -2504,6 +2506,23 @@ HTML_TEMPLATE = """
                 console.error("toggleTheme error:", err);
             }
         }
+        // [TAM EKRAN] Web panel: tema butonunun sağındaki buton -> tarayıcı tam ekranı (panel ekranını kaplar). Tekrar/ESC ile çıkar.
+        var _FS_GENIS = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg>';
+        var _FS_DARALT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5H7.5V3.5"/><path d="M16.5 7.5H12.5V3.5"/><path d="M3.5 12.5H7.5V16.5"/><path d="M16.5 12.5H12.5V16.5"/></svg>';
+        function toggleFullscreen() {
+            try {
+                var fs = document.fullscreenElement || document.webkitFullscreenElement;
+                if (!fs) { var de = document.documentElement; (de.requestFullscreen || de.webkitRequestFullscreen || function(){}).call(de); }
+                else { (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document); }
+            } catch(e) {}
+        }
+        function _fsIkonGuncelle() {
+            var b = document.getElementById('fs-btn'); if (!b) return;
+            var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            b.innerHTML = fs ? _FS_DARALT : _FS_GENIS;
+            b.title = fs ? 'Tam ekrandan çık (ESC)' : 'Tam ekran';
+        }
+        try { document.addEventListener('fullscreenchange', _fsIkonGuncelle); document.addEventListener('webkitfullscreenchange', _fsIkonGuncelle); } catch(e) {}
 
         // Initialize event listeners after DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -8143,9 +8162,7 @@ X_EDITOR_JS = r'''
   }
   function _lightboxAc(src){
     var lb=document.getElementById('ed-lightbox');
-    if(!lb){ lb=document.createElement('div'); lb.id='ed-lightbox'; (document.body||document.documentElement).appendChild(lb);
-      lb.addEventListener('click', function(e){ if(!(e.target && e.target.closest && e.target.closest('.ed-lb-img'))) _lightboxKapat(); });   // görsel dışına tıkla -> kapat
-    }
+    if(!lb){ lb=document.createElement('div'); lb.id='ed-lightbox'; (document.body||document.documentElement).appendChild(lb); }   // kapanış YALNIZ X / ESC (arka-plan tıklaması YOK)
     var bg=document.createElement('img'); bg.className='ed-lb-bg'; bg.setAttribute('aria-hidden','true'); bg.src=src;
     var im=document.createElement('img'); im.className='ed-lb-img'; im.src=src;
     var btn=document.createElement('button'); btn.className='ed-lb-kapat'; btn.type='button'; btn.title='Kapat (ESC)'; btn.innerHTML='&#10005;';
@@ -8447,7 +8464,7 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-linkyap:hover{background:#1565c0;color:#fff;border-color:#1565c0;}
 #editorModal .ed-bos{padding:28px;text-align:center;color:#57606a;font-size:14px;}
 /* [LIGHTBOX] Görsele çift tık -> tam ekran: görsel contain (ekrana sığar), boşluklar aynı görselin blur dolgusu. X/ESC/arka-plan kapatır. */
-#ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#05070b;cursor:zoom-out;}
+#ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:#05070b;}
 #ed-lightbox.acik{display:flex;animation:edLbIn .16s ease;}
 #ed-lightbox .ed-lb-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(30px) brightness(.5);transform:scale(1.12);pointer-events:none;}
 #ed-lightbox .ed-lb-img{position:relative;max-width:94vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 14px 50px rgba(0,0,0,0.6);cursor:default;}
@@ -8477,6 +8494,10 @@ body:not(.light-theme) #editorModal .ed-tgl,body:not(.light-theme) #editorModal 
 body:not(.light-theme) #editorModal .ed-tgl:hover,body:not(.light-theme) #editorModal .ed-hb:hover,body:not(.light-theme) #editorModal .ed-sira-btn:hover:not([disabled]){background:#2f3e4e;}
 body:not(.light-theme) #editorModal .ed-tgl-metinli,body:not(.light-theme) #editorModal .ed-chk,body:not(.light-theme) #editorModal .ed-ustswap{background:#1b2735;border-color:#2c3a4a;color:#c5cfda;}
 body:not(.light-theme) #editorModal .ed-tgl-metinli:hover:not(:has(input:checked)){background:#1e3650;}
+/* [DARK AKTİF] dark base override'ı :has(input:checked)/.aktif'i ezdiği için AKTİF durumları #editorModal specificity'siyle geri ekle -> tıklanınca belirgin mavi. */
+body:not(.light-theme) #editorModal .ed-tgl-metinli:has(input:checked),body:not(.light-theme) #editorModal .ed-tgl:has(input:checked),body:not(.light-theme) #editorModal .ed-hb.aktif,body:not(.light-theme) #editorModal .ed-sn-opt.aktif,body:not(.light-theme) #editorModal .ed-tab.aktif{background:#1d9bf0 !important;border-color:#1d9bf0 !important;color:#fff !important;box-shadow:0 1px 3px rgba(29,155,240,0.45);}
+body:not(.light-theme) #editorModal .ed-chk:has(input:checked){background:#17314a !important;border-color:#2f5f8a !important;color:#6fb4ef !important;}
+body:not(.light-theme) #ed-rt-panel .rt-tgl.aktif,body:not(.light-theme) #ed-rt-panel .rt-hb.aktif{background:#1d9bf0;color:#fff;}
 body:not(.light-theme) #editorModal .ed-sira{background:#222d3a;border-color:#2c3a4a;}
 body:not(.light-theme) #editorModal .ed-ctx{background:#14314a;border-color:#2f5f8a;color:#6fb4ef;}
 body:not(.light-theme) #editorModal .ed-ctx select{background:#1b2735;color:#e7e9ea;border-color:#2f5f8a;}
