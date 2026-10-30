@@ -2177,7 +2177,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div class="form-group">
                     <label for="b_size">Yazı Boyutu (PT):</label>
-                    <input type="number" id="b_size" value="14" min="10" max="28">
+                    <input type="number" id="b_size" value="16" min="10" max="28">
                 </div>
                 <div class="form-group">
                     <label for="b_color">Metin Rengi:</label>
@@ -2231,17 +2231,17 @@ HTML_TEMPLATE = """
                     <label for="l_font">Yazı Tipi (Font):</label>
                     <select id="l_font">
                         {% for font in fonts %}
-                        <option value="{{ font }}" {% if font == 'Calibri' %}selected{% endif %}>{{ font }}</option>
+                        <option value="{{ font }}" {% if font == 'Arial' %}selected{% endif %}>{{ font }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="l_size">Yazı Boyutu (PT):</label>
-                    <input type="number" id="l_size" value="10" min="8" max="18">
+                    <input type="number" id="l_size" value="12" min="8" max="18">
                 </div>
                 <div class="form-group">
                     <label for="l_color">Link Rengi:</label>
-                    <input type="text" id="l_color" value="#1DA1F2" placeholder="#1DA1F2">
+                    <input type="text" id="l_color" value="#000000" placeholder="#000000">
                 </div>
                 
                 <div class="checkbox-group">
@@ -2276,13 +2276,13 @@ HTML_TEMPLATE = """
                     <label for="m_font">Yazı Tipi (Font):</label>
                     <select id="m_font">
                         {% for font in fonts %}
-                        <option value="{{ font }}" {% if font == 'Calibri' %}selected{% endif %}>{{ font }}</option>
+                        <option value="{{ font }}" {% if font == 'Arial' %}selected{% endif %}>{{ font }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="m_size">Yazı Boyutu (PT):</label>
-                    <input type="number" id="m_size" value="11" min="8" max="28">
+                    <input type="number" id="m_size" value="12" min="8" max="28">
                 </div>
                 <div class="form-group">
                     <label for="m_color">Metin Rengi:</label>
@@ -3518,6 +3518,7 @@ HTML_TEMPLATE = """
                 if (inputEl) { inputEl.value = ''; if (typeof updateLinksPreview === 'function') { updateLinksPreview(); } if (typeof autoResizeTextarea === 'function') { autoResizeTextarea(inputEl); } }
                 try { if (window.XEditor && window.XEditor.kapat) { window.XEditor.kapat(true); } } catch (e) {}
                 window.lastManuelListJson = null; window.__xPoolDirty = false;
+                xStandartStiliUygula();   // [STANDART STİL] yeni rapor DAİMA standart ayarlarla başlar (son stil sızmasın)
                 var ad = xTarihSaatDamgasi();
                 // TAZE id: flush bu arada aynı saniye zaman-damgalı bir rapor oto-oluşturmuş olabilir;
                 // ad-bazlı kayıt onu EZMESİN -> yeni boş rapora benzersiz id ver.
@@ -4115,7 +4116,7 @@ HTML_TEMPLATE = """
                 b1_align: gv('b1_align', 'left'),
                 b1_wordstyle: gv('b1_wordstyle', 'Heading1'),
                 b_font: gv('b_font', 'Arial'),
-                b_size: gv('b_size', '14'),
+                b_size: gv('b_size', '16'),
                 b_color: gv('b_color', '#000000'),
                 b_numbered: gc('b_numbered', false),
                 b_basliksiz: gc('b_basliksiz', false),
@@ -4124,15 +4125,15 @@ HTML_TEMPLATE = """
                 b_underline: gc('b_underline', false),
                 b_align: gv('b_align', 'left'),
                 b_wordstyle: gv('b_wordstyle', 'Heading2'),
-                l_font: gv('l_font', 'Calibri'),
-                l_size: gv('l_size', '10'),
-                l_color: gv('l_color', '#1DA1F2'),
+                l_font: gv('l_font', 'Arial'),
+                l_size: gv('l_size', '12'),
+                l_color: gv('l_color', '#000000'),
                 l_bold: gc('l_bold', false),
                 l_italic: gc('l_italic', false),
                 l_underline: gc('l_underline', true),
                 l_align: gv('l_align', 'left'),
-                m_font: gv('m_font', 'Calibri'),
-                m_size: gv('m_size', '11'),
+                m_font: gv('m_font', 'Arial'),
+                m_size: gv('m_size', '12'),
                 m_color: gv('m_color', '#000000'),
                 m_bold: gc('m_bold', false),
                 m_italic: gc('m_italic', false),
@@ -4157,6 +4158,19 @@ HTML_TEMPLATE = """
             });
             try { if (typeof xSaveStyles === 'function') xSaveStyles(); } catch (e) {}
         }
+
+        // [STANDART STİL] Yeni (sıfırdan) rapor DAİMA bu standart ayarlarla başlar (kullanıcı isteği): en son
+        // kullanılan stil yeni rapora SIZMASIN. Düzenleme per-rapor (editörde değiştirince yalnız o raporun
+        // editorStyle'ına yazılır; kayıtlı rapor açılınca kendi stili uygulanır). Platform başlığı 18 / içerik 16.
+        var STANDART_STIL = {
+            b1_font: 'Arial', b1_size: '18', b1_color: '#000000', b1_bold: true, b1_italic: false, b1_underline: false, b1_align: 'left', b1_wordstyle: 'Heading1',
+            b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2',
+            l_font: 'Arial', l_size: '12', l_color: '#000000', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',
+            m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left'
+        };
+        function xStandartStiliUygula() { try { xApplyStyleOpts(STANDART_STIL); } catch (e) {} }
+        window.xStandartStiliUygula = xStandartStiliUygula;
+        window.STANDART_STIL = STANDART_STIL;
 
         // --- Stil ayarları KALICILIĞI (Faz 1). Bugüne dek "Uygula ve Kapat" hiçbir yere
         //     kaydetmiyordu -> sayfa yenilemede HTML varsayılanlarına dönüyordu. Artık her
@@ -8287,6 +8301,7 @@ X_EDITOR_JS = r'''
     if(tgt.type==='checkbox') tgt.checked=ctrl.checked; else tgt.value=ctrl.value;
     if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
     XE._dirty=true;   // [4]: stil/yapısal (font/renk/Başlıksız/Numara) değişikliği de kirletir
+    try{ window.__xPoolDirty=true; }catch(e){}   // [STANDART STİL] stil değişimi oto-kayıtı tetikler -> raporun editorStyle'ına yazılır (per-rapor)
     if(STRUKT_STIL[id]){ XE._yenidenPlanla(); } else { canliCiz(); }
   };
   // Mevcut belge öğeleriyle planı yeniden kur (havuzu YENİDEN ÇEKMEZ; parçalar/override overlay'den korunur).
