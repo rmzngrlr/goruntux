@@ -8031,7 +8031,10 @@ X_EDITOR_JS = r'''
 #editorModal .ed-tab{border:1px solid #d7dde3;background:#fff;color:#3a4654;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,border-color .12s;}
 #editorModal .ed-tab:hover{background:#eef5ff;border-color:#9ec5f0;}
 #editorModal .ed-tab.aktif{background:#1565c0;color:#fff;border-color:#1565c0;box-shadow:0 1px 3px rgba(21,101,192,0.35);}
-#editorModal .ed-panel{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+#editorModal .ed-panel{display:flex;gap:9px;flex-wrap:wrap;align-items:center;}
+/* [ŞERİT GRUPLARI] Word gibi ayraçlı gruplar: her grup kendi içinde sıkı, gruplar arası dikey çizgi. */
+#editorModal .ed-grp{display:inline-flex;align-items:center;gap:7px;padding-right:12px;border-right:1px solid #bcc6d1;min-height:30px;}
+#editorModal .ed-grp:last-child{border-right:none;padding-right:0;}
 #editorModal .ed-panel label{display:flex;align-items:center;gap:5px;font-size:11px;color:#57606a;font-weight:600;}
 #editorModal .ed-panel select,#editorModal .ed-panel input[type=number]{font-size:12px;padding:4px 6px;border:1px solid #d0d7de;border-radius:7px;color:#15202b;background:#fff;height:30px;box-sizing:border-box;}
 #editorModal .ed-panel select:focus,#editorModal .ed-panel input:focus{outline:none;border-color:#1565c0;box-shadow:0 0 0 2px rgba(21,101,192,0.15);}
@@ -8517,53 +8520,53 @@ X_EDITOR_JS = r'''
     // Tekil (o başlığa özel) biçim için başlığa SAĞ TIKLANIR -> _hOvPanel.
     var _ctx=XE._aktifBaglam||{};
     var _ctxAd=(_ctx.kind==='plat')?'Platform Adı':(_ctx.kind==='metin')?'Metin':(_ctx.kind==='link')?'Link':(_ctx.kind==='h2')?'Başlık':grupAd(key);
-    h+='<span class="ed-ctx" title="Şu an düzenlenen öğenin genel ayarları. Tek bir başlığı ayrı biçimlemek için başlığa sağ tıkla.">'+esc(_ctxAd)+'</span>';
-    h+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
-    h+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(hval('size',ids.size))+'" style="width:52px"></label>';
-    h+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(hval('color',ids.color))+'"></label>';
-    h+='<span class="ed-biu">';
-    h+='<label class="ed-tgl ed-tgl-b" title="Kalın"><input type="checkbox" data-t="'+ids.bold+'" '+(hval('bold',ids.bold)?'checked':'')+'><span>B</span></label>';
-    h+='<label class="ed-tgl ed-tgl-i" title="Eğik"><input type="checkbox" data-t="'+ids.italic+'" '+(hval('italic',ids.italic)?'checked':'')+'><span>I</span></label>';
-    h+='<label class="ed-tgl ed-tgl-u" title="Altı çizili"><input type="checkbox" data-t="'+ids.underline+'" '+(hval('underline',ids.underline)?'checked':'')+'><span>U</span></label>';
-    h+='</span>';
+    // [ŞERİT GRUPLARI] Word gibi: Bağlam (ctx) ayrı; sonra Yazı Tipi | Paragraf | Başlık | Belge grupları ayraçlı (.ed-grp).
+    var _gBaglam='<span class="ed-ctx" title="Şu an düzenlenen öğenin genel ayarları. Tek bir başlığı ayrı biçimlemek için başlığa sağ tıkla.">'+esc(_ctxAd)+'</span>';
+    // --- Yazı Tipi: Font + Boyut + Renk + B/I/U ---
+    var _gYazi='';
+    _gYazi+='<label>Font <select data-t="'+ids.font+'">'+fontOpts+'</select></label>';
+    _gYazi+='<label>Boyut <input type="number" data-t="'+ids.size+'" min="6" max="48" value="'+esc(hval('size',ids.size))+'" style="width:52px"></label>';
+    _gYazi+='<label>Renk <input type="color" data-t="'+ids.color+'" value="'+nhex(hval('color',ids.color))+'"></label>';
+    _gYazi+='<span class="ed-biu">';
+    _gYazi+='<label class="ed-tgl ed-tgl-b" title="Kalın"><input type="checkbox" data-t="'+ids.bold+'" '+(hval('bold',ids.bold)?'checked':'')+'><span>B</span></label>';
+    _gYazi+='<label class="ed-tgl ed-tgl-i" title="Eğik"><input type="checkbox" data-t="'+ids.italic+'" '+(hval('italic',ids.italic)?'checked':'')+'><span>I</span></label>';
+    _gYazi+='<label class="ed-tgl ed-tgl-u" title="Altı çizili"><input type="checkbox" data-t="'+ids.underline+'" '+(hval('underline',ids.underline)?'checked':'')+'><span>U</span></label>';
+    _gYazi+='</span>';
+    // --- Paragraf: hizalama + (metin: satır aralığı) + (başlık: numaralandırma) ---
     var _hv=hval('align',ids.align)||'left';
-    h+='<span class="ed-hiza">';
-    h+='<button class="ed-hb'+(_hv==='left'?' aktif':'')+'" data-a="'+ids.align+'" data-v="left" title="Sola"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h8"/><path d="M2 12h10"/></g></svg></button>';
-    h+='<button class="ed-hb'+(_hv==='center'?' aktif':'')+'" data-a="'+ids.align+'" data-v="center" title="Ortaya"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M4 8h8"/><path d="M3 12h10"/></g></svg></button>';
-    h+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
-    h+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
-    h+='</span>';
-    // [SATIR ARALIĞI] YALNIZ Metin grubunda: satır aralığı (1,0–3,0) + paragraftan önce/sonra boşluk. SADECE Word
-    // çıktısını etkiler (editör görünümü değişmez). Bayrak x_satir_aralik='0' gizler.
+    var _gPar='<span class="ed-hiza">';
+    _gPar+='<button class="ed-hb'+(_hv==='left'?' aktif':'')+'" data-a="'+ids.align+'" data-v="left" title="Sola"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h8"/><path d="M2 12h10"/></g></svg></button>';
+    _gPar+='<button class="ed-hb'+(_hv==='center'?' aktif':'')+'" data-a="'+ids.align+'" data-v="center" title="Ortaya"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M4 8h8"/><path d="M3 12h10"/></g></svg></button>';
+    _gPar+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
+    _gPar+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
+    _gPar+='</span>';
+    // [SATIR ARALIĞI] YALNIZ Metin grubunda: satır aralığı + paragraf önce/sonra boşluk (Word çıktısı). Bayrak x_satir_aralik='0' gizler.
     var _saAcikEd=true; try{ _saAcikEd=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(e){}
     if(key==='m' && _saAcikEd){
-      // [SATIR ARALIĞI] Word benzeri TEK açılır menü: sayılar ÜSTTE, altında paragraf önce/sonra boşluk. Yalnız Word çıktısı.
       var _mL=val('m_line')||'1.0', _mB=!!val('m_space_before'), _mA=!!val('m_space_after');
       var _lsEt={'1.0':'1,0','1.15':'1,15','1.5':'1,5','2.0':'2,0','2.5':'2,5','3.0':'3,0'};
       var _lsIco='<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h3"/><path d="M2 8h3"/><path d="M2 12h3"/><path d="M8 3.5h6"/><path d="M8 7h6"/><path d="M8 10.5h6"/></svg>';
-      h+='<div class="ed-ls">';
-      h+='<button type="button" class="ed-ls-btn" title="Satır aralığı ve paragraf boşluğu (yalnız Word çıktısı)">'+_lsIco+' Satır aralığı: <b>'+(_lsEt[_mL]||_mL)+'</b> <span class="ed-ls-ok">▾</span></button>';
-      h+='<div class="ed-ls-menu" style="display:none">';
-      ['1.0','1.15','1.5','2.0','2.5','3.0'].forEach(function(v){ h+='<button type="button" class="ed-ls-opt" data-ls="'+v+'"><span class="ed-ls-tik">'+(v===_mL?'✓':'')+'</span>'+_lsEt[v]+'</button>'; });
-      h+='<div class="ed-ls-sep"></div>';
-      h+='<button type="button" class="ed-ls-opt" data-tgl="before"><span class="ed-ls-tik">'+(_mB?'✓':'')+'</span>Paragraftan önce boşluk ekle</button>';
-      h+='<button type="button" class="ed-ls-opt" data-tgl="after"><span class="ed-ls-tik">'+(_mA?'✓':'')+'</span>Paragraftan sonra boşluk ekle</button>';
-      h+='</div></div>';
+      _gPar+='<div class="ed-ls">';
+      _gPar+='<button type="button" class="ed-ls-btn" title="Satır aralığı ve paragraf boşluğu (yalnız Word çıktısı)">'+_lsIco+' Satır aralığı: <b>'+(_lsEt[_mL]||_mL)+'</b> <span class="ed-ls-ok">▾</span></button>';
+      _gPar+='<div class="ed-ls-menu" style="display:none">';
+      ['1.0','1.15','1.5','2.0','2.5','3.0'].forEach(function(v){ _gPar+='<button type="button" class="ed-ls-opt" data-ls="'+v+'"><span class="ed-ls-tik">'+(v===_mL?'✓':'')+'</span>'+_lsEt[v]+'</button>'; });
+      _gPar+='<div class="ed-ls-sep"></div>';
+      _gPar+='<button type="button" class="ed-ls-opt" data-tgl="before"><span class="ed-ls-tik">'+(_mB?'✓':'')+'</span>Paragraftan önce boşluk ekle</button>';
+      _gPar+='<button type="button" class="ed-ls-opt" data-tgl="after"><span class="ed-ls-tik">'+(_mA?'✓':'')+'</span>Paragraftan sonra boşluk ekle</button>';
+      _gPar+='</div></div>';
     }
-    if(key==='b'){
-      // [BAŞLIK–PARAGRAF] İçerik başlığı ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı).
-      h+='<label title="Başlık ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı)">Alt boşluk <input type="number" data-t="b_after" min="0" max="72" value="'+esc(val('b_after')||'6')+'" style="width:50px">pt</label>';
-    }
-    // [WORD DÜZEYİ] Genel "Stil" menüsü (varsayılan: içerik=Başlık 2, platform=Başlık 1). Seçtiğin düzey o
-    // türdeki TÜM başlıklara uygulanır. Tek bir başlığı farklı yapmak için başlığa SAĞ TIK (Word düzeyi).
-    if(ids.wordstyle) h+='<label title="Word başlık düzeyi (bu türdeki tüm başlıklar). Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
-    if(ids.numbered) h+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
-    // "Başlıksız" ikon+metin toggle (tik değil; Link üstte ile aynı stil). Açık: grup başlığı Word'e basılmaz.
-    if(ids.basliksiz) h+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
-    // "Link üstte" GLOBAL toggle (ikon+metin; tik değil). Açık: link görselin ÜSTÜNDE.
-    h+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
-    // [SAYFA NO] Üst çubuktan şeride taşındı: her grupta görünür açılır menü (Word çıktısı sayfa numarası).
-    h+='<div class="ed-sn"><button type="button" id="ed-sayfano-btn" class="ed-ls-btn" title="Sayfa numarası (yalnız Word çıktısı)"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2.5L4.7 13.5"/><path d="M11.8 2.5L10.5 13.5"/><path d="M3.3 6h10"/><path d="M2.5 10h10"/></svg> Sayfa no <span class="ed-ls-ok">▾</span></button><div id="ed-sayfano-menu" class="ed-sn-menu" style="display:none"></div></div>';
+    if(ids.numbered) _gPar+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
+    // --- Başlık: (içerik başlığı: Alt boşluk) + Stil(düzey) + Başlıksız ---
+    var _gBaslik='';
+    if(key==='b') _gBaslik+='<label title="Başlık ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı)">Alt boşluk <input type="number" data-t="b_after" min="0" max="72" value="'+esc(val('b_after')||'6')+'" style="width:50px">pt</label>';
+    if(ids.wordstyle) _gBaslik+='<label title="Word başlık düzeyi (bu türdeki tüm başlıklar). Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
+    if(ids.basliksiz) _gBaslik+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
+    // --- Belge (çıktı): Link üstte + Sayfa no ---
+    var _gBelge='';
+    _gBelge+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
+    _gBelge+='<div class="ed-sn"><button type="button" id="ed-sayfano-btn" class="ed-ls-btn" title="Sayfa numarası (yalnız Word çıktısı)"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2.5L4.7 13.5"/><path d="M11.8 2.5L10.5 13.5"/><path d="M3.3 6h10"/><path d="M2.5 10h10"/></svg> Sayfa no <span class="ed-ls-ok">▾</span></button><div id="ed-sayfano-menu" class="ed-sn-menu" style="display:none"></div></div>';
+    function _grp(inner){ return inner ? ('<span class="ed-grp">'+inner+'</span>') : ''; }
+    h += _gBaglam + _grp(_gYazi) + _grp(_gPar) + _grp(_gBaslik) + _grp(_gBelge);
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=hval('font',ids.font);
     var _lsel=panel.querySelector('select[data-t="m_line"]'); if(_lsel) _lsel.value=val('m_line')||'1.0';   // [SATIR ARALIĞI] mevcut değeri göster
