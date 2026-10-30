@@ -8426,6 +8426,14 @@ body:not(.light-theme) #editorModal .ed-plat:hover{background:rgba(29,155,240,0.
 body:not(.light-theme) #editorModal .ed-metin,body:not(.light-theme) #editorModal .ed-link-edit{background:#121b26;border-color:#2c3a4a;color:#e7e9ea;}
 body:not(.light-theme) #editorModal .ed-metin:focus,body:not(.light-theme) #editorModal .ed-link-edit:focus{background:rgba(29,161,242,0.08);border-color:#1d9bf0;}
 body:not(.light-theme) #editorModal .ed-metin a,body:not(.light-theme) #editorModal .ed-link{color:#4ea3ec;}
+/* [DARK METİN RENGİ] Dark editörde SİYAH seçilen metin OKUNUR (açık) görünsün; Word ÇIKTISI gerçek rengi (siyah) kullanır
+   -> yalnız EKRAN. İnline renk (stilCss color:#000000 + color picker rgb(0,0,0)) CSS'i yener; bu yüzden !important + siyah hedefli. */
+body:not(.light-theme) #editorModal .ed-root [style*="color:#000000"],
+body:not(.light-theme) #editorModal .ed-root [style*="color: rgb(0, 0, 0)"],
+body:not(.light-theme) #editorModal .ed-root [style*="color:rgb(0, 0, 0)"],
+body:not(.light-theme) #editorModal .ed-root [style*="color:rgb(0,0,0)"],
+body:not(.light-theme) #editorModal .ed-root [style*="color: black"],
+body:not(.light-theme) #editorModal .ed-root [style*="color:black"]{color:#e7e9ea !important;}
 body:not(.light-theme) #editorModal .ed-h2:hover{border-color:#3a4a5c;}
 body:not(.light-theme) #editorModal .ed-h2:focus{background:rgba(29,161,242,0.1);}
 body:not(.light-theme) #editorModal .ed-h2:empty:before,body:not(.light-theme) #editorModal .ed-metin:empty:before,body:not(.light-theme) #editorModal .ed-link-edit:empty:before,body:not(.light-theme) #editorModal .ed-parca-bos{color:#6b7785;}
