@@ -9079,6 +9079,22 @@ X_EDITOR_JS = r'''
       el.addEventListener('focus', function(){ XE._seritSekmeCtx('m',{kind:'metin'}); XE._alanOdak(); });
       el.addEventListener('blur', function(){ XE._alanBlur(); });
       el.addEventListener('click', function(e){ var a=e.target&&e.target.closest?e.target.closest('a'):null; if(a){ e.preventDefault(); } });   // [SATIR-İÇİ LİNK] editörde link'e tıklayınca gezinme (düzenleme için)
+      el.addEventListener('paste', function(e){
+        // [DÜZ-METİN YAPIŞTIR] Normal Ctrl+V kaynağın font/renk/boyut/arka-plan biçimini getirip metni "bozuyordu"
+        // (X'ten yapıştırınca arka bant vb.) -> VARSAYILAN "stili eşleştir": DÜZ METİN ekle, satır sonlarını koru.
+        // Bayrak x_duz_yapistir='0' -> eski zengin yapıştırma (sanitizeMetin font/renk/boyut korur). Biçimi SONRADAN
+        // seçip araç çubuğundan uygulayabilirsin.
+        try{ if(localStorage.getItem('x_duz_yapistir')==='0') return; }catch(_){}
+        try{
+          var cd=e.clipboardData||window.clipboardData; if(!cd||!cd.getData) return;
+          var txt=cd.getData('text/plain');
+          if(txt==null||txt===''){ var _h=cd.getData('text/html'); if(_h){ var _tmp=document.createElement('div'); _tmp.innerHTML=_h; txt=_tmp.innerText||_tmp.textContent||''; } }
+          if(txt==null||txt==='') return;   // metin yok (ör. görsel) -> varsayılan davranış
+          e.preventDefault();
+          var html=esc(String(txt)).replace(/\r\n?/g,'\n').replace(/\n/g,'<br>');
+          document.execCommand('insertHTML', false, html);
+        }catch(_){}
+      });
       el.addEventListener('input', function(){ if(_inlineBusy) return;   // satır-içi biçim uygulaması kendi undo'sunu + kaydını yapar (çift işleme yok)
         XE._alanGiris(); var bi=+el.getAttribute('data-i'), pk=+el.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(el.innerHTML); XE._ovSet(bi); } });
     });
