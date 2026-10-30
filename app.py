@@ -1810,10 +1810,10 @@ HTML_TEMPLATE = """
         }
         /* ===== Faz 4: Raporlarım kart galerisi (Google-Dokümanlar tarzı) ===== */
         .x-gal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 18px; }
-        .x-gal-card { position: relative; cursor: pointer; border-radius: 10px; transition: transform .12s ease; }
-        .x-gal-card:hover { transform: translateY(-2px); }
-        .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); }
-        .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); box-shadow: 0 3px 12px rgba(0,0,0,0.30); }
+        .x-gal-card { position: relative; cursor: pointer; border-radius: 10px; }
+        /* [KART HOVER] kutu ZIPLAMASIN (translateY kaldırıldı) -> hover'da yalnız çerçeve mavilensin. */
+        .x-gal-page { position: relative; height: 176px; border-radius: 8px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.25)); overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.22); transition: border-color .12s ease; }
+        .x-gal-card:hover .x-gal-page { border-color: var(--accent-color); }
         .x-gal-card.aktif .x-gal-page { border-color: var(--accent-color); box-shadow: 0 0 0 2px var(--accent-color); }
         .x-gal-pageinner { padding: 16px 15px 30px; height: 100%; box-sizing: border-box; overflow: hidden; -webkit-mask-image: linear-gradient(to bottom, #000 68%, transparent); mask-image: linear-gradient(to bottom, #000 68%, transparent); }
         .x-gal-card.aktif .x-gal-pageinner { padding-top: 32px; }   /* "● Açık" rozeti başlığa binmesin: aktif kartta içeriği rozetin altından başlat */
@@ -1823,6 +1823,8 @@ HTML_TEMPLATE = """
         .x-gal-pimg { display: block; width: 100%; max-height: 78px; object-fit: cover; border-radius: 5px; margin: 6px 0; border: 1px solid var(--border-color, rgba(136,153,166,0.28)); }
         .x-gal-meta { padding: 9px 2px 2px; display: flex; align-items: baseline; gap: 7px; }
         .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; flex: 1; min-width: 0; }
+        /* [KART ADI INLINE] çift tıkla düzenleme durumu: akıcı, taşmasız, odak çerçeveli */
+        .x-gal-ad.x-gal-ad-edit { white-space: normal; overflow: visible; text-overflow: clip; outline: 2px solid var(--accent-color, #1d9bf0); background: rgba(29,155,240,0.1); border-radius: 6px; padding: 1px 5px; cursor: text; }
         .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
         .x-gal-rozet { position: absolute; top: 7px; right: 7px; background: var(--accent-color); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; z-index: 2; letter-spacing: .3px; }
         .x-gal-check { position: absolute; bottom: 9px; left: 9px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
@@ -3801,7 +3803,7 @@ HTML_TEMPLATE = """
                         '</div>' +
                     '</div>' +
                     '<div class="x-gal-meta">' +
-                        '<div class="x-gal-ad" data-rid="' + m.id + '" ondblclick="xGalRename(event,this)" title="Çift tıkla: yeniden adlandır">' + adEsc + '</div>' +
+                        '<div class="x-gal-ad" data-rid="' + m.id + '" onclick="event.stopPropagation()" ondblclick="xGalRename(event,this)" title="Çift tıkla: adı düzenle (Enter ya da başka yere tıkla = kaydet)">' + adEsc + '</div>' +
                         '<div class="x-gal-alt">' + (m.itemCount || 0) + ' · ' + tarih + '</div>' +
                     '</div>' +
                 '</div>';
@@ -3814,7 +3816,45 @@ HTML_TEMPLATE = """
         function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid, { editorBosAc: true }); } catch (e) {} }
         function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { downloadSavedReport(el.dataset.rid); } catch (e) {} }
         function xGalSil(ev, el) { if (ev) ev.stopPropagation(); try { deleteSavedReport(el.dataset.rid); } catch (e) {} }
-        function xGalRename(ev, el) { if (ev) ev.stopPropagation(); try { renameSavedReport(el.dataset.rid); } catch (e) {} }
+        // [KART ADI INLINE] Çift tıkla -> POPUP YOK, adı yerinde düzenle (contenteditable). Enter ya da başka yere
+        // tıklama (blur) = kaydet; Escape = iptal. Boş/aynı -> eski ada döner.
+        function xGalRename(ev, el) {
+            if (ev) ev.stopPropagation();
+            if (!el || el._xDuzenle) return;
+            var id = el.dataset.rid;
+            var cur = (el.textContent || '').trim();
+            el._xDuzenle = true;
+            el.setAttribute('contenteditable', 'true');
+            el.classList.add('x-gal-ad-edit');
+            el.focus();
+            try { var rng = document.createRange(); rng.selectNodeContents(el); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); } catch (e) {}
+            var _bitti = false;
+            function _son(kaydet) {
+                if (_bitti) return; _bitti = true;
+                el.removeAttribute('contenteditable'); el.classList.remove('x-gal-ad-edit'); el._xDuzenle = false;
+                var yeni = (el.textContent || '').trim();
+                if (!kaydet || !yeni || yeni === cur) { el.textContent = cur; return; }   // iptal/boş/aynı -> eski ad
+                el.textContent = yeni;
+                xGalRenameUygula(id, yeni, cur);   // arka planda kalıcılaştır
+            }
+            el.addEventListener('keydown', function kd(e) {
+                if (e.key === 'Enter') { e.preventDefault(); el.removeEventListener('keydown', kd); el.blur(); }
+                else if (e.key === 'Escape') { e.preventDefault(); el.removeEventListener('keydown', kd); _son(false); }
+            });
+            el.addEventListener('blur', function ob() { el.removeEventListener('blur', ob); _son(true); });
+        }
+        async function xGalRenameUygula(id, yeni, cur) {
+            try {
+                // KUYRUK: uçuştaki oto-kayıtla META yazma yarışı olmasın.
+                var rmeta2 = await xSiraya(function () { return window.XSavedReports.rename(id, yeni); });
+                if (window.__openReportName && cur && window.__openReportName === cur) { window.__openReportName = yeni; }
+                if (typeof xAktifRaporId === 'function' && xAktifRaporId() === id) { xAktifRaporKur(id, yeni, (rmeta2 && rmeta2.slug) || null, true); }   // aktif raporsa çubuğu + URL'i güncelle
+                await renderSavedReports();
+            } catch (err) {
+                showToast('Yeniden adlandırma hatası: ' + (err && err.message ? err.message : err), 'danger');
+                try { await renderSavedReports(); } catch (e) {}
+            }
+        }
         window.xGalAc = xGalAc; window.xGalIndir = xGalIndir; window.xGalSil = xGalSil; window.xGalRename = xGalRename;
         // --- Seçim eylem çubuğu (alttan belirir): Birleştir / İndir / Sil ---
         function xSecimIdler() {
