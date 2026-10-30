@@ -6133,6 +6133,7 @@ HTML_TEMPLATE = """
                 <div style="display: flex; gap: 2px; align-items: center;">
                     <input id="ed-rapor-adi" class="ed-rapor-adi" type="text" autocomplete="off" spellcheck="false" placeholder="Rapor adı" title="Rapor adını düzenle — Enter'a bas ya da başka yere tıkla; arka planda ve URL'de de güncellenir">
                     <button class="ed-ikon-btn ed-ik-galeri" onclick="window.XEditor &amp;&amp; window.XEditor.galeriToggle()" title="Galeri / Sırala: bölümleri kart ızgarasında sürükleyip sırala"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></button>
+                    <button id="ed-ik-tamekran-btn" class="ed-ikon-btn ed-ik-tamekran" onclick="window.XEditor &amp;&amp; window.XEditor.tamEkran()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
@@ -8153,6 +8154,29 @@ X_EDITOR_JS = r'''
     lb.classList.add('acik');
   }
   function _lightboxKapat(){ var lb=document.getElementById('ed-lightbox'); if(lb){ lb.classList.remove('acik'); lb.innerHTML=''; } }
+  // [TAM EKRAN] Üst çubuk butonu -> tarayıcı tam ekranı (editör/panel ekranını kaplar). Tekrar/ESC ile çıkılır.
+  XE.tamEkran = function(){
+    try{
+      var fs=document.fullscreenElement||document.webkitFullscreenElement;
+      if(!fs){ var de=document.documentElement; (de.requestFullscreen||de.webkitRequestFullscreen||function(){}).call(de); }
+      else { (document.exitFullscreen||document.webkitExitFullscreen||function(){}).call(document); }
+    }catch(e){}
+  };
+  function _tamEkranIkonGuncelle(){
+    var b=document.getElementById('ed-ik-tamekran-btn'); if(!b) return;
+    var fs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    b.title=fs?'Tam ekrandan çık (ESC)':'Tam ekran';
+    b.innerHTML=fs
+      ? '<svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5H7.5V3.5"/><path d="M16.5 7.5H12.5V3.5"/><path d="M3.5 12.5H7.5V16.5"/><path d="M16.5 12.5H12.5V16.5"/></svg>'
+      : '<svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg>';
+  }
+  function _tamEkranKur(){
+    if(!window.__edFsKur){ window.__edFsKur=true;
+      document.addEventListener('fullscreenchange', _tamEkranIkonGuncelle);
+      document.addEventListener('webkitfullscreenchange', _tamEkranIkonGuncelle);
+    }
+    _tamEkranIkonGuncelle();   // açılışta mevcut duruma göre ikon
+  }
   // [SAYFA NO] Şeritteki "Sayfa no" menüsünü doldurur (butona tıklayınca açılır; bağlama _panelCiz post-render'da).
   // Değerler gizli backing input'lara (pn_on/pn_pos/pn_align/pn_fmt) yazılır -> xBuildStyleOpts -> docx. Yalnız Word çıktısı.
   function _sayfaNoMenuCiz(){
@@ -8632,6 +8656,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     _raporAdiKur();     // [RAPOR ADI] üst çubuk inline ad alanı: dinleyiciler (bir kez) + mevcut adla doldur
     _tooltipKur();      // [TOOLTIP] temaya uygun özel tooltip sistemi (bir kez)
     _lightboxKur();     // [LIGHTBOX] görsele çift tık -> tam ekran görüntüleyici (bir kez)
+    _tamEkranKur();     // [TAM EKRAN] fullscreen dinleyici + ikon durumu
     // [scroll zıplamasını önle]: taze açılış DEĞİLSE (ekle/sil/taşı/yeniden-plan) mevcut scroll'u sakla
     // -> _ciz re-render sonrası geri koyar (araya bölüm ekleyince "en üste atma" hissi gitsin).
     if(!opts.fresh){ var _pb0=document.querySelector('#editorModal .preview-body'); _savedScroll = _pb0 ? _pb0.scrollTop : null; }
