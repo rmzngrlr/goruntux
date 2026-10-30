@@ -2305,6 +2305,10 @@ HTML_TEMPLATE = """
                         <option value="both">İki yana</option>
                     </select>
                 </div>
+                <!-- [SATIR ARALIĞI] Editör şeridinden (Metin grubu) ayarlanır; burada yalnız kalıcılık/okuma için gizli backing. Çıktı (Word) satır aralığı + paragraf önce/sonra boşluğu. -->
+                <input type="hidden" id="m_line" value="1.0">
+                <input type="checkbox" id="m_space_before" style="display:none">
+                <input type="checkbox" id="m_space_after" style="display:none">
 
                 <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 15px 0;">
 
@@ -4187,6 +4191,9 @@ HTML_TEMPLATE = """
                 m_italic: gc('m_italic', false),
                 m_underline: gc('m_underline', false),
                 m_align: gv('m_align', 'left'),
+                m_line: gv('m_line', '1.0'),              // [SATIR ARALIĞI] metin satır aralığı (Word w:line; çıktı)
+                m_space_before: gc('m_space_before', false),   // [SATIR ARALIĞI] paragraftan önce boşluk
+                m_space_after: gc('m_space_after', false),     // [SATIR ARALIĞI] paragraftan sonra boşluk
                 g_align: gv('g_align', 'left')   // [GÖRSEL HİZA] genel görsel hizalaması (Sol/Orta/Sağ)
             };
         }
@@ -4200,7 +4207,7 @@ HTML_TEMPLATE = """
         // Anahtarlar input id'leriyle birebir (b1_font -> #b1_font). Onay kutuları .checked, diğerleri .value.
         function xApplyStyleOpts(o) {
             if (!o) return;
-            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1,b_basliksiz:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1 };
+            var checks = { b1_bold:1,b1_italic:1,b1_underline:1, b_bold:1,b_italic:1,b_underline:1,b_numbered:1,b_basliksiz:1, l_bold:1,l_italic:1,l_underline:1, m_bold:1,m_italic:1,m_underline:1, m_space_before:1,m_space_after:1 };
             Object.keys(o).forEach(function (k) {
                 var e = document.getElementById(k); if (!e) return;
                 if (checks[k]) { e.checked = !!o[k]; } else { e.value = o[k]; }
@@ -4216,6 +4223,7 @@ HTML_TEMPLATE = """
             b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2',
             l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
             m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left',
+            m_line: '1.0', m_space_before: false, m_space_after: false,   // [SATIR ARALIĞI] standart: tek satır, boşluk yok (eski çıktı birebir)
             g_align: 'left'   // [GÖRSEL HİZA] standart: sola (mevcut çıktı birebir korunur)
         };
         function xStandartStiliUygula() { try { xApplyStyleOpts(STANDART_STIL); } catch (e) {} }
@@ -4230,6 +4238,7 @@ HTML_TEMPLATE = """
                     'b_font','b_size','b_color','b_bold','b_italic','b_underline','b_numbered','b_basliksiz','b_align','b_wordstyle',
                     'l_font','l_size','l_color','l_bold','l_italic','l_underline','l_align',
                     'm_font','m_size','m_color','m_bold','m_italic','m_underline','m_align',
+                    'm_line','m_space_before','m_space_after',
                     'g_align'];
         }
         function xSaveStyles() {
@@ -6734,7 +6743,16 @@ LOCAL_DOCX_JS = r'''
       }
       _hlKapat();
       if(!body) body='<w:r><w:rPr><w:rFonts w:ascii="'+xmlEsc(mFont)+'" w:hAnsi="'+xmlEsc(mFont)+'"/><w:color w:val="'+mColor+'"/><w:sz w:val="'+mSz+'"/><w:szCs w:val="'+mSz+'"/></w:rPr><w:t xml:space="preserve"></w:t></w:r>';
-      return '<w:p><w:pPr><w:keepNext/>'+jc(opts.m_align)+'<w:spacing w:after="120"/></w:pPr>'+body+'</w:p>';
+      // [SATIR ARALIĞI] metin paragrafı: satır aralığı (w:line) + paragraftan önce/sonra boşluk (w:before/after).
+      // YALNIZ Word çıktısı; editör görünümü değişmez. Varsayılan (1.0 + kapalı) -> <w:spacing w:after="120"/> (eski birebir).
+      // Bölümler arası boşluk OTONOM (bu ayara bağlı değil). Bayrak x_satir_aralik='0' -> eski davranış.
+      var _saOn=true; try{ _saOn=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(_){}
+      var _mMult=_saOn?(parseFloat(opts.m_line||'1.0')||1.0):1.0;
+      var _mBefore=(_saOn && opts.m_space_before)?'200':null;
+      var _mAfter=(_saOn && opts.m_space_after)?'240':'120';
+      var _mLine=(_mMult && Math.abs(_mMult-1.0)>0.001)?(' w:line="'+Math.round(240*_mMult)+'" w:lineRule="auto"'):'';
+      var _mSp='<w:spacing'+(_mBefore!=null?(' w:before="'+_mBefore+'"'):'')+' w:after="'+_mAfter+'"'+_mLine+'/>';
+      return '<w:p><w:pPr><w:keepNext/>'+jc(opts.m_align)+_mSp+'</w:pPr>'+body+'</w:p>';
     }
     // Faz 4b: grup-sonu ayraç çizgisi (parçalar modunda link'ten AYRI boş sınır paragrafı).
     // Eskiden link paragrafının alt-sınırıydı; parça sırası serbest olunca link en altta olmayabilir.
@@ -8419,6 +8437,14 @@ X_EDITOR_JS = r'''
     h+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
     h+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
     h+='</span>';
+    // [SATIR ARALIĞI] YALNIZ Metin grubunda: satır aralığı (1,0–3,0) + paragraftan önce/sonra boşluk. SADECE Word
+    // çıktısını etkiler (editör görünümü değişmez). Bayrak x_satir_aralik='0' gizler.
+    var _saAcikEd=true; try{ _saAcikEd=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(e){}
+    if(key==='m' && _saAcikEd){
+      h+='<label title="Satır aralığı — yalnız Word çıktısı (editör görünümü değişmez)">Satır aralığı <select data-t="m_line"><option value="1.0">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2.0">2,0</option><option value="2.5">2,5</option><option value="3.0">3,0</option></select></label>';
+      h+='<label class="ed-tgl ed-tgl-metinli" title="Paragraftan ÖNCE boşluk ekle (yalnız Word çıktısı)"><input type="checkbox" data-t="m_space_before" '+(val('m_space_before')?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M8 3.2v4"/><path d="M6 5l2-2 2 2"/><path d="M3 9.5h10"/><path d="M3 12.5h10"/></svg><span>¶ önce</span></label>';
+      h+='<label class="ed-tgl ed-tgl-metinli" title="Paragraftan SONRA boşluk ekle (yalnız Word çıktısı)"><input type="checkbox" data-t="m_space_after" '+(val('m_space_after')?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 3.5h10"/><path d="M3 6.5h10"/><path d="M8 9v4"/><path d="M6 11l2 2 2-2"/></svg><span>¶ sonra</span></label>';
+    }
     // [WORD DÜZEYİ] Genel "Stil" menüsü (varsayılan: içerik=Başlık 2, platform=Başlık 1). Seçtiğin düzey o
     // türdeki TÜM başlıklara uygulanır. Tek bir başlığı farklı yapmak için başlığa SAĞ TIK (Word düzeyi).
     if(ids.wordstyle) h+='<label title="Word başlık düzeyi (bu türdeki tüm başlıklar). Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
@@ -8429,6 +8455,7 @@ X_EDITOR_JS = r'''
     h+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=hval('font',ids.font);
+    var _lsel=panel.querySelector('select[data-t="m_line"]'); if(_lsel) _lsel.value=val('m_line')||'1.0';   // [SATIR ARALIĞI] mevcut değeri göster
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=hval('word',ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:(key==='b1'?'Heading1':'Heading2'); } }   // başlık odaklıysa efektif düzey; değilse genel
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox')?'change':'input';   // [RENK ANLIK] color da 'input' -> seçerken uygulanır
