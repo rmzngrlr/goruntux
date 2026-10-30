@@ -8159,7 +8159,7 @@ X_EDITOR_JS = r'''
   var CSS = `
 #editorModal.modal{align-items:stretch;justify-content:stretch;background:#fff;backdrop-filter:none;padding:0;}
 #editorModal .preview-modal-content{width:100%;max-width:none;height:100vh;border:0;border-radius:0;box-shadow:none;animation:none;}
-#editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;scroll-padding-top:118px;-webkit-overflow-scrolling:touch;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b6c0cb #eef1f4;}
+#editorModal .preview-body{display:block;overflow-y:auto;overflow-x:hidden;overscroll-behavior:none;scroll-padding-top:118px;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b6c0cb #eef1f4;}
 /* GÖRÜNÜR/KALICI scroll çubuğu (editör uzun; overlay-scrollbar gizli kalıyordu -> kullanıcı kaydırabildiğini görmüyordu) */
 #editorModal .preview-body::-webkit-scrollbar{width:13px;height:13px;}
 #editorModal .preview-body::-webkit-scrollbar-track{background:#eef1f4;}
