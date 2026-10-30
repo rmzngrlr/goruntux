@@ -8791,7 +8791,7 @@ X_EDITOR_JS = r'''
       var curColor=cs?_rgbToHex(cs.color):'#000000';
       h+='<div class="rt-title">Seçili metin</div>';
       h+='<label class="rt-row">Font <select class="rt-font"><option value="">(değiştirme)</option>'+fontOpts+'</select></label>';
-      h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" placeholder="'+esc(String(curSize))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+curColor+'"></label></div>';
+      h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(curSize))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+curColor+'"></label></div>';
       h+='<div class="rt-row rt-biu"><button type="button" class="rt-tgl" data-c="bold" title="Kalın"><b>B</b></button><button type="button" class="rt-tgl" data-c="italic" title="Eğik"><i>I</i></button><button type="button" class="rt-tgl" data-c="underline" title="Altı çizili"><u>U</u></button></div>';
       // [SATIR-İÇİ LİNK] seçim link içindeyse "Linki kaldır", değilse URL girişi (seçim URL ise ön-dolu) + "Link yap"
       var _selTxt2=(info.range?String(info.range).trim():'');
