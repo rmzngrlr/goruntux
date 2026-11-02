@@ -2524,6 +2524,7 @@ HTML_TEMPLATE = """
                 if (body.classList.contains('light-theme')) { body.classList.remove('light-theme'); try { localStorage.setItem('theme', 'dark'); } catch(e) {} }
                 else { body.classList.add('light-theme'); try { localStorage.setItem('theme', 'light'); } catch(e) {} }
                 xTemaUygula();
+                _ayarMenuKapat();   // menüdeki butona tıklayınca açılır menü kapanır
             } catch(err) { console.error("toggleTheme error:", err); }
         }
         window.toggleTheme = toggleTheme;
@@ -2536,6 +2537,7 @@ HTML_TEMPLATE = """
                 if (!fs) { var de = document.documentElement; (de.requestFullscreen || de.webkitRequestFullscreen || function(){}).call(de); }
                 else { (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document); }
             } catch(e) {}
+            _ayarMenuKapat();   // menüdeki butona tıklayınca açılır menü kapanır
         }
         window.toggleFullscreen = toggleFullscreen;
         function _fsIkonGuncelle() {
@@ -2545,6 +2547,9 @@ HTML_TEMPLATE = """
         }
         window._fsIkonGuncelle = _fsIkonGuncelle;
         try { document.addEventListener('fullscreenchange', _fsIkonGuncelle); document.addEventListener('webkitfullscreenchange', _fsIkonGuncelle); } catch(e) {}
+        // [AYARLAR] açık ayar menüsünü/menülerini kapat (menüdeki butona tıklayınca + dışarı tıkla).
+        function _ayarMenuKapat() { try { var hepsi = document.querySelectorAll('.ayar-menu'); for (var i = 0; i < hepsi.length; i++) { hepsi[i].style.display = 'none'; } } catch(e) {} }
+        window._ayarMenuKapat = _ayarMenuKapat;
         // [AYARLAR] gear butonu -> altındaki "ayar-menu"yü aç/kapa (aşağı doğru butonlar iner). Dışarı tıkla kapatır.
         function toggleAyarMenu(btn) {
             try {
@@ -8381,6 +8386,8 @@ X_EDITOR_JS = r'''
 /* Başlık ikon butonları (✕/Kaydet/İndir/Geri/İleri): dinlenmede TEK gri renk, hover'da semantik renk
    CANLANIR, pasif (geri/ileri alınacak yokken) SİLİK. SVG currentColor ile renk alır. */
 #editorModal .ed-ikon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}
+/* [AYARLAR] menüdeki tema/tam-ekran ikonları: xTemaUygula/_fsIkonGuncelle attribute'suz SVG basıyor -> üst çubuk ikonlarıyla aynı 19px'e sabitle */
+#editorModal .ayar-menu .ed-ikon-btn svg{width:19px;height:19px;}
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
 #editorModal .ed-ikon-btn:disabled{opacity:.3;cursor:default;}
 /* [RAPOR ADI] Üst çubukta (galeri butonunun solunda) tek-tıkla düzenlenen rapor adı. Koyu başlıkta açık metin. */
