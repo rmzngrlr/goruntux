@@ -1559,7 +1559,7 @@ HTML_TEMPLATE = """
         /* [PAYLAŞ/PDF] html2pdf kaynağı: editör .ed-root kopyası — KENDİ stili (editörün scoped/tema CSS'ine bağlı değil), beyaz + koyu yazı */
         .x-pdf-sheet { width: 794px; background: #fff; color: #15202b; padding: 32px 40px; box-sizing: border-box; font-family: Arial, sans-serif; }
         .x-pdf-sheet * { box-sizing: border-box; }
-        .x-pdf-sheet .ed-card { border: none !important; background: transparent !important; margin: 0 0 16px !important; padding: 0 !important; box-shadow: none !important; }
+        .x-pdf-sheet .ed-card { border: none !important; background: transparent !important; margin: 0 0 16px !important; padding: 0 !important; box-shadow: none !important; page-break-inside: avoid; break-inside: avoid; }
         .x-pdf-sheet .ed-h2-row, .x-pdf-sheet .ed-h2-sar { padding: 0 !important; margin: 0 !important; display: block !important; }
         .x-pdf-sheet .ed-plat { border: none !important; border-bottom: 2px solid #d0d7de !important; background: transparent !important; margin: 20px 0 10px !important; padding: 0 0 5px !important; font-weight: 700; }
         .x-pdf-sheet .ed-h2 { border: none !important; background: transparent !important; margin: 14px 0 8px !important; padding: 0 !important; font-weight: 700; display: block !important; }
@@ -3482,7 +3482,7 @@ HTML_TEMPLATE = """
                     image: { type: 'jpeg', quality: 0.96 },
                     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: ['css', 'legacy'] }
+                    pagebreak: { mode: ['css', 'legacy'], avoid: '.ed-card' }   // bölümü (başlık+görsel+link) BÖLME -> başlık öksüz kalmaz
                 }).from(tk.sheet).outputPdf('blob');
                 return { blob: blob, filename: ad };
             } finally { try { tk.kap.remove(); } catch (e) {} }
@@ -8965,39 +8965,52 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     }
     return map;
   }
-  // Faz 6: tik değişince TÜM kartlarda görsel/link parçalarının yerini tercihe göre takasla (metinler yerinde kalır).
+  // [LİNK ÜSTTE — HEDEFLİ TAŞIMA] Eskiden tüm belgeyi _ciz ile YENİDEN KURUYORDU -> tüm editör repaint = "hareketlenme"
+  // + scroll. ARTIK: yalnız link PARÇA DÜĞÜMÜNÜ ilgili kartta yerinde taşır (diğer kartlar/doküman hiç dokunulmaz,
+  // görseller yeniden-decode edilmez). Yapı beklenmedikse _ciz'e güvenli fallback. Veri (parcalar) + overlay güncellenir.
+  function _linkUstteDomTasi(root, bi, li, basaMi){
+    if(!root) return false;
+    var card=root.querySelector('.ed-card[data-i="'+bi+'"]'); if(!card) return false;
+    var parcaNodes=[], pzNodes=[], c;
+    for(c=card.firstChild;c;c=c.nextSibling){ if(c.nodeType===1 && c.classList){ if(c.classList.contains('ed-parca')) parcaNodes.push(c); else if(c.classList.contains('ed-pz')) pzNodes.push(c); } }
+    var n=parcaNodes.length;
+    if(n===0 || li<0 || li>=n || pzNodes.length!==n+1) return false;   // yapı beklenmedik -> fallback
+    var yeni=[], linkNode=parcaNodes[li], x;
+    if(basaMi){ yeni.push(linkNode); for(x=0;x<n;x++){ if(x!==li) yeni.push(parcaNodes[x]); } }
+    else { for(x=0;x<n;x++){ if(x!==li) yeni.push(parcaNodes[x]); } yeni.push(linkNode); }
+    var ref=(pzNodes[0]?pzNodes[0].previousSibling:null);
+    for(x=0;x<parcaNodes.length;x++) card.removeChild(parcaNodes[x]);
+    for(x=0;x<pzNodes.length;x++) card.removeChild(pzNodes[x]);
+    function ekle(node){ if(ref && ref.parentNode===card){ if(ref.nextSibling) card.insertBefore(node, ref.nextSibling); else card.appendChild(node); } else { card.appendChild(node); } ref=node; }
+    function numP(node, j){ node.setAttribute('data-p', j); var ds=node.querySelectorAll('[data-p]'); for(var z=0;z<ds.length;z++) ds[z].setAttribute('data-p', j); }
+    function numPz(node, pos){ node.setAttribute('data-pos', pos); var ds=node.querySelectorAll('[data-pos]'); for(var z=0;z<ds.length;z++) ds[z].setAttribute('data-pos', pos); }
+    for(var j=0;j<n;j++){ ekle(pzNodes[j]); numPz(pzNodes[j], j); ekle(yeni[j]); numP(yeni[j], j); }
+    ekle(pzNodes[n]); numPz(pzNodes[n], n);
+    return true;
+  }
   XE._linkUstteUygula = function(on){
     XE._pushUndo();
     XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir
-    // Yalnız LİNK parçasını taşı: üstte->en başa, altta->en sona. Görsel ve ARADAKİ METİN kendi
-    // sıralarını KORUR (eski "görsel<->link takası" metni de yukarı atıyordu -> kullanıcı: saçma).
+    var root=document.getElementById('editor-root');
+    var pb=document.querySelector('#editorModal .preview-body'); var _st=pb?pb.scrollTop:0;
+    var _fallback=false;
+    // Yalnız LİNK parçasını taşı: üstte->en başa, altta->en sona. Görsel ve ARADAKİ METİN kendi sırasını KORUR.
     (XE.belge.birimler||[]).forEach(function(b, bi){
       if(!b || !b.item || !b.item.parcalar) return;
       var pc=b.item.parcalar, gi=-1, li=-1, x;
       for(x=0;x<pc.length;x++){ if(pc[x].tur==='gorsel' && gi<0) gi=x; else if(pc[x].tur==='link' && li<0) li=x; }
       if(li<0) return;                              // link yoksa dokunma
-      if(gi>=0){                                    // görselli bölüm: link'i görsele göre konumla (eski davranış)
-        var linkOnce=(li<gi);
-        if(on && !linkOnce){ var el=pc.splice(li,1)[0]; pc.unshift(el); XE._ovSet(bi); }       // link üstte: en başa
-        else if(!on && linkOnce){ var el2=pc.splice(li,1)[0]; pc.push(el2); XE._ovSet(bi); }    // link altta: en sona
-      } else {                                      // görsel YOK (manuel/boş bölüm): link'i doğrudan başa/sona taşı
-        if(on && li!==0){ var el3=pc.splice(li,1)[0]; pc.unshift(el3); XE._ovSet(bi); }         // link üstte: en başa
-        else if(!on && li!==pc.length-1){ var el4=pc.splice(li,1)[0]; pc.push(el4); XE._ovSet(bi); }   // link altta: en sona
-      }
+      var basaMi=null;
+      if(gi>=0){ var linkOnce=(li<gi); if(on && !linkOnce) basaMi=true; else if(!on && linkOnce) basaMi=false; }   // görselli: görsele göre
+      else { if(on && li!==0) basaMi=true; else if(!on && li!==pc.length-1) basaMi=false; }                        // görselsiz: başa/sona
+      if(basaMi===null) return;                     // zaten doğru konumda
+      var liEski=li;
+      var el=pc.splice(li,1)[0]; if(basaMi) pc.unshift(el); else pc.push(el);   // VERİ
+      XE._ovSet(bi);
+      if(!_linkUstteDomTasi(root, bi, liEski, basaMi)) _fallback=true;          // DOM (yapı bozuksa fallback işaretle)
     });
-    // [TİTREME/SCROLL] _ciz YENİ <img> düğümleri kurar -> asenkron yeniden-decode + layout kayması (hareketlenme)
-    // + scroll kayması. ÇÖZÜM: eski (zaten decode edilmiş) img düğümlerini src'ye göre sakla; _ciz sonrası yeni
-    // img'leri eskiyle DEĞİŞTİR (aynı bitmap -> yeniden-decode YOK, boyut anında -> layout sabit). Scroll da KORU.
-    var _root=document.getElementById('editor-root');
-    var _pb=document.querySelector('#editorModal .preview-body'); var _st=_pb?_pb.scrollTop:0;
-    var _eskiImg={}; if(_root){ _root.querySelectorAll('.ed-img').forEach(function(im){ var s=im.getAttribute('src')||''; (_eskiImg[s]=_eskiImg[s]||[]).push(im); }); }
-    XE._ciz();
-    if(_root){ _root.querySelectorAll('.ed-img').forEach(function(ni){ var s=ni.getAttribute('src')||''; var liste=_eskiImg[s];
-      if(liste && liste.length){ var old=liste.shift();
-        old.setAttribute('data-i', ni.getAttribute('data-i')); old.setAttribute('data-p', ni.getAttribute('data-p'));
-        var _sty=ni.getAttribute('style'); if(_sty!=null) old.setAttribute('style', _sty); else old.removeAttribute('style');
-        if(ni.parentNode) ni.parentNode.replaceChild(old, ni); } }); }
-    if(_pb) _pb.scrollTop=_st;
+    if(_fallback){ XE._ciz(); }   // güvenli geri-dönüş (beklenmedik yapı)
+    if(pb) pb.scrollTop=_st;
   };
 
   // Faz 5: editör çalışma durumu (parcalar + düzenlenen başlık) panel-düzeyi bir overlay'de yaşar.
