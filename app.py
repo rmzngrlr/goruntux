@@ -9407,6 +9407,9 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
   // Bayrak x_kes_kopyala='0' -> davranış kapanır, tarayıcının yerel menüsü geri gelir.
   function clipAcik(){ try{ return localStorage.getItem('x_kes_kopyala')!=='0'; }catch(_){ return true; } }
   function _clipPasteVar(){ return !!(navigator.clipboard && navigator.clipboard.readText); }   // pano OKUMA yalnız güvenli bağlamda (localhost evet, IP+HTTP hayır)
+  // [YAPIŞTIR BUTONU] Kullanıcı isteğiyle menüdeki Yapıştır butonu ŞİMDİLİK GİZLİ (Ctrl+V ile yapıştırılır).
+  // İleride göstermek için: localStorage x_yapistir_btn='1'. Varsayılan GİZLİ.
+  function _yapistirGoster(){ try{ return localStorage.getItem('x_yapistir_btn')==='1'; }catch(_){ return false; } }
   var _CLIP_SVG={
     kes:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.1"/><circle cx="6" cy="14" r="2.1"/><path d="M7.7 7.3L16 15.2"/><path d="M7.7 12.7L16 4.8"/></svg>',
     kopya:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="7.5" width="8.5" height="8.5" rx="1.6"/><path d="M12.5 7.5V5.5A1.5 1.5 0 0 0 11 4H5.5A1.5 1.5 0 0 0 4 5.5V11A1.5 1.5 0 0 0 5.5 12.5H7.5"/></svg>',
@@ -9420,7 +9423,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       + bt('tumsec', hasContent, 'Tümünü seç (Ctrl+A)', _CLIP_SVG.tumsec)
       + bt('kes', hasSel, 'Kes (Ctrl+X)', _CLIP_SVG.kes)
       + bt('kopya', hasSel, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya)
-      + bt('yapistir', canPaste, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)   /* popup YOK -> readText yoksa (güvensiz) silik; alana klavyeyle Ctrl+V */
+      + (_yapistirGoster() ? bt('yapistir', canPaste, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir) : '')   /* ŞİMDİLİK GİZLİ (x_yapistir_btn='1' ile açılır); Ctrl+V ile yapıştırılır */
       + bt('sil', hasSel, 'Sil', _CLIP_SVG.sil)
       + '</div>';
   }
@@ -9513,7 +9516,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     var s='<div class="rt-row rt-clip">';
     // Kes HER ZAMAN aktif (görseli siler). Kopyala pano-yazma varsa; Yapıştır pano-okuma varsa (güvenli bağlam). POPUP yok -> güvensizde silik.
     if(!bos){ s+=bt('kes', true, 'Kes (Ctrl+X)', _CLIP_SVG.kes)+bt('kopya', canCopy, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya); }
-    s+=bt('yapistir', _gorselYapistirVar(), 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);
+    if(_yapistirGoster()) s+=bt('yapistir', _gorselYapistirVar(), 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);   /* ŞİMDİLİK GİZLİ; Ctrl+V ile yapıştırılır */
     return s+'</div>';
   }
   function _gorselClipBagla(p, bi, pp){
@@ -9785,7 +9788,9 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       // [GÖRSEL PANO/HİZA] görsele (dolu .ed-img ya da boş .ed-img-pano) sağ-tık -> görsel menüsü:
       //   dolu -> Kes/Kopyala/Yapıştır (+ hizalama); boş -> yalnız Yapıştır. (clip ya da hizalama bayrağı açıkken.)
       var gorselEl=gorsel||gorselBos;
-      if(gorselEl && gorselEl.getAttribute('data-i')!=null && (clipAcik() || gorselHizaAcik())){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorselEl.getAttribute('data-i'), pp:+gorselEl.getAttribute('data-p'), bos:!gorsel}, e.clientX, e.clientY); return; }
+      // BOŞ slotta tek işlem Yapıştır'dır; Yapıştır GİZLİYSE custom menü açma -> tarayıcının yerel menüsü (Yapıştır'ı olan) çıksın.
+      var _bosSlotAtla=(!gorsel && gorselBos && !_yapistirGoster());
+      if(gorselEl && gorselEl.getAttribute('data-i')!=null && !_bosSlotAtla && (clipAcik() || gorselHizaAcik())){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorselEl.getAttribute('data-i'), pp:+gorselEl.getAttribute('data-p'), bos:!gorsel}, e.clientX, e.clientY); return; }
       // [KES/KOPYALA] editable (metin/başlık/link) sağ-tık -> editöre özel menü (seçim olmasa da). Mod: başlık/inline/clip.
       var edit=metin||h2||plat||linkEd;
       if(clipAcik() && edit){
