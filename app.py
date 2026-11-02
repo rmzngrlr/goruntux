@@ -9832,6 +9832,21 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     });
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') _sagTikKapat(); });
+    // [CTRL+A] Klavyeden tümünü seç -> editable içeriğini seç + seçim menüsünü aç (mouse-seçimi/sağ-tık gibi).
+    document.addEventListener('keydown', function(e){
+      if(!((e.ctrlKey||e.metaKey) && (e.key==='a'||e.key==='A'))) return;
+      var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
+      var ae=document.activeElement, el=(ae&&ae.closest)?ae.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit'):null;
+      if(!el){ var s0=window.getSelection(); var an=s0&&s0.anchorNode; var pe=an&&(an.nodeType===1?an:an.parentNode); el=(pe&&pe.closest)?pe.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit'):null; }
+      if(!el) return;
+      e.preventDefault();   // içeriği editable'a kapsamlı seç (sayfanın tamamı değil)
+      el.focus(); var sel=window.getSelection(); var r=document.createRange(); r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      var rect=r.getBoundingClientRect();
+      var h2=el.classList.contains('ed-h2'), plat=el.classList.contains('ed-plat'), info;
+      if(hOvAcik() && (h2||plat)){ info={mode:'heading', rol:h2?'h2':'h1', bi:+el.getAttribute('data-i'), clipEl:el, clipRange:r.cloneRange()}; }
+      else { info={mode:'inline', metinEl:el, range:r.cloneRange(), clipEl:el, clipRange:r.cloneRange()}; }
+      _sagTikGoster(info, rect.left, rect.bottom);
+    });
     window.addEventListener('scroll', function(){ _sagTikKapat(); }, true);
     // [MENÜ KAPAT] Native içerik değişimi (klavye Ctrl+V / yazma / silme) seçimi bozar -> açık menüyü kapat
     // (kullanıcı: "Ctrl+V'den sonra metin yokken menü açık kalmasın"). Panelin kendi input'ları + bizim işlemler (_inlineBusy) hariç.
