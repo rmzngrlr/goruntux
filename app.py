@@ -1899,7 +1899,9 @@ HTML_TEMPLATE = """
         /* [RAPOR OLUŞTUR] kart tıklayınca inen menü (popup değil): Yeni Rapor / Cihazdan Yükle */
         .x-gal-olustur { position: relative; }
         .x-gal-olustur .x-gal-yeni { cursor: pointer; }
-        .x-gal-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 13px; box-shadow: 0 14px 36px rgba(0,0,0,0.3); padding: 6px; z-index: 60; }
+        /* OPAK ZORUNLU: --bg-card koyu temada rgba(.,.6) = %40 saydam -> arkadaki "Rapor Oluştur" yazısı görünürdü.
+           linear-gradient(card,card) over bg-primary ile tam opak yap (koddaki mevcut desen). */
+        .x-gal-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; min-width: 190px; background: linear-gradient(var(--bg-card), var(--bg-card)), var(--bg-primary); border: 1px solid var(--border-color); border-radius: 13px; box-shadow: 0 14px 36px rgba(0,0,0,0.3); padding: 6px; z-index: 60; }
         .x-gal-menu.acik { display: flex; }
         .x-gal-menu-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: none; background: none; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 9px; text-align: left; }
         .x-gal-menu-item:hover { background: var(--accent-glow); color: var(--accent-color); }
@@ -2166,7 +2168,7 @@ HTML_TEMPLATE = """
 
                     <div class="pool-actions">
                         <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
-                        <button id="download-btn" class="x-havuz-btn" onclick="xPaylasAc('havuz')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2.1"/><circle cx="5.5" cy="10" r="2.1"/><circle cx="15" cy="15" r="2.1"/><path d="M7.4 9l5.4-2.7M7.4 11l5.4 2.7"/></svg> Paylaş</button>
+                        <button id="download-btn" class="x-havuz-btn" onclick="xPaylasAc('havuz')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg> Paylaş</button>
                         <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici önizlemede aç"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.4"/></svg> Önizle</button>
                         <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
                         <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
@@ -2416,7 +2418,7 @@ HTML_TEMPLATE = """
     <div id="paylasModal" class="modal" style="z-index:3400;">
         <div class="modal-content" style="max-width:440px;">
             <div class="modal-header">
-                <h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2.1"/><circle cx="5.5" cy="10" r="2.1"/><circle cx="15" cy="15" r="2.1"/><path d="M7.4 9l5.4-2.7M7.4 11l5.4 2.7"/></svg>Paylaş</h2>
+                <h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg>Paylaş</h2>
                 <span class="close-btn" onclick="xPaylasKapat()">&times;</span>
             </div>
             <div class="modal-body">
@@ -3446,17 +3448,21 @@ HTML_TEMPLATE = """
             });
         }
         // Editör .ed-root'unun temiz (chrome'suz, beyaz) kopyası -> html2pdf kaynağı. Scoped CSS'e bağlı DEĞİL (.x-pdf-sheet kendi stili).
+        // KRİTİK: html2canvas position:fixed/absolute öğeyi 0 YÜKSEKLİK ölçer (boş PDF) -> .x-pdf-sheet NORMAL AKIŞTA olmalı.
+        // Ekran-dışı bir KAP (fixed) içine normal-akış kopya koy; html2pdf'e İÇ kopyayı (sheet) ver.
         function xPdfTemizKopya(root) {
+            var kap = document.createElement('div');
+            kap.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1;';   // ekran-dışı kap (sayfa akışını bozmaz)
             var w = document.createElement('div');
             w.className = 'x-pdf-sheet';
-            w.style.cssText = 'position:fixed;left:-99999px;top:0;';
+            w.style.cssText = 'width:794px;';   // NORMAL AKIŞ -> html2canvas doğru yükseklik ölçer
             var c = root.cloneNode(true);
             ['.ed-tut', '.ed-pz', '.ed-pz-wrap', '.ed-kume-gutter', '.ed-kume-kalem', '.ed-kart-ust', '.ed-metin-sil', '.ed-gorsel-sil', '.ed-metin-ekle', '.ed-bolum-ekle', '.ed-pe-wrap', '.ed-img-pano', '.ed-del', '.ed-sira', '.ed-tur', '.ed-gal-ipucu'].forEach(function (sel) {
                 c.querySelectorAll(sel).forEach(function (el) { el.remove(); });
             });
             c.querySelectorAll('[contenteditable]').forEach(function (el) { el.removeAttribute('contenteditable'); });
-            w.appendChild(c);
-            return w;
+            w.appendChild(c); kap.appendChild(w);
+            return { kap: kap, sheet: w };
         }
         // PDF üret: editör render'ı yoksa editörü aç + bekle; temiz kopyayı html2pdf ile PDF blob'una çevir.
         async function xPdfUret() {
@@ -3467,8 +3473,8 @@ HTML_TEMPLATE = """
                 root = await xBekleVar(function () { return document.querySelector('#editorModal .ed-root'); }, 5000);
             }
             if (!root) throw new Error('PDF için içerik render edilemedi.');
-            var temiz = xPdfTemizKopya(root);
-            document.body.appendChild(temiz);
+            var tk = xPdfTemizKopya(root);
+            document.body.appendChild(tk.kap);
             try {
                 var ad = ((typeof window.xIndirmeDosyaAdi === 'function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
                 var blob = await window.html2pdf().set({
@@ -3477,9 +3483,9 @@ HTML_TEMPLATE = """
                     html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['css', 'legacy'] }
-                }).from(temiz).outputPdf('blob');
+                }).from(tk.sheet).outputPdf('blob');
                 return { blob: blob, filename: ad };
-            } finally { try { temiz.remove(); } catch (e) {} }
+            } finally { try { tk.kap.remove(); } catch (e) {} }
         }
         // Seçilen biçimin blob'unu üret. Word: editör açıksa generateBlob, değilse xBuildReport. PDF: xPdfUret.
         async function xPaylasBlobUret() {
@@ -3866,8 +3872,8 @@ HTML_TEMPLATE = """
         }
         window.xRaporMenuSec = xRaporMenuSec;
         try { document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.x-gal-olustur'))) { document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); }); } }); } catch (e) {}
-        // [CİHAZDAN YÜKLE] .docx seç -> TARAYICIDA Word Düzenle (clientWordDuzenle) -> editörde düzenlenebilir aç
-        // (Rapor'matik "Önizle"/submitMod1(true) preview yolunun aynısı; dosya sunucuya YÜKLENMEZ).
+        // [CİHAZDAN YÜKLE] .docx seç -> TARAYICIDA Word Düzenle (clientWordDuzenle) -> Raporlarım'A KAYDET (geçmiş raporlar
+        // arasına girsin) -> openSavedReport ile AKTİF yap (havuz+overlay) -> editörde düzenlenebilir aç. Dosya sunucuya GİTMEZ.
         function cihazdanYukle() {
             var inp = document.createElement('input');
             inp.type = 'file'; inp.accept = '.docx'; inp.multiple = true;
@@ -3879,11 +3885,25 @@ HTML_TEMPLATE = """
                 if (!window.XLocalDocx || !window.XLocalDocx.clientWordDuzenle) { showToast('Word bileşeni yüklenemedi (sayfayı yenileyin).', 'danger'); return; }
                 if (typeof showToast === 'function') showToast('Dosya açılıyor…', 'info');
                 window.XLocalDocx.clientWordDuzenle(files, (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}))
-                    .then(function (result) {
-                        window.lastGeneratedBlob = result && result.blob;
-                        window.lastGeneratedFilename = (files.length > 1 ? 'GörüntüX_Birlesik.docx' : 'GörüntüX_Duzenlenmis.docx');
-                        if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({ items: (result && result.items) || [], fresh: true }); }
-                        else { showToast('Editör yüklenemedi (sayfayı yenileyin).', 'danger'); }
+                    .then(async function (result) {
+                        var its = (result && result.items) || [];
+                        var blob = result && result.blob;
+                        var name = (files.length === 1 ? (files[0].name || '').replace(/\.docx$/i, '') : 'GörüntüX_Birlesik') || xTarihSaatDamgasi();
+                        var filename = (typeof xRaporDosyaAdi === 'function') ? xRaporDosyaAdi(name) : (name + '.docx');
+                        // Görselleri snapshot haritasına çıkar (image_b64 -> dataUrl); openSavedReport bunları XLocalImages'a geri yükler.
+                        var images = {};
+                        for (var i = 0; i < its.length; i++) {
+                            var lk = its[i].link || '';
+                            if (lk && its[i].image_b64 && window.XLocalImages) {
+                                var mime = its[i].image_mime || 'image/jpeg';
+                                images[window.XLocalImages.normLink(lk)] = { dataUrl: 'data:' + mime + ';base64,' + its[i].image_b64, mime: mime };
+                            }
+                        }
+                        await window.XSavedReports.whenReady();
+                        var meta = await window.XSavedReports.save({ name: name, items: its, images: images, blob: blob, filename: filename, editorStyle: (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}), manualClusters: [] });
+                        await openSavedReport(meta.id, { urlReplace: true });   // aktif yap + havuz/overlay'e yükle (Raporlarım'da görünür)
+                        if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({}); }   // editörde aç (havuz artık dolu)
+                        showToast("Raporlarım'a eklendi ve açıldı: " + name, 'success');
                     })
                     .catch(function (err) {
                         console.error('Cihazdan yükle hatası:', err);
@@ -6439,7 +6459,7 @@ HTML_TEMPLATE = """
                             <button class="ed-ikon-btn js-fs-btn" onclick="window.toggleFullscreen &amp;&amp; window.toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
                         </div>
                     </div>
-                    <button class="ed-ikon-btn ed-ik-indir ed-ik-paylas" onclick="window.xPaylasAc &amp;&amp; window.xPaylasAc('editor')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2.1"/><circle cx="5.5" cy="10" r="2.1"/><circle cx="15" cy="15" r="2.1"/><path d="M7.4 9l5.4-2.7M7.4 11l5.4 2.7"/></svg></button>
+                    <button class="ed-ikon-btn ed-ik-indir ed-ik-paylas" onclick="window.xPaylasAc &amp;&amp; window.xPaylasAc('editor')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
             </div>
