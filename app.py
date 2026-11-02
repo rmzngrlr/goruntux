@@ -3921,10 +3921,10 @@ HTML_TEMPLATE = """
                         }
                         await window.XSavedReports.whenReady();
                         var meta = await window.XSavedReports.save({ name: name, items: its, images: images, blob: blob, filename: filename, editorStyle: (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}), manualClusters: [] });
-                        await openSavedReport(meta.id, { urlReplace: true });   // aktif yap + havuz/overlay'e yükle (Raporlarım'da görünür)
-                        if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({}); }   // editörde aç (havuz artık dolu)
+                        await openSavedReport(meta.id, { urlReplace: true });   // aktif yap + havuz/overlay'e yükle (Raporlarım'da görünür, havuz açılır)
+                        // NOT: editör OTOMATİK açılmaz (kullanıcı isteği) -> havuz görünümü kalır; kullanıcı "Önizle" ile editörü açar.
                         if (prog) prog.bitir(true);
-                        showToast("Raporlarım'a eklendi ve açıldı: " + name, 'success');
+                        showToast("Raporlarım'a eklendi, havuza yüklendi: " + name + " — Önizle ile düzenle.", 'success');
                     })
                     .catch(function (err) {
                         if (prog) prog.bitir(false);
