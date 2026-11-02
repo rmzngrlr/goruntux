@@ -9371,7 +9371,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     }
   };
 
-  function _metinKaydet(m){ try{ var bi=+m.getAttribute('data-i'), pk=+m.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ b.item.parcalar[pk].metin=sanitizeMetin(m.innerHTML); XE._ovSet(bi); } }catch(e){} }
+  function _metinKaydet(m){ try{ var bi=+m.getAttribute('data-i'), pk=+m.getAttribute('data-p'); var b=XE.belge.birimler[bi]; if(b&&b.item&&b.item.parcalar[pk]){ if(m.classList&&m.classList.contains('ed-link-edit')){ b.item.parcalar[pk].url=m.textContent; } else { b.item.parcalar[pk].metin=sanitizeMetin(m.innerHTML); } XE._ovSet(bi); } }catch(e){} }
   function _aktifMetin(){ var sel=window.getSelection(); if(!sel||!sel.anchorNode) return null; var el=sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentNode; return (el&&el.closest)?el.closest('.ed-metin'):null; }
 
   // ============== SAĞ-TIK BİÇİM PANELİ ==============
@@ -9420,7 +9420,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       + bt('tumsec', hasContent, 'Tümünü seç (Ctrl+A)', _CLIP_SVG.tumsec)
       + bt('kes', hasSel, 'Kes (Ctrl+X)', _CLIP_SVG.kes)
       + bt('kopya', hasSel, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya)
-      + bt('yapistir', canPaste, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)
+      + bt('yapistir', true, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)   /* [YEDEK] readText yoksa Ctrl+V modalı -> hep aktif */
       + bt('sil', hasSel, 'Sil', _CLIP_SVG.sil)
       + '</div>';
   }
@@ -9455,20 +9455,50 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
   function _clipKopyala(){ var r=_clipGeri(); if(!r) return; try{ document.execCommand('copy'); }catch(e){} _sagTikKapat(); }
   function _clipKes(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ document.execCommand('cut'); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
   function _clipSil(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ var rng=r.sel.getRangeAt(0); if(!rng.collapsed) rng.deleteContents(); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
+  // [METİN PANO] Panodan DÜZ metin al. Güvenli bağlamda navigator.clipboard.readText; değilse (canlı IP+HTTP)
+  // görseldeki gibi ODAKLI Ctrl+V penceresi (_panoMetinBekle) -> HER yerde çalışır (Yapıştır asla silik DEĞİL).
+  function _panoMetinBekle(cb){
+    var done=false;
+    var ov=document.createElement('div'); ov.className='modal active'; ov.style.zIndex='3200';
+    ov.innerHTML='<div class="modal-content" style="max-width:460px;">'
+      +'<div class="modal-header"><h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H6A1.5 1.5 0 0 0 4.5 6V15A1.5 1.5 0 0 0 6 16.5H14A1.5 1.5 0 0 0 15.5 15V6A1.5 1.5 0 0 0 14 4.5H12.5"/><rect x="7" y="3" width="6" height="3" rx="1"/></svg>Panodan Metin</h2><span class="close-btn" data-x="1">&times;</span></div>'
+      +'<div class="modal-body">'
+        +'<div class="x-pano-hedef" contenteditable="true" spellcheck="false" style="min-height:110px; border:2px dashed #9ab; border-radius:12px; display:flex; align-items:center; justify-content:center; text-align:center; color:#57606a; font-size:14px; padding:16px; outline:none; background:#f7fafd; cursor:text;">Metni buraya <b style="margin:0 5px;">Ctrl+V</b> (⌘V) ile yapıştırın</div>'
+      +'</div>'
+      +'<div class="modal-footer" style="gap:10px;"><button type="button" class="btn btn-secondary" data-x="1" style="margin:0;">Vazgeç</button></div>'
+      +'</div>';
+    document.body.appendChild(ov);
+    var hedef=ov.querySelector('.x-pano-hedef');
+    function kapat(){ if(done) return; done=true; try{ ov.classList.remove('active'); ov.remove(); }catch(e){} }
+    hedef.addEventListener('paste', function(e){
+      var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
+      var txt=''; try{ txt=cd.getData('text/plain')||''; }catch(_){}
+      e.preventDefault();
+      if(txt){ try{ cb(txt); }catch(_){} kapat(); }
+      else { hedef.innerHTML='Panoda metin yok. Önce metin kopyalayıp tekrar <b>Ctrl+V</b> yapın.'; }
+    });
+    ov.addEventListener('click', function(e){ if(e.target===ov || (e.target.getAttribute && e.target.getAttribute('data-x'))) kapat(); });
+    ov.addEventListener('keydown', function(e){ if(e.key==='Escape') kapat(); });
+    setTimeout(function(){ try{ hedef.focus(); }catch(e){} }, 50);
+  }
+  function _metinPano(cb){
+    if(navigator.clipboard && navigator.clipboard.readText){
+      navigator.clipboard.readText().then(function(t){ if(t!=null && t!=='') cb(t); else _panoMetinBekle(cb); }).catch(function(){ _panoMetinBekle(cb); });
+    } else { _panoMetinBekle(cb); }
+  }
   function _clipYapistir(){
     var el=_rtInfo&&_rtInfo.clipEl, rng=_rtInfo&&_rtInfo.clipRange; if(!el||!rng) return;
-    if(!_clipPasteVar()) return;   // buton zaten silik; yine de koru
-    navigator.clipboard.readText().then(function(txt){
+    var elRef=el, rngRef=rng;   // _sagTikKapat _rtInfo'yu temizler -> önce yakala
+    _sagTikKapat();
+    _metinPano(function(txt){
+      if(txt==null || txt==='') return;
       try{
-        if(txt!=null && txt!==''){
-          el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
-          XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
-          try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
-          _inlineBusy=false; _editableKaydet(el);
-        }
+        elRef.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rngRef);
+        XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
+        try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
+        _inlineBusy=false; _editableKaydet(elRef);
       }catch(e){ _inlineBusy=false; }
-      _sagTikKapat();
-    }).catch(function(){ _sagTikKapat(); });
+    });
   }
   // [GÖRSEL PANO] Görsel sağ-tık menüsü pano işlemleri (metin clip'ten AYRI — görsel execCommand'la kopyalanamaz).
   // Yapıştır: _panoGorsel (güvenli bağlamda doğrudan okur, değilse Ctrl+V modalı) -> HER yerde çalışır, asla silik DEĞİL.
@@ -9780,7 +9810,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
         var info={clipEl:edit, clipRange:rng};
         // Başlık biçim paneli yalnız x_h_ov açıkken; değilse başlıkta da yalnız pano satırı (clip modu).
         if(hOvAcik() && (h2||plat)){ info.mode='heading'; info.rol=h2?'h2':'h1'; info.bi=+(h2||plat).getAttribute('data-i'); }
-        else if(metin && hasSel){ info.mode='inline'; info.metinEl=metin; info.range=rng.cloneRange(); }
+        else if(metin || linkEd){ info.mode='inline'; info.metinEl=(metin||linkEd); info.range=rng.cloneRange(); }   // metin+link: seçim OLMASA da tam inline panel (başlık gibi)
         else { info.mode='clip'; }
         _sagTikGoster(info, e.clientX, e.clientY); return;
       }
@@ -9808,6 +9838,14 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') _sagTikKapat(); });
     window.addEventListener('scroll', function(){ _sagTikKapat(); }, true);
+    // [MENÜ KAPAT] Native içerik değişimi (klavye Ctrl+V / yazma / silme) seçimi bozar -> açık menüyü kapat
+    // (kullanıcı: "Ctrl+V'den sonra metin yokken menü açık kalmasın"). Panelin kendi input'ları + bizim işlemler (_inlineBusy) hariç.
+    document.addEventListener('input', function(e){
+      if(_inlineBusy) return;
+      var t=e.target; if(!t||!t.closest) return;
+      if(t.closest('#ed-rt-panel')) return;
+      if(t.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit')){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block') _sagTikKapat(); }
+    });
   }
 
   // [TAŞIMA HEDEFLERİ] Bir öğeyi "başka bölüme taşı" (kalem menüsü) için geçerli hedef bölümler.
