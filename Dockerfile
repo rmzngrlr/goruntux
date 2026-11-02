@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir requests python-docx Pillow Flask
 COPY app.py /app/app.py
 COPY api_server.py /app/api_server.py
 COPY x-word /app/x-word
+COPY vendor /app/vendor
 
 EXPOSE 3011
 
