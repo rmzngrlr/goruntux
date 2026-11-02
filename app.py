@@ -1896,6 +1896,14 @@ HTML_TEMPLATE = """
         .x-gal-yeni { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 176px; border: 2px dashed var(--border-color, rgba(136,153,166,0.45)); border-radius: 8px; color: var(--text-secondary, #8899a6); gap: 6px; transition: all .12s ease; }
         .x-gal-card:hover .x-gal-yeni { border-color: var(--accent-color); color: var(--accent-color); }
         .x-gal-arti { font-size: 34px; line-height: 1; font-weight: 300; }
+        /* [RAPOR OLUŞTUR] kart tıklayınca inen menü (popup değil): Yeni Rapor / Cihazdan Yükle */
+        .x-gal-olustur { position: relative; }
+        .x-gal-olustur .x-gal-yeni { cursor: pointer; }
+        .x-gal-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; min-width: 190px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 13px; box-shadow: 0 14px 36px rgba(0,0,0,0.3); padding: 6px; z-index: 60; }
+        .x-gal-menu.acik { display: flex; }
+        .x-gal-menu-item { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border: none; background: none; color: var(--text-primary); font-size: 14px; font-weight: 600; cursor: pointer; border-radius: 9px; text-align: left; }
+        .x-gal-menu-item:hover { background: var(--accent-glow); color: var(--accent-color); }
+        .x-gal-menu-item svg { width: 19px; height: 19px; flex: none; }
         /* Seçim eylem çubuğu — rapor işaretlenince alttan belirir */
         .x-secim-bar { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(160%); display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--card-bg, #15202b); border: 1px solid var(--border-color, rgba(136,153,166,0.3)); box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 1200; transition: transform .22s cubic-bezier(.2,.8,.2,1); }
         .x-secim-bar.acik { transform: translateX(-50%) translateY(0); }
@@ -3839,6 +3847,52 @@ HTML_TEMPLATE = """
             } catch (e) { console.error('Yeni rapor+editör hatası:', e); }
         }
         window.yeniRaporVeEditor = yeniRaporVeEditor;
+
+        // [RAPOR OLUŞTUR] "+ Rapor Oluştur" kartı -> inen menü (popup DEĞİL): Yeni Rapor / Cihazdan Yükle.
+        function xRaporOlusturAc(e, el) {
+            try { e.stopPropagation(); } catch (x) {}
+            var card = el.closest('.x-gal-olustur'); if (!card) return;
+            var menu = card.querySelector('.x-gal-menu'); if (!menu) return;
+            var acik = menu.classList.contains('acik');
+            document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); });
+            if (!acik) menu.classList.add('acik');
+        }
+        window.xRaporOlusturAc = xRaporOlusturAc;
+        function xRaporMenuSec(e, btn) {
+            try { e.stopPropagation(); } catch (x) {}
+            var menu = btn.closest('.x-gal-menu'); if (menu) menu.classList.remove('acik');
+            var sec = btn.getAttribute('data-sec');
+            if (sec === 'cihaz') cihazdanYukle(); else yeniRaporVeEditor();
+        }
+        window.xRaporMenuSec = xRaporMenuSec;
+        try { document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.x-gal-olustur'))) { document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); }); } }); } catch (e) {}
+        // [CİHAZDAN YÜKLE] .docx seç -> TARAYICIDA Word Düzenle (clientWordDuzenle) -> editörde düzenlenebilir aç
+        // (Rapor'matik "Önizle"/submitMod1(true) preview yolunun aynısı; dosya sunucuya YÜKLENMEZ).
+        function cihazdanYukle() {
+            var inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = '.docx'; inp.multiple = true;
+            inp.addEventListener('change', function () {
+                var files = inp.files;
+                if (!files || !files.length) return;
+                var tumDocx = Array.prototype.every.call(files, function (f) { return /\.docx$/i.test(f.name); });
+                if (!tumDocx) { showToast('Lütfen yalnız .docx dosyaları seçin.', 'danger'); return; }
+                if (!window.XLocalDocx || !window.XLocalDocx.clientWordDuzenle) { showToast('Word bileşeni yüklenemedi (sayfayı yenileyin).', 'danger'); return; }
+                if (typeof showToast === 'function') showToast('Dosya açılıyor…', 'info');
+                window.XLocalDocx.clientWordDuzenle(files, (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}))
+                    .then(function (result) {
+                        window.lastGeneratedBlob = result && result.blob;
+                        window.lastGeneratedFilename = (files.length > 1 ? 'GörüntüX_Birlesik.docx' : 'GörüntüX_Duzenlenmis.docx');
+                        if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({ items: (result && result.items) || [], fresh: true }); }
+                        else { showToast('Editör yüklenemedi (sayfayı yenileyin).', 'danger'); }
+                    })
+                    .catch(function (err) {
+                        console.error('Cihazdan yükle hatası:', err);
+                        showToast('Yüklenemedi: ' + (err && err.message ? err.message : err), 'danger');
+                    });
+            });
+            inp.click();
+        }
+        window.cihazdanYukle = cihazdanYukle;
         // ✓ Kapat: açık raporu SİLMEDEN kapat. Son düzenlemeyi kaydeder, raporu AYIRIR (ÖNCE ayır -> sonra
         // havuzu temizle; böylece boşalan havuz rapora yazılmaz, rapor DOLU kalır), çalışma havuzunu/editörü
         // temizler. Rapor Raporlarım'da durur; karttan tekrar açılır. (Seri kuyruktan geçer -> yarış yok.)
@@ -4030,8 +4084,12 @@ HTML_TEMPLATE = """
             for (var qi = 0; qi < metas.length; qi++) { previews.push(await xRaporOnizleme(metas[qi])); }
             // İlk kart: Boş Rapor
             var html = '<div class="x-gal-grid">' +
-                '<div class="x-gal-card" onclick="yeniRaporVeEditor()" title="Yeni rapor oluştur ve editörü aç">' +
-                    '<div class="x-gal-yeni"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Yeni Rapor</span></div>' +
+                '<div class="x-gal-card x-gal-olustur" title="Rapor oluştur">' +
+                    '<div class="x-gal-yeni" onclick="xRaporOlusturAc(event,this)"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Rapor Oluştur</span></div>' +
+                    '<div class="x-gal-menu">' +
+                        '<button type="button" class="x-gal-menu-item" data-sec="yeni" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg> Yeni Rapor</button>' +
+                        '<button type="button" class="x-gal-menu-item" data-sec="cihaz" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="9.5" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/></svg> Cihazdan Yükle</button>' +
+                    '</div>' +
                 '</div>';
             html += metas.map(function (m, idx) {
                 var tarih = '';
