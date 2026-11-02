@@ -7057,7 +7057,8 @@ LOCAL_DOCX_JS = r'''
       return '<w:jc w:val="'+a+'"/>';
     }
 
-    // [SATIR ARALIĞI] TÜM öğe paragraflarına (başlık/metin/link/görsel) uygulanacak w:line attribute'u.
+    // [SATIR ARALIĞI] METİN paragraflarına (başlık/metin/link) uygulanacak w:line attribute'u. GÖRSEL HARİÇ:
+    // lineRule="auto" bir görsel paragrafını 1,5 katına ŞİŞİRİR -> görsel altında kocaman boşluk/sayfa taşması (regresyon).
     // Genel ayar opts.m_line (varsayılan 1,5). 1,0'da boş (eski birebir). Bayrak x_satir_aralik='0' -> kapalı.
     function _satirLineAttr(){
       var on=true; try{ on=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(_){}
@@ -7123,7 +7124,7 @@ LOCAL_DOCX_JS = r'''
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini artik
       // Word belirliyor; sabit sayfa sonu 2026-07-17'de kaldirildi).
-      return '<w:p><w:pPr><w:keepNext/>'+_gorselJc(align)+'<w:spacing w:after="120"'+_satirLineAttr()+'/></w:pPr><w:r><w:drawing>'
+      return '<w:p><w:pPr><w:keepNext/>'+_gorselJc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
         + '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
@@ -8984,9 +8985,18 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
         else if(!on && li!==pc.length-1){ var el4=pc.splice(li,1)[0]; pc.push(el4); XE._ovSet(bi); }   // link altta: en sona
       }
     });
-    // [TİTREME/SCROLL] _ciz innerHTML'i yeniden kurar -> scroll sıçrar + titrer. Scroll konumunu KORU.
+    // [TİTREME/SCROLL] _ciz YENİ <img> düğümleri kurar -> asenkron yeniden-decode + layout kayması (hareketlenme)
+    // + scroll kayması. ÇÖZÜM: eski (zaten decode edilmiş) img düğümlerini src'ye göre sakla; _ciz sonrası yeni
+    // img'leri eskiyle DEĞİŞTİR (aynı bitmap -> yeniden-decode YOK, boyut anında -> layout sabit). Scroll da KORU.
+    var _root=document.getElementById('editor-root');
     var _pb=document.querySelector('#editorModal .preview-body'); var _st=_pb?_pb.scrollTop:0;
+    var _eskiImg={}; if(_root){ _root.querySelectorAll('.ed-img').forEach(function(im){ var s=im.getAttribute('src')||''; (_eskiImg[s]=_eskiImg[s]||[]).push(im); }); }
     XE._ciz();
+    if(_root){ _root.querySelectorAll('.ed-img').forEach(function(ni){ var s=ni.getAttribute('src')||''; var liste=_eskiImg[s];
+      if(liste && liste.length){ var old=liste.shift();
+        old.setAttribute('data-i', ni.getAttribute('data-i')); old.setAttribute('data-p', ni.getAttribute('data-p'));
+        var _sty=ni.getAttribute('style'); if(_sty!=null) old.setAttribute('style', _sty); else old.removeAttribute('style');
+        if(ni.parentNode) ni.parentNode.replaceChild(old, ni); } }); }
     if(_pb) _pb.scrollTop=_st;
   };
 
