@@ -3872,6 +3872,26 @@ HTML_TEMPLATE = """
         }
         window.xRaporMenuSec = xRaporMenuSec;
         try { document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.x-gal-olustur'))) { document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); }); } }); } catch (e) {}
+        // [İLERLEME TOAST] Sağ-altta yüzde SAYARAK güncellenen bildirim (clientWordDuzenle granular ilerleme
+        // vermez -> simüle: 0->%95 sayar, bitir(true)'da %100 + kapanır). Kullanıcı sürecin sürdüğünü görür.
+        function xYukleProgressBaslat(mesaj) {
+            var container = document.getElementById('toast-container'); if (!container) return null;
+            var toast = document.createElement('div'); toast.className = 'custom-toast toast-info';
+            toast.innerHTML = '<div class="toast-icon">⏳</div><div class="toast-message"><span class="xyp-txt"></span> <b class="xyp-pct">%0</b></div>';
+            container.appendChild(toast);
+            setTimeout(function () { toast.classList.add('active'); }, 10);
+            var txtEl = toast.querySelector('.xyp-txt'); txtEl.textContent = mesaj || 'Dosya açılıyor…';
+            var pctEl = toast.querySelector('.xyp-pct'); var pct = 0;
+            var iv = setInterval(function () { if (pct < 95) { var kalan = 95 - pct; pct += Math.max(0.5, kalan * 0.06); pctEl.textContent = '%' + Math.min(95, Math.floor(pct)); } }, 120);
+            return {
+                bitir: function (ok) {
+                    clearInterval(iv);
+                    if (ok) { pctEl.textContent = '%100'; txtEl.textContent = 'Tamamlandı'; var ic = toast.querySelector('.toast-icon'); if (ic) ic.textContent = '✅'; }
+                    setTimeout(function () { toast.classList.remove('active'); setTimeout(function () { try { toast.remove(); } catch (e) {} }, 300); }, ok ? 850 : 80);
+                }
+            };
+        }
+        window.xYukleProgressBaslat = xYukleProgressBaslat;
         // [CİHAZDAN YÜKLE] .docx seç -> TARAYICIDA Word Düzenle (clientWordDuzenle) -> Raporlarım'A KAYDET (geçmiş raporlar
         // arasına girsin) -> openSavedReport ile AKTİF yap (havuz+overlay) -> editörde düzenlenebilir aç. Dosya sunucuya GİTMEZ.
         function cihazdanYukle() {
@@ -3883,7 +3903,7 @@ HTML_TEMPLATE = """
                 var tumDocx = Array.prototype.every.call(files, function (f) { return /\.docx$/i.test(f.name); });
                 if (!tumDocx) { showToast('Lütfen yalnız .docx dosyaları seçin.', 'danger'); return; }
                 if (!window.XLocalDocx || !window.XLocalDocx.clientWordDuzenle) { showToast('Word bileşeni yüklenemedi (sayfayı yenileyin).', 'danger'); return; }
-                if (typeof showToast === 'function') showToast('Dosya açılıyor…', 'info');
+                var prog = xYukleProgressBaslat('Dosya açılıyor…');   // sağ-altta yüzde sayan bildirim
                 window.XLocalDocx.clientWordDuzenle(files, (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}))
                     .then(async function (result) {
                         var its = (result && result.items) || [];
@@ -3903,9 +3923,11 @@ HTML_TEMPLATE = """
                         var meta = await window.XSavedReports.save({ name: name, items: its, images: images, blob: blob, filename: filename, editorStyle: (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}), manualClusters: [] });
                         await openSavedReport(meta.id, { urlReplace: true });   // aktif yap + havuz/overlay'e yükle (Raporlarım'da görünür)
                         if (window.XEditor && window.XEditor.ac) { window.XEditor.ac({}); }   // editörde aç (havuz artık dolu)
+                        if (prog) prog.bitir(true);
                         showToast("Raporlarım'a eklendi ve açıldı: " + name, 'success');
                     })
                     .catch(function (err) {
+                        if (prog) prog.bitir(false);
                         console.error('Cihazdan yükle hatası:', err);
                         showToast('Yüklenemedi: ' + (err && err.message ? err.message : err), 'danger');
                     });
