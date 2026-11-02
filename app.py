@@ -2386,7 +2386,7 @@ HTML_TEMPLATE = """
                     </select>
                 </div>
                 <!-- [SATIR ARALIĞI] Editör şeridinden (Metin grubu) ayarlanır; burada yalnız kalıcılık/okuma için gizli backing. Çıktı (Word) satır aralığı + paragraf önce/sonra boşluğu. -->
-                <input type="hidden" id="m_line" value="1.0">
+                <input type="hidden" id="m_line" value="1.5">
                 <input type="checkbox" id="m_space_before" style="display:none">
                 <input type="checkbox" id="m_space_after" style="display:none">
                 <input type="hidden" id="b_after" value="6">   <!-- [BAŞLIK–PARAGRAF] başlık–paragraf boşluğu (pt); şeritte Başlık grubundan ayarlanır -->
@@ -4604,7 +4604,7 @@ HTML_TEMPLATE = """
                 m_italic: gc('m_italic', false),
                 m_underline: gc('m_underline', false),
                 m_align: gv('m_align', 'left'),
-                m_line: gv('m_line', '1.0'),              // [SATIR ARALIĞI] metin satır aralığı (Word w:line; çıktı)
+                m_line: gv('m_line', '1.5'),              // [SATIR ARALIĞI] TÜM öğelerin satır aralığı (Word w:line; çıktı). Varsayılan 1,5.
                 m_space_before: gc('m_space_before', false),   // [SATIR ARALIĞI] paragraftan önce boşluk
                 m_space_after: gc('m_space_after', false),     // [SATIR ARALIĞI] paragraftan sonra boşluk
                 g_align: gv('g_align', 'left'),   // [GÖRSEL HİZA] genel görsel hizalaması (Sol/Orta/Sağ)
@@ -4640,7 +4640,7 @@ HTML_TEMPLATE = """
             b_font: 'Arial', b_size: '16', b_color: '#000000', b_numbered: false, b_basliksiz: false, b_bold: true, b_italic: false, b_underline: false, b_align: 'left', b_wordstyle: 'Heading2', b_after: '6',
             l_font: 'Arial', l_size: '12', l_color: '#1565c0', l_bold: false, l_italic: false, l_underline: true, l_align: 'left',   // [LİNK MAVİ] link otonom rengi = satır-içi link mavisi (#1565c0)
             m_font: 'Arial', m_size: '12', m_color: '#000000', m_bold: false, m_italic: false, m_underline: false, m_align: 'left',
-            m_line: '1.0', m_space_before: false, m_space_after: false,   // [SATIR ARALIĞI] standart: tek satır, boşluk yok (eski çıktı birebir)
+            m_line: '1.5', m_space_before: false, m_space_after: false,   // [SATIR ARALIĞI] standart: 1,5 satır (otonom; tüm öğelere uygulanır), boşluk yok
             g_align: 'left',   // [GÖRSEL HİZA] standart: sola (mevcut çıktı birebir korunur)
             pn_on: false, pn_pos: 'footer', pn_align: 'right', pn_fmt: 'plain'   // [SAYFA NO] standart: kapalı (altta sağda "1" açıldığında)
         };
@@ -7057,6 +7057,13 @@ LOCAL_DOCX_JS = r'''
       return '<w:jc w:val="'+a+'"/>';
     }
 
+    // [SATIR ARALIĞI] TÜM öğe paragraflarına (başlık/metin/link/görsel) uygulanacak w:line attribute'u.
+    // Genel ayar opts.m_line (varsayılan 1,5). 1,0'da boş (eski birebir). Bayrak x_satir_aralik='0' -> kapalı.
+    function _satirLineAttr(){
+      var on=true; try{ on=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(_){}
+      var mult=on?(parseFloat(opts.m_line||'1.5')||1.5):1.0;
+      return (mult && Math.abs(mult-1.0)>0.001)?(' w:line="'+Math.round(240*mult)+'" w:lineRule="auto"'):'';
+    }
     // [BAŞLIK OVERRIDE] rol varsayılanı (b/b1) ÜZERİNE başlık-başına override (ov) birleştir. ov yoksa/bayrak
     // kapalıysa eski çıktı BİREBİR (rol global stili). ov alanları: font,size(pt),color(#hex),bold,italic,
     // underline,align,word(Heading1..4/Normal). keepNext: başlık sonraki paragrafla aynı sayfada kalır.
@@ -7075,7 +7082,7 @@ LOCAL_DOCX_JS = r'''
       rPr+='<w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>';
       // [BAŞLIK–PARAGRAF] başlık ile altındaki paragraf arası boşluk = b_after (pt -> twip ×20). Varsayılan 6pt=120 (eski birebir).
       var _bAfterPt=parseInt(opts.b_after,10); if(isNaN(_bAfterPt)||_bAfterPt<0) _bAfterPt=6;
-      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/><w:keepNext/><w:keepLines/>'+jc(align)+'<w:spacing w:after="'+(_bAfterPt*20)+'"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/><w:keepNext/><w:keepLines/>'+jc(align)+'<w:spacing w:after="'+(_bAfterPt*20)+'"'+_satirLineAttr()+'/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     function heading1Xml(text, ov){
       ov = (hOvAcik() && ov) ? ov : {};
@@ -7090,7 +7097,7 @@ LOCAL_DOCX_JS = r'''
       if(ital) rPr+='<w:i/>';
       if(und) rPr+='<w:u w:val="single"/>';
       rPr+='<w:color w:val="'+color+'"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>';
-      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/>'+jc(align)+'<w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
+      return '<w:p><w:pPr><w:pStyle w:val="'+word+'"/>'+jc(align)+'<w:spacing w:before="240" w:after="120"'+_satirLineAttr()+'/></w:pPr><w:r><w:rPr>'+rPr+'</w:rPr><w:t xml:space="preserve">'+xmlEsc(text)+'</w:t></w:r></w:p>';
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
@@ -7116,7 +7123,7 @@ LOCAL_DOCX_JS = r'''
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini artik
       // Word belirliyor; sabit sayfa sonu 2026-07-17'de kaldirildi).
-      return '<w:p><w:pPr><w:keepNext/>'+_gorselJc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
+      return '<w:p><w:pPr><w:keepNext/>'+_gorselJc(align)+'<w:spacing w:after="120"'+_satirLineAttr()+'/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
         + '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
@@ -7130,7 +7137,7 @@ LOCAL_DOCX_JS = r'''
         + '</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
     }
     function linkXml(url, afterTwips, withBorder){
-      var pPr=jc(opts.l_align)+'<w:spacing w:after="'+afterTwips+'"/>';
+      var pPr=jc(opts.l_align)+'<w:spacing w:after="'+afterTwips+'"'+_satirLineAttr()+'/>';
       if(withBorder) pPr+='<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr>';
       var inner='';
       if(url){
@@ -7209,7 +7216,7 @@ LOCAL_DOCX_JS = r'''
       // YALNIZ Word çıktısı; editör görünümü değişmez. Varsayılan (1.0 + kapalı) -> <w:spacing w:after="120"/> (eski birebir).
       // Bölümler arası boşluk OTONOM (bu ayara bağlı değil). Bayrak x_satir_aralik='0' -> eski davranış.
       var _saOn=true; try{ _saOn=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(_){}
-      var _mMult=_saOn?(parseFloat(opts.m_line||'1.0')||1.0):1.0;
+      var _mMult=_saOn?(parseFloat(opts.m_line||'1.5')||1.5):1.0;
       var _mBefore=(_saOn && opts.m_space_before)?'200':null;
       var _mAfter=(_saOn && opts.m_space_after)?'240':'120';
       var _mLine=(_mMult && Math.abs(_mMult-1.0)>0.001)?(' w:line="'+Math.round(240*_mMult)+'" w:lineRule="auto"'):'';
@@ -9174,10 +9181,10 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     _gPar+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
     _gPar+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
     _gPar+='</span>';
-    // [SATIR ARALIĞI] YALNIZ Metin grubunda: satır aralığı + paragraf önce/sonra boşluk (Word çıktısı). Bayrak x_satir_aralik='0' gizler.
+    // [SATIR ARALIĞI] TÜM gruplarda (başlık/görsel/link/metin): satır aralığı + paragraf önce/sonra boşluk. Genel ayar, tüm öğe paragraflarına uygulanır (Word çıktısı). Bayrak x_satir_aralik='0' gizler.
     var _saAcikEd=true; try{ _saAcikEd=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(e){}
-    if(key==='m' && _saAcikEd){
-      var _mL=val('m_line')||'1.0', _mB=!!val('m_space_before'), _mA=!!val('m_space_after');
+    if(_saAcikEd){   // [SATIR ARALIĞI] TÜM gruplarda göster (metin yokken başlık/görsel/link'te de ayarlanabilsin)
+      var _mL=val('m_line')||'1.5', _mB=!!val('m_space_before'), _mA=!!val('m_space_after');
       var _lsEt={'1.0':'1,0','1.15':'1,15','1.5':'1,5','2.0':'2,0','2.5':'2,5','3.0':'3,0'};
       var _lsIco='<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h3"/><path d="M2 8h3"/><path d="M2 12h3"/><path d="M8 3.5h6"/><path d="M8 7h6"/><path d="M8 10.5h6"/></svg>';
       _gPar+='<div class="ed-ls">';
