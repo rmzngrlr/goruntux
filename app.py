@@ -1534,6 +1534,8 @@ HTML_TEMPLATE = """
             box-shadow: 0 10px 30px rgba(0,0,0,0.25);
         }
         .ayar-menu .theme-toggle-btn:hover { transform: none; }
+        /* [SÜRÜM DAMGASI] Ayarlar menüsü altında küçük sürüm metni (dağıtım kontrolü). */
+        .x-build-stamp { font-size: 10px; line-height: 1.3; text-align: center; opacity: .55; padding: 5px 6px 2px; margin-top: 3px; border-top: 1px solid rgba(128,128,128,.25); user-select: text; white-space: nowrap; }
 
         /* [PAYLAŞ] 2 aşamalı modal: biçim/işlem kartları */
         .paylas-baslik { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 2px 2px 14px; text-align: center; }
@@ -1560,6 +1562,7 @@ HTML_TEMPLATE = """
         .x-pdf-sheet { width: 794px; background: #fff; color: #15202b; padding: 32px 40px; box-sizing: border-box; font-family: Arial, sans-serif; }
         .x-pdf-sheet * { box-sizing: border-box; }
         .x-pdf-sheet .ed-card { border: none !important; background: transparent !important; margin: 0 0 16px !important; padding: 0 !important; box-shadow: none !important; page-break-inside: avoid; break-inside: avoid; }
+        .x-pdf-sheet .x-pdf-block { page-break-inside: avoid; break-inside: avoid; }   /* plat+kart tek birim: başlık görselinden kopmaz ('eski' yol) */
         .x-pdf-sheet .ed-h2-row, .x-pdf-sheet .ed-h2-sar { padding: 0 !important; margin: 0 !important; display: block !important; }
         .x-pdf-sheet .ed-plat { border: none !important; border-bottom: 2px solid #d0d7de !important; background: transparent !important; margin: 20px 0 10px !important; padding: 0 0 5px !important; font-weight: 700; }
         .x-pdf-sheet .ed-h2 { border: none !important; background: transparent !important; margin: 14px 0 8px !important; padding: 0 !important; font-weight: 700; display: block !important; }
@@ -1954,6 +1957,7 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="theme-toggle-btn js-tema-btn" onclick="toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="theme-toggle-btn js-fs-btn" onclick="toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                            <div class="x-build-stamp"></div>
                         </div>
                     </div>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
@@ -2585,6 +2589,12 @@ HTML_TEMPLATE = """
         var _XSVG_AY = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"/></svg>';
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
+        // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
+        var X_BUILD = '2026-11-02 · link+pdf';
+        window.X_BUILD = X_BUILD;
+        try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}
+        function _xBuildStampDoldur() { try { var ns = document.querySelectorAll('.x-build-stamp'); for (var i = 0; i < ns.length; i++) { ns[i].textContent = 'Sürüm ' + X_BUILD; ns[i].title = 'Yazılım sürümü (dağıtım kontrolü): ' + X_BUILD; } } catch (e) {} }
+        window._xBuildStampDoldur = _xBuildStampDoldur;
         function xTemaUygula() {
             var light = document.body.classList.contains('light-theme');
             var btns = document.querySelectorAll('.js-tema-btn');
@@ -2645,6 +2655,7 @@ HTML_TEMPLATE = """
                 else { body.classList.remove('light-theme'); }
                 xTemaUygula();
                 _fsIkonGuncelle();
+                _xBuildStampDoldur();   // [SÜRÜM DAMGASI] menüdeki sürüm metnini doldur
             } catch(e) {
                 console.error("Theme restore error:", e);
             }
@@ -3447,9 +3458,13 @@ HTML_TEMPLATE = """
                 (function tik() { var v = fn(); if (v) { resolve(v); return; } if (Date.now() - t0 > (ms || 3000)) { resolve(null); return; } setTimeout(tik, 80); })();
             });
         }
-        // Editör .ed-root'unun temiz (chrome'suz, beyaz) kopyası -> html2pdf kaynağı. Scoped CSS'e bağlı DEĞİL (.x-pdf-sheet kendi stili).
+        // [PDF] Sayfalama modu — bayrak korumalı. 'bol' (uzun bloğu tam boyda sayfalara böl) |
+        // 'olcekle' (uzun bloğu tek sayfaya küçült) | 'eski' (regresyon: eski html2pdf tek-atış, avoid).
+        var X_PDF_UZUN = 'bol';
+        try { var _pu = localStorage.getItem('x_pdf_uzun'); if (_pu) X_PDF_UZUN = _pu; } catch (e) {}
+        // Editör .ed-root'unun temiz (chrome'suz, beyaz) kopyası -> KAYNAK. Scoped CSS'e bağlı DEĞİL (.x-pdf-sheet kendi stili).
         // KRİTİK: html2canvas position:fixed/absolute öğeyi 0 YÜKSEKLİK ölçer (boş PDF) -> .x-pdf-sheet NORMAL AKIŞTA olmalı.
-        // Ekran-dışı bir KAP (fixed) içine normal-akış kopya koy; html2pdf'e İÇ kopyayı (sheet) ver.
+        // Ekran-dışı bir KAP (fixed) içine normal-akış kopya koy; ölçüm + render bu İÇ kopya (sheet) üzerinden.
         function xPdfTemizKopya(root) {
             var kap = document.createElement('div');
             kap.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1;';   // ekran-dışı kap (sayfa akışını bozmaz)
@@ -3457,14 +3472,100 @@ HTML_TEMPLATE = """
             w.className = 'x-pdf-sheet';
             w.style.cssText = 'width:794px;';   // NORMAL AKIŞ -> html2canvas doğru yükseklik ölçer
             var c = root.cloneNode(true);
-            ['.ed-tut', '.ed-pz', '.ed-pz-wrap', '.ed-kume-gutter', '.ed-kume-kalem', '.ed-kart-ust', '.ed-metin-sil', '.ed-gorsel-sil', '.ed-metin-ekle', '.ed-bolum-ekle', '.ed-pe-wrap', '.ed-img-pano', '.ed-del', '.ed-sira', '.ed-tur', '.ed-gal-ipucu'].forEach(function (sel) {
+            // .ed-kltut ("⠿ taşı" tutacağı) eklendi -> PDF'e ham "taşı" metni sızmasın.
+            ['.ed-tut', '.ed-pz', '.ed-pz-wrap', '.ed-kume-gutter', '.ed-kume-kalem', '.ed-kart-ust', '.ed-metin-sil', '.ed-gorsel-sil', '.ed-metin-ekle', '.ed-bolum-ekle', '.ed-pe-wrap', '.ed-img-pano', '.ed-del', '.ed-sira', '.ed-tur', '.ed-gal-ipucu', '.ed-kltut'].forEach(function (sel) {
                 c.querySelectorAll(sel).forEach(function (el) { el.remove(); });
             });
             c.querySelectorAll('[contenteditable]').forEach(function (el) { el.removeAttribute('contenteditable'); });
             w.appendChild(c); kap.appendChild(w);
             return { kap: kap, sheet: w };
         }
-        // PDF üret: editör render'ı yoksa editörü aç + bekle; temiz kopyayı html2pdf ile PDF blob'una çevir.
+        // Üst-seviye öğeleri bloklara grupla: .ed-plat (platform başlığı) + onu izleyen .ed-card = TEK blok.
+        // Böylece başlık görselinden/kartından KOPMAZ. Boş ekleme zonları atılır; ayraç (hr) önceki bloğa bağlanır.
+        function xPdfBloklastir(sheet) {
+            var root = sheet.querySelector('.ed-root'); if (!root) return;
+            root.querySelectorAll('.ed-ekle-zon').forEach(function (el) { el.remove(); });
+            var kids = [].slice.call(root.children), cur = null, last = null, i;
+            function yeniBlok(ref) { var b = document.createElement('div'); b.className = 'x-pdf-block'; root.insertBefore(b, ref); return b; }
+            for (i = 0; i < kids.length; i++) {
+                var n = kids[i]; if (n.nodeType !== 1) continue;
+                if (n.classList.contains('ed-plat')) { cur = yeniBlok(n); cur.appendChild(n); last = cur; }
+                else if (n.classList.contains('ed-card')) {
+                    if (cur && cur.children.length === 1 && cur.firstChild.classList && cur.firstChild.classList.contains('ed-plat')) { cur.appendChild(n); }
+                    else { cur = yeniBlok(n); cur.appendChild(n); }
+                    last = cur; cur = null;
+                } else if (n.classList.contains('ed-line')) { if (last) last.appendChild(n); else n.remove(); }
+                else { var b2 = yeniBlok(n); b2.appendChild(n); last = b2; cur = null; }
+            }
+        }
+        // Tüm <img>'ler (data: URI olsa da) yüklenene + layout oturana kadar bekle (yoksa yükseklik 0 ölçülür).
+        function xImgBekle(node) {
+            var imgs = [].slice.call(node.querySelectorAll('img'));
+            return Promise.all(imgs.map(function (im) {
+                if (im.complete && im.naturalWidth > 0) return Promise.resolve();
+                return new Promise(function (res) { var d = function () { res(); }; im.addEventListener('load', d); im.addEventListener('error', d); setTimeout(d, 5000); });
+            })).then(function () {
+                return new Promise(function (r) { var raf = window.requestAnimationFrame || function (f) { setTimeout(f, 16); }; raf(function () { raf(r); }); });
+            });
+        }
+        // BOŞ jsPDF ÖRNEĞİ al. Bu yapımda jsPDF yapıcısı closure'da gizli ve örneğin .constructor'ı DÜZ Object
+        // (new ile addImage GELMEZ) -> tek yol html2pdf Worker'ının ürettiği örnek. Minik atlık render -> gelen
+        // örnekteki beyaz sayfayı (addPage + deletePage 1) at -> tek boş sayfalı temiz örnek döndür.
+        function xMiniDiv() { var d = document.createElement('div'); d.style.cssText = 'position:fixed;left:-10000px;top:0;width:8px;height:8px;background:#fff;'; document.body.appendChild(d); return d; }
+        async function xJsPDFBos(jsOpt) {
+            var d = xMiniDiv(), pdf = null;
+            try {
+                await window.html2pdf().set({ jsPDF: jsOpt, html2canvas: { scale: 1, backgroundColor: '#ffffff' }, image: { type: 'jpeg', quality: 1 } })
+                    .from(d).toPdf().get('pdf', function (p) { pdf = p; });
+            } finally { try { d.remove(); } catch (e) {} }
+            if (!pdf || typeof pdf.addImage !== 'function') throw new Error('jsPDF örneği alınamadı');
+            try { pdf.addPage(); pdf.deletePage(1); } catch (e) {}   // atlık render'ın beyaz sayfasını at -> tek boş sayfa
+            return pdf;
+        }
+        // Büyük canvas'ın [sy, sy+sh] dikey bölgesini kes -> JPEG -> pdf'e (x,y) konumuna w x h (mm) bas.
+        function xPdfBolgeCiz(pdf, src, sy, sh, x, y, w, h) {
+            sy = Math.max(0, Math.round(sy)); sh = Math.min(Math.round(sh), src.height - sy); if (sh <= 0) return;
+            var c = document.createElement('canvas'); c.width = src.width; c.height = sh;
+            var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height);
+            ctx.drawImage(src, 0, sy, src.width, sh, 0, 0, src.width, sh);
+            pdf.addImage(c.toDataURL('image/jpeg', 0.96), 'JPEG', x, y, w, h);
+        }
+        // Ölçülen blokları (canvas-px top/bottom) A4'e manuel yerleştir: sığmayan blok yeni sayfaya; sayfadan uzun blok -> bayrak.
+        // pdf: önceden alınmış BOŞ jsPDF örneği (tek boş sayfa); ilk blok bu sayfaya, sonrakiler addPage ile.
+        function xPdfYerlestir(pdf, canvas, blocks) {
+            var Wmm = 190, Hmm = 277, M = 10, GAP = 4, altSinir = 297 - M;
+            var mmPerPx = Wmm / canvas.width;
+            if (!blocks.length) blocks = [{ top: 0, bottom: canvas.height }];
+            var y = M, ilk = true, i;
+            for (i = 0; i < blocks.length; i++) {
+                var b = blocks[i], hPx = b.bottom - b.top; if (hPx <= 0) continue;
+                var hMM = hPx * mmPerPx;
+                if (hMM <= Hmm + 0.5) {                                   // tek sayfaya sığar
+                    if (!ilk && y + hMM > altSinir + 0.5) { pdf.addPage(); y = M; }
+                    xPdfBolgeCiz(pdf, canvas, b.top, hPx, M, y, Wmm, hMM);
+                    y += hMM + GAP; ilk = false;
+                } else {                                                  // sayfadan UZUN blok
+                    if (!ilk && y > M + 0.5) { pdf.addPage(); y = M; }
+                    if (X_PDF_UZUN === 'olcekle') {
+                        var f = Hmm / hMM, dW = Wmm * f;
+                        xPdfBolgeCiz(pdf, canvas, b.top, hPx, M + (Wmm - dW) / 2, M, dW, Hmm);
+                        pdf.addPage(); y = M; ilk = false;
+                    } else {                                              // 'bol': tam boy, sayfalara dilimle (başlık 1. sayfanın başında)
+                        var kalan = hPx, srcY = b.top, sayfaPx = Math.round(Hmm / mmPerPx);
+                        while (kalan > 0.5) {
+                            var al = Math.min(kalan, sayfaPx), alMM = al * mmPerPx;
+                            xPdfBolgeCiz(pdf, canvas, srcY, al, M, M, Wmm, alMM);
+                            srcY += al; kalan -= al;
+                            if (kalan > 0.5) { pdf.addPage(); y = M; } else { y = M + alMM + GAP; }
+                        }
+                        ilk = false;
+                    }
+                }
+            }
+            return pdf;
+        }
+        // PDF üret: temiz kopya -> blokları KENDİ sheet'imizde ölç -> tek canvas (html2pdf Worker) -> MANUEL A4 yerleşimi.
+        // Başlık asla öksüz kalmaz (plat+kart tek blok), boşluk yalnız sıradaki blok sığmadığında oluşur (sıkı paket).
         async function xPdfUret() {
             await xHtml2pdfYukle();
             var root = document.querySelector('#editorModal .ed-root');
@@ -3474,17 +3575,35 @@ HTML_TEMPLATE = """
             }
             if (!root) throw new Error('PDF için içerik render edilemedi.');
             var tk = xPdfTemizKopya(root);
+            xPdfBloklastir(tk.sheet);
             document.body.appendChild(tk.kap);
+            var ad = ((typeof window.xIndirmeDosyaAdi === 'function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
             try {
-                var ad = ((typeof window.xIndirmeDosyaAdi === 'function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
-                var blob = await window.html2pdf().set({
-                    margin: [10, 10, 10, 10], filename: ad,
-                    image: { type: 'jpeg', quality: 0.96 },
-                    html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak: { mode: ['css', 'legacy'], avoid: '.ed-card' }   // bölümü (başlık+görsel+link) BÖLME -> başlık öksüz kalmaz
-                }).from(tk.sheet).outputPdf('blob');
-                return { blob: blob, filename: ad };
+                var jsOpt = { unit: 'mm', format: 'a4', orientation: 'portrait' };
+                // ESKİ YOL (regresyon bayrağı x_pdf_uzun='eski'): tek-atış html2pdf, blok=avoid birimi.
+                if (X_PDF_UZUN === 'eski') {
+                    var blobE = await window.html2pdf().set({
+                        margin: [10, 10, 10, 10], filename: ad, image: { type: 'jpeg', quality: 0.96 },
+                        html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+                        jsPDF: jsOpt, pagebreak: { mode: ['css', 'legacy'], avoid: '.x-pdf-block' }
+                    }).from(tk.sheet).outputPdf('blob');
+                    return { blob: blobE, filename: ad };
+                }
+                await xImgBekle(tk.sheet);
+                var pdf0 = await xJsPDFBos(jsOpt);
+                var SC = 2;
+                // Blokları KENDİ sheet'imizde ölç (html2pdf iç kabına bağlı DEĞİL -> sürümden bağımsız, güvenilir). canvas-px = CSS-px * SC.
+                var s0 = tk.sheet.getBoundingClientRect().top, blocks = [];
+                tk.sheet.querySelectorAll('.x-pdf-block').forEach(function (el) {
+                    var r = el.getBoundingClientRect();
+                    blocks.push({ top: (r.top - s0) * SC, bottom: (r.bottom - s0) * SC });
+                });
+                var canvas = await window.html2pdf().set({
+                    margin: 0, image: { type: 'jpeg', quality: 0.96 },
+                    html2canvas: { scale: SC, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: jsOpt
+                }).from(tk.sheet).toCanvas().get('canvas');
+                var pdf = xPdfYerlestir(pdf0, canvas, blocks);
+                return { blob: pdf.output('blob'), filename: ad };
             } finally { try { tk.kap.remove(); } catch (e) {} }
         }
         // Seçilen biçimin blob'unu üret. Word: editör açıksa generateBlob, değilse xBuildReport. PDF: xPdfUret.
@@ -3515,6 +3634,7 @@ HTML_TEMPLATE = """
             finally { _paylasMesgul = false; }
         }
         window.xPaylasIndir = xPaylasIndir;
+        window.xPdfUret = xPdfUret;   // [PDF] hata ayıklama/test için dışa aç (zararsız; Paylaş yolu da aynısını çağırır)
         async function xPaylasWhatsapp() {
             if (_paylasMesgul) return; _paylasMesgul = true;
             var not = document.getElementById('paylas-not'); if (not) not.textContent = (_paylasBicim === 'pdf' ? 'PDF hazırlanıyor…' : 'Hazırlanıyor…');
@@ -6479,6 +6599,7 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="ed-ikon-btn js-tema-btn" onclick="window.toggleTheme &amp;&amp; window.toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="ed-ikon-btn js-fs-btn" onclick="window.toggleFullscreen &amp;&amp; window.toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                            <div class="x-build-stamp"></div>
                         </div>
                     </div>
                     <button class="ed-ikon-btn ed-ik-indir ed-ik-paylas" onclick="window.xPaylasAc &amp;&amp; window.xPaylasAc('editor')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg></button>
@@ -8208,7 +8329,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4c-suruk";
+  XE.VERSION = "4c-suruk · 2026-11-02 link+pdf";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -8973,19 +9094,19 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     var card=root.querySelector('.ed-card[data-i="'+bi+'"]'); if(!card) return false;
     var parcaNodes=[], pzNodes=[], c;
     for(c=card.firstChild;c;c=c.nextSibling){ if(c.nodeType===1 && c.classList){ if(c.classList.contains('ed-parca')) parcaNodes.push(c); else if(c.classList.contains('ed-pz')) pzNodes.push(c); } }
-    var n=parcaNodes.length;
+    var n=parcaNodes.length, x;
     if(n===0 || li<0 || li>=n || pzNodes.length!==n+1) return false;   // yapı beklenmedik -> fallback
-    var yeni=[], linkNode=parcaNodes[li], x;
-    if(basaMi){ yeni.push(linkNode); for(x=0;x<n;x++){ if(x!==li) yeni.push(parcaNodes[x]); } }
-    else { for(x=0;x<n;x++){ if(x!==li) yeni.push(parcaNodes[x]); } yeni.push(linkNode); }
-    var ref=(pzNodes[0]?pzNodes[0].previousSibling:null);
-    for(x=0;x<parcaNodes.length;x++) card.removeChild(parcaNodes[x]);
-    for(x=0;x<pzNodes.length;x++) card.removeChild(pzNodes[x]);
-    function ekle(node){ if(ref && ref.parentNode===card){ if(ref.nextSibling) card.insertBefore(node, ref.nextSibling); else card.appendChild(node); } else { card.appendChild(node); } ref=node; }
+    var linkNode=parcaNodes[li];
     function numP(node, j){ node.setAttribute('data-p', j); var ds=node.querySelectorAll('[data-p]'); for(var z=0;z<ds.length;z++) ds[z].setAttribute('data-p', j); }
     function numPz(node, pos){ node.setAttribute('data-pos', pos); var ds=node.querySelectorAll('[data-pos]'); for(var z=0;z<ds.length;z++) ds[z].setAttribute('data-pos', pos); }
-    for(var j=0;j<n;j++){ ekle(pzNodes[j]); numPz(pzNodes[j], j); ekle(yeni[j]); numP(yeni[j], j); }
-    ekle(pzNodes[n]); numPz(pzNodes[n], n);
+    // [KRİTİK — H2] GÖRSELLİ parçalara ASLA dokunma (detach+reattach büyük <img>'de repaint/flicker yapar).
+    // 1) pz'leri (HAFİF, görselsiz) çıkar. 2) YALNIZ link parça düğümünü taşı. 3) pz'leri aralara yeniden ser + numarala.
+    for(x=0;x<pzNodes.length;x++) card.removeChild(pzNodes[x]);
+    if(basaMi){ var ilkParca=null; for(c=card.firstChild;c;c=c.nextSibling){ if(c.nodeType===1 && c.classList && c.classList.contains('ed-parca')){ ilkParca=c; break; } } if(ilkParca && ilkParca!==linkNode) card.insertBefore(linkNode, ilkParca); }
+    else { card.appendChild(linkNode); }   // en sona (pz'ler çıktı -> kartın son çocuğu son parça)
+    var yeniParca=[]; for(c=card.firstChild;c;c=c.nextSibling){ if(c.nodeType===1 && c.classList && c.classList.contains('ed-parca')) yeniParca.push(c); }
+    for(var j=0;j<yeniParca.length;j++){ card.insertBefore(pzNodes[j], yeniParca[j]); numPz(pzNodes[j], j); numP(yeniParca[j], j); }
+    card.appendChild(pzNodes[n]); numPz(pzNodes[n], n);
     return true;
   }
   XE._linkUstteUygula = function(on){
@@ -9009,7 +9130,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       XE._ovSet(bi);
       if(!_linkUstteDomTasi(root, bi, liEski, basaMi)) _fallback=true;          // DOM (yapı bozuksa fallback işaretle)
     });
-    if(_fallback){ XE._ciz(); }   // güvenli geri-dönüş (beklenmedik yapı)
+    if(_fallback){ _savedScroll=_st; XE._ciz(); }   // güvenli geri-dönüş (beklenmedik yapı); _ciz scroll'u _savedScroll'dan geri yükler (H3)
     if(pb) pb.scrollTop=_st;
   };
 
