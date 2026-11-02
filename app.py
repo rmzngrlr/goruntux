@@ -9470,6 +9470,48 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       _sagTikKapat();
     }).catch(function(){ _sagTikKapat(); });
   }
+  // [GÖRSEL PANO] Görsel sağ-tık menüsü pano işlemleri (metin clip'ten AYRI — görsel execCommand'la kopyalanamaz).
+  // Yapıştır: _panoGorsel (güvenli bağlamda doğrudan okur, değilse Ctrl+V modalı) -> HER yerde çalışır, asla silik DEĞİL.
+  // Kopyala/Kes: clipboard.write (yalnız güvenli bağlam = localhost/https) gerektirir -> yoksa SİLİK. Görseli PNG'ye çevirip yazar.
+  function _gorselKopyaVar(){ return !!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem); }
+  function _gorselPanoyaKopyala(b64, mime, done){
+    try{
+      var img=new Image();
+      img.onload=function(){ try{
+        var c=document.createElement('canvas'); c.width=img.naturalWidth||img.width; c.height=img.naturalHeight||img.height;
+        c.getContext('2d').drawImage(img,0,0);
+        c.toBlob(function(blob){ if(!blob || !_gorselKopyaVar()){ if(done) done(false); return; }
+          try{ navigator.clipboard.write([new ClipboardItem({'image/png': blob})]).then(function(){ if(done) done(true); }).catch(function(){ if(done) done(false); }); }catch(e){ if(done) done(false); }
+        }, 'image/png');
+      }catch(e){ if(done) done(false); } };
+      img.onerror=function(){ if(done) done(false); };
+      img.src='data:'+(mime||'image/png')+';base64,'+b64;
+    }catch(e){ if(done) done(false); }
+  }
+  function _gorselClipData(bi, pp){
+    var b=XE.belge.birimler[bi]; if(!b||!b.item) return null;
+    try{ var gm=edGorselHarita(b.item); var g=gm[pp]; if(g && g.b64) return {b64:g.b64, mime:g.mime||'image/png'}; }catch(_){}
+    if(b.item.image_b64) return {b64:b.item.image_b64, mime:b.item.image_mime||'image/png'};
+    return null;
+  }
+  function _gorselClipKopyala(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); }
+  // Kes = panoya kopyala (EN İYİ ÇABA; güvensiz bağlamda pano yazılamaz) + görseli HER durumda sil (kullanıcı: "kes deyince işlev yerine gelsin").
+  function _gorselClipKes(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); XE._gorselSil(bi,pp); }
+  function _gorselClipYapistir(bi, pp){ _sagTikKapat(); XE._panoGorsel(function(b64,mime){ XE._gorselParcaYaz(bi,pp,b64,mime); }); }
+  function _gorselClipSatiri(bos, canCopy){
+    function bt(cls, aktif, tip, svg){ return '<button type="button" class="rt-ik rt-gclip-'+cls+'"'+(aktif?'':' disabled')+' title="'+tip+'">'+svg+'</button>'; }
+    var s='<div class="rt-row rt-clip">';
+    // Kes HER ZAMAN aktif (görseli siler; panoya kopyalama en iyi çaba). Kopyala yalnız pano-yazma varsa (güvenli bağlam), yoksa SİLİK.
+    if(!bos){ s+=bt('kes', true, 'Kes (Ctrl+X)', _CLIP_SVG.kes)+bt('kopya', canCopy, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya); }
+    s+=bt('yapistir', true, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);
+    return s+'</div>';
+  }
+  function _gorselClipBagla(p, bi, pp){
+    var k=p.querySelector('.rt-gclip-kes'), c=p.querySelector('.rt-gclip-kopya'), y=p.querySelector('.rt-gclip-yapistir');
+    if(k) k.addEventListener('click', function(){ if(!k.disabled) _gorselClipKes(bi,pp); });
+    if(c) c.addEventListener('click', function(){ if(!c.disabled) _gorselClipKopyala(bi,pp); });
+    if(y) y.addEventListener('click', function(){ if(!y.disabled) _gorselClipYapistir(bi,pp); });
+  }
   function _sagTikGoster(info, x, y){
     _rtInfo=info;
     var p=document.getElementById('ed-rt-panel'); if(!p) return;
@@ -9481,26 +9523,38 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     var _clipHtml=clipAcik()?_clipSatiri(_hasSel, _clipPasteVar(), _clipHasContent):'';
     var h='';
     if(info.mode==='image'){
-      // [GÖRSEL HİZA] bu görselin hizası (parça override -> genel). Sol/Orta/Sağ + tümüne uygula + genele dön.
-      var _gb=XE.belge.birimler[info.bi], _gpc=(_gb&&_gb.item&&_gb.item.parcalar)||[], _gp=_gpc[info.pp]||{};
-      var _go=stilOku(); var _gcur=gorselEfHiza(_gp.align,_go);
-      var _gdefs=[['left','Sola'],['center','Ortaya'],['right','Sağa']];
-      h+='<div class="rt-title">Görsel hizalama</div>';
-      h+='<div class="rt-row rt-hiza">';
-      for(var _gi=0;_gi<_gdefs.length;_gi++){ var _gv=_gdefs[_gi][0];
-        var _paths=({left:['M2 4h12','M2 8h8','M2 12h10'],center:['M2 4h12','M4 8h8','M3 12h10'],right:['M2 4h12','M6 8h8','M4 12h10']})[_gv];
-        var _ps=''; for(var _gj=0;_gj<_paths.length;_gj++) _ps+='<path d="'+_paths[_gj]+'"/>';
-        h+='<button type="button" class="rt-hb rt-ghb'+(_gcur===_gv?' aktif':'')+'" data-v="'+_gv+'" title="'+_gdefs[_gi][1]+'"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none">'+_ps+'</g></svg></button>';
+      var _bos=!!info.bos;                        // boş slot (.ed-img-pano) -> yalnız Yapıştır; hizalama yok
+      // [GÖRSEL PANO] üst ikon satırı: dolu görselde Kes/Kopyala/Yapıştır, boş slotta yalnız Yapıştır
+      if(clipAcik()) h+=_gorselClipSatiri(_bos, _gorselKopyaVar());
+      if(_bos){
+        h+='<div class="rt-title">Görsel</div>';
+        p.innerHTML=h;
+      } else if(gorselHizaAcik()){
+        // [GÖRSEL HİZA] bu görselin hizası (parça override -> genel). Sol/Orta/Sağ + tümüne uygula + genele dön.
+        var _gb=XE.belge.birimler[info.bi], _gpc=(_gb&&_gb.item&&_gb.item.parcalar)||[], _gp=_gpc[info.pp]||{};
+        var _go=stilOku(); var _gcur=gorselEfHiza(_gp.align,_go);
+        var _gdefs=[['left','Sola'],['center','Ortaya'],['right','Sağa']];
+        h+='<div class="rt-title">Görsel hizalama</div>';
+        h+='<div class="rt-row rt-hiza">';
+        for(var _gi=0;_gi<_gdefs.length;_gi++){ var _gv=_gdefs[_gi][0];
+          var _paths=({left:['M2 4h12','M2 8h8','M2 12h10'],center:['M2 4h12','M4 8h8','M3 12h10'],right:['M2 4h12','M6 8h8','M4 12h10']})[_gv];
+          var _ps=''; for(var _gj=0;_gj<_paths.length;_gj++) _ps+='<path d="'+_paths[_gj]+'"/>';
+          h+='<button type="button" class="rt-hb rt-ghb'+(_gcur===_gv?' aktif':'')+'" data-v="'+_gv+'" title="'+_gdefs[_gi][1]+'"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none">'+_ps+'</g></svg></button>';
+        }
+        h+='</div>';
+        h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-tum">Tüm görsellere uygula</button></div>';
+        // [GÖRSEL HİZA] override yoksa (zaten genel ayarda) "Genel ayara dön" PASİF -> dönülecek bir şey yok.
+        var _hasOv=(_gp.align!=null);
+        h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-genel"'+(_hasOv?'':' disabled')+'>↺ Genel ayara dön</button></div>';
+        p.innerHTML=h;
+        p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); var _gb2=p.querySelector('.rt-img-genel'); if(_gb2) _gb2.disabled=false; }); });   // hiza seçilince override oluştu -> "Genel ayara dön" aktifleşir
+        p.querySelector('.rt-img-tum').addEventListener('click', function(){ var _gp2=(XE.belge.birimler[info.bi].item.parcalar||[])[info.pp]||{}; XE._gorselHizaTum(gorselEfHiza(_gp2.align,stilOku())); _sagTikKapat(); });
+        p.querySelector('.rt-img-genel').addEventListener('click', function(){ XE._gorselHiza(info.bi,info.pp,''); _sagTikKapat(); });
+      } else {
+        h+='<div class="rt-title">Görsel</div>';   // dolu görsel ama hizalama bayrağı kapalı -> yalnız pano satırı
+        p.innerHTML=h;
       }
-      h+='</div>';
-      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-tum">Tüm görsellere uygula</button></div>';
-      // [GÖRSEL HİZA] override yoksa (zaten genel ayarda) "Genel ayara dön" PASİF -> dönülecek bir şey yok.
-      var _hasOv=(_gp.align!=null);
-      h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-genel"'+(_hasOv?'':' disabled')+'>↺ Genel ayara dön</button></div>';
-      p.innerHTML=h;
-      p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); var _gb=p.querySelector('.rt-img-genel'); if(_gb) _gb.disabled=false; }); });   // hiza seçilince override oluştu -> "Genel ayara dön" aktifleşir
-      p.querySelector('.rt-img-tum').addEventListener('click', function(){ var _gp2=(XE.belge.birimler[info.bi].item.parcalar||[])[info.pp]||{}; XE._gorselHizaTum(gorselEfHiza(_gp2.align,stilOku())); _sagTikKapat(); });
-      p.querySelector('.rt-img-genel').addEventListener('click', function(){ XE._gorselHiza(info.bi,info.pp,''); _sagTikKapat(); });
+      if(clipAcik()) _gorselClipBagla(p, info.bi, info.pp);
     } else if(info.mode==='clip'){
       // [KES/KOPYALA] seçimsiz editable sağ-tık -> yalnız pano işlemleri satırı
       h+=_clipHtml;
@@ -9710,9 +9764,11 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     document.addEventListener('contextmenu', function(e){
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
       var t=e.target; if(!t||!t.closest) return;
-      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img'), linkEd=t.closest('.ed-link-edit');
-      // [GÖRSEL HİZA] görsele sağ-tık -> hizalama paneli (metin işlemi değil; pano satırı yok). Bayrak x_gorsel_hiza.
-      if(gorselHizaAcik() && gorsel && gorsel.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorsel.getAttribute('data-i'), pp:+gorsel.getAttribute('data-p')}, e.clientX, e.clientY); return; }
+      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img'), gorselBos=t.closest('.ed-img-pano'), linkEd=t.closest('.ed-link-edit');
+      // [GÖRSEL PANO/HİZA] görsele (dolu .ed-img ya da boş .ed-img-pano) sağ-tık -> görsel menüsü:
+      //   dolu -> Kes/Kopyala/Yapıştır (+ hizalama); boş -> yalnız Yapıştır. (clip ya da hizalama bayrağı açıkken.)
+      var gorselEl=gorsel||gorselBos;
+      if(gorselEl && gorselEl.getAttribute('data-i')!=null && (clipAcik() || gorselHizaAcik())){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorselEl.getAttribute('data-i'), pp:+gorselEl.getAttribute('data-p'), bos:!gorsel}, e.clientX, e.clientY); return; }
       // [KES/KOPYALA] editable (metin/başlık/link) sağ-tık -> editöre özel menü (seçim olmasa da). Mod: başlık/inline/clip.
       var edit=metin||h2||plat||linkEd;
       if(clipAcik() && edit){
