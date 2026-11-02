@@ -8486,6 +8486,12 @@ X_EDITOR_JS = r'''
 #ed-rt-panel .rt-tgl:hover,#ed-rt-panel .rt-hb:hover{background:#d9e2ec;}
 #ed-rt-panel .rt-tgl.aktif,#ed-rt-panel .rt-hb.aktif{background:#1565c0;color:#fff;}
 #ed-rt-panel .rt-tgl b{font-weight:800;} #ed-rt-panel .rt-tgl i{font-style:italic;font-family:Georgia,serif;} #ed-rt-panel .rt-tgl u{text-decoration:underline;}
+/* [KES/KOPYALA/YAPIŞTIR/SİL] en-üst ikon satırı: gruplu çubuk + silik (disabled) durum */
+#ed-rt-panel .rt-clip{gap:3px;background:#eef1f4;border-radius:7px;padding:3px;display:flex;justify-content:space-between;margin:0 2px 8px;}
+#ed-rt-panel .rt-ik{flex:1;height:28px;border:none;background:transparent;color:#3a4654;border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;}
+#ed-rt-panel .rt-ik:hover{background:#d9e2ec;}
+#ed-rt-panel .rt-ik:disabled{opacity:.35;cursor:default;}
+#ed-rt-panel .rt-ik:disabled:hover{background:transparent;}
 #ed-rt-panel .rt-reset{width:100%;border:1px solid #d7dde3;background:#f6f8fa;color:#3a4654;border-radius:7px;padding:6px 8px;font-size:11px;font-weight:600;cursor:pointer;}
 #ed-rt-panel .rt-reset:hover{background:#fdecef;border-color:#f3b6c4;color:#c81e4f;}
 #ed-rt-panel .rt-reset:disabled{opacity:.45;cursor:default;}
@@ -8576,9 +8582,10 @@ body:not(.light-theme) #editorModal .ed-bos{color:#9aa6b2;}
 body:not(.light-theme) #ed-rt-panel .rt-row{color:#9aa6b2;}
 body:not(.light-theme) #ed-rt-panel .rt-title{border-bottom-color:#2c3a4a;}
 body:not(.light-theme) #ed-rt-panel select,body:not(.light-theme) #ed-rt-panel input[type=number],body:not(.light-theme) #ed-rt-panel input[type=color],body:not(.light-theme) #ed-rt-panel .rt-linkurl{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}
-body:not(.light-theme) #ed-rt-panel .rt-biu,body:not(.light-theme) #ed-rt-panel .rt-hiza{background:#222d3a;}
-body:not(.light-theme) #ed-rt-panel .rt-tgl,body:not(.light-theme) #ed-rt-panel .rt-hb{color:#c5cfda;}
-body:not(.light-theme) #ed-rt-panel .rt-tgl:hover,body:not(.light-theme) #ed-rt-panel .rt-hb:hover{background:#2f3e4e;}
+body:not(.light-theme) #ed-rt-panel .rt-biu,body:not(.light-theme) #ed-rt-panel .rt-hiza,body:not(.light-theme) #ed-rt-panel .rt-clip{background:#222d3a;}
+body:not(.light-theme) #ed-rt-panel .rt-tgl,body:not(.light-theme) #ed-rt-panel .rt-hb,body:not(.light-theme) #ed-rt-panel .rt-ik{color:#c5cfda;}
+body:not(.light-theme) #ed-rt-panel .rt-tgl:hover,body:not(.light-theme) #ed-rt-panel .rt-hb:hover,body:not(.light-theme) #ed-rt-panel .rt-ik:hover{background:#2f3e4e;}
+body:not(.light-theme) #ed-rt-panel .rt-ik:disabled:hover{background:transparent;}
 body:not(.light-theme) #ed-rt-panel .rt-reset{background:#1b2735;color:#c5cfda;border-color:#2c3a4a;}
 body:not(.light-theme) #ed-rt-panel .rt-reset:hover{background:#3a1f28;border-color:#7a3a4a;color:#f08ca0;}
 body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:#2f5f8a;color:#6fb4ef;}
@@ -9387,10 +9394,84 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       s+='<button type="button" class="rt-hb'+(cur===d[0]?' aktif':'')+'" data-v="'+d[0]+'" title="'+d[1]+'"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none">'+paths+'</g></svg></button>'; }
     return s;
   }
+  // [KES/KOPYALA/YAPIŞTIR/SİL] Editöre özel pano işlemleri. Hedefler: metin/başlık/link alanları (hepsi contentEditable).
+  // Yerler: "Seçili metin" menüsünün en üstü + editable sağ-tık menüsü (seçim olmasa da). İkon-only + tooltip.
+  // İşlevi olmayan buton SİLİK (disabled): seçim yoksa Kes/Kopyala/Sil; pano okunamıyorsa Yapıştır (canlı IP+HTTP = güvensiz bağlam).
+  // Bayrak x_kes_kopyala='0' -> davranış kapanır, tarayıcının yerel menüsü geri gelir.
+  function clipAcik(){ try{ return localStorage.getItem('x_kes_kopyala')!=='0'; }catch(_){ return true; } }
+  function _clipPasteVar(){ return !!(navigator.clipboard && navigator.clipboard.readText); }   // pano OKUMA yalnız güvenli bağlamda (localhost evet, IP+HTTP hayır)
+  var _CLIP_SVG={
+    kes:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.1"/><circle cx="6" cy="14" r="2.1"/><path d="M7.7 7.3L16 15.2"/><path d="M7.7 12.7L16 4.8"/></svg>',
+    kopya:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="7.5" width="8.5" height="8.5" rx="1.6"/><path d="M12.5 7.5V5.5A1.5 1.5 0 0 0 11 4H5.5A1.5 1.5 0 0 0 4 5.5V11A1.5 1.5 0 0 0 5.5 12.5H7.5"/></svg>',
+    yapistir:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H6A1.5 1.5 0 0 0 4.5 6V15A1.5 1.5 0 0 0 6 16.5H14A1.5 1.5 0 0 0 15.5 15V6A1.5 1.5 0 0 0 14 4.5H12.5"/><rect x="7" y="3" width="6" height="3" rx="1"/></svg>',
+    sil:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.6h4V6"/><path d="M6.2 6l.7 9.4A1 1 0 0 0 7.9 16.4h4.2a1 1 0 0 0 1-0.9L13.8 6"/></svg>',
+    tumsec:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="13" height="13" rx="2.5" stroke-dasharray="2.6 2.4"/><path d="M6.8 10.2l2.2 2.2 4.3-4.6"/></svg>'
+  };
+  function _clipSatiri(hasSel, canPaste, hasContent){
+    function bt(cls, aktif, tip, svg){ return '<button type="button" class="rt-ik rt-clip-'+cls+'"'+(aktif?'':' disabled')+' title="'+tip+'">'+svg+'</button>'; }
+    return '<div class="rt-row rt-clip">'
+      + bt('tumsec', hasContent, 'Tümünü seç (Ctrl+A)', _CLIP_SVG.tumsec)
+      + bt('kes', hasSel, 'Kes (Ctrl+X)', _CLIP_SVG.kes)
+      + bt('kopya', hasSel, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya)
+      + bt('yapistir', canPaste, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)
+      + bt('sil', hasSel, 'Sil', _CLIP_SVG.sil)
+      + '</div>';
+  }
+  function _clipBagla(p){
+    function on(sel, fn){ var b=p.querySelector(sel); if(b) b.addEventListener('click', function(){ if(!b.disabled) fn(); }); }
+    on('.rt-clip-tumsec', _clipTumSec); on('.rt-clip-kes', _clipKes); on('.rt-clip-kopya', _clipKopyala); on('.rt-clip-yapistir', _clipYapistir); on('.rt-clip-sil', _clipSil);
+  }
+  // [TÜMÜNÜ SEÇ] editable'ın tüm içeriğini seç + menüyü yerinde tazele (Kes/Kopyala/Sil aktifleşsin).
+  function _clipTumSec(){
+    var el=_rtInfo&&_rtInfo.clipEl; if(!el) return;
+    try{
+      el.focus(); var sel=window.getSelection(); var r=document.createRange(); r.selectNodeContents(el);
+      sel.removeAllRanges(); sel.addRange(r);
+      _rtInfo.clipRange=r.cloneRange(); if(_rtInfo.mode==='inline') _rtInfo.range=r.cloneRange();
+      var rect=el.getBoundingClientRect(); _sagTikGoster(_rtInfo, rect.left, rect.bottom);
+    }catch(e){}
+  }
+  // Pano işlemi yapılacak editable'a odaklan + kayıtlı aralığı geri yükle. _rtInfo.clipEl/clipRange handler'larda ayarlanır.
+  function _clipGeri(){
+    var el=_rtInfo&&_rtInfo.clipEl, rng=_rtInfo&&_rtInfo.clipRange; if(!el||!rng) return null;
+    try{ el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); return {el:el,sel:sel}; }catch(e){ return null; }
+  }
+  // Editable türüne göre kaydet (metin=innerHTML; başlık/link=textContent) -> mevcut input handler yollarıyla aynı.
+  function _editableKaydet(el){
+    if(!el) return;
+    if(el.classList.contains('ed-metin')){ _metinKaydet(el); return; }
+    var bi=+el.getAttribute('data-i'); var b=XE.belge.birimler[bi]; if(!b||!b.item) return;
+    if(el.classList.contains('ed-h2')){ b.item.h2_override=el.textContent; b.h2=el.textContent; XE._ovSet(bi); }
+    else if(el.classList.contains('ed-plat')){ b.item.h1_override=el.textContent; b.h1=el.textContent; XE._ovSet(bi); }
+    else if(el.classList.contains('ed-link-edit')){ var pk=+el.getAttribute('data-p'); if(b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } }
+  }
+  function _clipKopyala(){ var r=_clipGeri(); if(!r) return; try{ document.execCommand('copy'); }catch(e){} _sagTikKapat(); }
+  function _clipKes(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ document.execCommand('cut'); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
+  function _clipSil(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ var rng=r.sel.getRangeAt(0); if(!rng.collapsed) rng.deleteContents(); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
+  function _clipYapistir(){
+    var el=_rtInfo&&_rtInfo.clipEl, rng=_rtInfo&&_rtInfo.clipRange; if(!el||!rng) return;
+    if(!_clipPasteVar()) return;   // buton zaten silik; yine de koru
+    navigator.clipboard.readText().then(function(txt){
+      try{
+        if(txt!=null && txt!==''){
+          el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng);
+          XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
+          try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
+          _inlineBusy=false; _editableKaydet(el);
+        }
+      }catch(e){ _inlineBusy=false; }
+      _sagTikKapat();
+    }).catch(function(){ _sagTikKapat(); });
+  }
   function _sagTikGoster(info, x, y){
     _rtInfo=info;
     var p=document.getElementById('ed-rt-panel'); if(!p) return;
     var fontOpts=(document.getElementById('b_font')||{}).innerHTML||'';
+    // [KES/KOPYALA] üst satır durumu: seçim var mı (Kes/Kopyala/Sil), pano okunur mu (Yapıştır)
+    var _clipRng=info.clipRange||info.range||null;
+    var _hasSel=!!(_clipRng && !_clipRng.collapsed && String(_clipRng).replace(/\s+/g,'').length>0);
+    var _clipHasContent=!!(info.clipEl && info.clipEl.textContent && info.clipEl.textContent.replace(/\s+/g,'').length>0);
+    var _clipHtml=clipAcik()?_clipSatiri(_hasSel, _clipPasteVar(), _clipHasContent):'';
     var h='';
     if(info.mode==='image'){
       // [GÖRSEL HİZA] bu görselin hizası (parça override -> genel). Sol/Orta/Sağ + tümüne uygula + genele dön.
@@ -9413,9 +9494,15 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       p.querySelectorAll('.rt-ghb').forEach(function(b){ b.addEventListener('click', function(){ var v=b.getAttribute('data-v'); XE._gorselHiza(info.bi,info.pp,v); p.querySelectorAll('.rt-ghb').forEach(function(x){ x.classList.toggle('aktif',x===b); }); var _gb=p.querySelector('.rt-img-genel'); if(_gb) _gb.disabled=false; }); });   // hiza seçilince override oluştu -> "Genel ayara dön" aktifleşir
       p.querySelector('.rt-img-tum').addEventListener('click', function(){ var _gp2=(XE.belge.birimler[info.bi].item.parcalar||[])[info.pp]||{}; XE._gorselHizaTum(gorselEfHiza(_gp2.align,stilOku())); _sagTikKapat(); });
       p.querySelector('.rt-img-genel').addEventListener('click', function(){ XE._gorselHiza(info.bi,info.pp,''); _sagTikKapat(); });
+    } else if(info.mode==='clip'){
+      // [KES/KOPYALA] seçimsiz editable sağ-tık -> yalnız pano işlemleri satırı
+      h+=_clipHtml;
+      p.innerHTML=h;
+      _clipBagla(p);
     } else if(info.mode==='heading'){
       var bi=info.bi, rol=info.rol;
       var adv=(rol==='h1')?'Platform Adı':'Başlık';
+      h+=_clipHtml;
       h+='<div class="rt-title">'+adv+' — yalnız bu başlık</div>';
       h+='<label class="rt-row">Font <select class="rt-font">'+fontOpts+'</select></label>';
       h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(_rtEff(bi,rol,'size')))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+_rtEff(bi,rol,'color')+'"></label></div>';
@@ -9424,6 +9511,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       h+='<label class="rt-row">Word düzeyi <select class="rt-word"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
       h+='<div class="rt-row"><button type="button" class="rt-reset">↺ Varsayılana döndür</button></div>';
       p.innerHTML=h;
+      _clipBagla(p);
       var fs=p.querySelector('.rt-font'); if(fs) fs.value=_rtEff(bi,rol,'font');
       // Word düzeyi: bu başlığın efektif düzeyi (tekil override varsa o; yoksa genel/varsayılan). Değiştirince
       // bu başlığa özel olur; genele döndürmek için "Varsayılana döndür".
@@ -9442,6 +9530,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       var curFont=cs?(cs.fontFamily||'').split(',')[0].replace(/['"]/g,'').trim():'';
       var curSize=cs?Math.round(parseFloat(cs.fontSize)/1.3333):'';   // px->pt (kaba)
       var curColor=cs?_rgbToHex(cs.color):'#000000';
+      h+=_clipHtml;
       h+='<div class="rt-title">Seçili metin</div>';
       h+='<label class="rt-row">Font <select class="rt-font"><option value="">(değiştirme)</option>'+fontOpts+'</select></label>';
       h+='<div class="rt-row"><label>Boyut <input type="number" class="rt-size" min="6" max="96" value="'+esc(String(curSize))+'" style="width:52px"></label><label>Renk <input type="color" class="rt-color" value="'+curColor+'"></label></div>';
@@ -9462,6 +9551,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       }
       h+='<div class="rt-row"><button type="button" class="rt-reset rt-temizle">↺ Biçimi temizle</button></div>';
       p.innerHTML=h;
+      _clipBagla(p);
       var fs2=p.querySelector('.rt-font'); if(fs2 && curFont){ for(var oi=0;oi<fs2.options.length;oi++){ if(fs2.options[oi].value===curFont){ fs2.selectedIndex=oi; break; } } }
       p.querySelector('.rt-temizle').addEventListener('click', function(){ _inlineTemizle(); _sagTikKapat(); });
       p.querySelector('.rt-font').addEventListener('change', function(){ if(this.value) _inlineUygula('font',this.value); });
@@ -9613,13 +9703,28 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     document.addEventListener('contextmenu', function(e){
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
       var t=e.target; if(!t||!t.closest) return;
-      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img');
-      // Başlık override'ı x_h_ov bayrağına bağlı -> kapalıysa başlık sağ-tık paneli AÇILMAZ (yazma da olmaz).
+      var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img'), linkEd=t.closest('.ed-link-edit');
+      // [GÖRSEL HİZA] görsele sağ-tık -> hizalama paneli (metin işlemi değil; pano satırı yok). Bayrak x_gorsel_hiza.
+      if(gorselHizaAcik() && gorsel && gorsel.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorsel.getAttribute('data-i'), pp:+gorsel.getAttribute('data-p')}, e.clientX, e.clientY); return; }
+      // [KES/KOPYALA] editable (metin/başlık/link) sağ-tık -> editöre özel menü (seçim olmasa da). Mod: başlık/inline/clip.
+      var edit=metin||h2||plat||linkEd;
+      if(clipAcik() && edit){
+        e.preventDefault();
+        var sel=window.getSelection(), rng=null, hasSel=false;
+        if(sel && sel.rangeCount && !sel.isCollapsed && edit.contains(sel.anchorNode) && edit.contains(sel.focusNode)){ rng=sel.getRangeAt(0).cloneRange(); hasSel=String(rng).replace(/\s+/g,'').length>0; }
+        if(!rng){ try{ rng=document.caretRangeFromPoint?document.caretRangeFromPoint(e.clientX,e.clientY):null; }catch(_){} }   // seçimsiz -> tıklanan noktaya caret (yapıştırma hedefi)
+        if(!rng){ rng=document.createRange(); rng.selectNodeContents(edit); rng.collapse(false); }
+        var info={clipEl:edit, clipRange:rng};
+        // Başlık biçim paneli yalnız x_h_ov açıkken; değilse başlıkta da yalnız pano satırı (clip modu).
+        if(hOvAcik() && (h2||plat)){ info.mode='heading'; info.rol=h2?'h2':'h1'; info.bi=+(h2||plat).getAttribute('data-i'); }
+        else if(metin && hasSel){ info.mode='inline'; info.metinEl=metin; info.range=rng.cloneRange(); }
+        else { info.mode='clip'; }
+        _sagTikGoster(info, e.clientX, e.clientY); return;
+      }
+      // [KES/KOPYALA KAPALI] -> eski davranış (başlık override paneli / seçili metin paneli; yerel menü kalanlarda).
       if(hOvAcik() && h2 && h2.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h2',bi:+h2.getAttribute('data-i')}, e.clientX, e.clientY); }
       else if(hOvAcik() && plat && plat.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'heading',rol:'h1',bi:+plat.getAttribute('data-i')}, e.clientX, e.clientY); }
-      // [GÖRSEL HİZA] görsele sağ-tık -> hizalama paneli (bu görsel + tüm görsellere/genele dön). Bayrak x_gorsel_hiza.
-      else if(gorselHizaAcik() && gorsel && gorsel.getAttribute('data-i')!=null){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorsel.getAttribute('data-i'), pp:+gorsel.getAttribute('data-p')}, e.clientX, e.clientY); }
-      else if(metin){ var sel=window.getSelection(); if(sel && !sel.isCollapsed && sel.rangeCount && metin.contains(sel.anchorNode) && metin.contains(sel.focusNode)){ e.preventDefault(); _sagTikGoster({mode:'inline',metinEl:metin,range:sel.getRangeAt(0).cloneRange()}, e.clientX, e.clientY); } }
+      else if(metin){ var sel2=window.getSelection(); if(sel2 && !sel2.isCollapsed && sel2.rangeCount && metin.contains(sel2.anchorNode) && metin.contains(sel2.focusNode)){ e.preventDefault(); _sagTikGoster({mode:'inline',metinEl:metin,range:sel2.getRangeAt(0).cloneRange()}, e.clientX, e.clientY); } }
     });
     // [KEŞİF] Metin SEÇİLİNCE biçim/link panelini OTOMATİK göster (sağ-tık'a gerek yok; tarayıcıdan bağımsız).
     // Part 1 (font/renk/boyut) zaten sağ-tıkla vardı ama keşfi zordu -> seçimde auto. Bayrak x_secim_toolbar='0' kapatır.
@@ -9634,7 +9739,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
         var metin=(pe&&pe.closest)?pe.closest('.ed-metin'):null;
         if(!metin || !metin.contains(sel.anchorNode) || !metin.contains(sel.focusNode)) return;
         var rect=rng.getBoundingClientRect();
-        _sagTikGoster({mode:'inline',metinEl:metin,range:rng.cloneRange()}, rect.left, rect.bottom);
+        _sagTikGoster({mode:'inline',metinEl:metin,range:rng.cloneRange(),clipEl:metin,clipRange:rng.cloneRange()}, rect.left, rect.bottom);
       }catch(_){} }, 10);
     });
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
