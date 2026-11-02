@@ -9733,7 +9733,10 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     if(mode==='upper') return U(t);
     if(mode==='lower') return L(t);
     if(mode==='toggle'){ var o=''; for(var i=0;i<t.length;i++){ var c=t.charAt(i), cu=U(c), cl=L(c); o+=(c===cu && c!==cl)?cl:cu; } return o; }
-    if(mode==='title'){ var low=L(t), r='', yeni=true; for(var j=0;j<low.length;j++){ var ch=low.charAt(j); if(/\s/.test(ch)){ r+=ch; yeni=true; } else if(yeni && harfMi(ch)){ r+=U(ch); yeni=false; } else { r+=ch; if(harfMi(ch)) yeni=false; } } return r; }
+    // [BAŞLIK DÜZENİ] Yol 1: her sözcüğün yalnız İLK harfini büyüt, GERİSİNE DOKUNMA -> kısaltmalar (İBB) ve ekli
+    // kısaltmalar (İBB'nin) korunur, eksik baş harfler tamamlanır. Bayrak x_baslik_harf_koru='0' -> eski (önce tümünü küçült).
+    if(mode==='title'){ var _koru=true; try{ if(localStorage.getItem('x_baslik_harf_koru')==='0') _koru=false; }catch(_){}
+      var src=_koru?t:L(t), r='', yeni=true; for(var j=0;j<src.length;j++){ var ch=src.charAt(j); if(/\s/.test(ch)){ r+=ch; yeni=true; } else if(yeni && harfMi(ch)){ r+=U(ch); yeni=false; } else { r+=ch; if(harfMi(ch)) yeni=false; } } return r; }
     if(mode==='sentence'){ var lw=L(t), s2='', cap=true; for(var k=0;k<lw.length;k++){ var d=lw.charAt(k); if(cap && harfMi(d)){ s2+=U(d); cap=false; } else { s2+=d; } if(/[.!?…]/.test(d)||/[\r\n]/.test(d)) cap=true; } return s2; }
     return t;
   }
