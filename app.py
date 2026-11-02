@@ -1515,6 +1515,26 @@ HTML_TEMPLATE = """
             box-shadow: 0 0 15px rgba(29, 155, 240, 0.2);
         }
 
+        /* [AYARLAR] Tema + Tam ekran tek gear butonu altında; tıklayınca AŞAĞI açılır menü (yalnız butonlar). */
+        .ayar-wrap { position: relative; display: inline-flex; }
+        .ayar-menu {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 60;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 13px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .ayar-menu .theme-toggle-btn:hover { transform: none; }
+
         .settings-toggle-btn {
             display: flex;
             align-items: center;
@@ -1883,8 +1903,13 @@ HTML_TEMPLATE = """
         <div class="main-content" style="position: relative;">
             <div class="header">
                 <div class="header-controls">
-                    <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-btn" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
-                    <button class="theme-toggle-btn" onclick="toggleFullscreen()" id="fs-btn" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                    <div class="ayar-wrap">
+                        <button class="theme-toggle-btn" onclick="toggleAyarMenu(this)" title="Ayarlar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7M14 6h3"/><path d="M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></svg></button>
+                        <div class="ayar-menu">
+                            <button class="theme-toggle-btn js-tema-btn" onclick="toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
+                            <button class="theme-toggle-btn js-fs-btn" onclick="toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                        </div>
+                    </div>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
                 </div>
                 <h1><span class="emoji"><svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="title-text">GörüntüX</span></h1>
@@ -2485,28 +2510,24 @@ HTML_TEMPLATE = """
         // Tema ikonları (tek-renk SVG). Koyu modda GÜNEŞ (açığa geç), açık modda AY (koyuya geç).
         var _XSVG_GUNES = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>';
         var _XSVG_AY = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 11.5A6.5 6.5 0 0 1 8.5 4a6.5 6.5 0 1 0 7.5 7.5z"/></svg>';
+        // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
+        // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
+        function xTemaUygula() {
+            var light = document.body.classList.contains('light-theme');
+            var btns = document.querySelectorAll('.js-tema-btn');
+            for (var i = 0; i < btns.length; i++) { btns[i].innerHTML = light ? _XSVG_AY : _XSVG_GUNES; btns[i].title = light ? 'Koyu temaya geç' : 'Açık temaya geç'; }
+        }
+        window.xTemaUygula = xTemaUygula;
         function toggleTheme() {
             try {
-                const body = document.body;
-                const btn = document.getElementById('theme-btn');
-                if (body.classList.contains('light-theme')) {
-                    body.classList.remove('light-theme');
-                    if (btn) { btn.innerHTML = _XSVG_GUNES; btn.title = 'Açık temaya geç'; }
-                    try {
-                        localStorage.setItem('theme', 'dark');
-                    } catch(e) {}
-                } else {
-                    body.classList.add('light-theme');
-                    if (btn) { btn.innerHTML = _XSVG_AY; btn.title = 'Koyu temaya geç'; }
-                    try {
-                        localStorage.setItem('theme', 'light');
-                    } catch(e) {}
-                }
-            } catch(err) {
-                console.error("toggleTheme error:", err);
-            }
+                var body = document.body;
+                if (body.classList.contains('light-theme')) { body.classList.remove('light-theme'); try { localStorage.setItem('theme', 'dark'); } catch(e) {} }
+                else { body.classList.add('light-theme'); try { localStorage.setItem('theme', 'light'); } catch(e) {} }
+                xTemaUygula();
+            } catch(err) { console.error("toggleTheme error:", err); }
         }
-        // [TAM EKRAN] Web panel: tema butonunun sağındaki buton -> tarayıcı tam ekranı (panel ekranını kaplar). Tekrar/ESC ile çıkar.
+        window.toggleTheme = toggleTheme;
+        // [TAM EKRAN] tarayıcı tam ekranı (panel ekranını kaplar). Tekrar/ESC ile çıkar.
         var _FS_GENIS = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg>';
         var _FS_DARALT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 7.5H7.5V3.5"/><path d="M16.5 7.5H12.5V3.5"/><path d="M3.5 12.5H7.5V16.5"/><path d="M16.5 12.5H12.5V16.5"/></svg>';
         function toggleFullscreen() {
@@ -2516,13 +2537,25 @@ HTML_TEMPLATE = """
                 else { (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document); }
             } catch(e) {}
         }
+        window.toggleFullscreen = toggleFullscreen;
         function _fsIkonGuncelle() {
-            var b = document.getElementById('fs-btn'); if (!b) return;
             var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
-            b.innerHTML = fs ? _FS_DARALT : _FS_GENIS;
-            b.title = fs ? 'Tam ekrandan çık (ESC)' : 'Tam ekran';
+            var btns = document.querySelectorAll('.js-fs-btn');
+            for (var i = 0; i < btns.length; i++) { btns[i].innerHTML = fs ? _FS_DARALT : _FS_GENIS; btns[i].title = fs ? 'Tam ekrandan çık (ESC)' : 'Tam ekran'; }
         }
+        window._fsIkonGuncelle = _fsIkonGuncelle;
         try { document.addEventListener('fullscreenchange', _fsIkonGuncelle); document.addEventListener('webkitfullscreenchange', _fsIkonGuncelle); } catch(e) {}
+        // [AYARLAR] gear butonu -> altındaki "ayar-menu"yü aç/kapa (aşağı doğru butonlar iner). Dışarı tıkla kapatır.
+        function toggleAyarMenu(btn) {
+            try {
+                var m = btn.parentElement.querySelector('.ayar-menu'); if (!m) return;
+                var acik = (m.style.display === 'flex');
+                var hepsi = document.querySelectorAll('.ayar-menu'); for (var i = 0; i < hepsi.length; i++) { hepsi[i].style.display = 'none'; }
+                if (!acik) { xTemaUygula(); _fsIkonGuncelle(); m.style.display = 'flex'; }
+            } catch(e) {}
+        }
+        window.toggleAyarMenu = toggleAyarMenu;
+        try { document.addEventListener('mousedown', function(e) { if (!(e.target.closest && e.target.closest('.ayar-wrap'))) { var hepsi = document.querySelectorAll('.ayar-menu'); for (var i = 0; i < hepsi.length; i++) { hepsi[i].style.display = 'none'; } } }); } catch(e) {}
 
         // Initialize event listeners after DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -2530,14 +2563,10 @@ HTML_TEMPLATE = """
             try {
                 const savedTheme = localStorage.getItem('theme');
                 const body = document.body;
-                const themeBtn = document.getElementById('theme-btn');
-                if (savedTheme === 'light') {
-                    body.classList.add('light-theme');
-                    if (themeBtn) { themeBtn.innerHTML = _XSVG_AY; themeBtn.title = 'Koyu temaya geç'; }
-                } else {
-                    body.classList.remove('light-theme');
-                    if (themeBtn) { themeBtn.innerHTML = _XSVG_GUNES; themeBtn.title = 'Açık temaya geç'; }
-                }
+                if (savedTheme === 'light') { body.classList.add('light-theme'); }
+                else { body.classList.remove('light-theme'); }
+                xTemaUygula();
+                _fsIkonGuncelle();
             } catch(e) {
                 console.error("Theme restore error:", e);
             }
@@ -6152,7 +6181,13 @@ HTML_TEMPLATE = """
                 <div style="display: flex; gap: 2px; align-items: center;">
                     <input id="ed-rapor-adi" class="ed-rapor-adi" type="text" autocomplete="off" spellcheck="false" placeholder="Rapor adı" title="Rapor adını düzenle — Enter'a bas ya da başka yere tıkla; arka planda ve URL'de de güncellenir">
                     <button class="ed-ikon-btn ed-ik-galeri" onclick="window.XEditor &amp;&amp; window.XEditor.galeriToggle()" title="Galeri / Sırala: bölümleri kart ızgarasında sürükleyip sırala"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/></svg></button>
-                    <button id="ed-ik-tamekran-btn" class="ed-ikon-btn ed-ik-tamekran" onclick="window.XEditor &amp;&amp; window.XEditor.tamEkran()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                    <div class="ayar-wrap">
+                        <button class="ed-ikon-btn ed-ik-ayar" onclick="window.toggleAyarMenu &amp;&amp; window.toggleAyarMenu(this)" title="Ayarlar"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7M14 6h3"/><path d="M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></svg></button>
+                        <div class="ayar-menu">
+                            <button class="ed-ikon-btn js-tema-btn" onclick="window.toggleTheme &amp;&amp; window.toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
+                            <button class="ed-ikon-btn js-fs-btn" onclick="window.toggleFullscreen &amp;&amp; window.toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                        </div>
+                    </div>
                     <button class="ed-ikon-btn ed-ik-indir" onclick="window.XEditor &amp;&amp; window.XEditor.indir()" title="İndir (.docx; kaydetmez)"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9"/><path d="M6 9l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg></button>
                     <button class="ed-ikon-btn ed-ik-kapat" onclick="window.XEditor &amp;&amp; window.XEditor.kapat()" title="Kapat"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/></svg></button>
                 </div>
