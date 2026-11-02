@@ -9420,7 +9420,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       + bt('tumsec', hasContent, 'Tümünü seç (Ctrl+A)', _CLIP_SVG.tumsec)
       + bt('kes', hasSel, 'Kes (Ctrl+X)', _CLIP_SVG.kes)
       + bt('kopya', hasSel, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya)
-      + bt('yapistir', true, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)   /* güvenli: doğrudan; güvensiz: Ctrl+V penceresi -> hep aktif */
+      + bt('yapistir', canPaste, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir)   /* popup YOK -> readText yoksa (güvensiz) silik; alana klavyeyle Ctrl+V */
       + bt('sil', hasSel, 'Sil', _CLIP_SVG.sil)
       + '</div>';
   }
@@ -9450,51 +9450,23 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
   function _clipKopyala(){ var r=_clipGeri(); if(!r) return; try{ document.execCommand('copy'); }catch(e){} _sagTikKapat(); }
   function _clipKes(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ document.execCommand('cut'); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
   function _clipSil(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ var rng=r.sel.getRangeAt(0); if(!rng.collapsed) rng.deleteContents(); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
-  // [METİN YAPIŞTIR CTRL+V PENCERESİ] Yalnız GÜVENSİZ bağlamda (IP+HTTP, clipboard API yok) kullanılır.
-  function _panoMetinBekle(cb){
-    var done=false;
-    var ov=document.createElement('div'); ov.className='modal active'; ov.style.zIndex='3200';
-    ov.innerHTML='<div class="modal-content" style="max-width:460px;">'
-      +'<div class="modal-header"><h2 class="x-shead" style="margin:0;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5H6A1.5 1.5 0 0 0 4.5 6V15A1.5 1.5 0 0 0 6 16.5H14A1.5 1.5 0 0 0 15.5 15V6A1.5 1.5 0 0 0 14 4.5H12.5"/><rect x="7" y="3" width="6" height="3" rx="1"/></svg>Panodan Metin</h2><span class="close-btn" data-x="1">&times;</span></div>'
-      +'<div class="modal-body">'
-        +'<div class="x-pano-hedef" contenteditable="true" spellcheck="false" style="min-height:110px; border:2px dashed #9ab; border-radius:12px; display:flex; align-items:center; justify-content:center; text-align:center; color:#57606a; font-size:14px; padding:16px; outline:none; background:#f7fafd; cursor:text;">Metni buraya <b style="margin:0 5px;">Ctrl+V</b> (⌘V) ile yapıştırın</div>'
-      +'</div>'
-      +'<div class="modal-footer" style="gap:10px;"><button type="button" class="btn btn-secondary" data-x="1" style="margin:0;">Vazgeç</button></div>'
-      +'</div>';
-    document.body.appendChild(ov);
-    var hedef=ov.querySelector('.x-pano-hedef');
-    function kapat(){ if(done) return; done=true; try{ ov.classList.remove('active'); ov.remove(); }catch(e){} }
-    hedef.addEventListener('paste', function(e){
-      var cd=e.clipboardData||(e.originalEvent&&e.originalEvent.clipboardData); if(!cd) return;
-      var txt=''; try{ txt=cd.getData('text/plain')||''; }catch(_){}
-      e.preventDefault();
-      if(txt){ try{ cb(txt); }catch(_){} kapat(); }
-      else { hedef.innerHTML='Panoda metin yok. Önce metin kopyalayıp tekrar <b>Ctrl+V</b> yapın.'; }
-    });
-    ov.addEventListener('click', function(e){ if(e.target===ov || (e.target.getAttribute && e.target.getAttribute('data-x'))) kapat(); });
-    ov.addEventListener('keydown', function(e){ if(e.key==='Escape') kapat(); });
-    setTimeout(function(){ try{ hedef.focus(); }catch(e){} }, 50);
-  }
-  function _metinYapistirUygula(elRef, rngRef, txt){
-    if(txt==null || txt==='') return;
-    try{
-      elRef.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rngRef);
-      XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
-      try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
-      _inlineBusy=false; _editableKaydet(elRef);
-    }catch(e){ _inlineBusy=false; }
-  }
-  // [METİN YAPIŞTIR] Güvenli bağlamda (localhost/https) panoyu DOĞRUDAN oku -> POPUP YOK (ilk çağrıda tarayıcı
-  // kendi iznini sorabilir). Güvensiz bağlamda (IP+HTTP, clipboard API HİÇ yok) -> Ctrl+V penceresi (tek yol). Hep aktif.
+  // [METİN YAPIŞTIR] Panoyu YALNIZCA doğrudan oku (navigator.clipboard.readText) -> POPUP ASLA YOK (kullanıcı net).
+  // Güvenli bağlamda (localhost/https) çalışır (ilk çağrıda tarayıcı kendi iznini sorabilir). Güvensiz bağlamda
+  // (IP+HTTP) API HİÇ yok -> buton SİLİK (_clipPasteVar); kullanıcı alana klavyeyle Ctrl+V yapar.
   function _clipYapistir(){
     var el=_rtInfo&&_rtInfo.clipEl, rng=_rtInfo&&_rtInfo.clipRange; if(!el||!rng) return;
     var elRef=el, rngRef=rng;   // _sagTikKapat _rtInfo'yu temizler -> önce yakala
     _sagTikKapat();
-    if(navigator.clipboard && navigator.clipboard.readText){
-      navigator.clipboard.readText().then(function(txt){ _metinYapistirUygula(elRef, rngRef, txt); }).catch(function(){});   // güvenli: doğrudan, hata->sessiz (popup yok)
-    } else {
-      _panoMetinBekle(function(txt){ _metinYapistirUygula(elRef, rngRef, txt); });   // güvensiz: Ctrl+V penceresi (tek yol)
-    }
+    if(!(navigator.clipboard && navigator.clipboard.readText)) return;   // güvensiz bağlam -> sessiz, POPUP YOK
+    navigator.clipboard.readText().then(function(txt){
+      if(txt==null || txt==='') return;
+      try{
+        elRef.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rngRef);
+        XE._alanBlur(); XE._pushUndo(); _inlineBusy=true;
+        try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
+        _inlineBusy=false; _editableKaydet(elRef);
+      }catch(e){ _inlineBusy=false; }
+    }).catch(function(){});   // izin yok / hata -> sessiz, POPUP YOK
   }
   // [GÖRSEL PANO] Görsel sağ-tık menüsü pano işlemleri (metin clip'ten AYRI — görsel execCommand'la kopyalanamaz).
   // Yapıştır: _panoGorsel (güvenli bağlamda doğrudan okur, değilse Ctrl+V modalı) -> HER yerde çalışır, asla silik DEĞİL.
@@ -9523,27 +9495,25 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
   function _gorselClipKopyala(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); }
   // Kes = panoya kopyala (EN İYİ ÇABA; güvensiz bağlamda pano yazılamaz) + görseli HER durumda sil (kullanıcı: "kes deyince işlev yerine gelsin").
   function _gorselClipKes(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); XE._gorselSil(bi,pp); }
-  // [GÖRSEL YAPIŞTIR] Güvenli bağlamda (localhost/https) panoyu DOĞRUDAN oku -> POPUP YOK (ilk çağrıda tarayıcı
-  // kendi iznini sorabilir). Güvensiz bağlamda (IP+HTTP, clipboard API HİÇ yok) -> Ctrl+V penceresi (tek yol). Hep aktif.
+  function _gorselYapistirVar(){ return !!(navigator.clipboard && navigator.clipboard.read); }   // pano OKUMA (görsel) yalnız güvenli bağlamda
+  // [GÖRSEL YAPIŞTIR] Panoyu YALNIZCA doğrudan oku (navigator.clipboard.read) -> POPUP ASLA YOK.
+  // Güvensiz bağlamda API yok -> buton SİLİK; kullanıcı slota klavyeyle Ctrl+V yapar.
   function _gorselClipYapistir(bi, pp){
     _sagTikKapat();
-    if(navigator.clipboard && navigator.clipboard.read){
-      navigator.clipboard.read().then(function(items){
-        for(var i=0;i<items.length;i++){ var it=items[i], imgT=null;
-          for(var t=0;t<it.types.length;t++){ if(it.types[t].indexOf('image/')===0){ imgT=it.types[t]; break; } }
-          if(imgT){ (function(mt){ it.getType(mt).then(function(blob){ var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ XE._gorselParcaYaz(bi,pp,du.slice(ci+1),mt); }catch(_){} }; rd.readAsDataURL(blob); }); })(imgT); return; }
-        }
-      }).catch(function(){});   // güvenli: izin yok / görsel yok -> sessiz (popup yok)
-    } else {
-      _panoYapistirBekle(function(b64,mime){ try{ XE._gorselParcaYaz(bi,pp,b64,mime); }catch(_){} });   // güvensiz: Ctrl+V penceresi (tek yol)
-    }
+    if(!_gorselYapistirVar()) return;   // güvensiz bağlam -> sessiz, POPUP YOK
+    navigator.clipboard.read().then(function(items){
+      for(var i=0;i<items.length;i++){ var it=items[i], imgT=null;
+        for(var t=0;t<it.types.length;t++){ if(it.types[t].indexOf('image/')===0){ imgT=it.types[t]; break; } }
+        if(imgT){ (function(mt){ it.getType(mt).then(function(blob){ var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ XE._gorselParcaYaz(bi,pp,du.slice(ci+1),mt); }catch(_){} }; rd.readAsDataURL(blob); }); })(imgT); return; }
+      }
+    }).catch(function(){});   // izin yok / görsel yok -> sessiz, POPUP YOK
   }
   function _gorselClipSatiri(bos, canCopy){
     function bt(cls, aktif, tip, svg){ return '<button type="button" class="rt-ik rt-gclip-'+cls+'"'+(aktif?'':' disabled')+' title="'+tip+'">'+svg+'</button>'; }
     var s='<div class="rt-row rt-clip">';
-    // Kes HER ZAMAN aktif (görseli siler). Kopyala pano-yazma varsa (güvenli bağlam), yoksa SİLİK. Yapıştır hep aktif (güvenli: doğrudan; güvensiz: Ctrl+V penceresi).
+    // Kes HER ZAMAN aktif (görseli siler). Kopyala pano-yazma varsa; Yapıştır pano-okuma varsa (güvenli bağlam). POPUP yok -> güvensizde silik.
     if(!bos){ s+=bt('kes', true, 'Kes (Ctrl+X)', _CLIP_SVG.kes)+bt('kopya', canCopy, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya); }
-    s+=bt('yapistir', true, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);
+    s+=bt('yapistir', _gorselYapistirVar(), 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);
     return s+'</div>';
   }
   function _gorselClipBagla(p, bi, pp){
