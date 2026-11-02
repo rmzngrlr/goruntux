@@ -8984,7 +8984,10 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
         else if(!on && li!==pc.length-1){ var el4=pc.splice(li,1)[0]; pc.push(el4); XE._ovSet(bi); }   // link altta: en sona
       }
     });
+    // [TİTREME/SCROLL] _ciz innerHTML'i yeniden kurar -> scroll sıçrar + titrer. Scroll konumunu KORU.
+    var _pb=document.querySelector('#editorModal .preview-body'); var _st=_pb?_pb.scrollTop:0;
     XE._ciz();
+    if(_pb) _pb.scrollTop=_st;
   };
 
   // Faz 5: editör çalışma durumu (parcalar + düzenlenen başlık) panel-düzeyi bir overlay'de yaşar.
@@ -9480,7 +9483,15 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       if(_perm){
         var _farkli=false; for(var q=0;q<yeniSira.length;q++){ if(yeniSira[q]!==q){ _farkli=true; break; } }
         if(_farkli){ try{ await fetch('/api/manual/reorder', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({order:yeniSira})}); }catch(e){} }
-        await XE.ac({});   // havuzdan yeni sırayla yeniden kur (profil-önce re-plan'de uygulanır; galeri yeniden çizilir)
+        // [SMOOTH] XE.ac({}) YERİNE: sunucu sırası güncellendi; mevcut kart DÜĞÜMLERİNİ yerinde TAŞI
+        // (innerHTML yeniden kurma + görsel yeniden-decode YOK -> sayfa-yenileme flaşı gitti). Kullanıcı sırası birebir korunur.
+        var _grid=document.querySelector('#editor-root .ed-gal-grid');
+        var _eskiB=B.slice(); XE.belge.birimler=arr; try{ window.__xPoolDirty=true; }catch(e){}
+        if(XE._galeriModu && _grid){
+          var _nodeByOld={}; _grid.querySelectorAll('.ed-gal-card').forEach(function(c){ _nodeByOld[+c.getAttribute('data-i')]=c; });
+          for(var kk=0;kk<arr.length;kk++){ var _oldIdx=_eskiB.indexOf(arr[kk]); var _node=_nodeByOld[_oldIdx];
+            if(_node){ _grid.appendChild(_node); _node.setAttribute('data-i', kk); var _no=_node.querySelector('.ed-gal-no'); if(_no) _no.textContent=(kk+1); } }
+        } else if(XE._galeriModu){ XE._galeriCiz(); } else { XE._ciz(); }
       } else { XE.belge.birimler=arr; if(XE._galeriModu){ XE._galeriCiz(); } else { XE._ciz(); } }
     } finally { _busy=false; }
   };
