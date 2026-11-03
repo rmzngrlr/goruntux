@@ -1565,8 +1565,13 @@ HTML_TEMPLATE = """
         .pwa-ctrl option { background: var(--bg-input); color: var(--text-primary); }
         .pwa-num { width: 62px; }
         .pwa-unit { font-size: 12px; color: var(--text-secondary); }
-        .pwa-chk { display: flex; align-items: center; gap: 7px; margin: 7px 0; font-size: 12.5px; cursor: pointer; }
-        .pwa-chk input { width: 15px; height: 15px; cursor: pointer; }
+        /* [TOGGLE BUTON] Word ayarı onay kutuları, ribbon'daki Başlıksız/Link üstte gibi pill toggle (seçiliyken mavi). */
+        .pwa-tgl-grup { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .pwa-tgl { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 13px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-input); color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; }
+        .pwa-tgl input { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; }
+        .pwa-tgl svg { flex: 0 0 auto; }
+        .pwa-tgl:hover:not(:has(input:checked)) { border-color: var(--accent-color, #1d9bf0); }
+        .pwa-tgl:has(input:checked) { background: var(--accent-color, #1d9bf0); border-color: var(--accent-color, #1d9bf0); color: #fff; }
         .pwa-sep { height: 1px; background: var(--border-color); margin: 11px 0; }
         /* [AŞAMA 3] Devam butonu (Word ayarları -> işlem) */
         .paylas-ileri { display: block; width: 100%; margin-top: 12px; padding: 11px; background: var(--accent-color, #1565c0); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
@@ -1577,8 +1582,7 @@ HTML_TEMPLATE = """
         .pb-baslik { font-size: 21px; font-weight: 800; color: inherit; margin-bottom: 6px; }
         .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; }
         .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; }
-        #pb-ring { stroke: var(--accent-color, #1d9bf0); }   /* dolan halka: uygulama mavisi */
-        .pb-rozet { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px; background: var(--accent-color, #1d9bf0); color: #fff; font-size: 16px; font-weight: 700; }   /* Başlıksız/Link üstte butonu gibi mavi pill */
+        #pb-ring { stroke: #1a9e4b; }   /* dolan halka: yeşil (tamamlanınca yeşil tike dönüşür) */
         @keyframes pbspin { to { transform: rotate(360deg); } }
         .pb-spin { animation: pbspin .9s linear infinite; transform-origin: center; }   /* Word (yüzdesiz) belirsiz dönen halka */
 
@@ -2463,11 +2467,15 @@ HTML_TEMPLATE = """
                     <div id="paylas-word-ayar">
                         <div class="paylas-baslik">Word çıktı ayarları</div>
                         <div class="pwa-row"><span class="pwa-lbl">Satır aralığı</span><select id="pwa-line" class="pwa-ctrl"><option value="1.0">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2.0">2,0</option><option value="2.5">2,5</option><option value="3.0">3,0</option></select></div>
-                        <label class="pwa-chk"><input type="checkbox" id="pwa-sb"> Paragraftan önce boşluk</label>
-                        <label class="pwa-chk"><input type="checkbox" id="pwa-sa"> Paragraftan sonra boşluk</label>
+                        <div class="pwa-tgl-grup">
+                            <label class="pwa-tgl"><input type="checkbox" id="pwa-sb"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v4"/><path d="M6 4.5l2-2 2 2"/><path d="M3 9.5h10"/><path d="M3 12.5h10"/></svg><span>Paragraftan önce boşluk</span></label>
+                            <label class="pwa-tgl"><input type="checkbox" id="pwa-sa"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3.5h10"/><path d="M3 6.5h10"/><path d="M8 13.5v-4"/><path d="M6 11.5l2 2 2-2"/></svg><span>Paragraftan sonra boşluk</span></label>
+                        </div>
                         <div class="pwa-row"><span class="pwa-lbl">Başlık alt boşluğu</span><input type="number" id="pwa-bafter" min="0" max="72" class="pwa-ctrl pwa-num"><span class="pwa-unit">pt</span></div>
                         <div class="pwa-sep"></div>
-                        <label class="pwa-chk"><input type="checkbox" id="pwa-pn-on"> Sayfa numarası</label>
+                        <div class="pwa-tgl-grup">
+                            <label class="pwa-tgl"><input type="checkbox" id="pwa-pn-on"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2.5L4.7 13.5"/><path d="M11.8 2.5L10.5 13.5"/><path d="M3.3 6h10"/><path d="M2.5 10h10"/></svg><span>Sayfa numarası</span></label>
+                        </div>
                         <div id="pwa-pn-detay" style="display:none;">
                             <div class="pwa-row"><span class="pwa-lbl">Konum</span><select id="pwa-pn-pos" class="pwa-ctrl"><option value="footer">Altta</option><option value="header">Üstte</option></select></div>
                             <div class="pwa-row"><span class="pwa-lbl">Hizalama</span><select id="pwa-pn-align" class="pwa-ctrl"><option value="left">Sol</option><option value="center">Orta</option><option value="right">Sağ</option></select></div>
@@ -2494,7 +2502,10 @@ HTML_TEMPLATE = """
                             <circle id="pb-ring" cx="36" cy="36" r="31" fill="none" stroke-width="6" stroke-linecap="round" stroke-dasharray="194.78" stroke-dashoffset="194.78" transform="rotate(-90 36 36)"/>
                             <text id="pb-ring-yuzde" x="36" y="37" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="800" fill="currentColor">%0</text>
                         </svg>
-                        <div id="pb-rozet" class="pb-rozet" style="display:none;"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16.5h12"/></svg><span>İndirildi</span></div>
+                        <svg id="pb-tik" viewBox="0 0 72 72" width="80" height="80" fill="none" style="display:none;">
+                            <circle cx="36" cy="36" r="33" fill="#e8f7ee" stroke="#1a9e4b" stroke-width="3"/>
+                            <path d="M21 37.5l10 10 20-22" stroke="#1a9e4b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </div>
                     <div class="pb-baslik" id="pb-baslik"></div>
                     <div class="pb-dosya" id="pb-dosya"></div>
@@ -2648,7 +2659,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03d · ilerleme-halkasi+rozet+dropdown-fix';
+        var X_BUILD = '2026-11-03e · indirildi-tik+toggle-butonlar';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3515,20 +3526,20 @@ HTML_TEMPLATE = """
         }
         window._pdfIlerlemeGuncelle = _pdfIlerlemeGuncelle;
         function _paylasHazirlaGoster(bicim) {
-            var ring = document.getElementById('pb-ilerleme'), rozet = document.getElementById('pb-rozet'), y = document.getElementById('pb-ring-yuzde'), bas = document.getElementById('pb-baslik'), dos = document.getElementById('pb-dosya'), sc = document.getElementById('pb-sayac');
-            if (rozet) rozet.style.display = 'none';
+            var ring = document.getElementById('pb-ilerleme'), tik = document.getElementById('pb-tik'), y = document.getElementById('pb-ring-yuzde'), bas = document.getElementById('pb-baslik'), dos = document.getElementById('pb-dosya'), sc = document.getElementById('pb-sayac');
+            if (tik) tik.style.display = 'none';
             if (dos) dos.textContent = ''; if (sc) sc.textContent = '';
             if (ring) ring.style.display = '';
             if (bicim === 'pdf') { if (ring) ring.classList.remove('pb-spin'); if (y) y.style.display = ''; _pdfIlerlemeGuncelle(0); if (bas) bas.textContent = 'PDF hazırlanıyor'; }
             else { if (y) y.style.display = 'none'; _pdfIlerlemeGuncelle(28); if (ring) ring.classList.add('pb-spin'); if (bas) bas.textContent = 'Hazırlanıyor'; }
             _paylasGoster('paylas-basari');
         }
-        // [İNDİRİLDİ EKRANI] tik yerine mavi "İndirildi" rozeti (Başlıksız/Link üstte butonu gibi) + dosya + 5 sn geri sayım.
+        // [İNDİRİLDİ EKRANI] tamamlanınca yeşil tik + "İndirildi" (ekran boyu korunur) + dosya + 5 sn geri sayım.
         function _paylasBasariGoster(filename) {
-            var ring = document.getElementById('pb-ilerleme'), rozet = document.getElementById('pb-rozet'), bas = document.getElementById('pb-baslik');
+            var ring = document.getElementById('pb-ilerleme'), tik = document.getElementById('pb-tik'), bas = document.getElementById('pb-baslik');
             if (ring) { ring.style.display = 'none'; ring.classList.remove('pb-spin'); }
-            if (rozet) rozet.style.display = '';
-            if (bas) bas.textContent = '';
+            if (tik) tik.style.display = '';
+            if (bas) bas.textContent = 'İndirildi';
             var fd = document.getElementById('pb-dosya'); if (fd) fd.textContent = filename;
             _paylasGoster('paylas-basari');
             _paylasSayacTemizle();
