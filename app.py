@@ -1557,6 +1557,17 @@ HTML_TEMPLATE = """
         .paylas-geri { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--text-secondary); font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; margin: 0 0 10px; }
         .paylas-geri:hover { color: var(--accent-color); }
         .paylas-not { margin-top: 14px; font-size: 11.5px; line-height: 1.5; color: var(--text-secondary); text-align: center; min-height: 16px; }
+        /* [PAYLAŞ WORD AYARLARI] Word seçilince İndir'den önce çıkan belge-geneli çıktı ayarları (Satır aralığı / Alt boşluk / Sayfa no). */
+        #paylas-word-ayar { text-align: left; margin: 2px 0 14px; padding: 12px 14px; border: 1px solid var(--border-color); border-radius: 10px; }
+        #paylas-word-ayar .paylas-baslik { margin: 0 0 10px; }
+        .pwa-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; }
+        .pwa-lbl { min-width: 128px; font-weight: 600; }
+        .pwa-ctrl { font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--border-color); border-radius: 7px; background: transparent; color: inherit; }
+        .pwa-num { width: 62px; }
+        .pwa-unit { font-size: 12px; color: var(--text-secondary); }
+        .pwa-chk { display: flex; align-items: center; gap: 7px; margin: 7px 0; font-size: 12.5px; cursor: pointer; }
+        .pwa-chk input { width: 15px; height: 15px; cursor: pointer; }
+        .pwa-sep { height: 1px; background: var(--border-color); margin: 11px 0; }
 
         /* [PAYLAŞ/PDF] html2pdf kaynağı: editör .ed-root kopyası — KENDİ stili (editörün scoped/tema CSS'ine bağlı değil), beyaz + koyu yazı */
         .x-pdf-sheet { width: 794px; background: #fff; color: #15202b; padding: 32px 40px; box-sizing: border-box; font-family: Arial, sans-serif; }
@@ -2435,6 +2446,21 @@ HTML_TEMPLATE = """
                 </div>
                 <div id="paylas-asama2" style="display:none;">
                     <button type="button" class="paylas-geri" onclick="xPaylasGeri()"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg> <span id="paylas-bicim-ad"></span> — değiştir</button>
+                    <!-- [PAYLAŞ WORD AYARLARI] yalnız Word seçilince görünür; İndir'den ÖNCE. Değerler gizli backing input'lara yazılır (xBuildStyleOpts -> docx). -->
+                    <div id="paylas-word-ayar" style="display:none;">
+                        <div class="paylas-baslik">Word çıktı ayarları</div>
+                        <div class="pwa-row"><span class="pwa-lbl">Satır aralığı</span><select id="pwa-line" class="pwa-ctrl"><option value="1.0">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2.0">2,0</option><option value="2.5">2,5</option><option value="3.0">3,0</option></select></div>
+                        <label class="pwa-chk"><input type="checkbox" id="pwa-sb"> Paragraftan önce boşluk</label>
+                        <label class="pwa-chk"><input type="checkbox" id="pwa-sa"> Paragraftan sonra boşluk</label>
+                        <div class="pwa-row"><span class="pwa-lbl">Başlık alt boşluğu</span><input type="number" id="pwa-bafter" min="0" max="72" class="pwa-ctrl pwa-num"><span class="pwa-unit">pt</span></div>
+                        <div class="pwa-sep"></div>
+                        <label class="pwa-chk"><input type="checkbox" id="pwa-pn-on"> Sayfa numarası</label>
+                        <div id="pwa-pn-detay" style="display:none;">
+                            <div class="pwa-row"><span class="pwa-lbl">Konum</span><select id="pwa-pn-pos" class="pwa-ctrl"><option value="footer">Altta</option><option value="header">Üstte</option></select></div>
+                            <div class="pwa-row"><span class="pwa-lbl">Hizalama</span><select id="pwa-pn-align" class="pwa-ctrl"><option value="left">Sol</option><option value="center">Orta</option><option value="right">Sağ</option></select></div>
+                            <div class="pwa-row"><span class="pwa-lbl">Biçim</span><select id="pwa-pn-fmt" class="pwa-ctrl"><option value="plain">1</option><option value="sayfa">Sayfa 1</option><option value="xofn">1 / N</option></select></div>
+                        </div>
+                    </div>
                     <div class="paylas-baslik">Ne yapmak istersin?</div>
                     <div class="paylas-grid">
                         <button type="button" class="paylas-kart" id="paylas-indir-btn" onclick="xPaylasIndir()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7.5 11l4.5 4 4.5-4"/><path d="M5 19.5h14"/></svg><span>İndir</span><small>cihaza kaydet</small></button>
@@ -2590,7 +2616,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-02 · link+pdf';
+        var X_BUILD = '2026-11-03 · pdf-perblok + word-ayar';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}
         function _xBuildStampDoldur() { try { var ns = document.querySelectorAll('.x-build-stamp'); for (var i = 0; i < ns.length; i++) { ns[i].textContent = 'Sürüm ' + X_BUILD; ns[i].title = 'Yazılım sürümü (dağıtım kontrolü): ' + X_BUILD; } } catch (e) {} }
@@ -3435,6 +3461,9 @@ HTML_TEMPLATE = """
             document.getElementById('paylas-asama1').style.display = 'none';
             document.getElementById('paylas-asama2').style.display = '';
             document.getElementById('paylas-not').textContent = '';
+            // [PAYLAŞ WORD AYARLARI] Satır aralığı/Alt boşluk/Sayfa no yalnız Word seçilince görünür (İndir'den önce).
+            var wa = document.getElementById('paylas-word-ayar');
+            if (wa) { if (b === 'word') { xPaylasWordAyarKur(); xPaylasWordAyarDoldur(); wa.style.display = ''; } else { wa.style.display = 'none'; } }
         }
         window.xPaylasBicim = xPaylasBicim;
         function xPaylasGeri() {
@@ -3443,6 +3472,38 @@ HTML_TEMPLATE = """
             document.getElementById('paylas-not').textContent = '';
         }
         window.xPaylasGeri = xPaylasGeri;
+        // [PAYLAŞ WORD AYARLARI] Satır aralığı + Alt boşluk + Sayfa no artık ŞERİTTE DEĞİL; Word seçilince burada.
+        // Kontroller gizli backing input'lara (#m_line/#m_space_*/#b_after/#pn_*) yazar -> xBuildStyleOpts -> docx.
+        // xSaveStyles ile kalıcılaştırılır (editör-bağımsız; havuzdan da açılsa çalışır).
+        function _pwaSenk(hidId, el, isCheck) {
+            var h = document.getElementById(hidId); if (h) { if (isCheck) h.checked = el.checked; else h.value = el.value; }
+            try { if (typeof xSaveStyles === 'function') xSaveStyles(); } catch (e) {}
+        }
+        function xPaylasWordAyarDoldur() {
+            function g(id, d) { var e = document.getElementById(id); return e ? (e.type === 'checkbox' ? e.checked : e.value) : d; }
+            var ln = document.getElementById('pwa-line'); if (ln) ln.value = g('m_line', '1.5');
+            var sb = document.getElementById('pwa-sb'); if (sb) sb.checked = !!g('m_space_before', false);
+            var sa = document.getElementById('pwa-sa'); if (sa) sa.checked = !!g('m_space_after', false);
+            var ba = document.getElementById('pwa-bafter'); if (ba) ba.value = g('b_after', '6');
+            var po = document.getElementById('pwa-pn-on'); if (po) po.checked = !!g('pn_on', false);
+            var pp = document.getElementById('pwa-pn-pos'); if (pp) pp.value = g('pn_pos', 'footer');
+            var pa = document.getElementById('pwa-pn-align'); if (pa) pa.value = g('pn_align', 'right');
+            var pf = document.getElementById('pwa-pn-fmt'); if (pf) pf.value = g('pn_fmt', 'plain');
+            var det = document.getElementById('pwa-pn-detay'); if (det) det.style.display = (po && po.checked) ? '' : 'none';
+        }
+        window.xPaylasWordAyarDoldur = xPaylasWordAyarDoldur;
+        function xPaylasWordAyarKur() {
+            if (window.__pwaKur) return; window.__pwaKur = true;
+            var ln = document.getElementById('pwa-line'); if (ln) ln.addEventListener('change', function () { _pwaSenk('m_line', ln, false); });
+            var sb = document.getElementById('pwa-sb'); if (sb) sb.addEventListener('change', function () { _pwaSenk('m_space_before', sb, true); });
+            var sa = document.getElementById('pwa-sa'); if (sa) sa.addEventListener('change', function () { _pwaSenk('m_space_after', sa, true); });
+            var ba = document.getElementById('pwa-bafter'); if (ba) ba.addEventListener('input', function () { _pwaSenk('b_after', ba, false); });
+            var po = document.getElementById('pwa-pn-on'); if (po) po.addEventListener('change', function () { _pwaSenk('pn_on', po, true); var det = document.getElementById('pwa-pn-detay'); if (det) det.style.display = po.checked ? '' : 'none'; });
+            var pp = document.getElementById('pwa-pn-pos'); if (pp) pp.addEventListener('change', function () { _pwaSenk('pn_pos', pp, false); });
+            var pa = document.getElementById('pwa-pn-align'); if (pa) pa.addEventListener('change', function () { _pwaSenk('pn_align', pa, false); });
+            var pf = document.getElementById('pwa-pn-fmt'); if (pf) pf.addEventListener('change', function () { _pwaSenk('pn_fmt', pf, false); });
+        }
+        window.xPaylasWordAyarKur = xPaylasWordAyarKur;
         // html2pdf'i TEMBEL yükle (yalnız PDF seçilince; 926KB).
         function xHtml2pdfYukle() {
             return new Promise(function (resolve, reject) {
@@ -3530,39 +3591,52 @@ HTML_TEMPLATE = """
             ctx.drawImage(src, 0, sy, src.width, sh, 0, 0, src.width, sh);
             pdf.addImage(c.toDataURL('image/jpeg', 0.96), 'JPEG', x, y, w, h);
         }
-        // Ölçülen blokları (canvas-px top/bottom) A4'e manuel yerleştir: sığmayan blok yeni sayfaya; sayfadan uzun blok -> bayrak.
-        // pdf: önceden alınmış BOŞ jsPDF örneği (tek boş sayfa); ilk blok bu sayfaya, sonrakiler addPage ile.
-        function xPdfYerlestir(pdf, canvas, blocks) {
+        // [PER-BLOK] Bir BLOĞU (platform+kart) KENDİ off-screen .x-pdf-sheet'inde render et -> SADECE o bloğun canvas'ı.
+        // Tek DEV canvas YOK (tarayıcı yükseklik sınırı/kırpma biter) + ayrı ölçüm YOK (canvas = bloğun kendisi).
+        async function xBlokCanvas(blockEl) {
+            var kap = document.createElement('div');
+            kap.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;z-index:-1;';
+            var w = document.createElement('div');
+            w.className = 'x-pdf-sheet';
+            w.style.cssText = 'width:794px;padding-top:0;padding-bottom:0;';   // dikey padding yok (bloklar arası boşluk GAP ile)
+            w.appendChild(blockEl.cloneNode(true));
+            kap.appendChild(w); document.body.appendChild(kap);
+            try {
+                await xImgBekle(w);
+                // GÜVENLİ ÖLÇEK: tek blok çok uzunsa (ör. tam profil kaydırması) canvas tarayıcı yükseklik tavanını
+                // (~16k px) aşmasın -> ölçeği düşür (görsel BÜTÜN kalır, yalnız çözünürlük biraz azalır). Normalde 2.
+                var hcss = w.getBoundingClientRect().height || w.scrollHeight || 0;
+                var SC = Math.min(2, 16000 / Math.max(1, hcss)); if (!(SC > 0.1)) SC = 0.5;
+                return await window.html2pdf().set({ margin: 0, image: { type: 'jpeg', quality: 0.96 }, html2canvas: { scale: SC, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(w).toCanvas().get('canvas');
+            } finally { try { kap.remove(); } catch (e) {} }
+        }
+        // Bir bloğun canvas'ını A4'e yerleştir (st.y imleci + st.ilk ilk-blok bayrağı MUTASYONLA güncellenir).
+        // Sığmayan blok yeni sayfaya; sayfadan uzun blok -> X_PDF_UZUN ('bol' dilimle | 'olcekle' tek sayfaya küçült).
+        function xPdfBlokYerlestir(pdf, canvas, st) {
+            if (!canvas || !canvas.width || !canvas.height) return;
             var Wmm = 190, Hmm = 277, M = 10, GAP = 4, altSinir = 297 - M;
-            var mmPerPx = Wmm / canvas.width;
-            if (!blocks.length) blocks = [{ top: 0, bottom: canvas.height }];
-            var y = M, ilk = true, i;
-            for (i = 0; i < blocks.length; i++) {
-                var b = blocks[i], hPx = b.bottom - b.top; if (hPx <= 0) continue;
-                var hMM = hPx * mmPerPx;
-                if (hMM <= Hmm + 0.5) {                                   // tek sayfaya sığar
-                    if (!ilk && y + hMM > altSinir + 0.5) { pdf.addPage(); y = M; }
-                    xPdfBolgeCiz(pdf, canvas, b.top, hPx, M, y, Wmm, hMM);
-                    y += hMM + GAP; ilk = false;
-                } else {                                                  // sayfadan UZUN blok
-                    if (!ilk && y > M + 0.5) { pdf.addPage(); y = M; }
-                    if (X_PDF_UZUN === 'olcekle') {
-                        var f = Hmm / hMM, dW = Wmm * f;
-                        xPdfBolgeCiz(pdf, canvas, b.top, hPx, M + (Wmm - dW) / 2, M, dW, Hmm);
-                        pdf.addPage(); y = M; ilk = false;
-                    } else {                                              // 'bol': tam boy, sayfalara dilimle (başlık 1. sayfanın başında)
-                        var kalan = hPx, srcY = b.top, sayfaPx = Math.round(Hmm / mmPerPx);
-                        while (kalan > 0.5) {
-                            var al = Math.min(kalan, sayfaPx), alMM = al * mmPerPx;
-                            xPdfBolgeCiz(pdf, canvas, srcY, al, M, M, Wmm, alMM);
-                            srcY += al; kalan -= al;
-                            if (kalan > 0.5) { pdf.addPage(); y = M; } else { y = M + alMM + GAP; }
-                        }
-                        ilk = false;
+            var mmPerPx = Wmm / canvas.width, hMM = canvas.height * mmPerPx;
+            if (hMM <= Hmm + 0.5) {                                        // tek sayfaya sığar
+                if (!st.ilk && st.y + hMM > altSinir + 0.5) { pdf.addPage(); st.y = M; }
+                xPdfBolgeCiz(pdf, canvas, 0, canvas.height, M, st.y, Wmm, hMM);
+                st.y += hMM + GAP; st.ilk = false;
+            } else {                                                       // sayfadan UZUN blok (tek görsel çok yüksek)
+                if (!st.ilk && st.y > M + 0.5) { pdf.addPage(); st.y = M; }
+                if (X_PDF_UZUN === 'olcekle') {
+                    var f = Hmm / hMM, dW = Wmm * f;
+                    xPdfBolgeCiz(pdf, canvas, 0, canvas.height, M + (Wmm - dW) / 2, M, dW, Hmm);
+                    pdf.addPage(); st.y = M; st.ilk = false;
+                } else {                                                   // 'bol': tam boy, sayfalara dilimle (başlık 1. sayfanın başında)
+                    var kalan = canvas.height, srcY = 0, sayfaPx = Math.round(Hmm / mmPerPx);
+                    while (kalan > 0.5) {
+                        var al = Math.min(kalan, sayfaPx), alMM = al * mmPerPx;
+                        xPdfBolgeCiz(pdf, canvas, srcY, al, M, M, Wmm, alMM);
+                        srcY += al; kalan -= al;
+                        if (kalan > 0.5) { pdf.addPage(); st.y = M; } else { st.y = M + alMM + GAP; }
                     }
+                    st.ilk = false;
                 }
             }
-            return pdf;
         }
         // PDF üret: temiz kopya -> blokları KENDİ sheet'imizde ölç -> tek canvas (html2pdf Worker) -> MANUEL A4 yerleşimi.
         // Başlık asla öksüz kalmaz (plat+kart tek blok), boşluk yalnız sıradaki blok sığmadığında oluşur (sıkı paket).
@@ -3576,12 +3650,12 @@ HTML_TEMPLATE = """
             if (!root) throw new Error('PDF için içerik render edilemedi.');
             var tk = xPdfTemizKopya(root);
             xPdfBloklastir(tk.sheet);
-            document.body.appendChild(tk.kap);
             var ad = ((typeof window.xIndirmeDosyaAdi === 'function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
             try {
                 var jsOpt = { unit: 'mm', format: 'a4', orientation: 'portrait' };
-                // ESKİ YOL (regresyon bayrağı x_pdf_uzun='eski'): tek-atış html2pdf, blok=avoid birimi.
+                // ESKİ YOL (regresyon bayrağı x_pdf_uzun='eski'): tek-atış html2pdf (tk.sheet DOM'da olmalı), blok=avoid birimi.
                 if (X_PDF_UZUN === 'eski') {
+                    document.body.appendChild(tk.kap);
                     var blobE = await window.html2pdf().set({
                         margin: [10, 10, 10, 10], filename: ad, image: { type: 'jpeg', quality: 0.96 },
                         html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
@@ -3589,20 +3663,15 @@ HTML_TEMPLATE = """
                     }).from(tk.sheet).outputPdf('blob');
                     return { blob: blobE, filename: ad };
                 }
-                await xImgBekle(tk.sheet);
-                var pdf0 = await xJsPDFBos(jsOpt);
-                var SC = 2;
-                // Blokları KENDİ sheet'imizde ölç (html2pdf iç kabına bağlı DEĞİL -> sürümden bağımsız, güvenilir). canvas-px = CSS-px * SC.
-                var s0 = tk.sheet.getBoundingClientRect().top, blocks = [];
-                tk.sheet.querySelectorAll('.x-pdf-block').forEach(function (el) {
-                    var r = el.getBoundingClientRect();
-                    blocks.push({ top: (r.top - s0) * SC, bottom: (r.bottom - s0) * SC });
-                });
-                var canvas = await window.html2pdf().set({
-                    margin: 0, image: { type: 'jpeg', quality: 0.96 },
-                    html2canvas: { scale: SC, useCORS: true, backgroundColor: '#ffffff' }, jsPDF: jsOpt
-                }).from(tk.sheet).toCanvas().get('canvas');
-                var pdf = xPdfYerlestir(pdf0, canvas, blocks);
+                // [PER-BLOK] Her bölümü (platform+kart) KENDİ küçük canvas'ında render et -> dev-canvas kırpması
+                // + ölçüm uyuşmazlığı YOK. tk.sheet DOM'a EKLENMEZ (her blok xBlokCanvas'ta kendi kabında render olur).
+                var pdf = await xJsPDFBos(jsOpt);
+                var bloklar = [].slice.call(tk.sheet.querySelectorAll('.x-pdf-block'));
+                if (!bloklar.length) bloklar = [tk.sheet];   // beklenmedik yapı -> tüm içerik tek blok
+                var st = { y: 10, ilk: true };
+                for (var bi = 0; bi < bloklar.length; bi++) {
+                    xPdfBlokYerlestir(pdf, await xBlokCanvas(bloklar[bi]), st);
+                }
                 return { blob: pdf.output('blob'), filename: ad };
             } finally { try { tk.kap.remove(); } catch (e) {} }
         }
@@ -8329,7 +8398,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4c-suruk · 2026-11-02 link+pdf";
+  XE.VERSION = "4c-suruk · 2026-11-03 pdf-perblok+word-ayar";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9328,36 +9397,21 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     _gPar+='<button class="ed-hb'+(_hv==='right'?' aktif':'')+'" data-a="'+ids.align+'" data-v="right" title="Sağa"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M6 8h8"/><path d="M4 12h10"/></g></svg></button>';
     _gPar+='<button class="ed-hb'+(_hv==='both'?' aktif':'')+'" data-a="'+ids.align+'" data-v="both" title="İki yana"><svg viewBox="0 0 16 16" width="14" height="14"><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round" fill="none"><path d="M2 4h12"/><path d="M2 8h12"/><path d="M2 12h12"/></g></svg></button>';
     _gPar+='</span>';
-    // [SATIR ARALIĞI] TÜM gruplarda (başlık/görsel/link/metin): satır aralığı + paragraf önce/sonra boşluk. Genel ayar, tüm öğe paragraflarına uygulanır (Word çıktısı). Bayrak x_satir_aralik='0' gizler.
-    var _saAcikEd=true; try{ _saAcikEd=(localStorage.getItem('x_satir_aralik')!=='0'); }catch(e){}
-    if(_saAcikEd){   // [SATIR ARALIĞI] TÜM gruplarda göster (metin yokken başlık/görsel/link'te de ayarlanabilsin)
-      var _mL=val('m_line')||'1.5', _mB=!!val('m_space_before'), _mA=!!val('m_space_after');
-      var _lsEt={'1.0':'1,0','1.15':'1,15','1.5':'1,5','2.0':'2,0','2.5':'2,5','3.0':'3,0'};
-      var _lsIco='<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h3"/><path d="M2 8h3"/><path d="M2 12h3"/><path d="M8 3.5h6"/><path d="M8 7h6"/><path d="M8 10.5h6"/></svg>';
-      _gPar+='<div class="ed-ls">';
-      _gPar+='<button type="button" class="ed-ls-btn" title="Satır aralığı ve paragraf boşluğu (yalnız Word çıktısı)">'+_lsIco+' Satır aralığı: <b>'+(_lsEt[_mL]||_mL)+'</b> <span class="ed-ls-ok">▾</span></button>';
-      _gPar+='<div class="ed-ls-menu" style="display:none">';
-      ['1.0','1.15','1.5','2.0','2.5','3.0'].forEach(function(v){ _gPar+='<button type="button" class="ed-ls-opt" data-ls="'+v+'"><span class="ed-ls-tik">'+(v===_mL?'✓':'')+'</span>'+_lsEt[v]+'</button>'; });
-      _gPar+='<div class="ed-ls-sep"></div>';
-      _gPar+='<button type="button" class="ed-ls-opt" data-tgl="before"><span class="ed-ls-tik">'+(_mB?'✓':'')+'</span>Paragraftan önce boşluk ekle</button>';
-      _gPar+='<button type="button" class="ed-ls-opt" data-tgl="after"><span class="ed-ls-tik">'+(_mA?'✓':'')+'</span>Paragraftan sonra boşluk ekle</button>';
-      _gPar+='</div></div>';
-    }
+    // [SATIR ARALIĞI] Şeritten KALDIRILDI -> Paylaş popup "Word çıktı ayarları" (gizli #m_line/#m_space_*; yalnız Word çıktısı, editör görünümünü etkilemez).
     if(ids.numbered) _gPar+='<label class="ed-tgl ed-tgl-num" title="Otomatik numaralandır (1. 2. 3.)"><input type="checkbox" data-t="'+ids.numbered+'" '+(val(ids.numbered)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15"><g stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M6.5 4h8"/><path d="M6.5 8.5h8"/><path d="M6.5 13h8"/></g><g fill="currentColor" font-size="4.6" font-family="sans-serif"><text x="0.5" y="5.6">1</text><text x="0.5" y="10.1">2</text><text x="0.5" y="14.6">3</text></g></svg></label>';
     // --- Başlık: (içerik başlığı: Alt boşluk) + Stil(düzey) + Başlıksız ---
     var _gBaslik='';
-    if(key==='b') _gBaslik+='<label title="Başlık ile altındaki paragraf arası boşluk (pt; yalnız Word çıktısı)">Alt boşluk <input type="number" data-t="b_after" min="0" max="72" value="'+esc(val('b_after')||'6')+'" style="width:50px">pt</label>';
+    // [ALT BOŞLUK] Şeritten KALDIRILDI -> Paylaş popup "Word çıktı ayarları" (gizli #b_after; yalnız Word çıktısı).
     if(ids.wordstyle) _gBaslik+='<label title="Word başlık düzeyi (bu türdeki tüm başlıklar). Tek başlık için başlığa sağ tıkla.">Stil <select data-t="'+ids.wordstyle+'"><option value="Heading1">Başlık 1</option><option value="Heading2">Başlık 2</option><option value="Heading3">Başlık 3</option><option value="Heading4">Başlık 4</option><option value="Normal">Normal</option></select></label>';
     if(ids.basliksiz) _gBaslik+='<label class="ed-tgl ed-tgl-metinli" title="İşaretliyse bu grubun içerik başlığı Word çıktısında basılmaz."><input type="checkbox" data-t="'+ids.basliksiz+'" '+(val(ids.basliksiz)?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2.5 4.5h7"/><path d="M2.5 8h5"/><path d="M12.8 3.3l-9.5 9.5"/></svg><span>Başlıksız</span></label>';
     // --- Belge (çıktı): Link üstte + Sayfa no ---
     var _gBelge='';
     _gBelge+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
-    _gBelge+='<div class="ed-sn"><button type="button" id="ed-sayfano-btn" class="ed-ls-btn" title="Sayfa numarası (yalnız Word çıktısı)"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2.5L4.7 13.5"/><path d="M11.8 2.5L10.5 13.5"/><path d="M3.3 6h10"/><path d="M2.5 10h10"/></svg> Sayfa no <span class="ed-ls-ok">▾</span></button><div id="ed-sayfano-menu" class="ed-sn-menu" style="display:none"></div></div>';
+    // [SAYFA NO] Şeritten KALDIRILDI -> Paylaş popup "Word çıktı ayarları" (gizli #pn_*; yalnız Word çıktısı).
     function _grp(inner){ return inner ? ('<span class="ed-grp">'+inner+'</span>') : ''; }
     h += _gBaglam + _grp(_gYazi) + _grp(_gPar) + _grp(_gBaslik) + _grp(_gBelge);
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=hval('font',ids.font);
-    var _lsel=panel.querySelector('select[data-t="m_line"]'); if(_lsel) _lsel.value=val('m_line')||'1.0';   // [SATIR ARALIĞI] mevcut değeri göster
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=hval('word',ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:(key==='b1'?'Heading1':'Heading2'); } }   // başlık odaklıysa efektif düzey; değilse genel
     panel.querySelectorAll('[data-t]').forEach(function(ctrl){
       var ev=(ctrl.tagName==='SELECT'||ctrl.type==='checkbox')?'change':'input';   // [RENK ANLIK] color da 'input' -> seçerken uygulanır
@@ -9372,22 +9426,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     });
     // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
     var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
-    // [SAYFA NO] Şeritteki "Sayfa no" butonu: tıkla aç/kapa (menü _sayfaNoMenuCiz ile dolar). Her grup render'ında yeniden bağlanır.
-    var _snBtn=panel.querySelector('#ed-sayfano-btn');
-    if(_snBtn){ _snBtn.addEventListener('click', function(e){ e.stopPropagation(); var m=document.getElementById('ed-sayfano-menu'); if(!m) return; if(m.style.display!=='block'){ _sayfaNoMenuCiz(); m.style.display='block'; } else { m.style.display='none'; } }); }
-    if(!window.__edSnClose){ window.__edSnClose=true; document.addEventListener('mousedown', function(e){ var m=document.getElementById('ed-sayfano-menu'); if(m && m.style.display==='block' && !(e.target.closest && e.target.closest('.ed-sn'))) m.style.display='none'; }); }
-    // [SATIR ARALIĞI] Word-benzeri açılır menü: butona tıkla aç/kapa; seçenekler satır aralığı / paragraf boşluğu.
-    var _lsWrap=panel.querySelector('.ed-ls');
-    if(_lsWrap){
-      var _lsBtn=_lsWrap.querySelector('.ed-ls-btn'), _lsMenu=_lsWrap.querySelector('.ed-ls-menu');
-      _lsBtn.addEventListener('click', function(e){ e.stopPropagation(); _lsMenu.style.display=(_lsMenu.style.display==='none')?'block':'none'; });
-      _lsWrap.querySelectorAll('.ed-ls-opt').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation();
-        if(b.hasAttribute('data-ls')) XE._satirAralikUygula('line', b.getAttribute('data-ls'));
-        else XE._satirAralikUygula(b.getAttribute('data-tgl'), null);
-      }); });
-    }
-    // dışarı tıklayınca menüyü kapat (bir kez bağla)
-    if(!window.__edLsCloseKur){ window.__edLsCloseKur=true; document.addEventListener('mousedown', function(e){ var o=document.querySelector('#editorModal .ed-ls-menu'); if(o && o.style.display!=='none' && !(e.target.closest && e.target.closest('.ed-ls'))) o.style.display='none'; }); }
+    // [SAYFA NO + SATIR ARALIĞI] Şerit bağlamaları KALDIRILDI -> kontroller Paylaş popup "Word çıktı ayarları"na taşındı (xPaylasWordAyarKur/Doldur).
   };
   // [SATIR ARALIĞI] Menüden satır aralığı/paragraf boşluğu uygula (gizli backing input + kaydet + per-rapor). Panel tazelenir (etiket/tik).
   XE._satirAralikUygula = function(prop, v){
