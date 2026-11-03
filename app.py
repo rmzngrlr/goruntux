@@ -1560,7 +1560,9 @@ HTML_TEMPLATE = """
         #paylas-word-ayar .paylas-baslik { margin: 0 0 10px; }
         .pwa-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12.5px; }
         .pwa-lbl { min-width: 128px; font-weight: 600; }
-        .pwa-ctrl { font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--border-color); border-radius: 7px; background: transparent; color: inherit; }
+        /* [WINDOWS DROPDOWN] transparent/inherit -> açılan liste beyaz zeminde beyaz yazı (görünmez). KATI renk ver. */
+        .pwa-ctrl { font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--border-color); border-radius: 7px; background: var(--bg-input); color: var(--text-primary); }
+        .pwa-ctrl option { background: var(--bg-input); color: var(--text-primary); }
         .pwa-num { width: 62px; }
         .pwa-unit { font-size: 12px; color: var(--text-secondary); }
         .pwa-chk { display: flex; align-items: center; gap: 7px; margin: 7px 0; font-size: 12.5px; cursor: pointer; }
@@ -1575,6 +1577,10 @@ HTML_TEMPLATE = """
         .pb-baslik { font-size: 21px; font-weight: 800; color: inherit; margin-bottom: 6px; }
         .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; }
         .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; }
+        #pb-ring { stroke: var(--accent-color, #1d9bf0); }   /* dolan halka: uygulama mavisi */
+        .pb-rozet { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px; background: var(--accent-color, #1d9bf0); color: #fff; font-size: 16px; font-weight: 700; }   /* Başlıksız/Link üstte butonu gibi mavi pill */
+        @keyframes pbspin { to { transform: rotate(360deg); } }
+        .pb-spin { animation: pbspin .9s linear infinite; transform-origin: center; }   /* Word (yüzdesiz) belirsiz dönen halka */
 
         /* [PAYLAŞ/PDF] html2pdf kaynağı: editör .ed-root kopyası — KENDİ stili (editörün scoped/tema CSS'ine bağlı değil), beyaz + koyu yazı */
         .x-pdf-sheet { width: 794px; background: #fff; color: #15202b; padding: 32px 40px; box-sizing: border-box; font-family: Arial, sans-serif; }
@@ -2480,10 +2486,17 @@ HTML_TEMPLATE = """
                     </div>
                     <div class="paylas-not" id="paylas-not"></div>
                 </div>
-                <!-- İNDİRİLDİ EKRANI: popup'ı kaplar, tik ikonu + dosya + 5 sn geri sayım -->
+                <!-- İLERLEME/İNDİRİLDİ EKRANI (aynı konum): hazırlanırken dolan halka+%, bitince tik + dosya + 5 sn geri sayım -->
                 <div id="paylas-basari" style="display:none;">
-                    <div class="pb-ikon"><svg viewBox="0 0 72 72" width="76" height="76" fill="none"><circle cx="36" cy="36" r="33" fill="#e8f7ee" stroke="#1a9e4b" stroke-width="3"/><path d="M21 37.5l10 10 20-22" stroke="#1a9e4b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-                    <div class="pb-baslik">İndirildi</div>
+                    <div class="pb-ikon">
+                        <svg id="pb-ilerleme" viewBox="0 0 72 72" width="80" height="80" fill="none" style="display:none;">
+                            <circle cx="36" cy="36" r="31" fill="none" stroke="rgba(128,128,128,.25)" stroke-width="6"/>
+                            <circle id="pb-ring" cx="36" cy="36" r="31" fill="none" stroke-width="6" stroke-linecap="round" stroke-dasharray="194.78" stroke-dashoffset="194.78" transform="rotate(-90 36 36)"/>
+                            <text id="pb-ring-yuzde" x="36" y="37" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="800" fill="currentColor">%0</text>
+                        </svg>
+                        <div id="pb-rozet" class="pb-rozet" style="display:none;"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16.5h12"/></svg><span>İndirildi</span></div>
+                    </div>
+                    <div class="pb-baslik" id="pb-baslik"></div>
                     <div class="pb-dosya" id="pb-dosya"></div>
                     <div class="pb-sayac" id="pb-sayac"></div>
                 </div>
@@ -2635,7 +2648,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03c · popup-3asama+indirildi-ekrani';
+        var X_BUILD = '2026-11-03d · ilerleme-halkasi+rozet+dropdown-fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3467,7 +3480,7 @@ HTML_TEMPLATE = """
         }
         function _paylasSayacTemizle() { if (window.__paylasKapatI) { try { clearInterval(window.__paylasKapatI); } catch (e) {} window.__paylasKapatI = null; } }
         function xPaylasAc(kaynak) {
-            _paylasSayacTemizle();   // beklemedeki geri sayımı iptal et (yeniden açılış)
+            _paylasSayacTemizle(); window.__pdfProgCb = null;   // beklemedeki geri sayımı + ilerleme callback'ini temizle (yeniden açılış)
             _paylasKaynak = kaynak || 'editor'; _paylasBicim = 'word';
             var m = document.getElementById('paylasModal'); if (!m) return;
             _paylasGoster('paylas-asama1');
@@ -3494,8 +3507,28 @@ HTML_TEMPLATE = """
             else { _paylasGoster('paylas-asama1'); }   // ayarlardan geri: biçim
         }
         window.xPaylasGeri = xPaylasGeri;
-        // [İNDİRİLDİ EKRANI] popup'ı kaplayan tamamlandı ekranı + 5 sn geri sayım, sonra oto-kapanış (yalnız İndir akışı).
+        // [İLERLEME HALKASI] PDF hazırlanırken dolan halka + % (tikin konumunda, uygulama mavisi). Word: belirsiz dönen halka.
+        function _pdfIlerlemeGuncelle(p) {
+            p = Math.max(0, Math.min(100, Math.round(p)));
+            var r = document.getElementById('pb-ring'); if (r) r.setAttribute('stroke-dashoffset', String(194.78 * (1 - p / 100)));
+            var t = document.getElementById('pb-ring-yuzde'); if (t) t.textContent = '%' + p;
+        }
+        window._pdfIlerlemeGuncelle = _pdfIlerlemeGuncelle;
+        function _paylasHazirlaGoster(bicim) {
+            var ring = document.getElementById('pb-ilerleme'), rozet = document.getElementById('pb-rozet'), y = document.getElementById('pb-ring-yuzde'), bas = document.getElementById('pb-baslik'), dos = document.getElementById('pb-dosya'), sc = document.getElementById('pb-sayac');
+            if (rozet) rozet.style.display = 'none';
+            if (dos) dos.textContent = ''; if (sc) sc.textContent = '';
+            if (ring) ring.style.display = '';
+            if (bicim === 'pdf') { if (ring) ring.classList.remove('pb-spin'); if (y) y.style.display = ''; _pdfIlerlemeGuncelle(0); if (bas) bas.textContent = 'PDF hazırlanıyor'; }
+            else { if (y) y.style.display = 'none'; _pdfIlerlemeGuncelle(28); if (ring) ring.classList.add('pb-spin'); if (bas) bas.textContent = 'Hazırlanıyor'; }
+            _paylasGoster('paylas-basari');
+        }
+        // [İNDİRİLDİ EKRANI] tik yerine mavi "İndirildi" rozeti (Başlıksız/Link üstte butonu gibi) + dosya + 5 sn geri sayım.
         function _paylasBasariGoster(filename) {
+            var ring = document.getElementById('pb-ilerleme'), rozet = document.getElementById('pb-rozet'), bas = document.getElementById('pb-baslik');
+            if (ring) { ring.style.display = 'none'; ring.classList.remove('pb-spin'); }
+            if (rozet) rozet.style.display = '';
+            if (bas) bas.textContent = '';
             var fd = document.getElementById('pb-dosya'); if (fd) fd.textContent = filename;
             _paylasGoster('paylas-basari');
             _paylasSayacTemizle();
@@ -3700,8 +3733,8 @@ HTML_TEMPLATE = """
                 var pdf = await xJsPDFBos(jsOpt);
                 var bloklar = [].slice.call(tk.sheet.querySelectorAll('.x-pdf-block'));
                 if (!bloklar.length) bloklar = [tk.sheet];   // beklenmedik yapı -> tüm içerik tek blok
-                // [PDF % SAYAÇ] per-blok ilerleme Paylaş popup'ında (sağ altta değil). paylas-not varsa güncellenir.
-                function _pdfProg(p) { try { var n = document.getElementById('paylas-not'); if (n) n.textContent = 'PDF hazırlanıyor… %' + p; } catch (e) {} }
+                // [PDF % SAYAÇ] İndir akışında ilerleme HALKASINA (window.__pdfProgCb); yoksa (WhatsApp) paylas-not'a yazılır.
+                function _pdfProg(p) { if (typeof window.__pdfProgCb === 'function') { try { window.__pdfProgCb(p); } catch (e) {} return; } try { var n = document.getElementById('paylas-not'); if (n) n.textContent = 'PDF hazırlanıyor… %' + p; } catch (e) {} }
                 var st = { y: 10, ilk: true };
                 _pdfProg(0);
                 for (var bi = 0; bi < bloklar.length; bi++) {
@@ -3729,12 +3762,18 @@ HTML_TEMPLATE = """
         }
         async function xPaylasIndir() {
             if (_paylasMesgul) return; _paylasMesgul = true;
-            var not = document.getElementById('paylas-not'); if (not) not.textContent = (_paylasBicim === 'pdf' ? 'PDF hazırlanıyor…' : 'Hazırlanıyor…');
+            _paylasHazirlaGoster(_paylasBicim);   // hazırlanıyor ekranı: PDF dolan halka+% / Word belirsiz dönen halka
+            window.__pdfProgCb = function (p) { _pdfIlerlemeGuncelle(p); };   // xPdfUret ilerlemeyi halkaya yazsın
             try {
                 var r = await xPaylasBlobUret();
                 xTriggerDownload(r.blob, r.filename);
-                _paylasBasariGoster(r.filename);   // [İNDİRME] popup'ı kaplayan "İndirildi" ekranı + 5 sn geri sayım (sağ-alt toast YOK)
-            } catch (e) { if (not) not.textContent = 'Hata: ' + (e && e.message || e); }
+                window.__pdfProgCb = null;
+                _paylasBasariGoster(r.filename);   // İndirildi rozeti + dosya + 5 sn geri sayım (sağ-alt toast YOK)
+            } catch (e) {
+                window.__pdfProgCb = null;
+                _paylasGoster('paylas-asama3');
+                var not = document.getElementById('paylas-not'); if (not) not.textContent = 'Hata: ' + (e && e.message || e);
+            }
             finally { _paylasMesgul = false; }
         }
         window.xPaylasIndir = xPaylasIndir;
