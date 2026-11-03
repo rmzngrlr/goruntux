@@ -1566,6 +1566,15 @@ HTML_TEMPLATE = """
         .pwa-chk { display: flex; align-items: center; gap: 7px; margin: 7px 0; font-size: 12.5px; cursor: pointer; }
         .pwa-chk input { width: 15px; height: 15px; cursor: pointer; }
         .pwa-sep { height: 1px; background: var(--border-color); margin: 11px 0; }
+        /* [AŞAMA 3] Devam butonu (Word ayarları -> işlem) */
+        .paylas-ileri { display: block; width: 100%; margin-top: 12px; padding: 11px; background: var(--accent-color, #1565c0); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
+        .paylas-ileri:hover { filter: brightness(1.07); }
+        /* [İNDİRİLDİ EKRANI] popup'ı kaplayan tamamlandı ekranı */
+        #paylas-basari { text-align: center; padding: 34px 16px 30px; }
+        .pb-ikon { margin-bottom: 14px; line-height: 0; }
+        .pb-baslik { font-size: 21px; font-weight: 800; color: inherit; margin-bottom: 6px; }
+        .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; }
+        .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; }
 
         /* [PAYLAŞ/PDF] html2pdf kaynağı: editör .ed-root kopyası — KENDİ stili (editörün scoped/tema CSS'ine bağlı değil), beyaz + koyu yazı */
         .x-pdf-sheet { width: 794px; background: #fff; color: #15202b; padding: 32px 40px; box-sizing: border-box; font-family: Arial, sans-serif; }
@@ -2441,10 +2450,11 @@ HTML_TEMPLATE = """
                         <button type="button" class="paylas-kart paylas-pdf" onclick="xPaylasBicim('pdf')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M8 17v-4h1.3a1.2 1.2 0 0 1 0 2.4H8M16 13h-2v4M14 15.2h1.6"/></svg><span>PDF</span><small>.pdf</small></button>
                     </div>
                 </div>
+                <!-- AŞAMA 2 (yalnız Word): çıktı ayarları + Devam -->
                 <div id="paylas-asama2" style="display:none;">
-                    <button type="button" class="paylas-geri" onclick="xPaylasGeri()"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg> <span id="paylas-bicim-ad"></span> — değiştir</button>
-                    <!-- [PAYLAŞ WORD AYARLARI] yalnız Word seçilince görünür; İndir'den ÖNCE. Değerler gizli backing input'lara yazılır (xBuildStyleOpts -> docx). -->
-                    <div id="paylas-word-ayar" style="display:none;">
+                    <button type="button" class="paylas-geri" onclick="xPaylasGeri()"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg> Word — değiştir</button>
+                    <!-- [PAYLAŞ WORD AYARLARI] gizli backing input'lara yazılır (xBuildStyleOpts -> docx). -->
+                    <div id="paylas-word-ayar">
                         <div class="paylas-baslik">Word çıktı ayarları</div>
                         <div class="pwa-row"><span class="pwa-lbl">Satır aralığı</span><select id="pwa-line" class="pwa-ctrl"><option value="1.0">1,0</option><option value="1.15">1,15</option><option value="1.5">1,5</option><option value="2.0">2,0</option><option value="2.5">2,5</option><option value="3.0">3,0</option></select></div>
                         <label class="pwa-chk"><input type="checkbox" id="pwa-sb"> Paragraftan önce boşluk</label>
@@ -2458,12 +2468,24 @@ HTML_TEMPLATE = """
                             <div class="pwa-row"><span class="pwa-lbl">Biçim</span><select id="pwa-pn-fmt" class="pwa-ctrl"><option value="plain">1</option><option value="sayfa">Sayfa 1</option><option value="xofn">1 / N</option></select></div>
                         </div>
                     </div>
+                    <button type="button" class="paylas-ileri" onclick="xPaylasDevam()">Devam <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px"><path d="M8 5l5 5-5 5"/></svg></button>
+                </div>
+                <!-- AŞAMA 3: işlem (İndir / WhatsApp) -->
+                <div id="paylas-asama3" style="display:none;">
+                    <button type="button" class="paylas-geri" onclick="xPaylasGeri()"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg> <span id="paylas-bicim-ad"></span> — değiştir</button>
                     <div class="paylas-baslik">Ne yapmak istersin?</div>
                     <div class="paylas-grid">
                         <button type="button" class="paylas-kart" id="paylas-indir-btn" onclick="xPaylasIndir()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7.5 11l4.5 4 4.5-4"/><path d="M5 19.5h14"/></svg><span>İndir</span><small>cihaza kaydet</small></button>
                         <button type="button" class="paylas-kart paylas-wa" id="paylas-wa-btn" onclick="xPaylasWhatsapp()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 1.8a8.2 8.2 0 1 1-4.2 15.2l-.3-.2-2.9.8.8-2.8-.2-.3A8.2 8.2 0 0 1 12 3.8zm4.6 10.3c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.7.9c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-2-1.2 7.4 7.4 0 0 1-1.4-1.7c-.1-.3 0-.4.1-.5l.4-.4.3-.4v-.4l-.8-1.8c-.2-.4-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3c-.2.3-.9.9-.9 2.1s.9 2.4 1 2.6 1.7 2.7 4.2 3.7c1.6.6 2.2.7 2.9.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2z"/></svg><span>WhatsApp</span><small>ile gönder</small></button>
                     </div>
                     <div class="paylas-not" id="paylas-not"></div>
+                </div>
+                <!-- İNDİRİLDİ EKRANI: popup'ı kaplar, tik ikonu + dosya + 5 sn geri sayım -->
+                <div id="paylas-basari" style="display:none;">
+                    <div class="pb-ikon"><svg viewBox="0 0 72 72" width="76" height="76" fill="none"><circle cx="36" cy="36" r="33" fill="#e8f7ee" stroke="#1a9e4b" stroke-width="3"/><path d="M21 37.5l10 10 20-22" stroke="#1a9e4b" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div class="pb-baslik">İndirildi</div>
+                    <div class="pb-dosya" id="pb-dosya"></div>
+                    <div class="pb-sayac" id="pb-sayac"></div>
                 </div>
             </div>
         </div>
@@ -2613,7 +2635,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03b · popup-ilerleme+indirme+linkust';
+        var X_BUILD = '2026-11-03c · popup-3asama+indirildi-ekrani';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3438,36 +3460,50 @@ HTML_TEMPLATE = """
         // ================= [PAYLAŞ] 2 aşamalı: (1) biçim Word/PDF -> (2) işlem İndir / WhatsApp =================
         // Editör + havuz "Paylaş" butonları xPaylasAc ile açar. Tamamen istemci; sunucu yok. PDF = html2pdf (editör render'ının temiz kopyası).
         var _paylasKaynak = 'editor', _paylasBicim = 'word', _paylasMesgul = false;
+        // [PAYLAŞ AŞAMALARI] 1: biçim | 2: Word çıktı ayarları (yalnız Word) | 3: işlem (İndir/WhatsApp) | basari: indirildi ekranı.
+        function _paylasGoster(id) {
+            var a = ['paylas-asama1', 'paylas-asama2', 'paylas-asama3', 'paylas-basari'];
+            for (var i = 0; i < a.length; i++) { var e = document.getElementById(a[i]); if (e) e.style.display = (a[i] === id) ? '' : 'none'; }
+        }
+        function _paylasSayacTemizle() { if (window.__paylasKapatI) { try { clearInterval(window.__paylasKapatI); } catch (e) {} window.__paylasKapatI = null; } }
         function xPaylasAc(kaynak) {
-            if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} window.__paylasKapatT = null; }   // [İNDİRME] beklemedeki oto-kapanışı iptal et (yeniden açılış)
+            _paylasSayacTemizle();   // beklemedeki geri sayımı iptal et (yeniden açılış)
             _paylasKaynak = kaynak || 'editor'; _paylasBicim = 'word';
             var m = document.getElementById('paylasModal'); if (!m) return;
-            document.getElementById('paylas-asama1').style.display = '';
-            document.getElementById('paylas-asama2').style.display = 'none';
-            document.getElementById('paylas-not').textContent = '';
-            var wa = document.getElementById('paylas-word-ayar'); if (wa) wa.style.display = 'none';
+            _paylasGoster('paylas-asama1');
+            var not = document.getElementById('paylas-not'); if (not) not.textContent = '';
             m.classList.add('active');
         }
         window.xPaylasAc = xPaylasAc;
-        function xPaylasKapat() { if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} window.__paylasKapatT = null; } var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
+        function xPaylasKapat() { _paylasSayacTemizle(); var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
         window.xPaylasKapat = xPaylasKapat;
         function xPaylasBicim(b) {
             _paylasBicim = b;
-            document.getElementById('paylas-bicim-ad').textContent = (b === 'pdf') ? 'PDF' : 'Word';
-            document.getElementById('paylas-asama1').style.display = 'none';
-            document.getElementById('paylas-asama2').style.display = '';
-            document.getElementById('paylas-not').textContent = '';
-            // [PAYLAŞ WORD AYARLARI] Satır aralığı/Alt boşluk/Sayfa no yalnız Word seçilince görünür (İndir'den önce).
-            var wa = document.getElementById('paylas-word-ayar');
-            if (wa) { if (b === 'word') { xPaylasWordAyarKur(); xPaylasWordAyarDoldur(); wa.style.display = ''; } else { wa.style.display = 'none'; } }
+            var ad = document.getElementById('paylas-bicim-ad'); if (ad) ad.textContent = (b === 'pdf') ? 'PDF' : 'Word';
+            var not = document.getElementById('paylas-not'); if (not) not.textContent = '';
+            if (b === 'word') { xPaylasWordAyarKur(); xPaylasWordAyarDoldur(); _paylasGoster('paylas-asama2'); }
+            else { _paylasGoster('paylas-asama3'); }   // PDF: ayar aşaması yok -> doğrudan işlem (Aşama 3)
         }
         window.xPaylasBicim = xPaylasBicim;
+        function xPaylasDevam() { var not = document.getElementById('paylas-not'); if (not) not.textContent = ''; _paylasGoster('paylas-asama3'); }   // Word ayarları -> işlem (Aşama 3)
+        window.xPaylasDevam = xPaylasDevam;
         function xPaylasGeri() {
-            document.getElementById('paylas-asama1').style.display = '';
-            document.getElementById('paylas-asama2').style.display = 'none';
-            document.getElementById('paylas-not').textContent = '';
+            var not = document.getElementById('paylas-not'); if (not) not.textContent = '';
+            var a3 = document.getElementById('paylas-asama3');
+            if (a3 && a3.style.display !== 'none') { _paylasGoster(_paylasBicim === 'word' ? 'paylas-asama2' : 'paylas-asama1'); }   // işlemden geri: Word->ayarlar, PDF->biçim
+            else { _paylasGoster('paylas-asama1'); }   // ayarlardan geri: biçim
         }
         window.xPaylasGeri = xPaylasGeri;
+        // [İNDİRİLDİ EKRANI] popup'ı kaplayan tamamlandı ekranı + 5 sn geri sayım, sonra oto-kapanış (yalnız İndir akışı).
+        function _paylasBasariGoster(filename) {
+            var fd = document.getElementById('pb-dosya'); if (fd) fd.textContent = filename;
+            _paylasGoster('paylas-basari');
+            _paylasSayacTemizle();
+            var kalan = 5, sc = document.getElementById('pb-sayac');
+            function yaz() { if (sc) sc.textContent = 'Bu pencere ' + kalan + ' sn içinde kapanacak…'; }
+            yaz();
+            window.__paylasKapatI = setInterval(function () { kalan--; if (kalan <= 0) { _paylasSayacTemizle(); xPaylasKapat(); } else { yaz(); } }, 1000);
+        }
         // [PAYLAŞ WORD AYARLARI] Satır aralığı + Alt boşluk + Sayfa no artık ŞERİTTE DEĞİL; Word seçilince burada.
         // Kontroller gizli backing input'lara (#m_line/#m_space_*/#b_after/#pn_*) yazar -> xBuildStyleOpts -> docx.
         // xSaveStyles ile kalıcılaştırılır (editör-bağımsız; havuzdan da açılsa çalışır).
@@ -3697,10 +3733,7 @@ HTML_TEMPLATE = """
             try {
                 var r = await xPaylasBlobUret();
                 xTriggerDownload(r.blob, r.filename);
-                // [İNDİRME BİLDİRİMİ] sağ-alt toast YERİNE popup içinde "İndirildi ✓"; 5 sn sonra popup oto-kapanır.
-                if (not) not.innerHTML = '<span style="color:#1a9e4b;font-weight:700;">✓ İndirildi:</span> <b>' + r.filename + '</b>';
-                if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} }
-                window.__paylasKapatT = setTimeout(function () { xPaylasKapat(); }, 5000);
+                _paylasBasariGoster(r.filename);   // [İNDİRME] popup'ı kaplayan "İndirildi" ekranı + 5 sn geri sayım (sağ-alt toast YOK)
             } catch (e) { if (not) not.textContent = 'Hata: ' + (e && e.message || e); }
             finally { _paylasMesgul = false; }
         }
