@@ -2660,7 +2660,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03h · pdf-metin-pdfmake';
+        var X_BUILD = '2026-11-03i · tarama-kuyruk-oto-sifirla';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5595,6 +5595,9 @@ HTML_TEMPLATE = """
                 const barContainer = document.getElementById('progress-bar-container');
                 const timerEl = document.getElementById('automation-timer');
 
+                // [KUYRUK OTO-SIFIRLA] running->completed geçişini yakala (başarılı linkleri kuyruktan at).
+                var _oncekiTaramaDurum = window.__sonTaramaStatus; window.__sonTaramaStatus = data.status;
+
                 if (data.status === 'running') {
                     progressArea.style.display = 'block';
                     if (lblContainer) lblContainer.style.display = 'flex';
@@ -5629,6 +5632,8 @@ HTML_TEMPLATE = """
                     document.getElementById('progress-percent').innerText = percent + "%";
                     document.getElementById('progress-fill').style.width = percent + "%";
                 } else if (data.status === 'completed') {
+                    // [KUYRUK OTO-SIFIRLA] tarama YENİ bittiyse (running->completed): havuza GİREN linkleri kuyruktan sil, başarısızları bırak.
+                    if (_oncekiTaramaDurum === 'running') { try { xTaranankuyrukTemizle(data.manuel_list); } catch (e) {} }
                     if (automationTimerInterval) {
                         clearInterval(automationTimerInterval);
                         automationTimerInterval = null;
@@ -5952,6 +5957,25 @@ HTML_TEMPLATE = """
             }
         }
 
+        // [KUYRUK OTO-SIFIRLA] Tarama bitince, HAVUZA GİREN (başarılı) linkleri "Taranacak Gönderiler"
+        // kuyruğundan (accumulatedLinks) sil; BAŞARISIZ olanlar (havuzda karşılığı yok) KALSIN -> tekrar denenebilir.
+        // Eşleme: status/doğrudan link -> normLink; profil linki -> kullanıcı adı (o profilden tweet havuza girdiyse).
+        function xTaranankuyrukTemizle(poolList) {
+            if (!Array.isArray(window.accumulatedLinks) || !window.accumulatedLinks.length) return;
+            poolList = poolList || [];
+            var nk = (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink : function (x) { return String(x || ''); };
+            function _user(u) { try { var p = new URL(u); var h = p.hostname.toLowerCase(); if (h === 'x.com' || h.endsWith('.x.com') || h === 'twitter.com' || h.endsWith('.twitter.com')) { var seg = p.pathname.split('/').filter(function (s) { return s; }); return seg.length ? seg[0].toLowerCase() : ''; } } catch (e) {} return ''; }
+            var havuzLink = {}, havuzUser = {};
+            poolList.forEach(function (it) { var lk = it && it.link; if (lk) { havuzLink[nk(lk)] = true; var us = _user(lk); if (us) havuzUser[us] = true; } });
+            var kalan = [], silinen = 0;
+            window.accumulatedLinks.forEach(function (ql) {
+                var eslesti = !!havuzLink[nk(ql)];
+                if (!eslesti && typeof isProfileUrl === 'function' && isProfileUrl(ql)) { var qu = _user(ql); if (qu && havuzUser[qu]) eslesti = true; }
+                if (eslesti) { silinen++; } else { kalan.push(ql); }
+            });
+            if (silinen > 0) { window.accumulatedLinks = kalan; updateLinksPreview(); }
+        }
+        window.xTaranankuyrukTemizle = xTaranankuyrukTemizle;
         // Platform MARKA ikonu (inline SVG, ~15px). Kategori başlıklarında emoji yerine gerçek logo.
         // simple-icons yolları; X/TikTok currentColor (temaya uyar), IG/FB/YT marka rengi.
         function xPlatIkonSvg(hangi) {
