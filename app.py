@@ -1757,8 +1757,8 @@ HTML_TEMPLATE = """
         /* [PAYLAŞ POPOVER] Paylaş artık tam-ekran modal değil; tetikleyen butona iliştirilen açılır panel (Ayarlar menüsü gibi). Arka plan KARARTMA/BLUR YOK. Konum JS (_paylasKonumla) ile verilir. */
         #paylasModal.paylas-pop { position: fixed; inset: auto; width: auto; height: auto; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; display: none; align-items: initial; justify-content: initial; }
         #paylasModal.paylas-pop.active { display: block; }
-        #paylasModal.paylas-pop .modal-content { width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 20px); animation: paylasPopIn .15s cubic-bezier(.2,.8,.3,1); transform-origin: top right; }
-        #paylasModal.paylas-pop.pop-up .modal-content { transform-origin: bottom right; animation-name: paylasPopInUp; }
+        #paylasModal.paylas-pop .modal-content { width: 380px; max-width: calc(100vw - 16px); max-height: calc(100vh - 20px); animation: paylasPopIn .15s cubic-bezier(.2,.8,.3,1); transform-origin: top left; }
+        #paylasModal.paylas-pop.pop-up .modal-content { transform-origin: bottom left; animation-name: paylasPopInUp; }
         @keyframes paylasPopIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes paylasPopInUp { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
@@ -2657,7 +2657,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03l · paylas-popover-x-yok-disari-tikla-kapat';
+        var X_BUILD = '2026-11-03m · paylas-popover-sol-hizali';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3513,9 +3513,9 @@ HTML_TEMPLATE = """
                     return;
                 }
                 var r = btn.getBoundingClientRect();
-                var left = r.right - W;
-                if (left < MRG) left = MRG;
+                var left = r.left;   // kartın SOL kenarı butonun SOL kenarıyla hizalı
                 if (left + W > vw - MRG) left = vw - MRG - W;
+                if (left < MRG) left = MRG;
                 m.style.left = Math.round(left) + 'px';
                 if (kaynak === 'havuz') {
                     m.classList.add('pop-up');
