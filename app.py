@@ -687,7 +687,7 @@ def link_ekle_hyperlink(paragraf, url, metin, font_name, size_pt, color_hex, und
 # degisir): ayni sayfadaki gorsellerin genislikleri 3.8 kata kadar ayrisiyordu
 # (olculdu: 524x1180 gonderi karti -> 1.69", 598x250 kisa metin -> 6.50").
 #
-# TAVAN NEDEN SART: sayfa Letter (12240x15840 twip) + kenar bosluklari (720/1080)
+# TAVAN NEDEN SART: sayfa A4 (11906x16838 twip) + kenar bosluklari (720/1080)
 # -> 7.0" x 10.0" kullanilabilir alan. Orani 0.44 olan bir gonderi karti 6" genislikte
 # 13.5" yuksek olur, hicbir sayfaya sigmaz. Tavana takilan gorselin genisligi hedeften
 # sapar; istek bu yuzden "esit" degil "esit derecesinde yakin".
@@ -2660,7 +2660,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03f · ilerleme-tik-sabit-boy';
+        var X_BUILD = '2026-11-03g · word-a4';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -7561,8 +7561,8 @@ LOCAL_DOCX_JS = r'''
     // TEK BASINA sayfaya gider ve orada W = min(METIN_W, (SAYFA_H - pay) * ar) olur.
     // Ornek (olculdu): iki IG/FB gonderi karti (oran 0.44) ayni sayfaya ancak 1.81"
     // ile sigiyor -> esigin altinda -> her biri tek basina 4.03" x 9.0".
-    var SAYFA_H = 10.0;       // 15840 - 720 - 720 twip
-    var METIN_W = 7.0;        // 12240 - 1080 - 1080 twip
+    var SAYFA_H = 10.69;      // A4: 16838 - 720 - 720 = 15398 twip / 1440
+    var METIN_W = 6.76;       // A4: 11906 - 1080 - 1080 = 9746 twip / 1440 (taşmaya karşı hafif aşağı yuvarlandı)
     var ESIK_W  = 2.5;        // kullanici karari: ortak genislik bunun altina duserse cift bozulur
     var GUVENLIK_PAY = 0.25;  // Word'un satir yuksekligini birebir bilemeyiz -> temkinli pay
 
@@ -7894,7 +7894,7 @@ LOCAL_DOCX_JS = r'''
       _pnCT='<Override PartName="/word/'+_pnFile+'" ContentType="'+_pnCTType+'"/>';
     }
     // sectPr öğe sırası: (header/footer)Reference -> pgSz -> pgMar (şema sırası).
-    var sectPr='<w:sectPr>'+_pnRef+'<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';
+    var sectPr='<w:sectPr>'+_pnRef+'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="1080" w:bottom="720" w:left="1080" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>';   // A4 (210x297mm = 11906x16838 twip)
     var documentXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
       + '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
       + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
