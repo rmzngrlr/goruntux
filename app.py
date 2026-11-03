@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04c · word-keepnext-link-ustte-fix';
+        var X_BUILD = '2026-11-04d · word-link-ustte-paketleme-fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -7581,10 +7581,10 @@ LOCAL_DOCX_JS = r'''
     }
     // Olcuyu ARTIK SECMIYOR, verileni cizer. Boyut karari sayfa planlamasinda
     // (xSayfalaVeBoyutla) verilir cunku ortak genislik "ayni sayfada kim var"a bagli.
-    function imageXmlRaw(b64, mime, wIn, hIn, align, keepN){
+    function imageXmlRaw(b64, mime, wIn, hIn, align, keepN, bord){
       var rid=addImageRaw(b64, mime);
       if(!rid) return '';
-      return _imageXmlFromRid(rid, wIn, hIn, align, keepN);
+      return _imageXmlFromRid(rid, wIn, hIn, align, keepN, bord);
     }
     function imageXml(item, wIn, hIn, align, keepN){
       var rid=addImage(item);
@@ -7599,13 +7599,19 @@ LOCAL_DOCX_JS = r'''
       if(al==='both') al='left';
       return jc(al);
     }
-    function _imageXmlFromRid(rid, wIn, hIn, align, keepN){
+    function _imageXmlFromRid(rid, wIn, hIn, align, keepN, bord){
       var cx=Math.round(wIn*EMU), cy=Math.round(hIn*EMU), id=docPrId++;
       // keepNext: gorsel kendi linkinden AYRI sayfaya dusmesin (sayfa sinirini Word belirliyor).
-      // [KEEPNEXT FIX] görsel içeriğin SON parçasıysa (ör. link üstte -> görsel altta) keepNext EKLEME,
-      // yoksa son görsel SONRAKİ içeriğe yapışır.
+      // [KEEPNEXT FIX] görsel içeriğin SON parçasıysa (ör. link üstte -> görsel altta) keepNext EKLEME.
+      // [ÇİZGİ GÖRSELE] görsel SON parça + grup-sonu ise ayraç çizgisini AYRI grupSonuXml paragrafı
+      // yerine GÖRSELE göm -> link-üstte ile link-altta YAPISI/yüksekliği eşit kalır (ekstra paragraf
+      // yüksekliği yok -> 2-görsel/sayfa bozulmaz). Link-altta değişmez (orada çizgi zaten linkte).
       var _kn=(keepN===false)?'':'<w:keepNext/>';
-      return '<w:p><w:pPr>'+_kn+_gorselJc(align)+'<w:spacing w:after="120"/></w:pPr><w:r><w:drawing>'
+      var _bd=bord?'<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr>':'';
+      // bordered görsel alt-boşluğu 240 -> birimPay'in varsaydığı toplamla (görsel120+link360=480;
+      // burada görsel240+link240=480) BİREBİR eşleşir -> güvenlik payı link-altta ile aynı, görsel boyutu değişmez.
+      var _aft=bord?240:120;
+      return '<w:p><w:pPr>'+_kn+_bd+_gorselJc(align)+'<w:spacing w:after="'+_aft+'"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
         + '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
@@ -8037,6 +8043,8 @@ LOCAL_DOCX_JS = r'''
     // kopup sonraki sayfaya kaçmaz (başlık+link orphan boşluğu biter). Varsayılan sıra (görsel üstte) BYTE-AYNI.
     // Bayrak x_keepnext_fix='0' -> eski davranış (link keepNext'siz, görsel/metin hep keepNext).
     var _KN_FIX=true; try{ _KN_FIX=(localStorage.getItem('x_keepnext_fix')!=='0'); }catch(e){}
+    // [ÇİZGİ GÖRSELE] grup-sonu ayraç çizgisi, SON parça görselse ayrı paragraf yerine görsele gömülür.
+    var _CIZGI_GORSELE=true; try{ _CIZGI_GORSELE=(localStorage.getItem('x_cizgi_gorsele')!=='0'); }catch(e){}
     var body=[], si, bj;
     for(si=0; si<sayfalar.length; si++){
       for(bj=0; bj<sayfalar[si].length; bj++){
@@ -8062,7 +8070,7 @@ LOCAL_DOCX_JS = r'''
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
-            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu) body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true)); }
+            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){ var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord)); if(_imgBord) _cizgiKondu=true; } }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh, _KN_FIX ? (_pi!==_lastEmit) : true)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _pi!==_asilL)?'':u.link);
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord, _KN_FIX ? (_pi!==_lastEmit) : false)); if(_bord) _cizgiKondu=true; } }
