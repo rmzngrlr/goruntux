@@ -1534,8 +1534,6 @@ HTML_TEMPLATE = """
             box-shadow: 0 10px 30px rgba(0,0,0,0.25);
         }
         .ayar-menu .theme-toggle-btn:hover { transform: none; }
-        /* [SÜRÜM DAMGASI] Ayarlar menüsü altında küçük sürüm metni (dağıtım kontrolü). */
-        .x-build-stamp { font-size: 10px; line-height: 1.3; text-align: center; opacity: .55; padding: 5px 6px 2px; margin-top: 3px; border-top: 1px solid rgba(128,128,128,.25); user-select: text; white-space: nowrap; }
 
         /* [PAYLAŞ] 2 aşamalı modal: biçim/işlem kartları */
         .paylas-baslik { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 2px 2px 14px; text-align: center; }
@@ -1968,7 +1966,6 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="theme-toggle-btn js-tema-btn" onclick="toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="theme-toggle-btn js-fs-btn" onclick="toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
-                            <div class="x-build-stamp"></div>
                         </div>
                     </div>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
@@ -2616,11 +2613,9 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03 · pdf-perblok + word-ayar';
+        var X_BUILD = '2026-11-03b · popup-ilerleme+indirme+linkust';
         window.X_BUILD = X_BUILD;
-        try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}
-        function _xBuildStampDoldur() { try { var ns = document.querySelectorAll('.x-build-stamp'); for (var i = 0; i < ns.length; i++) { ns[i].textContent = 'Sürüm ' + X_BUILD; ns[i].title = 'Yazılım sürümü (dağıtım kontrolü): ' + X_BUILD; } } catch (e) {} }
-        window._xBuildStampDoldur = _xBuildStampDoldur;
+        try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
             var light = document.body.classList.contains('light-theme');
             var btns = document.querySelectorAll('.js-tema-btn');
@@ -2681,7 +2676,6 @@ HTML_TEMPLATE = """
                 else { body.classList.remove('light-theme'); }
                 xTemaUygula();
                 _fsIkonGuncelle();
-                _xBuildStampDoldur();   // [SÜRÜM DAMGASI] menüdeki sürüm metnini doldur
             } catch(e) {
                 console.error("Theme restore error:", e);
             }
@@ -3445,15 +3439,17 @@ HTML_TEMPLATE = """
         // Editör + havuz "Paylaş" butonları xPaylasAc ile açar. Tamamen istemci; sunucu yok. PDF = html2pdf (editör render'ının temiz kopyası).
         var _paylasKaynak = 'editor', _paylasBicim = 'word', _paylasMesgul = false;
         function xPaylasAc(kaynak) {
+            if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} window.__paylasKapatT = null; }   // [İNDİRME] beklemedeki oto-kapanışı iptal et (yeniden açılış)
             _paylasKaynak = kaynak || 'editor'; _paylasBicim = 'word';
             var m = document.getElementById('paylasModal'); if (!m) return;
             document.getElementById('paylas-asama1').style.display = '';
             document.getElementById('paylas-asama2').style.display = 'none';
             document.getElementById('paylas-not').textContent = '';
+            var wa = document.getElementById('paylas-word-ayar'); if (wa) wa.style.display = 'none';
             m.classList.add('active');
         }
         window.xPaylasAc = xPaylasAc;
-        function xPaylasKapat() { var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
+        function xPaylasKapat() { if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} window.__paylasKapatT = null; } var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
         window.xPaylasKapat = xPaylasKapat;
         function xPaylasBicim(b) {
             _paylasBicim = b;
@@ -3668,9 +3664,13 @@ HTML_TEMPLATE = """
                 var pdf = await xJsPDFBos(jsOpt);
                 var bloklar = [].slice.call(tk.sheet.querySelectorAll('.x-pdf-block'));
                 if (!bloklar.length) bloklar = [tk.sheet];   // beklenmedik yapı -> tüm içerik tek blok
+                // [PDF % SAYAÇ] per-blok ilerleme Paylaş popup'ında (sağ altta değil). paylas-not varsa güncellenir.
+                function _pdfProg(p) { try { var n = document.getElementById('paylas-not'); if (n) n.textContent = 'PDF hazırlanıyor… %' + p; } catch (e) {} }
                 var st = { y: 10, ilk: true };
+                _pdfProg(0);
                 for (var bi = 0; bi < bloklar.length; bi++) {
                     xPdfBlokYerlestir(pdf, await xBlokCanvas(bloklar[bi]), st);
+                    _pdfProg(Math.round((bi + 1) / bloklar.length * 100));
                 }
                 return { blob: pdf.output('blob'), filename: ad };
             } finally { try { tk.kap.remove(); } catch (e) {} }
@@ -3697,8 +3697,10 @@ HTML_TEMPLATE = """
             try {
                 var r = await xPaylasBlobUret();
                 xTriggerDownload(r.blob, r.filename);
-                if (typeof window.showToast === 'function') window.showToast('İndirildi: ' + r.filename, 'success');
-                xPaylasKapat();
+                // [İNDİRME BİLDİRİMİ] sağ-alt toast YERİNE popup içinde "İndirildi ✓"; 5 sn sonra popup oto-kapanır.
+                if (not) not.innerHTML = '<span style="color:#1a9e4b;font-weight:700;">✓ İndirildi:</span> <b>' + r.filename + '</b>';
+                if (window.__paylasKapatT) { try { clearTimeout(window.__paylasKapatT); } catch (e) {} }
+                window.__paylasKapatT = setTimeout(function () { xPaylasKapat(); }, 5000);
             } catch (e) { if (not) not.textContent = 'Hata: ' + (e && e.message || e); }
             finally { _paylasMesgul = false; }
         }
@@ -6668,7 +6670,6 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="ed-ikon-btn js-tema-btn" onclick="window.toggleTheme &amp;&amp; window.toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="ed-ikon-btn js-fs-btn" onclick="window.toggleFullscreen &amp;&amp; window.toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
-                            <div class="x-build-stamp"></div>
                         </div>
                     </div>
                     <button class="ed-ikon-btn ed-ik-indir ed-ik-paylas" onclick="window.xPaylasAc &amp;&amp; window.xPaylasAc('editor')" title="Paylaş — Word/PDF seç, indir ya da WhatsApp ile gönder"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg></button>
@@ -8398,7 +8399,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4c-suruk · 2026-11-03 pdf-perblok+word-ayar";
+  XE.VERSION = "4c-suruk · 2026-11-03b popup+linkust";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9409,7 +9410,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     _gBelge+='<label class="ed-tgl ed-tgl-metinli" title="Link üstte: link görselin ÜSTÜNDE (kapalı: görsel üstte, link altta)"><input type="checkbox" id="ed-link-ust" '+(linkUstteFlag()?'checked':'')+'><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M2.5 3.6h11" stroke-linecap="round"/><rect x="2.5" y="6.2" width="11" height="7" rx="1.3"/></svg><span>Link üstte</span></label>';
     // [SAYFA NO] Şeritten KALDIRILDI -> Paylaş popup "Word çıktı ayarları" (gizli #pn_*; yalnız Word çıktısı).
     function _grp(inner){ return inner ? ('<span class="ed-grp">'+inner+'</span>') : ''; }
-    h += _gBaglam + _grp(_gYazi) + _grp(_gPar) + _grp(_gBaslik) + _grp(_gBelge);
+    h += _gBaglam + _grp(_gYazi) + _grp(_gPar) + _grp(_gBaslik) + (key==='l' ? _grp(_gBelge) : '');   // [LINK ÜSTTE] yalnız LİNK bağlamında (bir link input'una tıklayınca key='l') göster; işlev aynı (global)
     panel.innerHTML=h;
     var fs=panel.querySelector('select[data-t="'+ids.font+'"]'); if(fs) fs.value=hval('font',ids.font);
     if(ids.wordstyle){ var ws=panel.querySelector('select[data-t="'+ids.wordstyle+'"]'); if(ws){ var _wv=hval('word',ids.wordstyle); ws.value=WORD_GECERLI_ED[_wv]?_wv:(key==='b1'?'Heading1':'Heading2'); } }   // başlık odaklıysa efektif düzey; değilse genel
