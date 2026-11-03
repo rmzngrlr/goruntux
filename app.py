@@ -1580,8 +1580,9 @@ HTML_TEMPLATE = """
         #paylas-basari { text-align: center; padding: 34px 16px 30px; }
         .pb-ikon { margin-bottom: 14px; line-height: 0; }
         .pb-baslik { font-size: 21px; font-weight: 800; color: inherit; margin-bottom: 6px; }
-        .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; }
-        .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; }
+        /* [SABİT BOY] dosya + geri sayım satırları ilerlemede BOŞ olsa da yer ayırır -> popup ilerleme<->tamamlanma geçişinde uzayıp kısalmaz. */
+        .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; min-height: 17px; }
+        .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; min-height: 16px; }
         #pb-ring { stroke: #1a9e4b; }   /* dolan halka: yeşil (tamamlanınca yeşil tike dönüşür) */
         @keyframes pbspin { to { transform: rotate(360deg); } }
         .pb-spin { animation: pbspin .9s linear infinite; transform-origin: center; }   /* Word (yüzdesiz) belirsiz dönen halka */
@@ -2498,8 +2499,8 @@ HTML_TEMPLATE = """
                 <div id="paylas-basari" style="display:none;">
                     <div class="pb-ikon">
                         <svg id="pb-ilerleme" viewBox="0 0 72 72" width="80" height="80" fill="none" style="display:none;">
-                            <circle cx="36" cy="36" r="31" fill="none" stroke="rgba(128,128,128,.25)" stroke-width="6"/>
-                            <circle id="pb-ring" cx="36" cy="36" r="31" fill="none" stroke-width="6" stroke-linecap="round" stroke-dasharray="194.78" stroke-dashoffset="194.78" transform="rotate(-90 36 36)"/>
+                            <circle cx="36" cy="36" r="31.5" fill="none" stroke="rgba(128,128,128,.25)" stroke-width="6"/>
+                            <circle id="pb-ring" cx="36" cy="36" r="31.5" fill="none" stroke-width="6" stroke-linecap="round" stroke-dasharray="197.92" stroke-dashoffset="197.92" transform="rotate(-90 36 36)"/>
                             <text id="pb-ring-yuzde" x="36" y="37" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="800" fill="currentColor">%0</text>
                         </svg>
                         <svg id="pb-tik" viewBox="0 0 72 72" width="80" height="80" fill="none" style="display:none;">
@@ -2659,7 +2660,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03e · indirildi-tik+toggle-butonlar';
+        var X_BUILD = '2026-11-03f · ilerleme-tik-sabit-boy';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3521,7 +3522,7 @@ HTML_TEMPLATE = """
         // [İLERLEME HALKASI] PDF hazırlanırken dolan halka + % (tikin konumunda, uygulama mavisi). Word: belirsiz dönen halka.
         function _pdfIlerlemeGuncelle(p) {
             p = Math.max(0, Math.min(100, Math.round(p)));
-            var r = document.getElementById('pb-ring'); if (r) r.setAttribute('stroke-dashoffset', String(194.78 * (1 - p / 100)));
+            var r = document.getElementById('pb-ring'); if (r) r.setAttribute('stroke-dashoffset', String(197.92 * (1 - p / 100)));
             var t = document.getElementById('pb-ring-yuzde'); if (t) t.textContent = '%' + p;
         }
         window._pdfIlerlemeGuncelle = _pdfIlerlemeGuncelle;
