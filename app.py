@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04a · xcs-opak-dropdown-tum-panel';
+        var X_BUILD = '2026-11-04b · linkust-scroll-fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8687,7 +8687,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4c-suruk · 2026-11-03b popup+linkust";
+  XE.VERSION = "4d-suruk · 2026-11-04 linkust-scroll-fix";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9412,6 +9412,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
   // Faz 6: genel "link üstte" tercihi (localStorage). Kapalı: görsel üstte/link altta (varsayılan).
   function linkUstteFlag(){ try{ return localStorage.getItem('x_link_ustte')==='1'; }catch(e){ return false; } }
   function linkUstteSet(v){ try{ localStorage.setItem('x_link_ustte', v?'1':'0'); }catch(e){} }
+  function linkUstScrollFix(){ try{ return localStorage.getItem('x_linkust_scroll_fix')!=='0'; }catch(e){ return true; } }   // [SCROLL FIX] varsayılan açık
   function parcaKur(item){
     if(item.parcalar && item.parcalar.length) return;
     var linkUst=linkUstteFlag();
@@ -9471,7 +9472,12 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     XE._pushUndo();
     XE._dirty=true;   // [4]: "Link üstte" tercihi de kirletir
     var root=document.getElementById('editor-root');
-    var pb=document.querySelector('#editorModal .preview-body'); var _st=pb?pb.scrollTop:0;
+    var pb=document.querySelector('#editorModal .preview-body');
+    // [SCROLL FIX] #ed-link-ust ODAK alınca tarayıcı, yapışkan şeridi "görünür kılmak" için preview-body'yi
+    // yukarı kaydırıyor (mousedown->odak, toggle'dan ÖNCE; her tıklamada ~bir görsel yukarı tırmandırıyordu).
+    // Toggle'ın koruyacağı scroll = kutuya TIKLAMA ÂNINDAKİ (odak-öncesi) değer. Bayrak x_linkust_scroll_fix.
+    var _st=(linkUstScrollFix() && XE.__luScroll!=null) ? XE.__luScroll : (pb?pb.scrollTop:0);
+    XE.__luScroll=null;
     var _fallback=false;
     // Yalnız LİNK parçasını taşı: üstte->en başa, altta->en sona. Görsel ve ARADAKİ METİN kendi sırasını KORUR.
     (XE.belge.birimler||[]).forEach(function(b, bi){
@@ -9489,7 +9495,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       if(!_linkUstteDomTasi(root, bi, liEski, basaMi)) _fallback=true;          // DOM (yapı bozuksa fallback işaretle)
     });
     if(_fallback){ _savedScroll=_st; XE._ciz(); }   // güvenli geri-dönüş (beklenmedik yapı); _ciz scroll'u _savedScroll'dan geri yükler (H3)
-    if(pb) pb.scrollTop=_st;
+    if(pb){ pb.scrollTop=_st; var _tgt=_st; try{ requestAnimationFrame(function(){ if(pb && Math.abs(pb.scrollTop-_tgt)>2) pb.scrollTop=_tgt; }); }catch(e){} }   // [SCROLL FIX] odak-kaydırması geç gelirse rAF ile de düzelt
   };
 
   // Faz 5: editör çalışma durumu (parcalar + düzenlenen başlık) panel-düzeyi bir overlay'de yaşar.
@@ -9714,7 +9720,12 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
       btn.addEventListener('click', function(){ XE._hizaSec(btn.getAttribute('data-a'), btn.getAttribute('data-v')); });
     });
     // "Link üstte" ikon-toggle (global): değişince tüm kartlarda link konumunu uygular.
-    var _lu=panel.querySelector('#ed-link-ust'); if(_lu) _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
+    var _lu=panel.querySelector('#ed-link-ust');
+    if(_lu){
+      var _luLbl=_lu.closest('label')||_lu;
+      _luLbl.addEventListener('mousedown', function(){ try{ var _pb=document.querySelector('#editorModal .preview-body'); XE.__luScroll=_pb?_pb.scrollTop:null; }catch(e){ XE.__luScroll=null; } }, true);   // [SCROLL FIX] odak-öncesi scroll'u yakala (mousedown, odak-kaydırmasından önce)
+      _lu.addEventListener('change', function(){ linkUstteSet(_lu.checked); XE._linkUstteUygula(_lu.checked); });
+    }
     // [SAYFA NO + SATIR ARALIĞI] Şerit bağlamaları KALDIRILDI -> kontroller Paylaş popup "Word çıktı ayarları"na taşındı (xPaylasWordAyarKur/Doldur).
   };
   // [SATIR ARALIĞI] Menüden satır aralığı/paragraf boşluğu uygula (gizli backing input + kaydet + per-rapor). Panel tazelenir (etiket/tik).
