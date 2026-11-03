@@ -1764,6 +1764,16 @@ HTML_TEMPLATE = """
         /* [PAYLAŞ POPOVER] Arka plan karartması kalktığı için kart OPAK olmalı — yarı saydam --bg-modal (0.95) / --bg-card (0.6) ARKAYI GÖSTERMESİN. Koyu temada opak eşdeğerlerle ez; açık tema zaten #fff. */
         body:not(.light-theme) #paylasModal.paylas-pop { --bg-modal: #0e141f; --bg-card: #161c2a; }
 
+        /* [XCS] Özel OPAK dropdown listesi — yerel <select>'in saydam sistem menüsü (macOS) yerine. var(--bg-input) iki temada da OPAK (#111622 / #fff). Editör her zaman açık tema. */
+        .xcs-list { position: fixed; z-index: 3600; min-width: 80px; padding: 4px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 9px; box-shadow: 0 12px 34px rgba(0,0,0,0.45); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .xcs-opt { position: relative; padding: 7px 12px 7px 26px; font-size: 13px; line-height: 1.25; border-radius: 6px; cursor: pointer; white-space: nowrap; color: var(--text-primary); }
+        .xcs-opt.xcs-hl, .xcs-opt:hover { background: var(--accent-color, #1d9bf0); color: #fff; }
+        .xcs-opt.xcs-sel::before { content: '✓'; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
+        .xcs-opt.xcs-dis { opacity: .5; cursor: default; }
+        .xcs-list--ed { background: #ffffff; color: #15202b; border-color: #d0d7de; }
+        .xcs-list--ed .xcs-opt { color: #15202b; }
+        .xcs-list--ed .xcs-opt.xcs-hl, .xcs-list--ed .xcs-opt:hover { background: #1d9bf0; color: #fff; }
+
         .modal-header {
             padding: 20px 24px;
             border-bottom: 1px solid var(--border-color);
@@ -2659,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03n · paylas-popover-opak-arka';
+        var X_BUILD = '2026-11-04a · xcs-opak-dropdown-tum-panel';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2711,6 +2721,77 @@ HTML_TEMPLATE = """
         }
         window.toggleAyarMenu = toggleAyarMenu;
         try { document.addEventListener('mousedown', function(e) { if (!(e.target.closest && e.target.closest('.ayar-wrap'))) { var hepsi = document.querySelectorAll('.ayar-menu'); for (var i = 0; i < hepsi.length; i++) { hepsi[i].style.display = 'none'; } } }); } catch(e) {}
+
+        // [XCS] Özel OPAK dropdown: yerel <select>'in AÇILAN listesi macOS'ta sistem menüsü (saydam, option{background} yok sayılır).
+        // Kapalı kutu = yerel select (mevcut stil, opak); yalnız açılışı engelleyip body'ye OPAK özel liste koyarız.
+        // Olay-delegasyonu -> tüm select'ler (dinamik dahil) tek handler; select veri kaynağı kalır, change tetiklenir.
+        // Bayrak: localStorage x_custom_select='0' -> kapalı (yerel davranışa döner). Dışlamak için select'e data-xcs-off.
+        var XCS_ON = true; try { if (localStorage.getItem('x_custom_select') === '0') XCS_ON = false; } catch (e) {}
+        var _xcsList = null, _xcsSel = null, _xcsIdx = -1;
+        function _xcsKapat() { if (_xcsList && _xcsList.parentNode) _xcsList.parentNode.removeChild(_xcsList); _xcsList = null; _xcsSel = null; _xcsIdx = -1; }
+        window._xcsKapat = _xcsKapat;
+        function _xcsVurgu(i) {
+            if (!_xcsList) return; var opts = _xcsList.children, n = opts.length; if (n === 0) return;
+            if (i < 0) i = 0; if (i > n - 1) i = n - 1;
+            for (var k = 0; k < n; k++) { if (k === i) opts[k].classList.add('xcs-hl'); else opts[k].classList.remove('xcs-hl'); }
+            _xcsIdx = i; try { opts[i].scrollIntoView({ block: 'nearest' }); } catch (e) {}
+        }
+        function _xcsSec(i) {
+            var sel = _xcsSel; _xcsKapat();
+            if (sel && i >= 0 && i < sel.options.length && !sel.options[i].disabled && i !== sel.selectedIndex) {
+                sel.selectedIndex = i;
+                try { sel.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+                try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+            }
+        }
+        function _xcsAc(sel) {
+            _xcsKapat(); _xcsSel = sel;
+            var list = document.createElement('div');
+            list.className = 'xcs-list' + ((sel.closest && sel.closest('#editorModal')) ? ' xcs-list--ed' : '');
+            for (var i = 0; i < sel.options.length; i++) {
+                var o = sel.options[i], d = document.createElement('div');
+                d.className = 'xcs-opt' + (i === sel.selectedIndex ? ' xcs-sel' : '') + (o.disabled ? ' xcs-dis' : '');
+                d.setAttribute('data-i', String(i)); d.textContent = o.text; list.appendChild(d);
+            }
+            document.body.appendChild(list);
+            var r = sel.getBoundingClientRect();
+            var vh = window.innerHeight || document.documentElement.clientHeight;
+            var vw = window.innerWidth || document.documentElement.clientWidth;
+            list.style.minWidth = Math.round(r.width) + 'px';
+            list.style.maxHeight = Math.min(300, vh - 20) + 'px';
+            var lw = list.offsetWidth, lh = list.offsetHeight;
+            var left = r.left; if (left + lw > vw - 8) left = vw - 8 - lw; if (left < 8) left = 8;
+            var top = r.bottom + 2; if (top + lh > vh - 8) { var up = r.top - 2 - lh; top = (up >= 8) ? up : Math.max(8, vh - 8 - lh); }
+            list.style.left = Math.round(left) + 'px'; list.style.top = Math.round(top) + 'px';
+            _xcsList = list; _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
+        }
+        window._xcsAc = _xcsAc;
+        document.addEventListener('mousedown', function (e) {
+            if (!XCS_ON) return;
+            var t = e.target;
+            var opt = (t && t.closest) ? t.closest('.xcs-opt') : null;
+            if (opt && _xcsList && _xcsList.contains(opt)) { e.preventDefault(); e.stopPropagation(); if (!opt.classList.contains('xcs-dis')) _xcsSec(parseInt(opt.getAttribute('data-i'), 10)); return; }
+            var sel = (t && t.closest) ? t.closest('select') : null;
+            if (sel && !sel.disabled && !sel.multiple && !sel.hasAttribute('data-xcs-off')) { e.preventDefault(); if (_xcsSel === sel && _xcsList) { _xcsKapat(); } else { _xcsAc(sel); } return; }
+            if (_xcsList && !_xcsList.contains(t)) _xcsKapat();
+        }, true);
+        document.addEventListener('keydown', function (e) {
+            if (!XCS_ON) return;
+            if (_xcsList) {
+                if (e.key === 'Escape') { e.preventDefault(); _xcsKapat(); return; }
+                if (e.key === 'ArrowDown') { e.preventDefault(); _xcsVurgu(_xcsIdx + 1); return; }
+                if (e.key === 'ArrowUp') { e.preventDefault(); _xcsVurgu(_xcsIdx - 1); return; }
+                if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _xcsSec(_xcsIdx); return; }
+                if (e.key === 'Tab') { _xcsKapat(); return; }
+            } else {
+                var a = document.activeElement;
+                if (a && a.tagName === 'SELECT' && !a.disabled && !a.multiple && !a.hasAttribute('data-xcs-off')) {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _xcsAc(a); }
+                }
+            }
+        }, true);
+        try { window.addEventListener('scroll', function (e) { if (_xcsList && e.target !== _xcsList) _xcsKapat(); }, true); } catch (e) {}
+        try { window.addEventListener('resize', function () { if (_xcsList) _xcsKapat(); }); } catch (e) {}
 
         // Initialize event listeners after DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -3904,7 +3985,7 @@ HTML_TEMPLATE = """
         window.xPdfUret = xPdfUret;   // [PDF] hata ayıklama/test için dışa aç (zararsız; Paylaş yolu da aynısını çağırır)
         // Modal dışına tıkla -> kapat
         // [PAYLAŞ POPOVER] dışarı tıkla kapat (panel içi + tetikleyici hariç). Backdrop yok, eski e.target===m yolu kaldırıldı.
-        try { document.addEventListener('mousedown', function (e) { var m = document.getElementById('paylasModal'); if (!m || !m.classList.contains('active')) return; if (e.target && e.target.closest && (e.target.closest('#paylasModal') || e.target.closest('.js-paylas-trig'))) return; xPaylasKapat(); }); } catch (e) {}
+        try { document.addEventListener('mousedown', function (e) { var m = document.getElementById('paylasModal'); if (!m || !m.classList.contains('active')) return; if (e.target && e.target.closest && (e.target.closest('#paylasModal') || e.target.closest('.js-paylas-trig') || e.target.closest('.xcs-list'))) return; xPaylasKapat(); }); } catch (e) {}
 
         // Başarılı kayıttan (commit) sonra: sunucu havuzu + yerel görseller + editör durumu SIFIRLA.
         function xResetAfterSave() {
