@@ -1761,6 +1761,8 @@ HTML_TEMPLATE = """
         #paylasModal.paylas-pop.pop-up .modal-content { transform-origin: bottom left; animation-name: paylasPopInUp; }
         @keyframes paylasPopIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes paylasPopInUp { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        /* [PAYLAŞ POPOVER] Arka plan karartması kalktığı için kart OPAK olmalı — yarı saydam --bg-modal (0.95) / --bg-card (0.6) ARKAYI GÖSTERMESİN. Koyu temada opak eşdeğerlerle ez; açık tema zaten #fff. */
+        body:not(.light-theme) #paylasModal.paylas-pop { --bg-modal: #0e141f; --bg-card: #161c2a; }
 
         .modal-header {
             padding: 20px 24px;
@@ -2657,7 +2659,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-03m · paylas-popover-sol-hizali';
+        var X_BUILD = '2026-11-03n · paylas-popover-opak-arka';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
