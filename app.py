@@ -1596,6 +1596,13 @@ HTML_TEMPLATE = """
             box-shadow: 0 10px 30px rgba(0,0,0,0.25);
         }
         .ayar-menu .theme-toggle-btn:hover { transform: none; }
+        /* [OPAK MENÜ] Ayarlar dropdown'u (panel+editör, ikisi de .ayar-menu) arka planı TAM OPAK — dark temada
+           --bg-card rgba(...,0.6) saydamdı, arkayı gösteriyordu. Light zaten #fff (opak). */
+        body:not(.light-theme) .ayar-menu { background: #161c2a; }
+        /* [TAM EKRAN / PWA] Masaüstü: menüde "Tam ekran" butonu. Mobil: onun yerine "Ana ekrana ekle" (PWA yükle). */
+        .js-pwa-btn { display: none; }
+        html.x-mobile .js-fs-btn { display: none; }
+        html.x-mobile .js-pwa-btn { display: inline-flex; }
 
         /* [PAYLAŞ] 2 aşamalı modal: biçim/işlem kartları */
         .paylas-baslik { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin: 2px 2px 14px; text-align: center; }
@@ -2111,6 +2118,8 @@ HTML_TEMPLATE = """
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
+    <!-- [PWA] "Ana ekrana ekle": Chrome/Android yükleme istemini YAKALA (ertele) -> xPwaYukleAc tetikler. iOS'ta bu olay YOK -> yönerge gösterilir. -->
+    <script>(function(){try{ window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__pwaPrompt = e; }); window.addEventListener('appinstalled', function(){ window.__pwaPrompt = null; }); }catch(e){}})();</script>
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
     <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
@@ -2124,6 +2133,7 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="theme-toggle-btn js-tema-btn" onclick="toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="theme-toggle-btn js-fs-btn" onclick="toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                            <button class="theme-toggle-btn js-pwa-btn" onclick="xPwaYukleAc()" title="Ana ekrana ekle"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="2.6" width="13.2" height="14.8" rx="2.6"/><path d="M10 7v5.2M7.4 9.6l2.6 2.6 2.6-2.6"/></svg></button>
                         </div>
                     </div>
                     <div class="ext-status-box ext-err" id="ext-status-box" onclick="onExtStatusClick()"><svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg>Eklenti yok</div>
@@ -2788,7 +2798,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05b · select-native-picker-kapat + klavye-kapanınca-şerit-kapat';
+        var X_BUILD = '2026-11-05c · opak ayar-menü + mobil PWA ana-ekrana-ekle';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2819,6 +2829,46 @@ HTML_TEMPLATE = """
             _ayarMenuKapat();   // menüdeki butona tıklayınca açılır menü kapanır
         }
         window.toggleFullscreen = toggleFullscreen;
+        // [PWA ANA EKRANA EKLE] Mobilde "Tam ekran" yerine bu buton. Tıklanınca bilgilendiren + onay/red soran popup.
+        // Chrome/Android: yakalanan beforeinstallprompt (window.__pwaPrompt) ile NATIVE yükleme istemi. iOS: programatik
+        // yükleme YOK -> Paylaş menüsü yönergesi. Zaten eklenmişse (standalone) bilgilendir. (Mesajlarda backslash
+        // kacislari YASAK -> backtick template + gercek satir sonu + cift tirnak kullanildi; bkz escape tuzagi.)
+        async function xPwaYukleAc() {
+            try { _ayarMenuKapat(); } catch (e) {}
+            var standalone = false;
+            try { standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; } catch (e) {}
+            if (standalone) {
+                await xConfirm(`GörüntüX zaten ana ekranında — uygulama olarak çalışıyor.`, { title: "Ana Ekrana Ekle", okText: "Tamam", cancelText: "Kapat" });
+                return;
+            }
+            var ua = navigator.userAgent || "";
+            var isIOS = /iphone|ipad|ipod/i.test(ua);
+            if (window.__pwaPrompt) {
+                var onay = await xConfirm(`GörüntüX'i ana ekranına ekleyerek tarayıcı çubuğu olmadan, tam ekran bir uygulama gibi kullanabilirsin.
+
+Ana ekrana eklensin mi?`, { title: "Ana Ekrana Ekle", okText: "Ekle", cancelText: "Vazgeç" });
+                if (!onay) return;
+                try {
+                    window.__pwaPrompt.prompt();
+                    var sec = await window.__pwaPrompt.userChoice;
+                    window.__pwaPrompt = null;   // tek kullanımlık
+                    if (sec && sec.outcome === "accepted" && window.showToast) { showToast("Ana ekrana eklendi.", "success"); }
+                } catch (e) {}
+                return;
+            }
+            if (isIOS) {
+                await xConfirm(`GörüntüX'i ana ekranına eklemek için:
+
+1) Tarayıcının Paylaş (⬆) simgesine dokun.
+2) "Ana Ekrana Ekle"yi seç.
+3) "Ekle"ye dokun.
+
+Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText: "Anladım", cancelText: "Kapat" });
+                return;
+            }
+            await xConfirm(`GörüntüX'i ana ekranına eklemek için tarayıcının menüsünden "Ana ekrana ekle" / "Uygulamayı yükle" seçeneğini kullanabilirsin.`, { title: "Ana Ekrana Ekle", okText: "Anladım", cancelText: "Kapat" });
+        }
+        window.xPwaYukleAc = xPwaYukleAc;
         function _fsIkonGuncelle() {
             var fs = !!(document.fullscreenElement || document.webkitFullscreenElement);
             var btns = document.querySelectorAll('.js-fs-btn');
@@ -7219,6 +7269,7 @@ HTML_TEMPLATE = """
                         <div class="ayar-menu">
                             <button class="ed-ikon-btn js-tema-btn" onclick="window.toggleTheme &amp;&amp; window.toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="ed-ikon-btn js-fs-btn" onclick="window.toggleFullscreen &amp;&amp; window.toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
+                            <button class="ed-ikon-btn js-pwa-btn" onclick="window.xPwaYukleAc &amp;&amp; window.xPwaYukleAc()" title="Ana ekrana ekle"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.4" y="2.6" width="13.2" height="14.8" rx="2.6"/><path d="M10 7v5.2M7.4 9.6l2.6 2.6 2.6-2.6"/></svg></button>
                         </div>
                     </div>
                     <button class="ed-ikon-btn ed-ik-indir ed-ik-paylas js-paylas-trig" onclick="window.xPaylasAc &amp;&amp; window.xPaylasAc('editor', this)" title="Paylaş — Word/PDF seç ve indir"><svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg></button>
