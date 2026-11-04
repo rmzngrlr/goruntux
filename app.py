@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04e · word-link-ustte-bosluk-dagilimi';
+        var X_BUILD = '2026-11-04f · word-boyutlama-satir-araligi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -7793,8 +7793,13 @@ LOCAL_DOCX_JS = r'''
       var satirBasiKar = Math.max(1, Math.floor((genislikIn*72) / karGenPt));
       return Math.max(1, Math.ceil(String(metin||'').length / satirBasiKar));
     }
+    // [SATIR ARALIĞI BOYUTLAMA] metin yüksekliğine satır-aralığı çarpanını KAT. Emisyonda başlık/link/metin
+    // w:line="240*m_line" (lineRule=auto) ile m_line KATINA çıkar; birimPay bunu saymazsa (sabit 1.2) metni
+    // olduğundan kısa sanıp görselleri FAZLA büyük boyutlar -> sayfa taşar, 2-görsel/sayfa bozulur (1,5 satır
+    // aralığında link-üstte'de görünür oldu; 1,0'da sorun yoktu -> kullanıcı testiyle doğrulandı). Bayrak x_sizing_line.
+    var _lineMult=1.0; try{ if(localStorage.getItem('x_sizing_line')!=='0' && localStorage.getItem('x_satir_aralik')!=='0') _lineMult=parseFloat(opts.m_line||'1.5')||1.5; }catch(e){}
     function metinY(metin, puntoPt, genislikIn, afterTwip){
-      return satirSayisi(metin, puntoPt, genislikIn) * (1.2*puntoPt)/72 + (afterTwip/1440);
+      return satirSayisi(metin, puntoPt, genislikIn) * (1.2*puntoPt*_lineMult)/72 + (afterTwip/1440);
     }
     // Bir birimin gorsel DISI dikey maliyeti (baslik + link + araliklar)
     function birimPay(b){
