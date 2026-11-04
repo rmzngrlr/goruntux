@@ -1722,8 +1722,11 @@ HTML_TEMPLATE = """
         html.x-mobile.x-dik { --content-pad: 12px; }
         html.x-mobile.x-dik body { overflow: auto; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
-        html.x-mobile.x-dik .main-content { height: auto; min-height: 100vh; overflow: visible; padding: var(--content-pad); padding-top: calc(var(--content-pad) + env(safe-area-inset-top)); padding-bottom: 84px; }
-        html.x-mobile.x-dik .header { margin-bottom: 16px; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; overflow: visible; padding: 16px; padding-top: calc(env(safe-area-inset-top) + 20px); padding-bottom: 84px; }
+        html.x-mobile.x-dik .header { margin-bottom: 16px; padding-right: 52px; }
+        /* [AYARLAR BUTONU] Dik-mobilde başlık+alt-yazının ALTINA düşüyordu (order:3) -> kullanıcı "orda olmaz".
+           Sağ-üst köşeye sabitle (absolute; ext-status zaten gizli -> yalnız dişli kalır). Başlıkla aynı sıra. */
+        html.x-mobile.x-dik .header-controls { position: absolute; top: calc(env(safe-area-inset-top) + 16px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
         html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
@@ -2094,7 +2097,7 @@ HTML_TEMPLATE = """
         if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
-        if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; if(!(a && a.closest && a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA'))){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+        if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; var inEd=a && a.closest && ((a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA')) || (a.closest('#editor-serit') && (a.tagName==='INPUT' || a.tagName==='SELECT' || a.tagName==='TEXTAREA'))); if(!inEd){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
@@ -2775,7 +2778,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04t · font dropdown butona-iliştik kompakt';
+        var X_BUILD = '2026-11-04u · şerit-kaydırma+renk+header+sheet-kapat+galeri-boşluk';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4217,7 +4220,10 @@ HTML_TEMPLATE = """
         window.xPdfUret = xPdfUret;   // [PDF] hata ayıklama/test için dışa aç (zararsız; Paylaş yolu da aynısını çağırır)
         // Modal dışına tıkla -> kapat
         // [PAYLAŞ POPOVER] dışarı tıkla kapat (panel içi + tetikleyici hariç). Backdrop yok, eski e.target===m yolu kaldırıldı.
-        try { document.addEventListener('mousedown', function (e) { var m = document.getElementById('paylasModal'); if (!m || !m.classList.contains('active')) return; if (e.target && e.target.closest && (e.target.closest('#paylasModal') || e.target.closest('.js-paylas-trig') || e.target.closest('.xcs-list'))) return; xPaylasKapat(); }); } catch (e) {}
+        try { document.addEventListener('mousedown', function (e) { var m = document.getElementById('paylasModal'); if (!m || !m.classList.contains('active')) return; var t = e.target; if (!(t && t.closest)) return; if (t.closest('.js-paylas-trig') || t.closest('.xcs-list')) return;
+            // [DİK-MOBİL SHEET] Sheet modunda arka plan (modal içi ama .modal-content DIŞI) = karartma -> dokununca kapat.
+            if (m.classList.contains('paylas-sheet')) { if (!t.closest('.modal-content')) xPaylasKapat(); return; }
+            if (t.closest('#paylasModal')) return; xPaylasKapat(); }); } catch (e) {}
 
         // Başarılı kayıttan (commit) sonra: sunucu havuzu + yerel görseller + editör durumu SIFIRLA.
         function xResetAfterSave() {
@@ -8979,7 +8985,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4f-mobil · 2026-11-04 serit-select-odak-fix";
+  XE.VERSION = "4g-mobil · 2026-11-04 serit-kaydirma+renk+galeri-boşluk";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9466,6 +9472,9 @@ X_EDITOR_JS = r'''
 #editorModal .ed-ik-galeri:hover:not(:disabled){color:#1565c0;}
 #editorModal .ed-ik-galeri.aktif{color:#1d9bf0;background:#e8f4fd;}
 /* Galeri / Sırala görünümü — bölüm kartları ızgarası + sürükle-bırak (araya ekle / üste bırak=yer değiştir) */
+/* [KENAR BOŞLUĞU] Galeri #editor-root'a doğrudan render (.ed-root padding yok) -> sarmalayıcıyla kenar boşluğu. */
+#editorModal .ed-gal-pad{padding:16px 20px 24px;}
+html.x-mobile.x-dik #editorModal .ed-gal-pad{padding:12px 12px 20px;}
 #editorModal .ed-gal-ipucu{font-size:12px;color:#5b6b7b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:9px 13px;margin:0 0 16px;line-height:1.5;}
 #editorModal .ed-gal-ipucu b{color:#1d4a6b;}
 #editorModal .ed-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding-bottom:24px;}
@@ -9715,25 +9724,23 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
     if(!window.visualViewport){ m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 400); }); }
     var serit=document.getElementById('editor-serit');
-    if(serit){ ['mousedown','touchstart'].forEach(function(ev){ serit.addEventListener(ev, function(e){
-      if(!dikMobil()) return;
-      var t=e.target; if(!t||!t.closest) return;
-      // [SELECT ODAK FİX] Font/Stil dropdown'ları: iOS'ta <select>'e dokunuş contenteditable'ı BLUR ediyor ->
-      // metin klavyesi kapanıyor -> x-ed-yaz da kalkıp şerit gizleniyordu (kullanıcı: "tıklıyorum hem şeridi
-      // hem klavyeyi kapatıyor"). Çözüm: select'i de preventDefault et (odak editable'da KALIR, klavye+şerit
-      // kalır) ve xcs listesini DOĞRUDAN burada aç (touchstart). Native select hiç açılmaz.
-      var selEl=t.closest('select');
-      if(selEl && !selEl.disabled && !selEl.multiple && !selEl.hasAttribute('data-xcs-off')){
-        e.preventDefault();   // preventDefault -> iOS focus-steal + sentetik mousedown/click iptal (odak editable'da kalır)
-        // xcs listesini aç (zaten içinde kapat+aç yapar -> çift-tetik zararsız, yalnız yeniden açar). Hem touchstart
-        // (gerçek cihaz; preventDefault sentetik mousedown'ı bastırır -> tek açılış) hem mousedown (pane/fare testi).
-        try{ window._xcsAc&&window._xcsAc(selEl); }catch(_){}
-        return;
-      }
-      // input/textarea: yazı odağı; renk seçici (input[type=color]) native açılır; .xcs-list/option: liste tıklaması (document handler).
-      if(t.closest('input,textarea,option,.xcs-list')) return;
-      e.preventDefault();   // toggle/buton: odağı koru (contenteditable blur olmasın)
-    }, {passive:false}); }); }
+    if(serit){
+      // [YATAY KAYDIRMA FİX] Şerit NATIVE yatay kayar (.ed-panel overflow-x:auto). Eski GENEL touchstart
+      // preventDefault TÜM dokunuşu engelleyip kaydırmayı KİLİTLİYORDU (kullanıcı: "alt şerit sağa sola kaymıyor").
+      // Artık touchstart'ta YALNIZ <select> için preventDefault (native select + focus-steal iptal -> xcs aç,
+      // klavye+şerit kalır); diğer her şey native -> parmakla sürükleyince kayar. Buton/toggle odak-koruması
+      // mousedown'da (click'i İPTAL ETMEZ, kaydırmayı ETKİLEMEZ). Renk/Boyut input'u native (focus gerekir) ->
+      // şeridin gizlenmemesi Faz 0 vv handler'da editor-serit odağı korunarak sağlanır.
+      function _selHedef(t){ var s=(t&&t.closest)?t.closest('select'):null; return (s && !s.disabled && !s.multiple && !s.hasAttribute('data-xcs-off'))?s:null; }
+      serit.addEventListener('touchstart', function(e){ if(!dikMobil()) return; var s=_selHedef(e.target); if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} } }, {passive:false});
+      serit.addEventListener('mousedown', function(e){
+        if(!dikMobil()) return;
+        var t=e.target; var s=_selHedef(t);
+        if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} return; }   // select -> xcs (pane/fare)
+        if(t && t.closest && t.closest('input,textarea,option,.xcs-list')) return;   // yazı/renk/boyut/liste: dokunma
+        e.preventDefault();   // buton/toggle: odağı koru (mousedown preventDefault click'i iptal etmez)
+      });
+    }
   }
 
   function stilCss(o, pre){
@@ -10281,7 +10288,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
     if(!B.length){ root.innerHTML='<div class="ed-bos">Henüz bölüm yok. Düzenleme görünümünde "+ Bölüm" ile ekleyebilirsin.</div>'; return; }
-    var h='<div class="ed-gal-ipucu">Kartları sürükleyip sırala: iki kartın <b>arasına</b> bırak = araya ekle; bir kartın <b>üstüne</b> bırak = yer değiştir. (Profil kartı her zaman grubunun en üstünde kalır.)</div><div class="ed-gal-grid">';
+    // [GALERİ KENAR BOŞLUĞU] Galeri #editor-root'a DOĞRUDAN render oluyor (.ed-root padding'i YOK) -> kartlar
+    // sağa/sola sıfır boşlukla yapışıyordu (kullanıcı). Padding'li sarmalayıcı (.ed-gal-pad) ile kenar boşluğu ver.
+    var h='<div class="ed-gal-pad"><div class="ed-gal-ipucu">Kartları sürükleyip sırala: iki kartın <b>arasına</b> bırak = araya ekle; bir kartın <b>üstüne</b> bırak = yer değiştir. (Profil kartı her zaman grubunun en üstünde kalır.)</div><div class="ed-gal-grid">';
     for(var i=0;i<B.length;i++){
       var b=B[i]||{}, it=b.item||{};
       var bas = (b.h2!=null && String(b.h2).trim()!=='') ? String(b.h2) : ((b.h1!=null && String(b.h1).trim()!=='') ? String(b.h1) : (it.title||''));
@@ -10296,7 +10305,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(!ust && !gorsel){ govde = metin ? ('<div class="ed-gal-metin">'+esc(metin)+'</div>') : '<div class="ed-gal-bas ed-gal-bassiz">(içeriksiz bölüm)</div>'; }
       h+='<div class="ed-gal-card" draggable="true" data-i="'+i+'" title="Sürükleyerek bölümün sırasını değiştir"><div class="ed-gal-no">'+(i+1)+'</div>'+ust+gorsel+govde+'</div>';
     }
-    h+='</div>';
+    h+='</div></div>';
     root.innerHTML=h;
     XE._galeriDndKur(root);
   };
