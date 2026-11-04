@@ -1723,7 +1723,7 @@
             // Mevcut FB yardımcılarını yeniden kullanır. Döner: {shot, author} | hata fırlatır.
             // Geçici DOM (yorum gizle/sticky->static/scrollbar gizle/widget gizle) finally'de geri alınır.
             async function xFbIdleYakala() {
-                var _fbGizli = [], _fbGorunur = [], _fbStil = [], _fbSbStyle = null;
+                var _fbGizli = [], _fbGorunur = [], _fbStil = [], _fbSbStyle = null, _sbEls = [];
                 try {
                     var _isReel = location.pathname.indexOf('/reel/') === 0;
                     var card = null, _engOut = {};
@@ -1759,10 +1759,31 @@
                     var dpr = window.devicePixelRatio || 1;
                     if (!document.getElementById('x-fb-sb-hide')) {
                         var _sb = document.createElement('style'); _sb.id = 'x-fb-sb-hide';
-                        _sb.textContent = '*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}*{scrollbar-width:none!important;-ms-overflow-style:none!important}';
+                        // Global '*' kuralı FB'nin kendi sınıf-bazlı ::-webkit-scrollbar kurallarına özgüllükle
+                        // KAYBEDEBİLİYOR (çubuk kadraja giriyordu) -> yüksek-özgüllük (.x-fb-nosb.x-fb-nosb) kural EKLE.
+                        _sb.textContent = '*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}'
+                            + '*{scrollbar-width:none!important;-ms-overflow-style:none!important}'
+                            + '.x-fb-nosb.x-fb-nosb::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;background:transparent!important}';
                         (document.head || document.documentElement).appendChild(_sb); _fbSbStyle = _sb;
                         await new Promise(function (r) { setTimeout(r, 120); });
                     }
+                    // Kadraj içindeki TÜM kaydırılabilir öğelere (+ kart + scroll kabı) INLINE scrollbar-width:none.
+                    // Inline !important, FB'nin stylesheet !important kurallarını da yener (stylesheet '*' kuralı
+                    // yetmiyordu) -> çubuk hiç çizilmez (klasik + overlay). + .x-fb-nosb webkit sınıfı. finally'de geri alınır.
+                    try {
+                        var _sbAdaylar = [card]; if (sc) _sbAdaylar.push(sc);
+                        card.querySelectorAll('*').forEach(function (e) { _sbAdaylar.push(e); });
+                        _sbAdaylar.forEach(function (e) {
+                            try {
+                                if (!e || (e.classList && e.classList.contains('x-fb-nosb'))) return;   // dedup
+                                var _cs = getComputedStyle(e);
+                                if (!(e === card || e === sc || /(auto|scroll)/.test(_cs.overflowY + ' ' + _cs.overflowX))) return;
+                                _sbEls.push([e, e.style.getPropertyValue('scrollbar-width'), e.style.getPropertyPriority('scrollbar-width')]);
+                                e.style.setProperty('scrollbar-width', 'none', 'important');
+                                if (e.classList) e.classList.add('x-fb-nosb');
+                            } catch (x) {}
+                        });
+                    } catch (x) {}
                     if (scIc && sc) {
                         _fbStil.push([sc, 'scrollBehavior', sc.style.scrollBehavior]); sc.style.scrollBehavior = 'auto';
                         kadrajEl.querySelectorAll('*').forEach(function (e) {
@@ -1823,6 +1844,7 @@
                     try { _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} }); } catch (e) {}
                     try { _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} }); } catch (e) {}
                     try { if (_fbSbStyle) { _fbSbStyle.remove(); } } catch (e) {}
+                    try { _sbEls.forEach(function (p) { try { var e = p[0]; if (e.classList) e.classList.remove('x-fb-nosb'); if (p[1]) e.style.setProperty('scrollbar-width', p[1], p[2] || ''); else e.style.removeProperty('scrollbar-width'); } catch (x) {} }); } catch (e) {}
                 }
             }
 
@@ -3234,7 +3256,7 @@
             //          (modal DEGIL: modalin ust seridi "X'in Gönderisi" her dilimde TEKRARLARDI).
             const isFacebook = /(^|\.)facebook\.com$/i.test(window.location.hostname);
             if (isFacebook) {
-                let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [], _fbSbStyle = null;
+                let _fbGizli = [], _fbGorunur = [], _fbStil = [], _dilimLog = [], _fbSbStyle = null, _sbEls = [];
                 try {
                     const _t0 = Date.now();
                     // TEKDUZE durum yazisi — X/IG ile AYNI kalip (bkz. :4303 civari).
@@ -3347,11 +3369,30 @@
                         _sbStyle.id = 'x-fb-sb-hide';
                         _sbStyle.textContent =
                             '*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}' +
-                            '*{scrollbar-width:none!important;-ms-overflow-style:none!important}';
+                            '*{scrollbar-width:none!important;-ms-overflow-style:none!important}' +
+                            // global '*' kuralı FB sınıf-kurallarına özgüllükle kaybedebiliyor -> yüksek-özgüllük kural EKLE
+                            '.x-fb-nosb.x-fb-nosb::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;background:transparent!important}';
                         (document.head || document.documentElement).appendChild(_sbStyle);
                         _fbSbStyle = _sbStyle;
                         await new Promise(r => setTimeout(r, 120));   // reflow
                     }
+                    // Kadraj içindeki kaydırılabilir öğelere INLINE scrollbar-width:none (inline !important FB'nin
+                    // stylesheet !important kurallarını da yener; global '*' yetmiyor -> çubuk kadraja giriyordu).
+                    // + .x-fb-nosb webkit sınıfı. finally'de geri alınır. (Widget xFbIdleYakala ile AYNI önlem.)
+                    try {
+                        const _sbAdaylar = [card]; if (sc) _sbAdaylar.push(sc);
+                        card.querySelectorAll('*').forEach(e => _sbAdaylar.push(e));
+                        _sbAdaylar.forEach(e => {
+                            try {
+                                if (!e || (e.classList && e.classList.contains('x-fb-nosb'))) return;
+                                const _cs = getComputedStyle(e);
+                                if (!(e === card || e === sc || /(auto|scroll)/.test(_cs.overflowY + ' ' + _cs.overflowX))) return;
+                                _sbEls.push([e, e.style.getPropertyValue('scrollbar-width'), e.style.getPropertyPriority('scrollbar-width')]);
+                                e.style.setProperty('scrollbar-width', 'none', 'important');
+                                if (e.classList) e.classList.add('x-fb-nosb');
+                            } catch (x) {}
+                        });
+                    } catch (x) {}
                     if (scIc && sc) {
                         // (b) YUMUSAK KAYDIRMA: scrollTop animasyonlu ise 320ms'de hedefe varmaz
                         //     -> dilim YANLIS konumda yakalanir (birlestirme izi). IG yolu da
@@ -3574,6 +3615,7 @@
                     _fbGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} });
                     _fbStil.forEach(function (p) { try { p[0].style[p[1]] = p[2] || ''; } catch (e) {} });
                     try { if (_fbSbStyle) { _fbSbStyle.remove(); _fbSbStyle = null; } } catch (e) {}
+                    try { _sbEls.forEach(function (p) { try { var e = p[0]; if (e.classList) e.classList.remove('x-fb-nosb'); if (p[1]) e.style.setProperty('scrollbar-width', p[1], p[2] || ''); else e.style.removeProperty('scrollbar-width'); } catch (x) {} }); _sbEls = []; } catch (e) {}
                     _fbGizli = []; _fbGorunur = []; _fbStil = [];
 
                     gorev.combinedData.push(resItem);
@@ -3625,6 +3667,7 @@
                         const _kalan = document.getElementById('x-fb-sb-hide');
                         if (_kalan) _kalan.remove();
                     } catch (e) {}
+                    try { _sbEls.forEach(function (p) { try { var e = p[0]; if (e.classList) e.classList.remove('x-fb-nosb'); if (p[1]) e.style.setProperty('scrollbar-width', p[1], p[2] || ''); else e.style.removeProperty('scrollbar-width'); } catch (x) {} }); _sbEls = []; } catch (e) {}
                 }
                 // --- Yakalama basarisiz: gonderiyi TEMIZ atla (retry dongusune GIRME) ---
                 // TEKDUZE durum yazisi (butun platformlar ayni kalip)
