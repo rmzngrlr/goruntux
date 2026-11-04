@@ -1537,8 +1537,32 @@
                             await new Promise(r => setTimeout(r, 250));
                             const pRect0 = post.getBoundingClientRect();
                             const startY = (window.scrollY || document.documentElement.scrollTop || 0) + pRect0.top;
-                            const cropLeft = Math.max(0, Math.round(pRect0.left));
-                            const cropWidth = Math.round(Math.min(vW - cropLeft, pRect0.width));
+                            // [BEYAZ KENAR FİX 2026-11-04] Profilden açılan MODALDA carousel medya+yorum bloğu geniş
+                            // article içinde ORTALANIP yanlara SİMETRİK beyaz bırakıyor (geniş viewport'ta ~123px/kenar);
+                            // raw article rect'i kırpınca bu beyaz kadraja giriyordu. Link/standalone'da igFindPost dar
+                            // bir DIV olduğundan sorun yoktu (kullanıcı: "link sorunsuz, profilden modal sorunlu").
+                            // Fix: gerçek içerik sınırlarına daralt -> foto SOL kenarı ... viewport içi EN SAĞ görünür
+                            // içerik (yorum sütunu). Medya yoksa eski (article) davranışa düşer. 1920'de pane'de doğrulandı.
+                            let _tL = pRect0.left, _tR = pRect0.left + pRect0.width;
+                            try {
+                                let _mEl = null, _mB = 0;
+                                post.querySelectorAll('video, img').forEach(m => { const r = m.getBoundingClientRect(); const a = r.width * r.height; if (a > _mB && r.width > 200 && r.height > 200) { _mB = a; _mEl = m; } });
+                                if (_mEl) {
+                                    const _mr = _mEl.getBoundingClientRect();
+                                    _tL = _mr.left; _tR = _mr.right;
+                                    post.querySelectorAll('*').forEach(e => {
+                                        const r = e.getBoundingClientRect();
+                                        if (r.width < 8 || r.height < 8) return;
+                                        const cs = getComputedStyle(e);
+                                        if (cs.visibility === 'hidden' || cs.display === 'none') return;
+                                        if (r.left < _mr.left - 2) return;      // medyanın SOLUNDAKİ (beyaz kenar / nav oku) atla
+                                        if (r.right > vW + 1) return;           // viewport DIŞINA taşanı atla
+                                        if (r.right > _tR) _tR = r.right;       // en sağ görünür içerik (yorum sütunu)
+                                    });
+                                }
+                            } catch (e) {}
+                            const cropLeft = Math.max(0, Math.round(_tL));
+                            const cropWidth = Math.round(Math.min(vW - cropLeft, Math.max(40, _tR - _tL)));
                             const fullH = Math.round(pRect0.height);
                             // Kaydırmanın article SONUNA (açıklamaya) ulaşabilmesi için bol spacer.
                             spacer.style.height = (Math.ceil(fullH) + vH * 2 + 400) + 'px';
