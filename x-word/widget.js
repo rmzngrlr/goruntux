@@ -1330,7 +1330,18 @@
                     if (idx > 0) { parentArticle = arr[idx - 1]; }
                 } catch (e) {}
                 if (!parentArticle) { return await _yakala(focusedArticle); }
-                // Parent (yanıt verilen) TAM yükseklikte + footer-gizlemesiz (saat başlıkta -> v4.3 hatası).
+                // v4.39 TEK-GEÇİŞ: parent + odak BİTİŞİK -> bir kerede yakala (ayrı SS + birleştirme yerine). Çıktı
+                // aynı: atalar tam, odak footer'sız; ama atalar arası X thread DOĞAL görünür (parça-birleştirme yok).
+                // Bayrak x_coklu_tekgecis='0' -> eski parça-parça. Başarısız/kısa dönerse de parça-parça'ya düşer.
+                if (xTekGecisAcik()) {
+                    try {
+                        parentArticle.scrollIntoView({ block: 'start', behavior: 'instant' });
+                        await new Promise(r => setTimeout(r, 600));
+                        var _tek = await captureArticle(focusedArticle, { rangeTop: parentArticle }) || "";
+                        if (_tek && _tek.length > 100) return _tek;
+                    } catch (e) { printLog("Tek-geçiş (2'li) hata, parça-parça: " + ((e && e.message) || e)); }
+                }
+                // Parça-parça (eski): parent TAM yükseklikte + footer-gizlemesiz (saat başlıkta), odak normal.
                 var parentImg = await _yakala(parentArticle, { tamYukseklik: true });
                 var focusedImg = await _yakala(focusedArticle);
                 if (parentImg && parentImg.length > 100 && focusedImg && focusedImg.length > 100) {
@@ -1339,6 +1350,8 @@
                 }
                 return focusedImg || parentImg;
             }
+            // v4.39 TEK-GEÇİŞ bayrağı: bitişik seçili tweetler tek scroll+stitch ile yakalanır (hız). '0' -> parça-parça.
+            function xTekGecisAcik() { try { return localStorage.getItem('x_coklu_tekgecis') !== '0'; } catch (e) { return true; } }
 
             // === ÇOKLU TWEET SEÇ + YAKALA (v4.33, kullanıcı isteği) ===
             // Derin zincir (A←B←C) / flood: eklenen tweetin ≥2 atası varsa, kullanıcıya atalar + eklenen tweet
@@ -1371,7 +1384,7 @@
             }
             // Seçilen article'ları (yukarıdan aşağıya) yakala: atalar TAM yükseklikte (bağlam), en alttaki (eklenen
             // tweet) NORMAL (footer gizli, saat-kırpması). Hepsini xDikeyBirlestirN ile birleştir.
-            async function xYakalaCoklu(secilenler) {
+            async function xYakalaCoklu(secilenler, adaylar) {
                 async function _yakala(el, opts) {
                     el.scrollIntoView({ block: 'start', behavior: 'instant' });
                     await new Promise(r => setTimeout(r, 600));
@@ -1379,6 +1392,21 @@
                 }
                 if (!secilenler || !secilenler.length) return "";
                 if (secilenler.length === 1) return await _yakala(secilenler[0]);
+                // v4.39 TEK-GEÇİŞ: seçim BİTİŞİK (en alt=odak, aralıkta boşluk YOK) ise bir kerede yakala. Boşluklu
+                // (üstten atlanmış ata) ise parça-parça (bölgeye istenmeyen ata girmesin). Bayrak x_coklu_tekgecis.
+                if (xTekGecisAcik() && adaylar && adaylar.length) {
+                    var _ilk = adaylar.indexOf(secilenler[0]);
+                    var _bitisik = (_ilk >= 0 && secilenler.length === adaylar.length - _ilk);   // secilenler == adaylar.slice(_ilk)
+                    if (_bitisik) {
+                        try {
+                            var _ust = secilenler[0], _odak = secilenler[secilenler.length - 1];
+                            _ust.scrollIntoView({ block: 'start', behavior: 'instant' });
+                            await new Promise(r => setTimeout(r, 600));
+                            var _tek = await captureArticle(_odak, { rangeTop: _ust }) || "";
+                            if (_tek && _tek.length > 100) return _tek;
+                        } catch (e) { printLog("Tek-geçiş (çoklu) hata, parça-parça: " + ((e && e.message) || e)); }
+                    }
+                }
                 var imgs = [];
                 for (var i = 0; i < secilenler.length; i++) {
                     var sonMu = (i === secilenler.length - 1);   // en alt = eklenen tweet -> normal; üsttekiler tam-yükseklik
@@ -1750,7 +1778,9 @@
                     }
 
                     // E. Tweeti viewport tepesine hizala (spacer sayesinde bu işlem her zaman başarılı olur)
-                    element.scrollIntoView({ block: 'start', behavior: 'instant' });
+                    // v4.39 TEK-GEÇİŞ: opts.rangeTop varsa en ÜSTTEKİ seçili atayı tepeye al (bölge ondan başlar);
+                    // footer-crop yine element=ODAK üzerinden hesaplanır.
+                    (opts.rangeTop || element).scrollIntoView({ block: 'start', behavior: 'instant' });
                     
                     if (isInstagram) {
                         // Instagram KÜÇÜLTME (zoom-out) YAPMAZ: X gibi kaydır+birleştir yapılır.
@@ -1836,9 +1866,23 @@
                         bottom: r.top + articleHeight
                     };
 
-                    // Spacer'ı tweet yüksekliğine göre dinamik olarak büyüt
-                    // Böylece çok uzun tweet'lerde bile kaydırma hiç durmaz
-                    const requiredSpacer = Math.max(1800, Math.ceil(articleHeight) + 500);
+                    // v4.39 TEK-GEÇİŞ: bölge = [rangeTop.top .. odağın KIRPILMIŞ altı (saat satırı)]. Atalar arada
+                    // DOĞAL X thread haliyle girer -> tek scroll+stitch (parça-parça SS yok). Odağın footer'ı yukarıda
+                    // zaten gizlendi (element=odak). left/width ODAK'ın (aynı sütun). Çıktı: atalar tam + odak footer'sız.
+                    if (opts.rangeTop) {
+                        try {
+                            var _rtTop = opts.rangeTop.getBoundingClientRect().top;
+                            var _altY = r.top + articleHeight;   // odağın kırpılmış alt sınırı
+                            if (_altY > _rtTop + 5) {
+                                measuredRect.top = _rtTop;
+                                measuredRect.height = _altY - _rtTop;
+                                measuredRect.bottom = _altY;
+                            }
+                        } catch (e) {}
+                    }
+
+                    // Spacer'ı (bölge) yüksekliğine göre dinamik olarak büyüt — çok uzun aralıkta bile kaydırma durmaz.
+                    const requiredSpacer = Math.max(1800, Math.ceil(measuredRect.height) + 500);
                     spacer.style.height = requiredSpacer + 'px';
 
                     // F. Ekran görüntüsünü al ve kırp
@@ -3000,7 +3044,7 @@
                             if (!_secilenler) {   // İptal -> hiçbir şey ekleme
                                 _pano.iptal(); _sifirla(); return;
                             }
-                            ekranGoruntusu = await xYakalaCoklu(_secilenler);
+                            ekranGoruntusu = await xYakalaCoklu(_secilenler, _adaylar);
                         } else {
                             // v4.5: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de kat (ana+yorum=mükemmel).
                             ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
@@ -5032,8 +5076,9 @@
                         var _arr = Array.prototype.slice.call(_arts);
                         var _fi = _arr.indexOf(article);
                         if (_cokluAcik && _fi >= 2) {
-                            var _secilenler = await xCokluTweetSec(_arr.slice(0, _fi + 1), article);
-                            if (_secilenler) return await xYakalaCoklu(_secilenler) || "";
+                            var _adaylarT = _arr.slice(0, _fi + 1);
+                            var _secilenler = await xCokluTweetSec(_adaylarT, article);
+                            if (_secilenler) return await xYakalaCoklu(_secilenler, _adaylarT) || "";
                         }
                         return await xYakalaTweetVeYanit(article, _arts) || "";
                     }
