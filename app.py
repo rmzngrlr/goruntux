@@ -2775,7 +2775,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04r · mobil şerit-kilit + xcs-sheet';
+        var X_BUILD = '2026-11-04s · şerit select odak-fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2887,6 +2887,9 @@ HTML_TEMPLATE = """
             var opt = (t && t.closest) ? t.closest('.xcs-opt') : null;
             if (opt && _xcsList && _xcsList.contains(opt)) { e.preventDefault(); e.stopPropagation(); if (!opt.classList.contains('xcs-dis')) _xcsSec(parseInt(opt.getAttribute('data-i'), 10)); return; }
             var sel = (t && t.closest) ? t.closest('select') : null;
+            // [DİK-MOBİL] Şerit select'leri touchstart'ta (serit handler) ele alınır -> burada ATLA (çift-toggle olmasın).
+            var _de = document.documentElement;
+            if (sel && _de.classList.contains('x-mobile') && _de.classList.contains('x-dik') && t.closest('#editor-serit')) { return; }
             if (sel && !sel.disabled && !sel.multiple && !sel.hasAttribute('data-xcs-off')) { e.preventDefault(); if (_xcsSel === sel && _xcsList) { _xcsKapat(); } else { _xcsAc(sel); } return; }
             if (_xcsList && !_xcsList.contains(t)) _xcsKapat();
         }, true);
@@ -8960,7 +8963,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4e-mobil · 2026-11-04 serit-kilit+xcs-sheet";
+  XE.VERSION = "4f-mobil · 2026-11-04 serit-select-odak-fix";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9696,7 +9699,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
     if(!window.visualViewport){ m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 400); }); }
     var serit=document.getElementById('editor-serit');
-    if(serit){ ['mousedown','touchstart'].forEach(function(ev){ serit.addEventListener(ev, function(e){ if(!dikMobil()) return; var t=e.target; if(t && t.closest && t.closest('select,input,textarea,option,.xcs-list')) return; e.preventDefault(); }, {passive:false}); }); }
+    if(serit){ ['mousedown','touchstart'].forEach(function(ev){ serit.addEventListener(ev, function(e){
+      if(!dikMobil()) return;
+      var t=e.target; if(!t||!t.closest) return;
+      // [SELECT ODAK FİX] Font/Stil dropdown'ları: iOS'ta <select>'e dokunuş contenteditable'ı BLUR ediyor ->
+      // metin klavyesi kapanıyor -> x-ed-yaz da kalkıp şerit gizleniyordu (kullanıcı: "tıklıyorum hem şeridi
+      // hem klavyeyi kapatıyor"). Çözüm: select'i de preventDefault et (odak editable'da KALIR, klavye+şerit
+      // kalır) ve xcs listesini DOĞRUDAN burada aç (touchstart). Native select hiç açılmaz.
+      var selEl=t.closest('select');
+      if(selEl && !selEl.disabled && !selEl.multiple && !selEl.hasAttribute('data-xcs-off')){
+        e.preventDefault();   // preventDefault -> iOS focus-steal + sentetik mousedown/click iptal (odak editable'da kalır)
+        // xcs listesini aç (zaten içinde kapat+aç yapar -> çift-tetik zararsız, yalnız yeniden açar). Hem touchstart
+        // (gerçek cihaz; preventDefault sentetik mousedown'ı bastırır -> tek açılış) hem mousedown (pane/fare testi).
+        try{ window._xcsAc&&window._xcsAc(selEl); }catch(_){}
+        return;
+      }
+      // input/textarea: yazı odağı; renk seçici (input[type=color]) native açılır; .xcs-list/option: liste tıklaması (document handler).
+      if(t.closest('input,textarea,option,.xcs-list')) return;
+      e.preventDefault();   // toggle/buton: odağı koru (contenteditable blur olmasın)
+    }, {passive:false}); }); }
   }
 
   function stilCss(o, pre){
