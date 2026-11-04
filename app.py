@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04j · ig+fb-yazar-robust + platform-grupla';
+        var X_BUILD = '2026-11-04k · editor-refresh-debounce (titreme fix)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5750,20 +5750,33 @@ HTML_TEMPLATE = """
                 // "Yükleniyor" flaşı yok) -> yeni içerik editör ekranına da "tık" diye düşsün. Kullanıcı o an
                 // editörde bir alana YAZIYORSA bu tur atlanır (yazımı bozma; sayaç güncellenmez -> sonraki
                 // poll'da tekrar denenir). Bir XE.ac zaten çalışıyorsa (editörün kendi aksiyonu) atlanır.
+                // [TİTREME FİX] 85 içerik gibi TOPLU yükleme arka planda akarken HER poll tick'inde XE.ac({})
+                // çağırmak editörü/galeriyi SÜREKLİ yeniden çizip titretiyordu (gel-git). Debounce: büyüme
+                // DURUNCA (bu tick artış YOK) 1 kez çiz; büyüme uzun sürerse arada en çok ~5sn'de bir ilerleme
+                // çizimi. Bayrak x_ed_refresh_debounce (varsayılan açık; '0' -> eski "her artışta çiz").
                 try {
                     var _edM = document.getElementById('editorModal');
                     var _edAcik = !!(_edM && _edM.classList.contains('active') && window.XEditor && window.XEditor.ac);
                     var _simdikiSayi = (data.manuel_count || 0);
-                    if (_edAcik && _simdikiSayi > (window.__xSonHavuzSayi || 0) && !window.__xEdAcCalisiyor) {
+                    var _edDeb = true; try { _edDeb = (localStorage.getItem('x_ed_refresh_debounce') !== '0'); } catch (e) {}
+                    if (_edAcik && !window.__xEdAcCalisiyor) {
                         var _ae = document.activeElement;
                         var _yaziyor = !!(_ae && (_ae.isContentEditable || _ae.tagName === 'INPUT' || _ae.tagName === 'TEXTAREA') && _ae.closest && _ae.closest('#editorModal'));
-                        if (!_yaziyor) {
-                            Promise.resolve(window.XEditor.ac({})).catch(function () {});
-                            window.__xSonHavuzSayi = _simdikiSayi;   // yenilendi -> sayacı güncelle
+                        var _buyudu = _simdikiSayi > (window.__xSonHavuzSayi || 0);
+                        var _ciz = false;
+                        if (!_edDeb) {
+                            _ciz = _buyudu && !_yaziyor;   // eski davranış (her artışta çiz)
+                        } else if (_buyudu) {
+                            // büyüme sürüyor -> çizimi ERTELE (titreme yok). Max-defer: ~5sn'yi aşarsa arada 1 çiz.
+                            if (window.__xEdBekle == null) window.__xEdBekle = Date.now();
+                            if (!_yaziyor && (Date.now() - window.__xEdBekle) > 5000) { window.__xEdBekle = Date.now(); _ciz = true; }
+                        } else if (window.__xEdBekle != null && !_yaziyor) {
+                            window.__xEdBekle = null; _ciz = true;   // büyüme DURDU + bekleyen -> son hali 1 kez çiz
                         }
-                        // yazıyorsa sayacı GÜNCELLEME -> içerik kaybolmasın, sonraki poll'da yenilensin
+                        if (_ciz) { Promise.resolve(window.XEditor.ac({})).catch(function () {}); }
+                        if (!_yaziyor) { window.__xSonHavuzSayi = _simdikiSayi; }   // yazarken sayacı dondur (içerik kaybolmasın)
                     } else {
-                        window.__xSonHavuzSayi = _simdikiSayi;   // artış yok / editör kapalı -> senkronla
+                        window.__xSonHavuzSayi = _simdikiSayi;   // editör kapalı -> senkronla
                     }
                 } catch (e) {}
 
