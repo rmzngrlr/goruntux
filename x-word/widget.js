@@ -1406,18 +1406,15 @@
                         var ov = document.createElement('div');
                         ov.className = 'w-tsec-ov';
                         ov.style.cssText = 'position:absolute;inset:0;z-index:2147483000;cursor:pointer;box-sizing:border-box;border:3px solid transparent;border-radius:12px;transition:border-color .1s,background .1s;';
-                        var badge = document.createElement('div');
-                        badge.style.cssText = 'position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);';
+                        // Etiket: gönderinin SAĞ-ALTINDA, OPAK zemin (seçili tweetler zaten mavi çerçeyle belli -> tik yok).
                         var etiket = document.createElement('div');
-                        etiket.style.cssText = 'position:absolute;top:12px;left:50px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:rgba(0,0,0,.6);font-family:system-ui,-apple-system,sans-serif;';
-                        etiket.textContent = kilitli ? 'Eklenen tweet' : 'Üst tweet';
-                        ov.appendChild(badge); ov.appendChild(etiket);
+                        etiket.style.cssText = 'position:absolute;bottom:10px;right:10px;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:700;color:#fff;background:' + (kilitli ? '#1d9bf0' : '#15202b') + ';border:1px solid rgba(255,255,255,.18);box-shadow:0 2px 8px rgba(0,0,0,.5);font-family:system-ui,-apple-system,sans-serif;';
+                        etiket.textContent = kilitli ? 'Eklenen gönderi' : 'Üst gönderi';
+                        ov.appendChild(etiket);
                         function yansit() {
                             var on = secili.has(art);
-                            ov.style.borderColor = on ? '#1d9bf0' : 'rgba(29,155,240,.3)';
-                            ov.style.background = on ? 'rgba(29,155,240,.10)' : 'rgba(0,0,0,.02)';
-                            badge.style.background = on ? '#1d9bf0' : 'rgba(0,0,0,.45)';
-                            badge.textContent = on ? '✓' : '';
+                            ov.style.borderColor = on ? '#1d9bf0' : 'rgba(29,155,240,.35)';
+                            ov.style.background = on ? 'rgba(29,155,240,.10)' : 'transparent';
                         }
                         ov.addEventListener('click', function (e) {
                             e.preventDefault(); e.stopPropagation();
@@ -1429,19 +1426,21 @@
                         art.appendChild(ov);
                         temizle.push(function () { try { ov.remove(); art.style.position = oPos; } catch (_) {} });
                     });
+                    // Alt çubuk: panelin çoklu-rapor seçim çubuğu gibi -> ORTALI yüzen pill (bg/kenar/radius/gölge),
+                    // outline butonlar, aşağıdan slide-up. (Panel .x-secim-bar / .x-secim-btn ile aynı dil.)
                     var bar = document.createElement('div');
                     bar.id = 'w-tsec-bar';
-                    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483600;background:#15202b;color:#fff;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 -4px 22px rgba(0,0,0,.55);font-family:system-ui,-apple-system,sans-serif;';
-                    var bilgi = document.createElement('div'); bilgi.style.cssText = 'font-size:13px;line-height:1.35;flex:1 1 auto;min-width:0;';
-                    bilgi.innerHTML = '<b>Rapora eklenecek tweetleri seç.</b><br><span style="opacity:.82">Eklediğin tweet kilitli; üstteki tweetlere dokunup dizgiye kat.</span>';
-                    var btnWrap = document.createElement('div'); btnWrap.style.cssText = 'display:flex;gap:8px;flex:none;';
-                    var iptal = document.createElement('button'); iptal.textContent = 'İptal';
-                    iptal.style.cssText = 'padding:10px 14px;border-radius:9px;border:1px solid #38444d;background:transparent;color:#fff;font-weight:600;cursor:pointer;font-size:13px;';
-                    var ekle = document.createElement('button');
-                    ekle.style.cssText = 'padding:10px 16px;border-radius:9px;border:none;background:#1d9bf0;color:#fff;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap;';
+                    bar.style.cssText = 'position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(130%);z-index:2147483600;max-width:calc(100vw - 20px);width:max-content;background:#15202b;color:#e7e9ea;border:1px solid rgba(136,153,166,0.3);border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.45);display:flex;flex-direction:column;gap:10px;font-family:system-ui,-apple-system,sans-serif;transition:transform .24s cubic-bezier(.2,.8,.2,1);';
+                    var bilgi = document.createElement('div'); bilgi.style.cssText = 'font-size:13px;line-height:1.4;max-width:440px;';
+                    bilgi.innerHTML = '<b style="color:#fff">Rapora eklenecek gönderileri seç</b><br><span style="opacity:.78">Eklediğin gönderi kilitli. Diziye katmak istediğin üst gönderilere dokun.</span>';
+                    var btnWrap = document.createElement('div'); btnWrap.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
+                    var bstil = 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-weight:600;border-radius:9px;border:1px solid rgba(136,153,166,0.3);background:transparent;color:#e7e9ea;cursor:pointer;white-space:nowrap;';
+                    var iptal = document.createElement('button'); iptal.textContent = 'İptal'; iptal.style.cssText = bstil;
+                    var ekle = document.createElement('button'); ekle.style.cssText = bstil + 'border-color:#1d9bf0;color:#1d9bf0;font-weight:700;';
                     btnWrap.appendChild(iptal); btnWrap.appendChild(ekle);
                     bar.appendChild(bilgi); bar.appendChild(btnWrap);
                     document.body.appendChild(bar);
+                    requestAnimationFrame(function () { bar.style.transform = 'translateX(-50%) translateY(0)'; });   // slide-up
                     temizle.push(function () { try { bar.remove(); } catch (_) {} });
                     sayiGuncelle = function () { ekle.textContent = 'Seçilenleri Ekle (' + secili.size + ')'; };
                     sayiGuncelle();
