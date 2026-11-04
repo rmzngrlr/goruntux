@@ -2100,7 +2100,14 @@ HTML_TEMPLATE = """
         if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
-        if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; var inEd=a && a.closest && ((a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA')) || (a.closest('#editor-serit') && (a.tagName==='INPUT' || a.tagName==='SELECT' || a.tagName==='TEXTAREA'))); if(!inEd){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+        if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px');
+          // [ŞERİT KAPAT] KLAVYE durumuna göre (odak değil): klavye GERÇEKTEN kapalıysa (inset<80, ~350ms sabit) şerit
+          // kapanır -> kullanıcı "klavye kapanınca/input-dışı tıklayınca şerit kapansın". Alan-geçişinde inset kısa
+          // süre düşüp geri çıkar -> timer iptal (titremez). Font/stil xcs listesi AÇIK veya şerit renk/boyut input'u
+          // odaklıysa KAPATMA (etkileşim sürüyor). Klavye açılınca (else) timer iptal.
+          if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); }catch(e){} }, 350); }
+          else { clearTimeout(window.__edYazT); }
+        }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
@@ -2781,7 +2788,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05a · biçim-butonu-klavye-koru + boş-panel-scroll + PWA-üst-boşluk';
+        var X_BUILD = '2026-11-05b · select-native-picker-kapat + klavye-kapanınca-şerit-kapat';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8988,7 +8995,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4h-mobil · 2026-11-05 bicim-butonu-klavye-koru (_stilCanliYansit)";
+  XE.VERSION = "4i-mobil · 2026-11-05 select-pointer-events-none (2-menu fix)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9694,6 +9701,11 @@ html.x-mobile.x-dik #editorModal .ed-panel::-webkit-scrollbar{display:none;}
 html.x-mobile.x-dik #editorModal .ed-grp{flex:none;padding-right:10px;}
 html.x-mobile.x-dik #editorModal .ed-ctx{display:inline-flex;height:38px;font-size:13px;}
 html.x-mobile.x-dik #editorModal .ed-panel select,html.x-mobile.x-dik #editorModal .ed-panel input[type=number]{height:38px;font-size:14px;padding:6px 8px;}
+/* [2 MENÜ FİX] iOS'ta <select>'e dokununca NATIVE picker xcs listesinin YANINDA açılıp odağı çalıyordu (klavye
+   kapanır, "2 menü"). pointer-events:none -> native picker HİÇ açılmaz; dokunuş üstteki label'a geçer, handler
+   label üstünden select'i bulup xcs'i açar (odak editable'da kalır -> klavye KALIR). Değer xcs ile programatik set. */
+html.x-mobile.x-dik #editorModal .ed-panel select{pointer-events:none;}
+html.x-mobile.x-dik #editorModal .ed-panel label:has(select){cursor:pointer;}
 html.x-mobile.x-dik #editorModal .ed-panel input[type=color]{width:38px;height:38px;}
 html.x-mobile.x-dik #editorModal .ed-tgl,html.x-mobile.x-dik #editorModal .ed-hb{height:38px;min-width:38px;}
 html.x-mobile.x-dik #editorModal .ed-tgl-metinli{height:38px;}
@@ -9735,7 +9747,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // dokunma -> native scroll olur. <select> -> touchstart'ta xcs. Renk/Boyut INPUT native (focus ister ->
       // numeric/picker; şeridin gizlenmemesi Faz 0 vv handler editor-serit odağı korumasıyla). Stil uygulaması
       // dik-mobilde _stilCanliYansit (inline, _ciz YOK) -> odaklı düğüm ölmez -> klavye kalır.
-      function _selHedef(t){ var s=(t&&t.closest)?t.closest('select'):null; return (s && !s.disabled && !s.multiple && !s.hasAttribute('data-xcs-off'))?s:null; }
+      function _selHedef(t){ if(!t||!t.closest) return null; var s=t.closest('select'); if(!s){ var lbl=t.closest('label'); if(lbl) s=lbl.querySelector('select'); }   // pointer-events:none select -> dokunuş label'a düşer; select'i label içinden bul
+        return (s && !s.disabled && !s.multiple && !s.hasAttribute('data-xcs-off'))?s:null; }
       var _tx=0,_ty=0,_tmoved=false;
       serit.addEventListener('touchstart', function(e){
         if(!dikMobil()) return;
@@ -9764,6 +9777,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         if(t && t.closest && t.closest('input,textarea,option,.xcs-list')) return;
         e.preventDefault();   // mousedown preventDefault click'i İPTAL ETMEZ (native toggle/click çalışır), odağı korur
       });
+      // [SELECT ODAK FİX] <label>Font <select> yapısında label'a CLICK -> label içindeki select'e odak verir
+      // (pointer-events:none'ı aşan label-kontrol ilişkisi; mousedown preventDefault bunu durdurmaz) -> editable
+      // blur -> klavye kapanır. Select-label click'ini preventDefault et -> select ODAKLANMAZ, klavye KALIR.
+      serit.addEventListener('click', function(e){ if(!dikMobil()) return; if(_selHedef(e.target)) e.preventDefault(); });
     }
   }
 
