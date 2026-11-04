@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04h · pdf-metin-only-araptpayi';
+        var X_BUILD = '2026-11-04i · kayitli-rapor-indir-paylas';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3564,16 +3564,17 @@ HTML_TEMPLATE = """
 
         // ================= [PAYLAŞ] biçim seç -> indir =================
         // PDF seçilince doğrudan indirme; Word seçilince çıktı ayarları -> "İndir". WhatsApp kaldırıldı (şimdilik). Tamamen istemci; sunucu yok.
-        var _paylasKaynak = 'editor', _paylasBicim = 'word', _paylasMesgul = false;
+        var _paylasKaynak = 'editor', _paylasBicim = 'word', _paylasMesgul = false, _paylasSavedId = '';
         // [PAYLAŞ AŞAMALARI] 1: biçim | 2: Word çıktı ayarları (yalnız Word) | basari: ilerleme/indirildi ekranı.
         function _paylasGoster(id) {
             var a = ['paylas-asama1', 'paylas-asama2', 'paylas-basari'];
             for (var i = 0; i < a.length; i++) { var e = document.getElementById(a[i]); if (e) e.style.display = (a[i] === id) ? '' : 'none'; }
         }
         function _paylasSayacTemizle() { if (window.__paylasKapatI) { try { clearInterval(window.__paylasKapatI); } catch (e) {} window.__paylasKapatI = null; } }
-        function xPaylasAc(kaynak, btn) {
+        function xPaylasAc(kaynak, btn, savedId) {
             _paylasSayacTemizle(); window.__pdfProgCb = null;   // beklemedeki geri sayımı + ilerleme callback'ini temizle (yeniden açılış)
             _paylasKaynak = kaynak || 'editor'; _paylasBicim = 'word';
+            _paylasSavedId = (_paylasKaynak === 'saved') ? (savedId || '') : '';   // [KAYITLI RAPOR] kart indirme: hangi rapora ait
             var m = document.getElementById('paylasModal'); if (!m) return;
             _paylasGoster('paylas-asama1');
             var not = document.getElementById('paylas-not'); if (not) not.textContent = '';
@@ -3600,7 +3601,10 @@ HTML_TEMPLATE = """
                 if (left + W > vw - MRG) left = vw - MRG - W;
                 if (left < MRG) left = MRG;
                 m.style.left = Math.round(left) + 'px';
-                if (kaynak === 'havuz') {
+                // Yön: havuz = yukarı (aşağıdan). Kayıtlı rapor kartı = alan az ve üstte daha çok yer varsa yukarı, yoksa aşağı. Diğer (editör) = aşağı.
+                var acUp = (kaynak === 'havuz');
+                if (kaynak === 'saved') { var altBosluk = vh - r.bottom; acUp = (altBosluk < 320 && r.top > altBosluk); }
+                if (acUp) {
                     m.classList.add('pop-up');
                     m.style.bottom = Math.round(vh - r.top + GAP) + 'px'; m.style.top = 'auto';
                     if (mc) mc.style.maxHeight = Math.max(160, Math.round(r.top - GAP - MRG)) + 'px';
@@ -3615,8 +3619,9 @@ HTML_TEMPLATE = """
         function xPaylasBicim(b) {
             _paylasBicim = b;
             var not = document.getElementById('paylas-not'); if (not) not.textContent = '';
-            if (b === 'word') { xPaylasWordAyarKur(); xPaylasWordAyarDoldur(); _paylasGoster('paylas-asama2'); }
-            else { xPaylasIndir(); }   // PDF: ayar aşaması yok -> doğrudan indirme
+            // Kayıtlı rapor kaynağında Word = kayıtlı .docx blob'u (ayarlar kayıt anında gömülü) -> ayar aşaması atlanır, doğrudan indir.
+            if (b === 'word' && _paylasKaynak !== 'saved') { xPaylasWordAyarKur(); xPaylasWordAyarDoldur(); _paylasGoster('paylas-asama2'); }
+            else { xPaylasIndir(); }   // PDF (+ kayıtlı Word): ayar aşaması yok -> doğrudan indirme
         }
         window.xPaylasBicim = xPaylasBicim;
         function xPaylasGeri() {
@@ -3976,7 +3981,63 @@ HTML_TEMPLATE = """
         }
         window.xPdfUretPdfmake = xPdfUretPdfmake;
         // Seçilen biçimin blob'unu üret. Word: editör açıksa generateBlob, değilse xBuildReport. PDF: pdfmake (metin) | raster (eski).
+        // [KAYITLI RAPOR PDF] Kayıtlı raporu AÇMADAN (editör görünmeden) PDF üret: snapshot öğelerini
+        // GİZLİ ed-root'a render edip xPdfUretPdfmake'i çalıştır. Sunucu havuzuna / XLocalImages'a DOKUNMAZ
+        // (görseller rec.images'tan inline image_b64 olarak enjekte edilir). Canlı editör durumu (belge/overlay/
+        // manuel kümeler + poll bayrağı) saklanıp finally'de geri yüklenir -> aktif rapor bozulmaz. Fizibilite
+        // 3017'de doğrulandı (3 görsel -> 2 sayfa, modal gizli kaldı). bkz [[pdf-istemci-sayfalama]].
+        async function _savedPdfUret(id) {
+            var XE = window.XEditor;
+            if (!XE || !XE.buildBirimler || !XE._ciz) throw new Error('Editör motoru hazır değil.');
+            var rec = await window.XSavedReports.get(id);
+            var _dolu = rec && ((rec.items && rec.items.length) || (rec.manualClusters && rec.manualClusters.length));
+            if (!_dolu) throw new Error('Rapor boş — PDF üretilemez.');
+            var _savBelge = XE.belge, _savOv = window.__xEditorOverlay, _savMc = window.__xManualClusters, _savAc = window.__xEdAcCalisiyor;
+            try {
+                window.__xEdAcCalisiyor = true;   // poll canlı-yenilemesi gizli render'ı ezmesin
+                var nk = (window.XLocalImages && window.XLocalImages.normLink) ? window.XLocalImages.normLink : function (x) { return String(x || ''); };
+                var _ov = { byLink: {}, style: rec.editorStyle || null };
+                var imgs = rec.images || {};
+                var items = (rec.items || []).map(function (it) { return Object.assign({}, it); });   // kopya: orijinal snapshot'ı kirletme
+                for (var i = 0; i < items.length; i++) {
+                    var it = items[i]; var k = nk(it.link || '');
+                    if (imgs[k] && imgs[k].dataUrl) { var du = imgs[k].dataUrl; var ci = du.indexOf(','); it.image_b64 = (ci >= 0) ? du.slice(ci + 1) : du; it.image_mime = imgs[k].mime || 'image/jpeg'; }
+                    if (it.parcalar || it.h2_override != null || it.group_override != null || it.h1_override != null || it.h1_ov || it.h2_ov) {
+                        _ov.byLink[k] = { parcalar: it.parcalar || null, h2: (it.h2_override != null ? it.h2_override : null), grup: (it.group_override != null ? it.group_override : null), h1over: (it.h1_override != null ? it.h1_override : null), h1ov: (it.h1_ov || null), h2ov: (it.h2_ov || null) };
+                    }
+                }
+                window.__xEditorOverlay = _ov; window.__xManualClusters = (rec.manualClusters || []);
+                var stil = rec.editorStyle || XE.toStyleOpts();
+                var B = await XE.buildBirimler(items, stil);
+                XE.belge = { stil: stil, birimler: B };
+                XE._ciz();
+                // Gizli ed-root'taki görsellerin yüklenmesini bekle (data-URI -> genelde anında).
+                await new Promise(function (r) { setTimeout(r, 150); });
+                var root = document.querySelector('#editorModal .ed-root');
+                var ims = root ? root.querySelectorAll('img.ed-img') : [];
+                await Promise.all([].map.call(ims, function (im) { return im.complete ? Promise.resolve() : new Promise(function (r) { im.onload = im.onerror = r; }); }));
+                await new Promise(function (r) { requestAnimationFrame(function () { requestAnimationFrame(r); }); });
+                var out = await window.xPdfUretPdfmake();
+                var fn = (rec.filename || 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
+                return { blob: out.blob, filename: fn };
+            } finally {
+                window.__xEditorOverlay = _savOv; window.__xManualClusters = _savMc;
+                XE.belge = _savBelge || { stil: {}, birimler: [] };
+                try { XE._ciz(); } catch (e) {}   // gizli DOM'u canlı belgeyle tekrar eşle
+                window.__xEdAcCalisiyor = _savAc;
+            }
+        }
+        window._savedPdfUret = _savedPdfUret;   // test/hata ayıklama için dışa aç (zararsız)
         async function xPaylasBlobUret() {
+            // [KAYITLI RAPOR] kaynak 'saved' -> Word: kayıtlı .docx blob'u; PDF: snapshot'tan gizli render.
+            if (_paylasKaynak === 'saved' && _paylasSavedId) {
+                if (_paylasBicim === 'word') {
+                    var _rb = await window.XSavedReports.getBlob(_paylasSavedId);
+                    if (!_rb || !_rb.blob) throw new Error('Kayıtlı dosya bulunamadı.');
+                    return { blob: _rb.blob, filename: _rb.filename || 'GörüntüX.docx' };
+                }
+                return await _savedPdfUret(_paylasSavedId);
+            }
             var edAcik = !!(document.getElementById('editorModal') && document.getElementById('editorModal').classList.contains('active'));
             if (_paylasBicim === 'word') {
                 if (edAcik && window.XEditor && window.XLocalDocx) {
@@ -4004,7 +4065,7 @@ HTML_TEMPLATE = """
                 _paylasBasariGoster(r.filename);   // İndirildi rozeti + dosya + 5 sn geri sayım (sağ-alt toast YOK)
             } catch (e) {
                 window.__pdfProgCb = null;
-                _paylasGoster(_paylasBicim === 'word' ? 'paylas-asama2' : 'paylas-asama1');
+                _paylasGoster((_paylasBicim === 'word' && _paylasKaynak !== 'saved') ? 'paylas-asama2' : 'paylas-asama1');
                 var not = document.getElementById('paylas-not'); if (not) not.textContent = 'Hata: ' + (e && e.message || e);
             }
             finally { _paylasMesgul = false; }
@@ -4627,7 +4688,7 @@ HTML_TEMPLATE = """
                         (aktif ? '<span class="x-gal-rozet">● Açık</span>' : '') +
                         '<div class="x-gal-pageinner">' + xGalOnizlemeHtml(previews[idx]) + '</div>' +
                         '<div class="x-gal-ara">' +
-                            '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">' + _SVG_INDIR + '</button>' +
+                            '<button class="x-gal-ikon js-paylas-trig" data-rid="' + m.id + '" onclick="xGalIndir(event,this)" title="İndir">' + _SVG_INDIR + '</button>' +
                             '<button class="x-gal-ikon" data-rid="' + m.id + '" onclick="xGalSil(event,this)" title="Sil">' + _SVG_SIL + '</button>' +
                         '</div>' +
                     '</div>' +
@@ -4643,7 +4704,7 @@ HTML_TEMPLATE = """
         }
         // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
         function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid, { editorBosAc: true }); } catch (e) {} }
-        function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { downloadSavedReport(el.dataset.rid); } catch (e) {} }
+        function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { xPaylasAc('saved', el, el.dataset.rid); } catch (e) {} }   // [KAYITLI RAPOR] genel indirme sistemi: Paylaş popover'ı karta iliştir (Word=blob / PDF=gizli render); doğrudan indirme yerine
         function xGalSil(ev, el) { if (ev) ev.stopPropagation(); try { deleteSavedReport(el.dataset.rid); } catch (e) {} }
         // [KART ADI INLINE] Çift tıkla -> POPUP YOK, adı yerinde düzenle (contenteditable). Enter ya da başka yere
         // tıklama (blur) = kaydet; Escape = iptal. Boş/aynı -> eski ada döner.
