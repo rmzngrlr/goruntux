@@ -1378,6 +1378,42 @@
                                 });
                             }
                         } catch (e) {}
+                        // [BEĞENENLER GİZLE] "busgur ve 78 diğer kişi beğendi" satırı -> beğenen KİŞİLER raporda
+                        // görünmesin (kullanıcı isteği 2026-11-04). Çapa: "/liked_by/" linki (IG'de "N diğer kişi"/
+                        // "others" HEP oraya gider) -> satır kabına çık (yükseklik<70px) -> display:none (temiz, boşluk yok).
+                        // Yedek (liked_by yoksa, tek-beğenen "X beğendi"): metni "...beğendi/liked by/others" ile biten,
+                        // profil linki içeren kısa satır. Beğenme SAYISI isimsizse (liked_by yok + eşleşme yok) DOKUNULMAZ.
+                        try {
+                            const igpL = igFindPost();
+                            if (igpL) {
+                                let likeRow = null;
+                                const lb = igpL.querySelector('a[href*="/liked_by/"]');
+                                if (lb) {
+                                    let n = lb;
+                                    for (let i = 0; i < 6 && n && n !== igpL; i++) {
+                                        const h = n.getBoundingClientRect().height;
+                                        if (h > 0 && h < 70) likeRow = n; else if (h >= 70) break;
+                                        n = n.parentElement;
+                                    }
+                                    likeRow = likeRow || lb;
+                                }
+                                if (!likeRow) {
+                                    const cands = igpL.querySelectorAll('span, div');
+                                    for (const c of cands) {
+                                        const t = (c.textContent || '').replace(/\s+/g, ' ').trim();
+                                        if (t.length > 0 && t.length < 80 && /(beğendi|beğenenler|liked by|others)\s*$/i.test(t)) {
+                                            const r = c.getBoundingClientRect();
+                                            if (r.height > 0 && r.height < 70 && c.querySelector('a[href^="/"]')) { likeRow = c; break; }
+                                        }
+                                    }
+                                }
+                                if (likeRow) {
+                                    igMsgHidden.push({ el: likeRow, d: likeRow.style.display });
+                                    likeRow.style.setProperty('display', 'none', 'important');
+                                    printLog("[Instagram] Beğenenler satırı gizlendi.");
+                                }
+                            }
+                        } catch (e) {}
                     }
                     // Tüm img'lerin yüklenmesini bekle (max 3s)
                     const imgs = Array.from(element.querySelectorAll('img'));
@@ -1683,9 +1719,12 @@
                     spacer.remove();
                     disableSmoothScrollStyles.remove();
 
-                    // Faz IG-1: gizlenen Instagram "Mesajlar" balonunu geri aç.
+                    // Faz IG-1: gizlenen Instagram "Mesajlar" balonu / beğenenler satırı geri aç.
                     for (const h of igMsgHidden) {
-                        try { if (h.v) h.el.style.setProperty('visibility', h.v); else h.el.style.removeProperty('visibility'); } catch (e) {}
+                        try {
+                            if (h.d !== undefined) { if (h.d) h.el.style.setProperty('display', h.d); else h.el.style.removeProperty('display'); }   // [BEĞENENLER] display ile gizlendi
+                            else { if (h.v) h.el.style.setProperty('visibility', h.v); else h.el.style.removeProperty('visibility'); }
+                        } catch (e) {}
                     }
 
                     for (const item of stickyElements) {
