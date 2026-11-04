@@ -1340,6 +1340,118 @@
                 return focusedImg || parentImg;
             }
 
+            // === ÇOKLU TWEET SEÇ + YAKALA (v4.33, kullanıcı isteği) ===
+            // Derin zincir (A←B←C) / flood: eklenen tweetin ≥2 atası varsa, kullanıcıya atalar + eklenen tweet
+            // ONAY KUTULARIYLA sunulur; seçilenler yukarıdan aşağıya dikey birleştirilir. 1 ata (ana+yorum) ve
+            // tekil tweet -> ESKİ otomatik davranış (xYakalaTweetVeYanit) dokunulmaz. Bayrak x_coklu_sec='0' -> kapalı.
+            // N görseli dikey birleştir (beyaz zemin, en geniş genişlik). xDikeyBirlestir'in N-genellemesi.
+            function xDikeyBirlestirN(dataUrls) {
+                return new Promise(function (resolve, reject) {
+                    if (!dataUrls || !dataUrls.length) { reject(new Error('resim yok')); return; }
+                    if (dataUrls.length === 1) { resolve(dataUrls[0]); return; }
+                    var imgs = dataUrls.map(function () { return new Image(); });
+                    var yuklenen = 0, hata = false;
+                    function tamam() {
+                        try {
+                            var w = 0, h = 0;
+                            imgs.forEach(function (im) { w = Math.max(w, im.naturalWidth || im.width); h += (im.naturalHeight || im.height); });
+                            var c = document.createElement('canvas'); c.width = w; c.height = h;
+                            var ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+                            var y = 0;
+                            imgs.forEach(function (im) { ctx.drawImage(im, 0, y); y += (im.naturalHeight || im.height); });
+                            resolve(c.toDataURL('image/png'));
+                        } catch (e) { reject(e); }
+                    }
+                    imgs.forEach(function (im, i) {
+                        im.onload = function () { if (++yuklenen === imgs.length && !hata) tamam(); };
+                        im.onerror = function () { if (!hata) { hata = true; reject(new Error('resim yuklenemedi')); } };
+                        im.src = dataUrls[i];
+                    });
+                });
+            }
+            // Seçilen article'ları (yukarıdan aşağıya) yakala: atalar TAM yükseklikte (bağlam), en alttaki (eklenen
+            // tweet) NORMAL (footer gizli, saat-kırpması). Hepsini xDikeyBirlestirN ile birleştir.
+            async function xYakalaCoklu(secilenler) {
+                async function _yakala(el, opts) {
+                    el.scrollIntoView({ block: 'start', behavior: 'instant' });
+                    await new Promise(r => setTimeout(r, 600));
+                    return await captureArticle(el, opts) || "";
+                }
+                if (!secilenler || !secilenler.length) return "";
+                if (secilenler.length === 1) return await _yakala(secilenler[0]);
+                var imgs = [];
+                for (var i = 0; i < secilenler.length; i++) {
+                    var sonMu = (i === secilenler.length - 1);   // en alt = eklenen tweet -> normal; üsttekiler tam-yükseklik
+                    var img = await _yakala(secilenler[i], sonMu ? {} : { tamYukseklik: true });
+                    if (!img || img.length < 100) return "";   // bir parça alınamadı -> başarısız (çağıran uyarır)
+                    imgs.push(img);
+                }
+                try { return await xDikeyBirlestirN(imgs); }
+                catch (e) { printLog("Çoklu birleştirme hatası: " + ((e && e.message) || e)); return imgs[imgs.length - 1] || ""; }
+            }
+            // Seçim ekranı: her aday article'a onay-kutusu overlay + altta onay çubuğu. Promise -> seçilen article'lar
+            // (adaylar sırasında) veya null (iptal). focusedArticle KİLİTLİ (hep seçili). Varsayılan: focused + direkt üstü.
+            function xCokluTweetSec(adaylar, focusedArticle) {
+                return new Promise(function (resolve) {
+                    var temizle = [];
+                    var secili = new Set();
+                    secili.add(focusedArticle);
+                    var fIdx = adaylar.indexOf(focusedArticle);
+                    if (fIdx > 0) secili.add(adaylar[fIdx - 1]);   // direkt üstü de varsayılan
+                    var sayiGuncelle = function () {};
+                    adaylar.forEach(function (art) {
+                        var oPos = art.style.position;
+                        if (getComputedStyle(art).position === 'static') art.style.position = 'relative';
+                        var kilitli = (art === focusedArticle);
+                        var ov = document.createElement('div');
+                        ov.className = 'w-tsec-ov';
+                        ov.style.cssText = 'position:absolute;inset:0;z-index:2147483000;cursor:pointer;box-sizing:border-box;border:3px solid transparent;border-radius:12px;transition:border-color .1s,background .1s;';
+                        var badge = document.createElement('div');
+                        badge.style.cssText = 'position:absolute;top:10px;left:10px;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.45);';
+                        var etiket = document.createElement('div');
+                        etiket.style.cssText = 'position:absolute;top:12px;left:50px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;color:#fff;background:rgba(0,0,0,.6);font-family:system-ui,-apple-system,sans-serif;';
+                        etiket.textContent = kilitli ? 'Eklenen tweet' : 'Üst tweet';
+                        ov.appendChild(badge); ov.appendChild(etiket);
+                        function yansit() {
+                            var on = secili.has(art);
+                            ov.style.borderColor = on ? '#1d9bf0' : 'rgba(29,155,240,.3)';
+                            ov.style.background = on ? 'rgba(29,155,240,.10)' : 'rgba(0,0,0,.02)';
+                            badge.style.background = on ? '#1d9bf0' : 'rgba(0,0,0,.45)';
+                            badge.textContent = on ? '✓' : '';
+                        }
+                        ov.addEventListener('click', function (e) {
+                            e.preventDefault(); e.stopPropagation();
+                            if (kilitli) return;
+                            if (secili.has(art)) secili.delete(art); else secili.add(art);
+                            yansit(); sayiGuncelle();
+                        }, true);
+                        yansit();
+                        art.appendChild(ov);
+                        temizle.push(function () { try { ov.remove(); art.style.position = oPos; } catch (_) {} });
+                    });
+                    var bar = document.createElement('div');
+                    bar.id = 'w-tsec-bar';
+                    bar.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:2147483600;background:#15202b;color:#fff;padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 -4px 22px rgba(0,0,0,.55);font-family:system-ui,-apple-system,sans-serif;';
+                    var bilgi = document.createElement('div'); bilgi.style.cssText = 'font-size:13px;line-height:1.35;flex:1 1 auto;min-width:0;';
+                    bilgi.innerHTML = '<b>Rapora eklenecek tweetleri seç.</b><br><span style="opacity:.82">Eklediğin tweet kilitli; üstteki tweetlere dokunup dizgiye kat.</span>';
+                    var btnWrap = document.createElement('div'); btnWrap.style.cssText = 'display:flex;gap:8px;flex:none;';
+                    var iptal = document.createElement('button'); iptal.textContent = 'İptal';
+                    iptal.style.cssText = 'padding:10px 14px;border-radius:9px;border:1px solid #38444d;background:transparent;color:#fff;font-weight:600;cursor:pointer;font-size:13px;';
+                    var ekle = document.createElement('button');
+                    ekle.style.cssText = 'padding:10px 16px;border-radius:9px;border:none;background:#1d9bf0;color:#fff;font-weight:800;cursor:pointer;font-size:13px;white-space:nowrap;';
+                    btnWrap.appendChild(iptal); btnWrap.appendChild(ekle);
+                    bar.appendChild(bilgi); bar.appendChild(btnWrap);
+                    document.body.appendChild(bar);
+                    temizle.push(function () { try { bar.remove(); } catch (_) {} });
+                    sayiGuncelle = function () { ekle.textContent = 'Seçilenleri Ekle (' + secili.size + ')'; };
+                    sayiGuncelle();
+                    function bitir(sonuc) { temizle.forEach(function (f) { f(); }); resolve(sonuc); }
+                    ekle.addEventListener('click', function () { var s = adaylar.filter(function (a) { return secili.has(a); }); bitir(s.length ? s : null); });
+                    iptal.addEventListener('click', function () { bitir(null); });
+                    try { adaylar[0].scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+                });
+            }
+
             // Tweet elementini yakala (Yerel captureVisibleTab, Scroll Spacer ve Scroll-and-Stitch entegrasyonuyla)
             // 1) Sayfadaki tüm resimlerin yüklenmesini bekle
             // 2) Tweetin tarih/saat satırından sonrasını (beğeni/rt sayıları, butonlar) gizle
@@ -2860,10 +2972,23 @@
                             }
                         } catch (e) {}
 
-                        // v4.5: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de kat.
-                        // Parent TAM yükseklikte + footer-gizlemesiz yakalanır (tamYukseklik) -> v4.3'teki
-                        // "parent'ın sadece başlığı" hatası düzeltildi. Link/başlık YANIT tweetine ait.
-                        ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
+                        // v4.33: eklenen tweetin ≥2 ATASI varsa (derin zincir A←B←C / flood) -> KULLANICI SEÇER
+                        // (atalar + eklenen tweet onay kutularıyla sunulur, seçilenler dikey birleştirilir). 1 ata
+                        // (ana+yorum) veya tekil -> ESKİ otomatik (xYakalaTweetVeYanit) dokunulmaz. Bayrak x_coklu_sec='0' -> kapalı.
+                        var _cokluAcik = true; try { if (localStorage.getItem('x_coklu_sec') === '0') _cokluAcik = false; } catch (e) {}
+                        var _arr = Array.prototype.slice.call(articles || []);
+                        var _fi = _arr.indexOf(article);
+                        if (_cokluAcik && _fi >= 2) {
+                            var _adaylar = _arr.slice(0, _fi + 1);   // atalar (0..fi-1) + eklenen tweet (fi), yukarıdan aşağıya
+                            var _secilenler = await xCokluTweetSec(_adaylar, article);
+                            if (!_secilenler) {   // İptal -> hiçbir şey ekleme
+                                _pano.iptal(); _sifirla(); return;
+                            }
+                            ekranGoruntusu = await xYakalaCoklu(_secilenler);
+                        } else {
+                            // v4.5: yanıt/yorum tweeti ise DOĞRUDAN yanıt verilen (parent) tweeti de kat (ana+yorum=mükemmel).
+                            ekranGoruntusu = await xYakalaTweetVeYanit(article, articles);
+                        }
                     }
 
                     if (!ekranGoruntusu || ekranGoruntusu.length < 100) {
