@@ -1074,6 +1074,44 @@
                 });
             }
 
+            // [BEYAZ KENAR KIRP 2026-11-04] Yakalanan görselin SAĞ+SOL kenarındaki ~beyaz (içeriksiz) sütunları kırpar.
+            // IG profilden açılan modalda carousel medya+yorum bloğu geniş kapta ORTALANIP yanlara beyaz bırakıyordu;
+            // viewport'a göre değişken + bazen tam-genişlik şeffaf sarmalayıcı DOM-tabanlı kırpmayı atlatıyordu ->
+            // PİKSEL tabanlı her durumda çalışır. Bir sütun "beyaz" = örneklenen satırların HEPSİ ~beyaz (RGB>=TH).
+            // Yorum paneli metin/ikon içerir -> beyaz değil, KORUNUR. Sol cap küçük (foto; cropLeft zaten foto soluna
+            // hizalı), sağ cap büyük (asıl beyaz orada). Kırpacak kenar beyazı yoksa (standalone) ORİJİNAL döner.
+            function igTrimBeyazKenar(dataUrl) {
+                return new Promise(function (resolve) {
+                    try {
+                        var img = new Image();
+                        img.onload = function () {
+                            try {
+                                var w = img.naturalWidth, h = img.naturalHeight;
+                                if (!w || !h || w < 60) { resolve(dataUrl); return; }
+                                var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+                                var cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+                                var d = cx.getImageData(0, 0, w, h).data;
+                                var TH = 248, STEP = 3;
+                                function colBeyaz(x) {
+                                    for (var y = 0; y < h; y += STEP) { var i = (y * w + x) * 4; if (d[i] < TH || d[i + 1] < TH || d[i + 2] < TH) return false; }
+                                    return true;
+                                }
+                                var solCap = Math.floor(w * 0.15), sagCap = Math.floor(w * 0.45);
+                                var left = 0; while (left < solCap && colBeyaz(left)) left++;
+                                var right = w - 1; while ((w - 1 - right) < sagCap && right > left + 60 && colBeyaz(right)) right--;
+                                if (left <= 1 && right >= w - 2) { resolve(dataUrl); return; }   // kenar beyazı yok -> dokunma
+                                var nw = right - left + 1;
+                                var cv2 = document.createElement('canvas'); cv2.width = nw; cv2.height = h;
+                                cv2.getContext('2d').drawImage(cv, left, 0, nw, h, 0, 0, nw, h);
+                                resolve(cv2.toDataURL('image/png'));
+                            } catch (e) { resolve(dataUrl); }
+                        };
+                        img.onerror = function () { resolve(dataUrl); };
+                        img.src = dataUrl;
+                    } catch (e) { resolve(dataUrl); }
+                });
+            }
+
             // Faz IG-1: Instagram gonderi kartini (media iceren article) guvenilir sec.
             // 'main article' bazen yanlis/tam-genislik element donduruyordu; medyayi iceren article'i tercih et.
             function igFindPost() {
@@ -1537,32 +1575,20 @@
                             await new Promise(r => setTimeout(r, 250));
                             const pRect0 = post.getBoundingClientRect();
                             const startY = (window.scrollY || document.documentElement.scrollTop || 0) + pRect0.top;
-                            // [BEYAZ KENAR FİX 2026-11-04] Profilden açılan MODALDA carousel medya+yorum bloğu geniş
-                            // article içinde ORTALANIP yanlara SİMETRİK beyaz bırakıyor (geniş viewport'ta ~123px/kenar);
-                            // raw article rect'i kırpınca bu beyaz kadraja giriyordu. Link/standalone'da igFindPost dar
-                            // bir DIV olduğundan sorun yoktu (kullanıcı: "link sorunsuz, profilden modal sorunlu").
-                            // Fix: gerçek içerik sınırlarına daralt -> foto SOL kenarı ... viewport içi EN SAĞ görünür
-                            // içerik (yorum sütunu). Medya yoksa eski (article) davranışa düşer. 1920'de pane'de doğrulandı.
-                            let _tL = pRect0.left, _tR = pRect0.left + pRect0.width;
+                            // [BEYAZ KENAR FİX] Profilden açılan MODALDA carousel medya+yorum bloğu geniş article içinde
+                            // ORTALANIP yanlara beyaz bırakıyor (viewport'a göre değişken; link/standalone'da yok).
+                            // İKİ KATMAN: (1) cropLeft = foto SOL kenarı -> sol article margin'ini GÜVENLİ kırpar (DOM;
+                            // fotoyu yemez), crop fotonun solundan article sağına; (2) yakalama SONRASI PİKSEL-tabanlı
+                            // beyaz-kenar kırpma (igTrimBeyazKenar) sağdaki+kalan beyazı DOM'dan BAĞIMSIZ temizler ->
+                            // tam-genişlik şeffaf sarmalayıcıların DOM-kırpmayı atlatması sorunu biter.
+                            let _tL = pRect0.left;
                             try {
                                 let _mEl = null, _mB = 0;
                                 post.querySelectorAll('video, img').forEach(m => { const r = m.getBoundingClientRect(); const a = r.width * r.height; if (a > _mB && r.width > 200 && r.height > 200) { _mB = a; _mEl = m; } });
-                                if (_mEl) {
-                                    const _mr = _mEl.getBoundingClientRect();
-                                    _tL = _mr.left; _tR = _mr.right;
-                                    post.querySelectorAll('*').forEach(e => {
-                                        const r = e.getBoundingClientRect();
-                                        if (r.width < 8 || r.height < 8) return;
-                                        const cs = getComputedStyle(e);
-                                        if (cs.visibility === 'hidden' || cs.display === 'none') return;
-                                        if (r.left < _mr.left - 2) return;      // medyanın SOLUNDAKİ (beyaz kenar / nav oku) atla
-                                        if (r.right > vW + 1) return;           // viewport DIŞINA taşanı atla
-                                        if (r.right > _tR) _tR = r.right;       // en sağ görünür içerik (yorum sütunu)
-                                    });
-                                }
+                                if (_mEl) { _tL = _mEl.getBoundingClientRect().left; }
                             } catch (e) {}
                             const cropLeft = Math.max(0, Math.round(_tL));
-                            const cropWidth = Math.round(Math.min(vW - cropLeft, Math.max(40, _tR - _tL)));
+                            const cropWidth = Math.round(Math.min(vW - cropLeft, Math.max(40, (pRect0.left + pRect0.width) - _tL)));
                             const fullH = Math.round(pRect0.height);
                             // Kaydırmanın article SONUNA (açıklamaya) ulaşabilmesi için bol spacer.
                             spacer.style.height = (Math.ceil(fullH) + vH * 2 + 400) + 'px';
@@ -1585,7 +1611,8 @@
                             // TEKDUZE: butun platformlar "Yakalama: N parça (WxH)" kalibi.
                             printLog(`Yakalama: ${segs.length} parça (${Math.round(cropWidth)}x${fullH}), yol=no-zoom`);
                             if (segs.length > 0) {
-                                const igRaw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
+                                let igRaw = (segs.length === 1) ? segs[0] : await igVerticalStitch(segs);
+                                igRaw = await igTrimBeyazKenar(igRaw);   // [BEYAZ KENAR] piksel-tabanlı kenar beyaz kırpma (modal sağ/sol beyazı)
                                 return await compressScreenshot(igRaw);
                             }
                             printLog("Yakalama BAŞARISIZ: parça alınamadı, genel yola dönülüyor.");
