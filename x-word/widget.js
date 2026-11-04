@@ -1453,9 +1453,18 @@
                     var _acilisPath = location.pathname;
                     var _urlTimer = setInterval(function () { if (location.pathname !== _acilisPath) bitir(null); }, 300);
                     temizle.push(function () { clearInterval(_urlTimer); });
-                    // [SCROLL] En üstteki ataya kaydırma ÇOK yukarı gidiyordu (kullanıcı); eklenen (odak) gönderiye
-                    // MİNİMAL kaydır (block:'nearest' -> zaten görünürse hiç kaydırmaz) -> açılış ekranı yerinde kalır.
-                    try { focusedArticle.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
+                    // [SCROLL] Varsayılan seçili ÇİFT (eklenen gönderi C + direkt üstü B) çubuğun üstündeki görünür
+                    // alanın MERKEZİNE gelsin (kullanıcı: "A-B-C'de scroll B-C merkezde olsun"). En üstteki ataya
+                    // kaydırmak ÇOK yukarı gidiyordu.
+                    try {
+                        var _dUst = (fIdx > 0) ? adaylar[fIdx - 1] : focusedArticle;   // B (direkt üst)
+                        var _ciftUst = _dUst.getBoundingClientRect().top;
+                        var _ciftAlt = focusedArticle.getBoundingClientRect().bottom;
+                        var _barH = bar.offsetHeight || 92;   // transform offsetHeight'ı etkilemez
+                        var _gorunurAlt = window.innerHeight - _barH - 28;   // çubuğun üstündeki görünür alanın altı
+                        var _delta = ((_ciftUst + _ciftAlt) / 2) - (_gorunurAlt / 2);   // B-C merkezini görünür alan merkezine taşı
+                        window.scrollBy({ top: Math.round(_delta), behavior: 'smooth' });
+                    } catch (_) {}
                 });
             }
 
