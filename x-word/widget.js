@@ -1453,7 +1453,9 @@
                     var _acilisPath = location.pathname;
                     var _urlTimer = setInterval(function () { if (location.pathname !== _acilisPath) bitir(null); }, 300);
                     temizle.push(function () { clearInterval(_urlTimer); });
-                    try { adaylar[0].scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
+                    // [SCROLL] En üstteki ataya kaydırma ÇOK yukarı gidiyordu (kullanıcı); eklenen (odak) gönderiye
+                    // MİNİMAL kaydır (block:'nearest' -> zaten görünürse hiç kaydırmaz) -> açılış ekranı yerinde kalır.
+                    try { focusedArticle.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (_) {}
                 });
             }
 
