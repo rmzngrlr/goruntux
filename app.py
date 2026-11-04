@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04d · word-link-ustte-paketleme-fix';
+        var X_BUILD = '2026-11-04e · word-link-ustte-bosluk-dagilimi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -7608,9 +7608,10 @@ LOCAL_DOCX_JS = r'''
       // yüksekliği yok -> 2-görsel/sayfa bozulmaz). Link-altta değişmez (orada çizgi zaten linkte).
       var _kn=(keepN===false)?'':'<w:keepNext/>';
       var _bd=bord?'<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="auto"/></w:pBdr>':'';
-      // bordered görsel alt-boşluğu 240 -> birimPay'in varsaydığı toplamla (görsel120+link360=480;
-      // burada görsel240+link240=480) BİREBİR eşleşir -> güvenlik payı link-altta ile aynı, görsel boyutu değişmez.
-      var _aft=bord?240:120;
+      // bordered görsel alt-boşluğu 360 = link-altta'nın bordered-link'i ile AYNI -> grup-sonu (son eleman)
+      // boşluğu eşit, sayfa-sonunda çöpe giden pay eşit. [SAYFALAMA: son elemanın af'ı sayfa sonunda sayılmaz;
+      // link-altta son=L(af360), link-üstte son=IMG(af360) -> eşit; iç boşluklar da 120/120 (bkz. link af=120).]
+      var _aft=bord?360:120;
       return '<w:p><w:pPr>'+_kn+_bd+_gorselJc(align)+'<w:spacing w:after="'+_aft+'"/></w:pPr><w:r><w:drawing>'
         + '<wp:inline distT="0" distB="0" distL="0" distR="0">'
         + '<wp:extent cx="'+cx+'" cy="'+cy+'"/>'
@@ -8073,7 +8074,7 @@ LOCAL_DOCX_JS = r'''
             if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){ var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord)); if(_imgBord) _cizgiKondu=true; } }
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh, _KN_FIX ? (_pi!==_lastEmit) : true)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _pi!==_asilL)?'':u.link);
-              if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:240, _bord, _KN_FIX ? (_pi!==_lastEmit) : false)); if(_bord) _cizgiKondu=true; } }
+              if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:120, _bord, _KN_FIX ? (_pi!==_lastEmit) : false)); if(_bord) _cizgiKondu=true; } }   // [SAYFALAMA] son değilse (link üstte) link alt-boşluğu 120 = link-altta'daki ortadaki görselin af'ı -> iç boşluk deseni eşit
           }
           if(u.cizgi && !_cizgiKondu) body.push(grupSonuXml());   // link son değilse: ayrı ayraç (parça sırası serbest)
         } else {
