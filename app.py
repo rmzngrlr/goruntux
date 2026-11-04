@@ -1857,6 +1857,12 @@ HTML_TEMPLATE = """
         .xcs-list--ed { background: #ffffff; color: #15202b; border-color: #d0d7de; }
         .xcs-list--ed .xcs-opt { color: #15202b; }
         .xcs-list--ed .xcs-opt.xcs-hl, .xcs-list--ed .xcs-opt:hover { background: #1d9bf0; color: #fff; }
+        /* [DİK-MOBİL] XCS dropdown = ALTTAN açılan tam-genişlik sayfa (klavyenin üstünde, hep görünür). Masaüstü
+           "butona-iliştir" konumu dik-mobilde klavyenin ALTINDA kalıyordu -> kullanıcı "yukarı doğru açılsın" dedi.
+           Şeridin (z-4000) ÜSTÜNE gelir (z-4200), seçim yapınca kapanır. Renk/tema .xcs-list / .xcs-list--ed'den gelir. */
+        html.x-mobile.x-dik .xcs-list.xcs-sheet { box-sizing: border-box; position: fixed; left: 0; right: 0; top: auto; bottom: var(--kb-inset, 0px); width: 100%; min-width: 0; max-width: none; max-height: 46vh; border-radius: 16px 16px 0 0; border-bottom: none; z-index: 4200; padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 34px rgba(16,24,40,0.34); animation: paylasSheetUp .2s cubic-bezier(.2,.8,.3,1); }
+        html.x-mobile.x-dik .xcs-list.xcs-sheet .xcs-opt { padding: 13px 14px 13px 32px; font-size: 15px; line-height: 1.3; }
+        html.x-mobile.x-dik .xcs-list.xcs-sheet .xcs-opt.xcs-sel::before { left: 11px; font-size: 13px; }
 
         .modal-header {
             padding: 20px 24px;
@@ -2088,7 +2094,7 @@ HTML_TEMPLATE = """
         if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
-        if(vv){ var kb=function(){ try{ var inset=Math.max(0, Math.round((window.innerHeight||0) - vv.height - vv.offsetTop)); de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; if(!(a && a.closest && a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA'))){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+        if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; if(!(a && a.closest && a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA'))){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
@@ -2769,7 +2775,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04q · PWA + no-zoom';
+        var X_BUILD = '2026-11-04r · mobil şerit-kilit + xcs-sheet';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2854,6 +2860,15 @@ HTML_TEMPLATE = """
                 d.setAttribute('data-i', String(i)); d.textContent = o.text; list.appendChild(d);
             }
             document.body.appendChild(list);
+            // [DİK-MOBİL] Dropdown = ALTTAN açılan tam-genişlik sayfa (yukarı doğru, klavye üstünde, hep görünür).
+            // Masaüstündeki butona-iliştir konumlama klavyenin altında kalıyordu (kullanıcı: "yukarı açılsın").
+            var _dem = document.documentElement;
+            if (_dem.classList.contains('x-mobile') && _dem.classList.contains('x-dik')) {
+                list.classList.add('xcs-sheet');
+                _xcsList = list; _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
+                try { var _s = list.querySelector('.xcs-sel') || list.querySelector('.xcs-opt'); if (_s) _s.scrollIntoView({ block: 'center' }); } catch (e) {}
+                return;
+            }
             var r = sel.getBoundingClientRect();
             var vh = window.innerHeight || document.documentElement.clientHeight;
             var vw = window.innerWidth || document.documentElement.clientWidth;
@@ -8945,7 +8960,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4d-suruk · 2026-11-04 linkust-scroll-fix";
+  XE.VERSION = "4e-mobil · 2026-11-04 serit-kilit+xcs-sheet";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9658,6 +9673,13 @@ html.x-mobile.x-dik #editorModal .ed-plat,html.x-mobile.x-dik #editorModal .ed-c
    HEMEN ÜSTÜNE sabitlenir (bottom = --kb-inset; Faz 0 visualViewport ile günceller). iOS'ta cihaz testi gerekir. */
 html.x-mobile.x-dik #editorModal .ed-serit{display:none;}
 html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;top:auto;bottom:var(--kb-inset,0);z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;}
+/* [DİK-MOBİL Faz 3+] Yazarken SAYFAYI KİLİTLE: iOS'ta ekranı aşağı çekince (overscroll/rubber-band)
+   visualViewport.offsetTop oynuyor -> --kb-inset şişip SABİT şerit ekranın ortasına kayıyordu. Body/html
+   scroll+bounce kapalı -> editör içeriği .preview-body'nin KENDİ iç scroll'uyla kayar (sayfa oynamaz),
+   şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
+html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
+/* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 64px);}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
   // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
