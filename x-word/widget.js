@@ -5023,7 +5023,19 @@
             const _yakalaHedef = async function () {
                 try {
                     if (article && article.getAttribute && article.getAttribute('data-testid') === 'tweet') {
-                        return await xYakalaTweetVeYanit(article, document.querySelectorAll('article[data-testid="tweet"]')) || "";
+                        var _arts = document.querySelectorAll('article[data-testid="tweet"]');
+                        // v4.38: TARAMADA da (Rapor'matik link) derin zincir/flood -> KULLANICI SEÇER, onay bekler,
+                        // sonra devam (kullanıcı isteği). Tarama link-başına-navigasyon olduğundan _yakalaHedef'teki
+                        // await doğal duraklamadır; seçimden sonra yakalar, kuyruğu kaydırır, sonrakine geçer.
+                        // İptal -> link KAYBOLMASIN: varsayılan (odak + direkt parent) ile devam. Bayrak x_coklu_sec='0' kapalı.
+                        var _cokluAcik = true; try { if (localStorage.getItem('x_coklu_sec') === '0') _cokluAcik = false; } catch (e) {}
+                        var _arr = Array.prototype.slice.call(_arts);
+                        var _fi = _arr.indexOf(article);
+                        if (_cokluAcik && _fi >= 2) {
+                            var _secilenler = await xCokluTweetSec(_arr.slice(0, _fi + 1), article);
+                            if (_secilenler) return await xYakalaCoklu(_secilenler) || "";
+                        }
+                        return await xYakalaTweetVeYanit(article, _arts) || "";
                     }
                 } catch (e) { printLog("Yanıt+parent yakalama hatası, tekile dönülüyor: " + ((e && e.message) || e)); }
                 return await captureArticle(article) || "";
