@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04g · pdf-word-boyutlama-2gorsel';
+        var X_BUILD = '2026-11-04h · pdf-metin-only-araptpayi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3941,14 +3941,17 @@ HTML_TEMPLATE = """
                 }
                 else if (n.classList.contains('ed-line')) { items.push({ t: 'cizgi' }); }
             }
-            // PASS 2: görselli öğeleri Word gibi eşleştir (2/sayfa ortak genişlik). Görselsiz/çizgi atlanır.
-            var _gu = []; for (var _gk = 0; _gk < items.length; _gk++) { if (items[_gk].t === 'unit' && items[_gk].img) _gu.push(items[_gk]); }
+            // PASS 2: görselli öğeleri eşleştir (2/sayfa ortak genişlik). ARALARDAKI görselsiz (metin-only)
+            // içeriklerin payı bir SONRAKİ görsele taşınır (aynı sayfaya düştüğü için çifti/soloyu şişirmesin
+            // -> yoksa o metin içerik sayfada yer kaplayıp sonraki görseli bir sonraki sayfaya iter). Word araMetinPay karşılığı.
+            var _gu = [], _acc = 0;
+            for (var _gk = 0; _gk < items.length; _gk++) { var _it0 = items[_gk]; if (_it0.t === 'unit') { if (_it0.img) { _it0.aramPay = _acc; _acc = 0; _gu.push(_it0); } else { _acc += (_it0.pay || 0); } } }
             if (_ciftOn) {
                 var _pz = 0;
                 while (_pz < _gu.length) {
                     var _a = _gu[_pz], _b = (_pz + 1 < _gu.length) ? _gu[_pz + 1] : null, _cift = false;
-                    if (_b) { var _ters = _a.rh + _b.rh, _W2 = (_ters > 0) ? Math.min(CW, (PAGE_H - _a.pay - _b.pay - GUV) / _ters) : CW; if (_W2 >= ESIK) { _a.w = _W2; _b.w = _W2; _pz += 2; _cift = true; } }
-                    if (!_cift) { var _k1 = PAGE_H - _a.pay - GUV; _a.w = (_a.rh > 0) ? Math.min(CW, Math.max(10, _k1) / _a.rh) : CW; _pz += 1; }
+                    if (_b) { var _ters = _a.rh + _b.rh, _ara = (_a.aramPay || 0) + (_b.aramPay || 0), _W2 = (_ters > 0) ? Math.min(CW, (PAGE_H - _a.pay - _b.pay - _ara - GUV) / _ters) : CW; if (_W2 >= ESIK) { _a.w = _W2; _b.w = _W2; _pz += 2; _cift = true; } }
+                    if (!_cift) { var _k1 = PAGE_H - _a.pay - (_a.aramPay || 0) - GUV; _a.w = (_a.rh > 0) ? Math.min(CW, Math.max(10, _k1) / _a.rh) : CW; _pz += 1; }
                 }
             } else { for (var _gs = 0; _gs < _gu.length; _gs++) { _gu[_gs].w = CW; } }
             // PASS 3: içeriği kur (görsel placeholder'ını boyutlanmış imgBlok ile doldur)
