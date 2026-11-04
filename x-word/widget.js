@@ -1432,7 +1432,7 @@
                     bar.id = 'w-tsec-bar';
                     bar.style.cssText = 'position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(130%);z-index:2147483600;max-width:calc(100vw - 20px);width:max-content;background:#15202b;color:#e7e9ea;border:1px solid rgba(136,153,166,0.3);border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.45);display:flex;flex-direction:column;gap:10px;font-family:system-ui,-apple-system,sans-serif;transition:transform .24s cubic-bezier(.2,.8,.2,1);';
                     var bilgi = document.createElement('div'); bilgi.style.cssText = 'font-size:13px;line-height:1.4;max-width:440px;';
-                    bilgi.innerHTML = '<b style="color:#fff">Rapora eklenecek gönderileri seç</b><br><span style="opacity:.78">Eklediğin gönderi kilitli. Diziye katmak istediğin üst gönderilere dokun.</span>';
+                    bilgi.innerHTML = '<b style="color:#fff">Rapora eklenecek gönderileri seçin</b><br><span style="opacity:.78">Eklediğiniz gönderi bağlı. Diziye katmak istediğiniz üst gönderileri seçin.</span>';
                     var btnWrap = document.createElement('div'); btnWrap.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;';
                     var bstil = 'display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-weight:600;border-radius:9px;border:1px solid rgba(136,153,166,0.3);background:transparent;color:#e7e9ea;cursor:pointer;white-space:nowrap;';
                     var iptal = document.createElement('button'); iptal.textContent = 'İptal'; iptal.style.cssText = bstil;
@@ -1444,9 +1444,15 @@
                     temizle.push(function () { try { bar.remove(); } catch (_) {} });
                     sayiGuncelle = function () { ekle.textContent = 'Seçilenleri Ekle (' + secili.size + ')'; };
                     sayiGuncelle();
-                    function bitir(sonuc) { temizle.forEach(function (f) { f(); }); resolve(sonuc); }
+                    var _bitti = false;
+                    function bitir(sonuc) { if (_bitti) return; _bitti = true; temizle.forEach(function (f) { f(); }); resolve(sonuc); }
                     ekle.addEventListener('click', function () { var s = adaylar.filter(function (a) { return secili.has(a); }); bitir(s.length ? s : null); });
                     iptal.addEventListener('click', function () { bitir(null); });
+                    // [OTO-KAPAT] İlgili gönderiden BAŞKA sayfaya gidilirse (X SPA = pushState; URL yolu değişir) seçim
+                    // ekranını İPTAL et -> çubuk/overlay body'de asılı kalmasın (kullanıcı isteği). Yol değişimini yokla.
+                    var _acilisPath = location.pathname;
+                    var _urlTimer = setInterval(function () { if (location.pathname !== _acilisPath) bitir(null); }, 300);
+                    temizle.push(function () { clearInterval(_urlTimer); });
                     try { adaylar[0].scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (_) {}
                 });
             }
