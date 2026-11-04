@@ -1857,12 +1857,12 @@ HTML_TEMPLATE = """
         .xcs-list--ed { background: #ffffff; color: #15202b; border-color: #d0d7de; }
         .xcs-list--ed .xcs-opt { color: #15202b; }
         .xcs-list--ed .xcs-opt.xcs-hl, .xcs-list--ed .xcs-opt:hover { background: #1d9bf0; color: #fff; }
-        /* [DİK-MOBİL] XCS dropdown = ALTTAN açılan tam-genişlik sayfa (klavyenin üstünde, hep görünür). Masaüstü
-           "butona-iliştir" konumu dik-mobilde klavyenin ALTINDA kalıyordu -> kullanıcı "yukarı doğru açılsın" dedi.
-           Şeridin (z-4000) ÜSTÜNE gelir (z-4200), seçim yapınca kapanır. Renk/tema .xcs-list / .xcs-list--ed'den gelir. */
-        html.x-mobile.x-dik .xcs-list.xcs-sheet { box-sizing: border-box; position: fixed; left: 0; right: 0; top: auto; bottom: var(--kb-inset, 0px); width: 100%; min-width: 0; max-width: none; max-height: 46vh; border-radius: 16px 16px 0 0; border-bottom: none; z-index: 4200; padding: 6px 8px calc(8px + env(safe-area-inset-bottom)); box-shadow: 0 -10px 34px rgba(16,24,40,0.34); animation: paylasSheetUp .2s cubic-bezier(.2,.8,.3,1); }
-        html.x-mobile.x-dik .xcs-list.xcs-sheet .xcs-opt { padding: 13px 14px 13px 32px; font-size: 15px; line-height: 1.3; }
-        html.x-mobile.x-dik .xcs-list.xcs-sheet .xcs-opt.xcs-sel::before { left: 11px; font-size: 13px; }
+        /* [DİK-MOBİL] XCS dropdown = butona İLİŞİK kompakt liste (kullanıcı tercihi "butona iliştik küçük liste").
+           Konum JS'te (_xcsAc dik-mobil dalı): şerit klavye üstünde olduğundan liste YUKARI açılır; dokunuş-dostu
+           satır. Şeridin (z-4000) ÜSTÜNE gelir (z-4300). Renk/tema .xcs-list / .xcs-list--ed'den gelir. */
+        html.x-mobile.x-dik .xcs-list.xcs-anc-m { max-width: 76vw; z-index: 4300; border-radius: 12px; box-shadow: 0 10px 30px rgba(16,24,40,0.4); }
+        html.x-mobile.x-dik .xcs-list.xcs-anc-m .xcs-opt { padding: 11px 15px 11px 30px; font-size: 15px; line-height: 1.25; }
+        html.x-mobile.x-dik .xcs-list.xcs-anc-m .xcs-opt.xcs-sel::before { left: 9px; font-size: 12px; }
 
         .modal-header {
             padding: 20px 24px;
@@ -2775,7 +2775,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04s · şerit select odak-fix';
+        var X_BUILD = '2026-11-04t · font dropdown butona-iliştik kompakt';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2860,13 +2860,29 @@ HTML_TEMPLATE = """
                 d.setAttribute('data-i', String(i)); d.textContent = o.text; list.appendChild(d);
             }
             document.body.appendChild(list);
-            // [DİK-MOBİL] Dropdown = ALTTAN açılan tam-genişlik sayfa (yukarı doğru, klavye üstünde, hep görünür).
-            // Masaüstündeki butona-iliştir konumlama klavyenin altında kalıyordu (kullanıcı: "yukarı açılsın").
+            // [DİK-MOBİL] Dropdown = butona İLİŞİK kompakt liste (kullanıcı tercihi "butona iliştik küçük liste").
+            // Şerit klavyenin üstünde SABİT olduğundan liste YUKARI (select'in üstüne) açılır; görünür alan =
+            // innerHeight - --kb-inset (klavye alanı hariç). Klavye yoksa (ör. Paylaş ayarları) yer neredeyse ona göre.
             var _dem = document.documentElement;
             if (_dem.classList.contains('x-mobile') && _dem.classList.contains('x-dik')) {
-                list.classList.add('xcs-sheet');
+                var _r = sel.getBoundingClientRect();
+                var _ih = window.innerHeight || document.documentElement.clientHeight;
+                var _vw = window.innerWidth || document.documentElement.clientWidth;
+                var _kb = parseFloat(getComputedStyle(_dem).getPropertyValue('--kb-inset')) || 0;
+                var _visBottom = _ih - _kb;                 // klavye üstü görünür alt sınır
+                list.classList.add('xcs-anc-m');
+                list.style.minWidth = Math.max(150, Math.round(_r.width)) + 'px';
+                var _roomBelow = _visBottom - _r.bottom - 10;
+                var _roomAbove = _r.top - 10;
+                var _up = _roomAbove > _roomBelow;          // daha çok görünür yer hangi yönde
+                list.style.maxHeight = Math.min(340, Math.max(120, _up ? _roomAbove : _roomBelow)) + 'px';
+                var _lw = list.offsetWidth;
+                var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
+                list.style.left = Math.round(_left) + 'px';
+                if (_up) { list.style.bottom = Math.round(_ih - _r.top + 5) + 'px'; list.style.top = 'auto'; }
+                else { list.style.top = Math.round(_r.bottom + 5) + 'px'; list.style.bottom = 'auto'; }
                 _xcsList = list; _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
-                try { var _s = list.querySelector('.xcs-sel') || list.querySelector('.xcs-opt'); if (_s) _s.scrollIntoView({ block: 'center' }); } catch (e) {}
+                try { var _s = list.querySelector('.xcs-sel') || list.querySelector('.xcs-opt'); if (_s) _s.scrollIntoView({ block: 'nearest' }); } catch (e) {}
                 return;
             }
             var r = sel.getBoundingClientRect();
