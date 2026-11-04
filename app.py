@@ -2026,7 +2026,7 @@ HTML_TEMPLATE = """
         if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
-        if(vv){ var kb=function(){ try{ var inset=Math.max(0, Math.round((window.innerHeight||0) - vv.height - vv.offsetTop)); de.style.setProperty('--kb-inset', inset+'px'); }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+        if(vv){ var kb=function(){ try{ var inset=Math.max(0, Math.round((window.innerHeight||0) - vv.height - vv.offsetTop)); de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; if(!(a && a.closest && a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA'))){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
@@ -2705,7 +2705,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04o · mobil üst çubuk + ed-ctx';
+        var X_BUILD = '2026-11-04p · mobil şerit titreme fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9578,6 +9578,7 @@ html.x-mobile.x-dik #editorModal .ed-rapor-adi{flex:0 1 auto;min-width:0;width:a
 html.x-mobile.x-dik #editorModal .ed-ikon-btn{flex:none;}
 /* Faz 2: Şerit TEK SATIR yatay kaydırmalı (iPhone Notes); dokunuş hedefleri büyük. */
 html.x-mobile.x-dik #editorModal .ed-serit{padding:8px 10px;}
+html.x-mobile.x-dik #editorModal .ed-panel{min-height:38px;}
 html.x-mobile.x-dik #editorModal .ed-panel{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:8px;}
 html.x-mobile.x-dik #editorModal .ed-panel::-webkit-scrollbar{display:none;}
 html.x-mobile.x-dik #editorModal .ed-grp{flex:none;padding-right:10px;}
@@ -9604,7 +9605,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed
     function dikMobil(){ return de.classList.contains('x-mobile') && de.classList.contains('x-dik'); }
     function alanMi(t){ return !!(t && (t.isContentEditable || t.tagName==='INPUT' || t.tagName==='TEXTAREA') && t.closest && t.closest('#editor-root')); }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)) de.classList.add('x-ed-yaz'); });
-    m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 140); });
+    // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
+    // x-ed-yaz kalkar). Böylece metin/link/başlık ARASI geçişte klavye açık kaldığından şerit SABİT -> TİTREMEZ.
+    // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
+    if(!window.visualViewport){ m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 400); }); }
     var serit=document.getElementById('editor-serit');
     if(serit){ ['mousedown','touchstart'].forEach(function(ev){ serit.addEventListener(ev, function(e){ if(!dikMobil()) return; var t=e.target; if(t && t.closest && t.closest('select,input,textarea,option,.xcs-list')) return; e.preventDefault(); }, {passive:false}); }); }
   }
