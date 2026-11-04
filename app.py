@@ -1722,11 +1722,14 @@ HTML_TEMPLATE = """
         html.x-mobile.x-dik { --content-pad: 12px; }
         html.x-mobile.x-dik body { overflow: auto; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; overflow: visible; padding: 16px; padding-top: calc(env(safe-area-inset-top) + 20px); padding-bottom: 84px; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
+        /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
+           Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
+        html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
         html.x-mobile.x-dik .header { margin-bottom: 16px; padding-right: 52px; }
         /* [AYARLAR BUTONU] Dik-mobilde başlık+alt-yazının ALTINA düşüyordu (order:3) -> kullanıcı "orda olmaz".
            Sağ-üst köşeye sabitle (absolute; ext-status zaten gizli -> yalnız dişli kalır). Başlıkla aynı sıra. */
-        html.x-mobile.x-dik .header-controls { position: absolute; top: calc(env(safe-area-inset-top) + 16px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
+        html.x-mobile.x-dik .header-controls { position: absolute; top: max(calc(env(safe-area-inset-top) + 16px), 42px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
         html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
@@ -2778,7 +2781,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04u · şerit-kaydırma+renk+header+sheet-kapat+galeri-boşluk';
+        var X_BUILD = '2026-11-05a · biçim-butonu-klavye-koru + boş-panel-scroll + PWA-üst-boşluk';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8985,7 +8988,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4g-mobil · 2026-11-04 serit-kaydirma+renk+galeri-boşluk";
+  XE.VERSION = "4h-mobil · 2026-11-05 bicim-butonu-klavye-koru (_stilCanliYansit)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9676,7 +9679,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* ===================== DİK-MOBİL EDİTÖR (Faz 2-3) — yalnız html.x-mobile.x-dik ===================== */
 /* Üst çubuk: başlık metni + uzun rapor-adı (tarih), ✕/Paylaş/galeri/ayar butonlarını ekran dışına İTMESİN.
    Başlık metni gizlenir (ikon kalır), rapor-adı DARALIR (min-width:0), butonlar HER ZAMAN görünür. */
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:calc(8px + env(safe-area-inset-top));gap:4px;}
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(8px + env(safe-area-inset-top)), 34px);gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
 html.x-mobile.x-dik #editorModal .x-shead{font-size:0;gap:0;flex:none;}
@@ -9725,20 +9728,41 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(!window.visualViewport){ m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 400); }); }
     var serit=document.getElementById('editor-serit');
     if(serit){
-      // [YATAY KAYDIRMA FİX] Şerit NATIVE yatay kayar (.ed-panel overflow-x:auto). Eski GENEL touchstart
-      // preventDefault TÜM dokunuşu engelleyip kaydırmayı KİLİTLİYORDU (kullanıcı: "alt şerit sağa sola kaymıyor").
-      // Artık touchstart'ta YALNIZ <select> için preventDefault (native select + focus-steal iptal -> xcs aç,
-      // klavye+şerit kalır); diğer her şey native -> parmakla sürükleyince kayar. Buton/toggle odak-koruması
-      // mousedown'da (click'i İPTAL ETMEZ, kaydırmayı ETKİLEMEZ). Renk/Boyut input'u native (focus gerekir) ->
-      // şeridin gizlenmemesi Faz 0 vv handler'da editor-serit odağı korunarak sağlanır.
+      // [YATAY KAYDIRMA + BİÇİM BUTONU KLAVYE-KORUMA] Şerit NATIVE yatay kayar (.ed-panel overflow-x:auto) ->
+      // touchstart'ta GENEL preventDefault YOK (kaydırma serbest). Biçim BUTONU/TOGGLE'a (B/I/U/hiza/Link üstte)
+      // DOKUNUNCA iOS contenteditable'ı blur edip klavyeyi kapatıyordu -> çözüm: TAP ise touchend'de preventDefault
+      // (focus-steal + native click iptal -> klavye+şerit KALIR) + aksiyonu MANUEL tetikle. Kaydırma (drag) ise
+      // dokunma -> native scroll olur. <select> -> touchstart'ta xcs. Renk/Boyut INPUT native (focus ister ->
+      // numeric/picker; şeridin gizlenmemesi Faz 0 vv handler editor-serit odağı korumasıyla). Stil uygulaması
+      // dik-mobilde _stilCanliYansit (inline, _ciz YOK) -> odaklı düğüm ölmez -> klavye kalır.
       function _selHedef(t){ var s=(t&&t.closest)?t.closest('select'):null; return (s && !s.disabled && !s.multiple && !s.hasAttribute('data-xcs-off'))?s:null; }
-      serit.addEventListener('touchstart', function(e){ if(!dikMobil()) return; var s=_selHedef(e.target); if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} } }, {passive:false});
-      serit.addEventListener('mousedown', function(e){
+      var _tx=0,_ty=0,_tmoved=false;
+      serit.addEventListener('touchstart', function(e){
+        if(!dikMobil()) return;
+        var s=_selHedef(e.target);
+        if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} _tmoved=true; return; }   // select -> xcs; tap sayma
+        var p=e.touches&&e.touches[0]; _tx=p?p.clientX:0; _ty=p?p.clientY:0; _tmoved=false;   // kaydırma için preventDefault YOK
+      }, {passive:false});
+      serit.addEventListener('touchmove', function(e){
+        if(!dikMobil()||_tmoved) return;
+        var p=e.touches&&e.touches[0]; if(!p) return;
+        if(Math.abs(p.clientX-_tx)>8 || Math.abs(p.clientY-_ty)>8) _tmoved=true;   // sürükleme -> tap değil (kaydırma)
+      }, {passive:true});
+      serit.addEventListener('touchend', function(e){
+        if(!dikMobil() || _tmoved) return;   // kaydırmaysa dokunma (native scroll oldu)
+        var t=e.target; if(!t||!t.closest) return;
+        if(t.closest('input,textarea,option,.xcs-list,select')) return;   // input(renk/boyut)/liste/select: native
+        var tgl=t.closest('.ed-tgl');
+        if(tgl){ var cb=tgl.querySelector('input[type=checkbox]'); if(cb){ e.preventDefault(); cb.checked=!cb.checked; try{ cb.dispatchEvent(new Event('change',{bubbles:true})); }catch(_){} } return; }   // toggle: manuel (odak editable'da kalır)
+        var btn=t.closest('button');
+        if(btn){ e.preventDefault(); try{ btn.click(); }catch(_){} return; }   // buton (hiza vb): programatik click -> odak taşımaz
+      }, {passive:false});
+      serit.addEventListener('mousedown', function(e){   // pane/fare: select -> xcs; buton/toggle -> odağı koru
         if(!dikMobil()) return;
         var t=e.target; var s=_selHedef(t);
-        if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} return; }   // select -> xcs (pane/fare)
-        if(t && t.closest && t.closest('input,textarea,option,.xcs-list')) return;   // yazı/renk/boyut/liste: dokunma
-        e.preventDefault();   // buton/toggle: odağı koru (mousedown preventDefault click'i iptal etmez)
+        if(s){ e.preventDefault(); try{ window._xcsAc&&window._xcsAc(s); }catch(_){} return; }
+        if(t && t.closest && t.closest('input,textarea,option,.xcs-list')) return;
+        e.preventDefault();   // mousedown preventDefault click'i İPTAL ETMEZ (native toggle/click çalışır), odağı korur
       });
     }
   }
@@ -10114,7 +10138,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(typeof window.xSaveStyles==='function') try{ window.xSaveStyles(); }catch(e){}
     var grp=document.querySelector('.ed-hiza'); if(grp){ grp.querySelectorAll('.ed-hb').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-v')===v); }); }
     XE._dirty=true;   // [4]: biçim değişikliği de kirletir -> kapanışta sorulur
-    canliCiz();
+    var _d=document.documentElement; if(_d.classList.contains('x-mobile')&&_d.classList.contains('x-dik')){ XE._stilCanliYansit(); } else { canliCiz(); }   // dik-mobil: inline hiza (odak/klavye kalır)
   };
   // Yapısal stiller (numara/başlıksız/başlık-türü) h2'yi PLAN anında belirler -> canlı yansısın diye
   // YENİDEN PLANLA; CSS stilleri (font/renk/hiza) hızlı _ciz yolunda kalır.
@@ -10126,10 +10150,23 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(typeof window.xSaveStyles==='function') try { window.xSaveStyles(); } catch(e){}
     XE._dirty=true;   // [4]: stil/yapısal (font/renk/Başlıksız/Numara) değişikliği de kirletir
     try{ window.__xPoolDirty=true; }catch(e){}   // [STANDART STİL] stil değişimi oto-kayıtı tetikler -> raporun editorStyle'ına yazılır (per-rapor)
-    if(STRUKT_STIL[id]){ XE._yenidenPlanla(); } else { canliCiz(); }
+    if(STRUKT_STIL[id]){ XE._yenidenPlanla(); }
+    else { var _d=document.documentElement; if(_d.classList.contains('x-mobile')&&_d.classList.contains('x-dik')){ XE._stilCanliYansit(); } else { canliCiz(); } }   // dik-mobil: inline (odak/klavye kalır); masaüstü: tam _ciz
   };
   // Mevcut belge öğeleriyle planı yeniden kur (havuzu YENİDEN ÇEKMEZ; parçalar/override overlay'den korunur).
   XE._yenidenPlanla = function(){ try { XE.ac({ items: XE.toItems() }); } catch(e){} };
+  // [CANLI STİL YANSIT] Biçim (font/boyut/renk/B/I/U/hiza) değişince TAM _ciz (editor-root'u root.innerHTML ile
+  // YENİDEN KURAR -> odaklı contenteditable düğüm ÖLÜR -> blur -> iOS'ta klavye kapanır; debounce'lı yeniden-focus
+  // da gesture dışı olduğundan klavyeyi geri AÇMAZ) YERİNE canlı elemanların inline stilini YERİNDE güncelle
+  // (düğüm değişmez -> odak + KLAVYE kalır). _ciz ile AYNI üreticiler (stilCss/stilCssOv) -> görünüm birebir.
+  XE._stilCanliYansit = function(){
+    var root=document.getElementById('editor-root'); if(!root) return;
+    var o=stilOku(), cm=stilCss(o,'m'), cl=stilCss(o,'l'), B=XE.belge.birimler||[];
+    root.querySelectorAll('.ed-plat').forEach(function(el){ var b=B[+el.getAttribute('data-i')]||{}; el.setAttribute('style', stilCssOv(o,'b1',b.h1ov)); });
+    root.querySelectorAll('.ed-h2').forEach(function(el){ var b=B[+el.getAttribute('data-i')]||{}; el.setAttribute('style', stilCssOv(o,'b',b.h2ov)); var sar=el.closest('.ed-h2-sar'); if(sar){ var al=((hOvAcik()&&b.h2ov&&b.h2ov.align)||o.b_align); sar.style.justifyContent=({left:'flex-start',center:'center',right:'flex-end',both:'flex-start'}[al]||'flex-start'); } });
+    root.querySelectorAll('.ed-metin').forEach(function(el){ el.setAttribute('style', cm); });
+    root.querySelectorAll('.ed-link-edit').forEach(function(el){ el.setAttribute('style', cl); });
+  };
   // #4: Bir parçanın TÜRÜNÜ değiştir (Metin <-> Link; veya "Başlık yap").
   XE._turDegistir = function(i, pk, tur){
     var b=XE.belge.birimler[i]; if(!b||!b.item||!b.item.parcalar) return;
