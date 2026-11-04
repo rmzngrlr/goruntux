@@ -48,25 +48,43 @@
     }
 
     // Instagram gönderi yazarı -> "@kullanici". Idle "Rapora Ekle" başlığı için.
-    // Taramanın çok-yedekli türetmesinin (wordTaramaYonetimi) hafif ikizi; gönderi
-    // sayfasındayken og:title en güvenilir kaynak.
+    // Taramanın çok-yedekli türetmesinin (wordTaramaYonetimi) hafif ikizi.
+    // SAĞLAM ÇOK-KAYNAK (2026-11-04, "Instagram Gönderisi" fallback hatası): eski kod yalnız
+    // İngilizce "X on Instagram" og:title'ına + document.querySelector ilk link'e bakıyordu.
+    // Türkçe/yeni IG og:title "Ad, Instagram:" biçiminde + document.title "(5) Instagram"
+    // (bildirim öneki) + oturum-açık SPA'da gönderi <article> yerine modal'da -> üçü de çöküp
+    // fallback'e düşüyordu. Yeni sıra güvenilirlik düzeni: (1) og:description "- handle,"
+    // GERÇEK handle, (2) YAKALANAN kartın (igFindPost) kapsamında ilk geçerli profil linki,
+    // (3) og:title "(@handle)" | "Ad on Instagram" | "Ad, Instagram:".
     function xIgYazar() {
         try {
+            var _rez = ['p', 'reel', 'reels', 'explore', 'stories', 'direct', 'accounts', 'about', 'emails', 'tv', 'igtv', 'challenge', 'web', 'ajax', 'developer', 'legal', 'privacy', 'tags', 'locations', 's'];
+            var _gecerli = function (seg) { return seg && _rez.indexOf(seg) === -1 && /^[a-z0-9._]{1,30}$/.test(seg); };
+            var _segOf = function (href) {
+                var h = (href || '').split('?')[0].split('#')[0].replace(/^https?:\/\/[^/]+/i, '');
+                return (h.replace(/^\//, '').split('/')[0] || '').toLowerCase();
+            };
+            // 1) og:description "N likes, M comments - handle, Date: ..." -> GERÇEK handle (en güvenilir)
+            var ogd = document.querySelector('meta[property="og:description"]');
+            var dc = (ogd && ogd.getAttribute('content')) || '';
+            var md = dc.match(/[-–]\s*([A-Za-z0-9._]+)\s*,/);
+            if (md && _gecerli(md[1].toLowerCase())) { return '@' + md[1]; }
+            // 2) Yakalanan gönderi kartı (igFindPost) kapsamında ilk GEÇERLİ profil linki (modal/iki-sütun dahil)
+            var post = (typeof igFindPost === 'function' ? igFindPost() : null) || document.querySelector('article') || document;
+            var as = post.querySelectorAll('a[href*="instagram.com/"], a[href^="/"]');
+            for (var i = 0; i < as.length; i++) {
+                var seg = _segOf(as[i].getAttribute('href') || '');
+                if (_gecerli(seg)) { return '@' + seg; }
+            }
+            // 3) og:title kalıpları: "(@handle)" | "Ad on Instagram" | "Ad, Instagram:" (TR/yeni)
             var metaT = document.querySelector('meta[property="og:title"]');
             var content = (metaT && metaT.getAttribute('content')) || document.title || "";
-            // "kullanici on Instagram: ..." kalıbı
-            var m = content.match(/^\s*([^\s(:]+)\s+on Instagram/i);
-            if (m && m[1]) { return '@' + m[1].replace(/^@+/, ''); }
-            // "Ad (@kullanici)" kalıbı
-            var m2 = content.match(/\(@([A-Za-z0-9._]+)\)/);
-            if (m2 && m2[1]) { return '@' + m2[1]; }
-            // Gönderi kartındaki ilk profil linki (/kullanici/), rezerve yolları ele
-            var _rez = ['p', 'reel', 'reels', 'explore', 'stories', 'direct', 'accounts', 'about'];
-            var a = document.querySelector('article a[href^="/"]') || document.querySelector('a[href^="/"]');
-            if (a) {
-                var seg = ((a.getAttribute('href') || '').split('?')[0].split('/').filter(Boolean)[0] || '').toLowerCase();
-                if (seg && _rez.indexOf(seg) === -1 && /^[a-z0-9._]{1,30}$/.test(seg)) { return '@' + seg; }
-            }
+            var mh = content.match(/\(@([A-Za-z0-9._]+)\)/);
+            if (mh && mh[1]) { return '@' + mh[1]; }
+            var mo = content.match(/^\s*([^\s(:,]+)\s+on Instagram/i);
+            if (mo && mo[1]) { return '@' + mo[1].replace(/^@+/, ''); }
+            var mv = content.match(/^\s*([^\s(:,]+)\s*,\s*Instagram\s*:/i);
+            if (mv && mv[1]) { return '@' + mv[1].replace(/^@+/, ''); }
         } catch (e) {}
         return 'Instagram Gönderisi';
     }
@@ -444,6 +462,29 @@
     // "Sen ve 42 kisi", grup uyeleri) -> belge-geneli tarama HIC YAPILMIYOR.
     function fbAuthor() {
         try {
+            // 0A) GRUP gönderisi: /groups/{gid}/posts|permalink/{id}. Eski kod bunu HİÇ ele almıyordu
+            //     (step 0 regex /^\/([^/]+)\/posts\// grupta null -> "Facebook Gönderisi" fallback). og tag YOK.
+            //     Kullanıcı kararı (2026-11-04): "Kişi (Grup)" -> "Mert Özsoy (ESKİ MANİSA FOTOĞRAFLARI)";
+            //     kişi bulunamazsa yalnız grup adı. Grup adı document.title'dan ("(N+) GRUP | metin | Facebook");
+            //     kişi, gönderi sahibinin /groups/{gid}/user/{uid}/ linkinden (ilk ADLI link = sahip, yorumcular sonra).
+            var gm = location.pathname.match(/^\/groups\/([^/]+)\/(?:posts|permalink)\//);
+            if (gm) {
+                var gid = gm[1];
+                var tt = (document.title || '').replace(/^\(\d+\+?\)\s*/, '');   // bildirim öneki "(20+) " at
+                var grupAd = (tt.split(' | ')[0] || '').trim();
+                if (/^facebook$/i.test(grupAd)) grupAd = '';
+                var kisi = '', allA = document.querySelectorAll('a[href]');
+                for (var gi = 0; gi < allA.length; gi++) {
+                    var gyol = (allA[gi].getAttribute('href') || '').replace(/^https?:\/\/[^/]+/i, '').split('?')[0].split('#')[0];
+                    if (gyol.indexOf('/groups/' + gid + '/user/') !== 0) continue;   // bu grubun üye profili
+                    var kt = (allA[gi].innerText || '').replace(/\s+/g, ' ').trim();
+                    if (!kt || kt.length > 60) continue;
+                    if (/^\d+\s*[a-zçğıöşü]{1,3}$/i.test(kt)) continue;              // zaman damgası ("3s") değil
+                    kisi = kt; break;
+                }
+                var gad = (kisi && grupAd) ? (kisi + ' (' + grupAd + ')') : (kisi || grupAd);
+                if (gad) return { ad: gad, id: '', slug: '', kaynak: 'grup' };
+            }
             // 0) /{ad}/posts/{id} -> SLUG URL'DE. Kirlenme IMKANSIZ (operatorun hesabi
             //    URL'e karisamaz). GORUNEN AD icin DOM'a bakariz: kullanici karari
             //    "Ad (@slug)" -> slug tek basina yetmez.

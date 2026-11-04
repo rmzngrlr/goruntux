@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04i · kayitli-rapor-indir-paylas';
+        var X_BUILD = '2026-11-04j · ig+fb-yazar-robust + platform-grupla';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8005,12 +8005,37 @@ LOCAL_DOCX_JS = r'''
       }
     }
     if(multiPlatform){
-      // [HAVUZ SIRASI + manuel araya girsin + "Manuel Bölümler" grubu YOK]: Çok platform olsa DA çıktı HAVUZ
-      // SIRASINI izler; platform başlığı (Baslik 1) yalnız taranmış platform DEĞİŞİNCE basılır; manuel ('manual')
-      // öğe BAŞLIKSIZ, bulunduğu yerde kalır (kullanıcı: "istediğim bölüm arasına dümdüz bölüm eklenebilsin").
-      // Bayrak (geri alınabilir): localStorage x_mp_poolorder='0' -> eski platform-gruplama (Manuel Bölümler grubu).
+      // [PLATFORMA GÖRE GRUPLA — VARSAYILAN (kullanıcı kararı 2026-11-04)]: her platform ILK GÖRÜNME
+      // sırasında TEK Başlık 1 alır; aynı platformun gönderileri (arada başka platform olsa da) o başlık
+      // altında toplanır -> "IG … FB … IG" çıktıda tek Instagram + tek Facebook verir (ikinci "Instagram"
+      // başlığı BASILMAZ; kullanıcı "halihazırda IG varken yeni IG başlığı açtı" hatası). Manuel ('manual')
+      // bölüm AYRI "Manuel Bölümler" grubu OLUŞTURMAZ -> önceki taranmış gönderinin platform grubunda, o
+      // gönderinin hemen ardından yerinde kalır (başlıksız). Bayraklar (geri alınabilir):
+      //   x_mp_platgroup='0' -> havuz-sırası (platform değişince başlık), x_mp_poolorder='0' -> eski tam gruplama.
+      var _mpPlatGroup=true; try{ _mpPlatGroup=(localStorage.getItem('x_mp_platgroup')!=='0'); }catch(e){}
       var _mpPool=true; try{ _mpPool=(localStorage.getItem('x_mp_poolorder')!=='0'); }catch(e){}
-      if(_mpPool){
+      if(_mpPlatGroup){
+        // Her girişin platformu + manuel girişin "sahip platformu" (önceki taranmış girişin platformu; yoksa null).
+        var _eps=[], _owner=[], _lastScan=null, oiG;
+        for(oiG=0; oiG<order.length; oiG++){
+          var _epG=entryPlatform(order[oiG]); _eps[oiG]=_epG;
+          if(_epG!=='manual'){ _lastScan=_epG; _owner[oiG]=_epG; } else { _owner[oiG]=_lastScan; }
+        }
+        // Baş-manueller (öncesinde taranmış giriş YOK): havuz konumunda, başlıksız kalır.
+        for(oiG=0; oiG<order.length; oiG++){ if(_eps[oiG]==='manual' && _owner[oiG]===null) toplaEntry(order[oiG], null); }
+        // Platformları ilk-görünme sırasında grupla; başlık platformun ILK taranmış girişinde; manuel giriş
+        // sahip platformunun grubunda, özgün sırada (önceki taranmış girişinin hemen ardında) emitlenir.
+        var pjG, oiH;
+        for(pjG=0; pjG<platOrder.length; pjG++){
+          var platG=platOrder[pjG]; if(platG==='manual') continue;
+          var ilkG=true;
+          for(oiH=0; oiH<order.length; oiH++){
+            if(_eps[oiH]==='manual'){ if(_owner[oiH]===platG) toplaEntry(order[oiH], null); }
+            else if(_eps[oiH]===platG){ toplaEntry(order[oiH], ilkG ? (PLAT_LABEL[platG] || 'X (Twitter)') : null); ilkG=false; }
+          }
+        }
+      } else if(_mpPool){
+        // [HAVUZ SIRASI]: çıktı havuz sırasını izler; platform başlığı yalnız taranmış platform DEĞİŞİNCE basılır.
         var oiP, _lastPlat=null;
         for(oiP=0; oiP<order.length; oiP++){
           var _ep=entryPlatform(order[oiP]);
