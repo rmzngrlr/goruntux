@@ -1654,6 +1654,22 @@ HTML_TEMPLATE = """
            (Tema + Stil Ayarları kalır; onlar Manuel/Kayıtlı Raporlar için mobilde de geçerli). */
         html.x-mobile #ext-status-box { display: none; }
 
+        /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
+           Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
+           TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
+        html.x-mobile.x-dik { --content-pad: 12px; }
+        html.x-mobile.x-dik body { overflow: auto; }
+        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
+        html.x-mobile.x-dik .main-content { height: auto; min-height: 100vh; overflow: visible; padding: var(--content-pad); padding-bottom: 84px; }
+        html.x-mobile.x-dik .header { margin-bottom: 16px; }
+        html.x-mobile.x-dik .header h1 { font-size: 22px; }
+        html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
+        html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
+        html.x-mobile.x-dik .tab-btn { padding: 10px 14px; font-size: 13px; }
+        /* Havuz alt aksiyon çubuğu: kırılgan negatif-margin sticky yerine SABİT alt çubuk
+           (yalnız havuz sekmesi görünürken DOM'da olduğundan diğer sekmelerde görünmez). */
+        html.x-mobile.x-dik .pool-actions { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; border-radius: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--bg-primary); border-top: 1px solid var(--border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.08); z-index: 60; }
+
         /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
            Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
         .ext-status-box {
@@ -1763,6 +1779,12 @@ HTML_TEMPLATE = """
         @keyframes paylasPopInUp { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
         /* [PAYLAŞ POPOVER] Arka plan karartması kalktığı için kart OPAK olmalı — yarı saydam --bg-modal (0.95) / --bg-card (0.6) ARKAYI GÖSTERMESİN. Koyu temada opak eşdeğerlerle ez; açık tema zaten #fff. */
         body:not(.light-theme) #paylasModal.paylas-pop { --bg-modal: #0e141f; --bg-card: #161c2a; }
+
+        /* [DİK-MOBİL Faz 4] Paylaş/İndir = ALTTAN ÇIKAN SAYFA (bottom sheet) + karartma. Yalnız x-mobile.x-dik. */
+        html.x-mobile.x-dik #paylasModal.paylas-sheet { position: fixed; inset: 0; width: auto; height: auto; background: rgba(0,0,0,0.42); -webkit-backdrop-filter: none; backdrop-filter: none; display: none; align-items: flex-end; justify-content: center; }
+        html.x-mobile.x-dik #paylasModal.paylas-sheet.active { display: flex; }
+        html.x-mobile.x-dik #paylasModal.paylas-sheet .modal-content { width: 100%; max-width: 640px; border-radius: 18px 18px 0 0; transform-origin: bottom center; animation: paylasSheetUp .22s cubic-bezier(.2,.8,.3,1); padding-bottom: env(safe-area-inset-bottom); }
+        @keyframes paylasSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         /* [XCS] Özel OPAK dropdown listesi — yerel <select>'in saydam sistem menüsü (macOS) yerine. var(--bg-input) iki temada da OPAK (#111622 / #fff). Editör her zaman açık tema. */
         .xcs-list { position: fixed; z-index: 3600; min-width: 80px; padding: 4px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 9px; box-shadow: 0 12px 34px rgba(0,0,0,0.45); overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -1992,6 +2014,20 @@ HTML_TEMPLATE = """
     <!-- Mobil tespiti: <html>'e x-mobile sınıfı ekle (UA; iPadOS 'masaüstü' UA -> dokunmatik+Mac kalıbı).
          Body'den ÖNCE çalışır -> CSS anında uygular, FLASH olmaz. YALNIZ Otomatik(eklenti) sekmesini etkiler. -->
     <script>(function(){try{var ua=navigator.userAgent||'';if(/Android|iPhone|iPad|iPod|Mobile|Opera Mini|IEMobile|BlackBerry|webOS/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints&&navigator.maxTouchPoints>1)){document.documentElement.classList.add('x-mobile');}}catch(e){}})();</script>
+    <!-- [DİK-MOBİL] Yönelim sınıfı (x-dik/x-yatay) + klavye inset (--kb-inset). YALNIZ gerçek mobil (x-mobile) +
+         bayrak açıkken. Tüm mobil düzen html.x-mobile.x-dik altında scope'lu -> masaüstü/landscape etkilenmez. -->
+    <script>(function(){try{
+        if(localStorage.getItem('x_mobil_responsive')==='0') return;
+        var de=document.documentElement;
+        if(!de.classList.contains('x-mobile')) return;
+        var mq=window.matchMedia('(orientation: portrait)');
+        function yon(){ if(mq.matches){ de.classList.add('x-dik'); de.classList.remove('x-yatay'); } else { de.classList.add('x-yatay'); de.classList.remove('x-dik'); } }
+        yon();
+        if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
+        window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
+        var vv=window.visualViewport;
+        if(vv){ var kb=function(){ try{ var inset=Math.max(0, Math.round((window.innerHeight||0) - vv.height - vv.offsetTop)); de.style.setProperty('--kb-inset', inset+'px'); }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+    }catch(e){}})();</script>
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
     <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
@@ -2669,7 +2705,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04k · editor-refresh-debounce (titreme fix)';
+        var X_BUILD = '2026-11-04m · mobil-responsive faz0-4';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3588,6 +3624,15 @@ HTML_TEMPLATE = """
                 var mc = m.querySelector('.modal-content');
                 var vw = window.innerWidth || document.documentElement.clientWidth;
                 var vh = window.innerHeight || document.documentElement.clientHeight;
+                // [DİK-MOBİL Faz 4] Alttan çıkan sayfa (bottom sheet): butona iliştirme YOK, tam genişlik + karartma.
+                var _de = document.documentElement;
+                if (_de.classList.contains('x-mobile') && _de.classList.contains('x-dik')) {
+                    m.classList.remove('pop-up'); m.classList.add('paylas-sheet');
+                    m.style.left = ''; m.style.right = ''; m.style.top = ''; m.style.bottom = '';
+                    if (mc) mc.style.maxHeight = Math.max(200, Math.round(vh * 0.85)) + 'px';
+                    return;
+                }
+                m.classList.remove('paylas-sheet');
                 var GAP = 8, MRG = 8, W = Math.min(380, vw - 2 * MRG);
                 m.classList.remove('pop-up');
                 if (!btn || !btn.getBoundingClientRect) {
@@ -9520,8 +9565,40 @@ body:not(.light-theme) #ed-rt-panel .rt-ik:disabled:hover{background:transparent
 body:not(.light-theme) #ed-rt-panel .rt-reset{background:#1b2735;color:#c5cfda;border-color:#2c3a4a;}
 body:not(.light-theme) #ed-rt-panel .rt-reset:hover{background:#3a1f28;border-color:#7a3a4a;color:#f08ca0;}
 body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:#2f5f8a;color:#6fb4ef;}
+
+/* ===================== DİK-MOBİL EDİTÖR (Faz 2-3) — yalnız html.x-mobile.x-dik ===================== */
+/* Faz 2: Şerit TEK SATIR yatay kaydırmalı (iPhone Notes); dokunuş hedefleri büyük; bağlam etiketi gizli. */
+html.x-mobile.x-dik #editorModal .ed-serit{padding:8px 10px;}
+html.x-mobile.x-dik #editorModal .ed-panel{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:8px;}
+html.x-mobile.x-dik #editorModal .ed-panel::-webkit-scrollbar{display:none;}
+html.x-mobile.x-dik #editorModal .ed-grp{flex:none;padding-right:10px;}
+html.x-mobile.x-dik #editorModal .ed-ctx{display:none;}
+html.x-mobile.x-dik #editorModal .ed-panel select,html.x-mobile.x-dik #editorModal .ed-panel input[type=number]{height:38px;font-size:14px;padding:6px 8px;}
+html.x-mobile.x-dik #editorModal .ed-panel input[type=color]{width:38px;height:38px;}
+html.x-mobile.x-dik #editorModal .ed-tgl,html.x-mobile.x-dik #editorModal .ed-hb{height:38px;min-width:38px;}
+html.x-mobile.x-dik #editorModal .ed-tgl-metinli{height:38px;}
+html.x-mobile.x-dik #editorModal .ed-root{padding:10px 12px 40px;}
+html.x-mobile.x-dik #editorModal .preview-body{scroll-padding-top:12px;}
+html.x-mobile.x-dik #editorModal .ed-plat,html.x-mobile.x-dik #editorModal .ed-card{scroll-margin-top:12px;}
+/* Faz 3: Şerit klavye KAPALIYKEN GİZLİ (içerik tam ekran). Bir alana odaklanınca (html.x-ed-yaz) KLAVYENİN
+   HEMEN ÜSTÜNE sabitlenir (bottom = --kb-inset; Faz 0 visualViewport ile günceller). iOS'ta cihaz testi gerekir. */
+html.x-mobile.x-dik #editorModal .ed-serit{display:none;}
+html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;top:auto;bottom:var(--kb-inset,0);z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
+  // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
+  // (CSS şeridi klavyenin üstüne sabitler), odak çıkınca kaldır. Şerit buton/toggle'larına dokununca
+  // editable'ın odağı KORUNSUN (bar kaybolmasın) -> onlarda mousedown/touchstart preventDefault (select/input hariç).
+  function _mobilSeritKur(){
+    if(XE.__mobSeritKuruldu) return; XE.__mobSeritKuruldu=true;
+    var de=document.documentElement, m=document.getElementById('editorModal'); if(!m) return;
+    function dikMobil(){ return de.classList.contains('x-mobile') && de.classList.contains('x-dik'); }
+    function alanMi(t){ return !!(t && (t.isContentEditable || t.tagName==='INPUT' || t.tagName==='TEXTAREA') && t.closest && t.closest('#editor-root')); }
+    m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)) de.classList.add('x-ed-yaz'); });
+    m.addEventListener('focusout', function(){ if(!dikMobil()) return; setTimeout(function(){ if(!alanMi(document.activeElement)) de.classList.remove('x-ed-yaz'); }, 140); });
+    var serit=document.getElementById('editor-serit');
+    if(serit){ ['mousedown','touchstart'].forEach(function(ev){ serit.addEventListener(ev, function(e){ if(!dikMobil()) return; var t=e.target; if(t && t.closest && t.closest('select,input,textarea,option,.xcs-list')) return; e.preventDefault(); }, {passive:false}); }); }
+  }
 
   function stilCss(o, pre){
     var f=o[pre+'_font']||'', s=o[pre+'_size']||'', c=o[pre+'_color']||'', al=o[pre+'_align']||'left';
@@ -9673,6 +9750,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
     opts = opts||{};
     try{ window.__xEdAcCalisiyor = true; }catch(e){}   // poll canlı-yenilemesi bununla çakışmasın
     stilEnjekte();
+    try{ _mobilSeritKur(); }catch(e){}   // [DİK-MOBİL] şerit klavye-üstü odak dinleyicileri (bir kez)
     var m=document.getElementById('editorModal'); if(m) m.classList.add('active');
     _dragScrollKur();   // Faz 7: sürükleme kenar-otomatik-kaydırmasını bağla (bir kez)
     _sagTikKur();       // SAĞ-TIK biçim paneli: başlık (tüm başlık) + metin seçimi (satır-içi) (bir kez)
