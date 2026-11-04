@@ -117,6 +117,60 @@ def add_header(response):
     response.headers['Expires'] = '-1'
     return response
 
+# ===================== PWA (dik-mobil: ana ekrana ekle, standalone, zoom/scroll kapalı) =====================
+# İkon BAŞLANGIÇTA bellekte üretilir (PIL container'da var) -> Dockerfile/yeni dosya GEREKMEZ. Marka: mavi
+# yuvarlak kare (#1d9bf0) + beyaz "genişlet" kadraj köşeleri + X (favicon ile aynı). Manifest + SW inline route.
+def _pwa_ikon_png(size=512):
+    from PIL import Image, ImageDraw
+    S = int(size); img = Image.new('RGBA', (S, S), (0, 0, 0, 0)); d = ImageDraw.Draw(img)
+    d.rounded_rectangle([0, 0, S - 1, S - 1], radius=int(S * 7 / 32), fill=(29, 155, 240, 255))
+    w = max(2, int(round(S * 2.4 / 32))); sc = S / 32.0
+    def _p(x, y): return (x * sc, y * sc)
+    def _poly(pts):
+        pp = [_p(x, y) for (x, y) in pts]
+        d.line(pp, fill=(255, 255, 255, 255), width=w, joint='curve')
+        for (x, y) in (pp[0], pp[-1]):
+            d.ellipse([x - w / 2.0, y - w / 2.0, x + w / 2.0, y + w / 2.0], fill=(255, 255, 255, 255))
+    _poly([(9, 12), (9, 9), (12, 9)]); _poly([(20, 9), (23, 9), (23, 12)])
+    _poly([(23, 20), (23, 23), (20, 23)]); _poly([(12, 23), (9, 23), (9, 20)])
+    _poly([(13, 13), (19, 19)]); _poly([(19, 13), (13, 19)])
+    b = io.BytesIO(); img.save(b, 'PNG'); return b.getvalue()
+
+try:
+    PWA_ICON = _pwa_ikon_png(512)
+except Exception as _pe:
+    print("[pwa] ikon uretilemedi:", _pe, flush=True); PWA_ICON = None
+
+PWA_MANIFEST = json.dumps({
+    "name": "GörüntüX", "short_name": "GörüntüX", "start_url": "/", "scope": "/",
+    "display": "standalone", "orientation": "any", "background_color": "#0e141f", "theme_color": "#0e141f",
+    "icons": [
+        {"src": "/icon-512.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+        {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+        {"src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+    ]
+})
+# Minimal SW: install/activate + (Chrome installability için ŞART) fetch dinleyicisi (no-op -> ağ normal).
+PWA_SW = ("self.addEventListener('install',function(e){self.skipWaiting();});"
+          "self.addEventListener('activate',function(e){e.waitUntil(self.clients.claim());});"
+          "self.addEventListener('fetch',function(e){});")
+
+@app.route('/icon-512.png', methods=['GET'])
+def pwa_icon():
+    if PWA_ICON:
+        return send_file(io.BytesIO(PWA_ICON), mimetype='image/png')
+    return ('', 404)
+
+@app.route('/manifest.webmanifest', methods=['GET'])
+def pwa_manifest():
+    from flask import Response
+    return Response(PWA_MANIFEST, mimetype='application/manifest+json')
+
+@app.route('/sw.js', methods=['GET'])
+def pwa_sw():
+    from flask import Response
+    return Response(PWA_SW, mimetype='application/javascript')
+
 # ----------------- DOCX FORMATTING HELPERS -----------------
 def hex_to_rgb(hex_str):
     hex_str = hex_str.lstrip('#')
@@ -794,7 +848,15 @@ HTML_TEMPLATE = """
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- [PWA] Ana ekrana ekle -> standalone (tarayıcı çubuğu yok, gereksiz zoom/scroll kapalı). iOS apple-* meta + manifest. -->
+    <meta name="theme-color" content="#0e141f">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GörüntüX">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/icon-512.png">
     <!-- Eklenti bu isareti gorup SADECE gercek paneli panel olarak kaydeder (guvenilir panel_tab_id) -->
     <meta name="x-rapor-panel" content="1">
     <title>GörüntüX</title>
@@ -1660,7 +1722,7 @@ HTML_TEMPLATE = """
         html.x-mobile.x-dik { --content-pad: 12px; }
         html.x-mobile.x-dik body { overflow: auto; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
-        html.x-mobile.x-dik .main-content { height: auto; min-height: 100vh; overflow: visible; padding: var(--content-pad); padding-bottom: 84px; }
+        html.x-mobile.x-dik .main-content { height: auto; min-height: 100vh; overflow: visible; padding: var(--content-pad); padding-top: calc(var(--content-pad) + env(safe-area-inset-top)); padding-bottom: 84px; }
         html.x-mobile.x-dik .header { margin-bottom: 16px; }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
@@ -2028,6 +2090,8 @@ HTML_TEMPLATE = """
         var vv=window.visualViewport;
         if(vv){ var kb=function(){ try{ var inset=Math.max(0, Math.round((window.innerHeight||0) - vv.height - vv.offsetTop)); de.style.setProperty('--kb-inset', inset+'px'); if(inset < 80){ var a=document.activeElement; if(!(a && a.closest && a.closest('#editor-root') && (a.isContentEditable || a.tagName==='INPUT' || a.tagName==='TEXTAREA'))){ de.classList.remove('x-ed-yaz'); } } }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
+    <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
+    <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
     <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
@@ -2705,7 +2769,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04p · mobil şerit titreme fix';
+        var X_BUILD = '2026-11-04q · PWA + no-zoom';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9569,7 +9633,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* ===================== DİK-MOBİL EDİTÖR (Faz 2-3) — yalnız html.x-mobile.x-dik ===================== */
 /* Üst çubuk: başlık metni + uzun rapor-adı (tarih), ✕/Paylaş/galeri/ayar butonlarını ekran dışına İTMESİN.
    Başlık metni gizlenir (ikon kalır), rapor-adı DARALIR (min-width:0), butonlar HER ZAMAN görünür. */
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;gap:4px;}
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:calc(8px + env(safe-area-inset-top));gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
 html.x-mobile.x-dik #editorModal .x-shead{font-size:0;gap:0;flex:none;}
