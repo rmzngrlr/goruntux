@@ -2705,7 +2705,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04m · mobil-responsive faz0-4';
+        var X_BUILD = '2026-11-04o · mobil üst çubuk + ed-ctx';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9567,12 +9567,21 @@ body:not(.light-theme) #ed-rt-panel .rt-reset:hover{background:#3a1f28;border-co
 body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:#2f5f8a;color:#6fb4ef;}
 
 /* ===================== DİK-MOBİL EDİTÖR (Faz 2-3) — yalnız html.x-mobile.x-dik ===================== */
-/* Faz 2: Şerit TEK SATIR yatay kaydırmalı (iPhone Notes); dokunuş hedefleri büyük; bağlam etiketi gizli. */
+/* Üst çubuk: başlık metni + uzun rapor-adı (tarih), ✕/Paylaş/galeri/ayar butonlarını ekran dışına İTMESİN.
+   Başlık metni gizlenir (ikon kalır), rapor-adı DARALIR (min-width:0), butonlar HER ZAMAN görünür. */
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;gap:4px;}
+html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
+html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
+html.x-mobile.x-dik #editorModal .x-shead{font-size:0;gap:0;flex:none;}
+html.x-mobile.x-dik #editorModal .x-shead svg{width:22px;height:22px;flex:none;}
+html.x-mobile.x-dik #editorModal .ed-rapor-adi{flex:0 1 auto;min-width:0;width:auto;max-width:none;font-size:12px;padding:6px 6px;margin-right:2px;}
+html.x-mobile.x-dik #editorModal .ed-ikon-btn{flex:none;}
+/* Faz 2: Şerit TEK SATIR yatay kaydırmalı (iPhone Notes); dokunuş hedefleri büyük. */
 html.x-mobile.x-dik #editorModal .ed-serit{padding:8px 10px;}
 html.x-mobile.x-dik #editorModal .ed-panel{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:8px;}
 html.x-mobile.x-dik #editorModal .ed-panel::-webkit-scrollbar{display:none;}
 html.x-mobile.x-dik #editorModal .ed-grp{flex:none;padding-right:10px;}
-html.x-mobile.x-dik #editorModal .ed-ctx{display:none;}
+html.x-mobile.x-dik #editorModal .ed-ctx{display:inline-flex;height:38px;font-size:13px;}
 html.x-mobile.x-dik #editorModal .ed-panel select,html.x-mobile.x-dik #editorModal .ed-panel input[type=number]{height:38px;font-size:14px;padding:6px 8px;}
 html.x-mobile.x-dik #editorModal .ed-panel input[type=color]{width:38px;height:38px;}
 html.x-mobile.x-dik #editorModal .ed-tgl,html.x-mobile.x-dik #editorModal .ed-hb{height:38px;min-width:38px;}
