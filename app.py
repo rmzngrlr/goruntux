@@ -2669,7 +2669,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-04f · word-boyutlama-satir-araligi';
+        var X_BUILD = '2026-11-04g · pdf-word-boyutlama-2gorsel';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3903,10 +3903,15 @@ HTML_TEMPLATE = """
             var saOn = true; try { saOn = (localStorage.getItem('x_satir_aralik') !== '0'); } catch (e) {}
             var lh = saOn ? (parseFloat(o.m_line || '1.5') || 1.5) : 1.0;
             var CW = 595.28 - 108;          // A4 içerik genişliği (kenar 54pt)
-            var MAXH = 841.89 - 72 - 100;   // tek görsel güvenli max yükseklik (kenar 36 + başlık/link payı)
-            function imgBlok(img) {
-                var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1;
-                var w = CW, h = w * nh / nw; if (h > MAXH) { h = MAXH; w = h * nw / nh; }
+            // [PDF SAYFALAMA = WORD] Görselleri Word'ün 2-geçişli boyutlamasıyla ölçekle -> 2 görsel/sayfa
+            // (eski: her görsel tam genişlik -> 1/sayfa). pt cinsinden. PAGE_H kullanılabilir yükseklik, GUV
+            // güvenlik payı (pdfmake render belirsizliği için Word'den biraz fazla), ESIK altında eşleşme
+            // bozulur (tek/sayfa). Bayrak x_pdf_cift='0' -> eski (tam genişlik) davranış.
+            var PAGE_H = 841.89 - 72, GUV = 26, ESIK = 180;
+            var _ciftOn = true; try { _ciftOn = (localStorage.getItem('x_pdf_cift') !== '0'); } catch (e) {}
+            function _satSay(txt, pt) { var cpl = Math.max(1, Math.floor(CW / (pt * 0.5))); return Math.max(1, Math.ceil(String(txt || '').length / cpl)); }
+            function _txtY(txt, pt, afterPt) { return _satSay(txt, pt) * (pt * 1.2 * lh) + afterPt; }
+            function imgBlok(img, w, h) {
                 var al = (o.g_align === 'center' || o.g_align === 'right') ? o.g_align : 'left'; try { if (localStorage.getItem('x_gorsel_hiza') === '0') al = 'left'; } catch (e) {}
                 return { image: img.src, width: Math.round(w), height: Math.round(h), alignment: al, margin: [0, 0, 0, 6] };
             }
@@ -3915,24 +3920,44 @@ HTML_TEMPLATE = """
             function lBlok(url) { var b = { text: url, link: url, fontSize: (parseInt(o.l_size, 10) || 10), bold: !!o.l_bold, italics: !!o.l_italic, color: _pmHex(o.l_color, '#1565c0'), alignment: _pmAlign(o.l_align), lineHeight: lh, margin: [0, 0, 0, 8] }; if (o.l_underline) b.decoration = 'underline'; return b; }
             function cizgiBlok() { return { canvas: [{ type: 'line', x1: 0, y1: 0, x2: CW, y2: 0, lineWidth: 0.75, lineColor: '#c0c7d0' }], margin: [0, 4, 0, 8] }; }
             var basliksiz = !!o.b_basliksiz, numarali = !!o.b_numbered, hNo = 0;
-            var content = [], bekleyenPlat = null, kids = [].slice.call(root.children);
+            // PASS 1: öğeleri topla (görsel = placeholder; metin blokları + textPay + en-boy oranı)
+            var items = [], bekleyenPlat = null, kids = [].slice.call(root.children);
             for (var i = 0; i < kids.length; i++) {
                 var n = kids[i]; if (n.nodeType !== 1) continue;
                 if (n.classList.contains('ed-plat')) { bekleyenPlat = String(n.textContent || '').trim(); }
                 else if (n.classList.contains('ed-card')) {
-                    var grup = [];
-                    if (bekleyenPlat) { grup.push(basBlok(bekleyenPlat, (parseInt(o.b1_size, 10) || 18), o.b1_bold, o.b1_italic, o.b1_underline, o.b1_color, o.b1_align, 10, 6)); bekleyenPlat = null; }
+                    var u = { t: 'unit', blocks: [], imgIdx: -1, img: null, rh: 0, pay: 0, w: 0 };
+                    if (bekleyenPlat) { var _p1 = bekleyenPlat, _s1 = (parseInt(o.b1_size, 10) || 18); u.blocks.push(basBlok(_p1, _s1, o.b1_bold, o.b1_italic, o.b1_underline, o.b1_color, o.b1_align, 10, 6)); u.pay += _txtY(_p1, _s1, 6) + 10; bekleyenPlat = null; }
                     var h2el = n.querySelector('.ed-h2'); var h2t = h2el ? String(h2el.textContent || '').trim() : '';
-                    if (h2t && !basliksiz) { hNo++; grup.push(basBlok(numarali ? (hNo + '. ' + h2t) : h2t, (parseInt(o.b_size, 10) || 16), o.b_bold, o.b_italic, o.b_underline, o.b_color, o.b_align, 0, (parseInt(o.b_after, 10) || 6))); }
+                    if (h2t && !basliksiz) { hNo++; var _bsz = (parseInt(o.b_size, 10) || 16), _ba = (parseInt(o.b_after, 10) || 6), _ht = numarali ? (hNo + '. ' + h2t) : h2t; u.blocks.push(basBlok(_ht, _bsz, o.b_bold, o.b_italic, o.b_underline, o.b_color, o.b_align, 0, _ba)); u.pay += _txtY(_ht, _bsz, _ba); }
                     var ps = n.querySelectorAll('.ed-parca');
                     [].forEach.call(ps, function (p) {
-                        var img = p.querySelector('img.ed-img'); if (img && img.src) { grup.push(imgBlok(img)); return; }
-                        var mt = p.querySelector('.ed-metin'); if (mt) { if (String(mt.textContent || '').trim()) grup.push(mBlok(mt)); return; }
-                        var lk = p.querySelector('.ed-link-edit'); if (lk) { var lu = String(lk.textContent || '').trim(); if (lu) grup.push(lBlok(lu)); return; }
+                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = nh / nw; u.pay += 6; } return; }
+                        var mt = p.querySelector('.ed-metin'); if (mt) { var _m = String(mt.textContent || '').trim(); if (_m) { u.blocks.push(mBlok(mt)); u.pay += _txtY(_m, (parseInt(o.m_size, 10) || 11), 6); } return; }
+                        var lk = p.querySelector('.ed-link-edit'); if (lk) { var lu = String(lk.textContent || '').trim(); if (lu) { u.blocks.push(lBlok(lu)); u.pay += _txtY(lu, (parseInt(o.l_size, 10) || 10), 8); } return; }
                     });
-                    content.push({ stack: grup, unbreakable: true, margin: [0, 0, 0, 8] });
+                    u.pay += 8;   // içerik stack alt-boşluğu
+                    items.push(u);
                 }
-                else if (n.classList.contains('ed-line')) { content.push(cizgiBlok()); }
+                else if (n.classList.contains('ed-line')) { items.push({ t: 'cizgi' }); }
+            }
+            // PASS 2: görselli öğeleri Word gibi eşleştir (2/sayfa ortak genişlik). Görselsiz/çizgi atlanır.
+            var _gu = []; for (var _gk = 0; _gk < items.length; _gk++) { if (items[_gk].t === 'unit' && items[_gk].img) _gu.push(items[_gk]); }
+            if (_ciftOn) {
+                var _pz = 0;
+                while (_pz < _gu.length) {
+                    var _a = _gu[_pz], _b = (_pz + 1 < _gu.length) ? _gu[_pz + 1] : null, _cift = false;
+                    if (_b) { var _ters = _a.rh + _b.rh, _W2 = (_ters > 0) ? Math.min(CW, (PAGE_H - _a.pay - _b.pay - GUV) / _ters) : CW; if (_W2 >= ESIK) { _a.w = _W2; _b.w = _W2; _pz += 2; _cift = true; } }
+                    if (!_cift) { var _k1 = PAGE_H - _a.pay - GUV; _a.w = (_a.rh > 0) ? Math.min(CW, Math.max(10, _k1) / _a.rh) : CW; _pz += 1; }
+                }
+            } else { for (var _gs = 0; _gs < _gu.length; _gs++) { _gu[_gs].w = CW; } }
+            // PASS 3: içeriği kur (görsel placeholder'ını boyutlanmış imgBlok ile doldur)
+            var content = [];
+            for (var _i2 = 0; _i2 < items.length; _i2++) {
+                var it = items[_i2];
+                if (it.t === 'cizgi') { content.push(cizgiBlok()); continue; }
+                if (it.imgIdx >= 0 && it.img) { var _w = it.w || CW; it.blocks[it.imgIdx] = imgBlok(it.img, _w, _w * it.rh); }
+                content.push({ stack: it.blocks.filter(function (x) { return !!x; }), unbreakable: true, margin: [0, 0, 0, 8] });
             }
             if (!content.length) throw new Error('Rapor boş — önce içerik ekleyin.');
             _pmProg(45);
