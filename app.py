@@ -1730,12 +1730,14 @@ HTML_TEMPLATE = """
         /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
            dikey scroll + bounce. 100dvh (dinamik viewport) görünür alana oturur; overscroll-behavior:none bounce'u keser.
            İçerik gerçekten uzunsa scroll yine çıkar. Bayrak yok (düz CSS; dvh desteklenmeyen eski tarayıcı 100vh'a düşer). */
-        html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; }
-        /* [GEREKSİZ BOŞLUK/SCROLL] main-content'e min-height VERME -> içerik kısaysa boş alan OLUŞMAZ (eskiden
-           min-height:100dvh içeriği viewport'a kadar şişirip altta gereksiz boşluk+scroll yapıyordu). Arka plan dolgusu
-           container'da: 100svh (iOS'ta EN KÜÇÜK viewport = araç-çubuğu-açık yükseklik -> her durumda sığar, scroll yok). */
-        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; min-height: 100svh; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
+        /* [GEREKSİZ BOŞLUK/SCROLL] iOS'ta 100vh tarayıcı çubuğu altını da sayar -> içerik kısa olsa da sayfa viewport'tan
+           uzun -> boş alan + scroll. ÇÖZÜM: mobilde TÜM min-height forcing'i kaldır (body base'de min-height:100vh VARDI,
+           container+main-content da). İçerik = sayfa yüksekliği; kısa içerik -> kısa sayfa -> SCROLL YOK. Viewport'un
+           altındaki alan body'nin dark arka planıdır (canvas'a yayılır, beyaz boşluk olmaz). İçerik gerçekten uzunsa
+           (çok rapor/havuz) scroll yine çıkar (meşru). */
+        html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; min-height: 0; }
+        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 0; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 56px); padding-bottom: 20px; }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2819,7 +2821,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05l · mobil: editör modal 100dvh (altta panel gizlendi) + font-dropdown cap 256 (2 font az, üst düzgün);';
+        var X_BUILD = '2026-11-05m · mobil: ana sayfa min-height forcing KALDIR (scroll düzelt) + üst floor 54/56 (örtülü düzelt) + font dropdown safe-top PROBE';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2944,8 +2946,11 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var _ih = window.innerHeight || _dem.clientHeight;
             var _vw = window.innerWidth || _dem.clientWidth;
             var _kb = parseFloat(getComputedStyle(_dem).getPropertyValue('--kb-inset')) || 0;
-            var _safeTop = parseFloat(getComputedStyle(_dem).getPropertyValue('--safe-top')) || 0;
-            var _visTop = _safeTop + 8;                  // çentik altı görünür üst sınır
+            // [SAFE-TOP ÖLÇÜMÜ] env(safe-area-inset-top) bir CSS değişkenine konunca getComputedStyle onu ÇÖZMEZ (ham
+            // "env(...)" döner -> parseFloat=NaN -> 0). GERÇEK değeri gizli PROBE öğesinin yüksekliğinden ölç.
+            var _safeTop = 0;
+            try { var _pr = document.getElementById('x-safe-probe'); if(!_pr){ _pr = document.createElement('div'); _pr.id='x-safe-probe'; _pr.style.cssText='position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;z-index:-1;'; (document.body||_dem).appendChild(_pr); } _safeTop = _pr.offsetHeight || 0; } catch(e){}
+            var _visTop = _safeTop + 10;                 // çentik/durum çubuğu altı görünür üst sınır (+10 pay)
             var _visBottom = _ih - _kb;                  // klavye üstü görünür alt sınır
             list.style.minWidth = Math.max(150, Math.round(_r.width)) + 'px';
             var _roomBelow = _visBottom - _r.bottom - 6;
@@ -9102,7 +9107,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4s · 2026-11-05 mobil: editör modal 100dvh, font-dropdown cap 256";
+  XE.VERSION = "4t · 2026-11-05 mobil: min-height kaldir, ust floor, font-dropdown safe-top probe";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9818,7 +9823,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
    hem içerik sığar (scroll yok). İçerik modal'ı %100 doldurur. */
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 14px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 54px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
