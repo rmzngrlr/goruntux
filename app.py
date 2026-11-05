@@ -1726,10 +1726,13 @@ HTML_TEMPLATE = """
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
-        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); }
-        html.x-mobile.x-dik body { overflow: auto; }
-        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 48px; }
+        /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
+           dikey scroll + bounce. 100dvh (dinamik viewport) görünür alana oturur; overscroll-behavior:none bounce'u keser.
+           İçerik gerçekten uzunsa scroll yine çıkar. Bayrak yok (düz CSS; dvh desteklenmeyen eski tarayıcı 100vh'a düşer). */
+        html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; }
+        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; min-height: 100dvh; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2130,6 +2133,15 @@ HTML_TEMPLATE = """
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
     <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
+    <!-- [ZOOM KAPAT + iOS form-çubuğu offset bayrağı] Panelde zoom olmasın (kullanıcı); iOS user-scalable=no'yu yok
+         sayar -> pinch gesture olaylarını engelle (yalnız pinch; double-tap metin seçimini bozma). Bayrak x_zoom_kapali='0'.
+         Ayrıca x_ios_acc='0' ise şerit form-çubuğu offset'ini (--ed-acc) sıfırla. -->
+    <script>(function(){try{
+      var de=document.documentElement;
+      try{ if(localStorage.getItem('x_ios_acc')==='0') de.style.setProperty('--ed-acc','0px'); }catch(e){}
+      var zoomOff=true; try{ zoomOff=(localStorage.getItem('x_zoom_kapali')!=='0'); }catch(e){}
+      if(zoomOff){ ['gesturestart','gesturechange','gestureend'].forEach(function(ev){ document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false}); }); }
+    }catch(e){}})();</script>
     <div class="container">
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
@@ -2804,7 +2816,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05i · mobil: font-dropdown safe-area-klemp + dropdown klavye-takip + başlık-seçim native-menü-gizle + editör üst-sınır safe-area';
+        var X_BUILD = '2026-11-05j · mobil: şerit iOS-form-çubuğu-üstü(--ed-acc) + inline native-menü-gizle + zoom-kapat(pinch) + gereksiz-scroll(100dvh+overscroll)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9085,7 +9097,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4p · 2026-11-05 mobil: font-dropdown safe-area+klavye-takip, başlık-seçim native-menü-gizle, editör üst-sınır safe-area";
+  XE.VERSION = "4q · 2026-11-05 mobil: şerit iOS-form-çubuğu-üstü(--ed-acc), inline native-menü-gizle, zoom-kapat, gereksiz-scroll(100dvh)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9795,6 +9807,9 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* [ÜST SINIR] Editör başlığı safe-area-top'u İZLER: Safari araç çubuğu açıkken env=0 -> kompakt (14px, eski 34px
    "boşluklu"ydu); araç çubuğu kapanınca/PWA'da env=~59 -> çentiği temizler. Header flex:none (sabit, içerik altına
    sızmaz) + opak arka plan -> çentik şeridi temiz. */
+/* [GEREKSİZ SCROLL] Editör de 100vh yerine 100dvh -> görünür alana oturur, içerik az olunca scroll çıkmaz (preview-body
+   zaten overscroll-behavior:none). */
+html.x-mobile.x-dik #editorModal .preview-modal-content{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 14px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
@@ -9838,14 +9853,17 @@ html.x-mobile.x-dik #editorModal .ed-serit{display:none;}
 /* [iOS KENAR-SWIPE] Şerit bottom:0'da (iPhone home-bar bölgesi) iken yatay çekiş iOS app-geçiş gesture'ını
    tetikliyordu. bottom = max(kb-inset, safe-area) -> klavye kapalıyken home-bar'ın ÜSTÜnde kalır (gesture bölgesi
    dışı); klavye açıkken zaten inset>safe-area -> klavyenin üstünde. touch-action:pan-x -> yatay kaydırma bizde. */
-html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;top:auto;bottom:max(var(--kb-inset,0px), env(safe-area-inset-bottom));z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;touch-action:pan-x;}
+/* [iOS FORM ÇUBUĞU] iOS klavye üstünde kendi "^v✓" form-asistan çubuğunu basar (native, web'den kaldırılamaz) ve bizim
+   şeridimizi (bottom:kb-inset) ÖRTÜYOR ("şerit nerede kaldı"). Şeridi o çubuğun kadarı (--ed-acc, ~48px) kadar YUKARI
+   kaldır -> iOS çubuğunun ÜstÜnde görünür. Bayrak x_ios_acc='0' -> --ed-acc:0 (offset yok). */
+html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;top:auto;bottom:calc(max(var(--kb-inset,0px), env(safe-area-inset-bottom)) + var(--ed-acc, 0px));z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;touch-action:pan-x;}
 /* [DİK-MOBİL Faz 3+] Yazarken SAYFAYI KİLİTLE: iOS'ta ekranı aşağı çekince (overscroll/rubber-band)
    visualViewport.offsetTop oynuyor -> --kb-inset şişip SABİT şerit ekranın ortasına kayıyordu. Body/html
    scroll+bounce kapalı -> editör içeriği .preview-body'nin KENDİ iç scroll'uyla kayar (sayfa oynamaz),
    şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
 html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
-html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 64px);}
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + var(--ed-acc,0px) + 64px);}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
   // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
@@ -11242,10 +11260,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         else if(ed.classList.contains('ed-metin')){ info={mode:'inline', metinEl:ed, range:rng.cloneRange(), clipEl:ed, clipRange:rng.cloneRange()}; }
         else return;   // başlık ama override kapalı -> inline formatlanamaz
         _sagTikGoster(info, rect.left, rect.bottom);
-        // [NATIVE SEÇİM MENÜSÜ GİZLE] Başlık biçimi TÜM-başlığa uygulanır -> seçime gerek yok; özel menü açıldıktan
-        // sonra seçimi daralt -> iOS'un Kes/Kopyala/Yapıştır balonu kaybolur (özel menü yeterli). Bayrak
-        // x_native_sel_gizle='0' -> daraltma yok. (Inline/.ed-metin'de seçim KORUNUR -> kullanıcı ne seçtiğini görür.)
-        if(info.mode==='heading'){ var _nsg=true; try{ _nsg=(localStorage.getItem('x_native_sel_gizle')!=='0'); }catch(e){} if(_nsg){ try{ _mobSelCollapsing=true; sel.collapseToEnd(); setTimeout(function(){ _mobSelCollapsing=false; }, 90); }catch(e){ _mobSelCollapsing=false; } } }
+        // [NATIVE SEÇİM MENÜSÜ GİZLE] Özel menü açıldıktan SONRA seçimi daralt -> iOS'un Kes/Kopyala/Yapıştır balonu
+        // kaybolur (özel menü yeterli; biçim BAŞLIK'ta tüm-başlığa, INLINE'da klonlanmış range'e uygulanır -> canlı
+        // seçime gerek yok). Bayrak x_native_sel_gizle='0' -> daraltma yok (native menü geri gelir).
+        var _nsg=true; try{ _nsg=(localStorage.getItem('x_native_sel_gizle')!=='0'); }catch(e){} if(_nsg){ try{ _mobSelCollapsing=true; sel.collapseToEnd(); setTimeout(function(){ _mobSelCollapsing=false; }, 90); }catch(e){ _mobSelCollapsing=false; } }
       }catch(_){} }, 450);
     });
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
