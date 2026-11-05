@@ -1726,7 +1726,9 @@ HTML_TEMPLATE = """
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
-        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 0px; }
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 0px; overscroll-behavior: none; }
+        /* [ESNEME/BOUNCE] İçerik viewport'tan kısa olsa da iOS rubber-band esniyordu -> html+body overscroll-behavior:none
+           (iOS 16+). İçerik uzunsa normal scroll yine çalışır. */
         /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
            dikey scroll + bounce. 100dvh (dinamik viewport) görünür alana oturur; overscroll-behavior:none bounce'u keser.
            İçerik gerçekten uzunsa scroll yine çıkar. Bayrak yok (düz CSS; dvh desteklenmeyen eski tarayıcı 100vh'a düşer). */
@@ -2125,6 +2127,11 @@ HTML_TEMPLATE = """
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
         if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px');
+          // [ŞERİT KONUMU — layout/visual viewport farkı] position:fixed iOS'ta LAYOUT viewport'a (lvh) göre; innerHeight
+          // ise bu cihazda KÜÇÜK viewport (svh) olabiliyor -> bottom:kb-inset şeridi klavyenin ALTINA itiyordu. ÇÖZÜM:
+          // görünür viewport'un ALT kenarını (vv.offsetTop+vv.height, layout koordinatı) --vv-bottom'a yaz; şerit
+          // top:var(--vv-bottom)+translateY(-100%) ile ALT kenarını oraya (klavye/iOS-çubuğu üstüne) oturtur.
+          try { de.style.setProperty('--vv-bottom', Math.round((vv.offsetTop||0) + vv.height) + 'px'); } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
           try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
@@ -2845,7 +2852,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06a · mobil: galeri kart 176->108 (scroll fix) + font-dropdown 170 kompakt+siki; TANI acik';
+        var X_BUILD = '2026-11-06b · mobil: serit top:--vv-bottom+translateY (klavye arkasi fix) + html overscroll-behavior (esneme); TANI acik';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9132,7 +9139,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4v-debug · 2026-11-06 galeri-kart-kisa, font-dropdown-kompakt";
+  XE.VERSION = "4w-debug · 2026-11-06 serit-vv-bottom, overscroll";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9894,7 +9901,7 @@ html.x-mobile.x-dik #editorModal .ed-serit{display:none;}
 /* [iOS FORM ÇUBUĞU] iOS klavye üstünde kendi "^v✓" form-asistan çubuğunu basar (native, web'den kaldırılamaz) ve bizim
    şeridimizi (bottom:kb-inset) ÖRTÜYOR ("şerit nerede kaldı"). Şeridi o çubuğun kadarı (--ed-acc, ~48px) kadar YUKARI
    kaldır -> iOS çubuğunun ÜstÜnde görünür. Bayrak x_ios_acc='0' -> --ed-acc:0 (offset yok). */
-html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;top:auto;bottom:calc(max(var(--kb-inset,0px), env(safe-area-inset-bottom)) + var(--ed-acc, 0px));z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;touch-action:pan-x;}
+html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;bottom:auto;top:var(--vv-bottom, 100%);transform:translateY(-100%);z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;touch-action:pan-x;}
 /* [DİK-MOBİL Faz 3+] Yazarken SAYFAYI KİLİTLE: iOS'ta ekranı aşağı çekince (overscroll/rubber-band)
    visualViewport.offsetTop oynuyor -> --kb-inset şişip SABİT şerit ekranın ortasına kayıyordu. Body/html
    scroll+bounce kapalı -> editör içeriği .preview-body'nin KENDİ iç scroll'uyla kayar (sayfa oynamaz),
