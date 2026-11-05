@@ -2819,7 +2819,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05k · mobil: şerit-offset 0+kb-tazele(snug) + gereksiz-boşluk/scroll (main-content min-height KALDIR, container/editör 100svh)';
+        var X_BUILD = '2026-11-05l · mobil: editör modal 100dvh (altta panel gizlendi) + font-dropdown cap 256 (2 font az, üst düzgün);';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2952,7 +2952,9 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var _roomAbove = _r.top - _visTop - 6;       // [SAFE-TOP] üst yer Dynamic Island'ı DIŞLAR
             var _up = _roomAbove > _roomBelow;
             var _room = _up ? _roomAbove : _roomBelow;
-            list.style.maxHeight = Math.max(96, Math.min(340, _room)) + 'px';
+            // [YÜKSEKLİK] Cap 256px (~6 satır): eskiden 340 (~8 satır) listeyi fazla uzatıp üst kenarı durum çubuğuna/
+            // Dynamic Island'a dayıyordu (kullanıcı "üstü düzgün değil"). Daha kısa -> üst kenar aşağıda, kalanı kaydır.
+            list.style.maxHeight = Math.max(96, Math.min(256, _room)) + 'px';
             var _lw = list.offsetWidth;
             var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
             list.style.left = Math.round(_left) + 'px';
@@ -9100,7 +9102,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4r · 2026-11-05 mobil: şerit-offset 0+kb-tazele(snug), gereksiz-boşluk/scroll (min-height kaldır, 100svh)";
+  XE.VERSION = "4s · 2026-11-05 mobil: editör modal 100dvh, font-dropdown cap 256";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9810,10 +9812,11 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* [ÜST SINIR] Editör başlığı safe-area-top'u İZLER: Safari araç çubuğu açıkken env=0 -> kompakt (14px, eski 34px
    "boşluklu"ydu); araç çubuğu kapanınca/PWA'da env=~59 -> çentiği temizler. Header flex:none (sabit, içerik altına
    sızmaz) + opak arka plan -> çentik şeridi temiz. */
-/* [GEREKSİZ SCROLL] Editör modal'ı fixed+height:100% ile BÜYÜK viewport kadardı (iOS araç çubuğu açıkken görünürden
-   uzun -> içerik az olsa da scroll). Mobilde modal 100svh (EN KÜÇÜK viewport = her durumda sığar); içerik modal'ı
-   %100 doldurur (çift birim çakışması yok). */
-html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100svh;}
+/* [GEREKSİZ SCROLL + ALTTA PANEL] Editör modal'ı fixed+height:100% ile BÜYÜK viewport kadardı (araç çubuğu açıkken
+   görünürden uzun -> scroll). 100svh denedim ama svh = EN KÜÇÜK (araç-çubuğu-AÇIK) yükseklik -> çubuk gizlenince modal
+   KISA kalıp ALTINDA panel görünüyordu. DOĞRUSU 100dvh (DİNAMİK = o anki görünür alan): hem tam kaplar (alt boşluk yok)
+   hem içerik sığar (scroll yok). İçerik modal'ı %100 doldurur. */
+html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 14px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
