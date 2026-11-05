@@ -2147,6 +2147,25 @@ HTML_TEMPLATE = """
       var zoomOff=true; try{ zoomOff=(localStorage.getItem('x_zoom_kapali')!=='0'); }catch(e){}
       if(zoomOff){ ['gesturestart','gesturechange','gestureend'].forEach(function(ev){ document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false}); }); }
     }catch(e){}})();</script>
+    <!-- [TANI KATMANI] URL'ye #debug eklenince (ya da localStorage x_debug='1') köşede gerçek ölçüm değerlerini gösterir.
+         iOS viewport/klavye/çentik değerlerini cihazdan okuyup kesin düzeltme yapmak için. Kapatmak için #debug'ı sil. -->
+    <script>(function(){try{
+      var acik=false; try{ acik=(location.hash.indexOf('debug')>=0)||(localStorage.getItem('x_debug')==='1'); }catch(e){}
+      if(!acik) return;
+      function U(unit){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:100'+unit+';'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
+      function ST(){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:env(safe-area-inset-top,0px);'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
+      function ciz(){ try{
+        var de=document.documentElement, vv=window.visualViewport;
+        var ver=''; try{ ver=(window.XEditor&&window.XEditor.VERSION)||''; }catch(e){} ver=(''+ver).slice(0,16);
+        var kb=0; try{ kb=Math.round(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0); }catch(e){}
+        var edM=document.getElementById('editorModal'); var edH=(edM&&edM.classList.contains('active'))?edM.offsetHeight:'-';
+        var b=document.getElementById('x-dbg'); if(!b){ b=document.createElement('div'); b.id='x-dbg'; b.style.cssText='position:fixed;top:4px;right:4px;z-index:2147483647;background:rgba(0,0,0,.88);color:#3f6;font:10px/1.35 ui-monospace,monospace;padding:5px 7px;border:1px solid #3f6;border-radius:6px;max-width:66vw;pointer-events:none;text-align:right;'; document.body.appendChild(b); }
+        b.innerHTML=['VER '+ver,'ih='+window.innerHeight+' vvH='+(vv?Math.round(vv.height):'-')+' vvTop='+(vv?Math.round(vv.offsetTop):'-'),'vh='+U('vh')+' svh='+U('svh'),'dvh='+U('dvh')+' lvh='+U('lvh'),'safeTop='+ST()+' kb='+kb,'bodyScrollH='+document.body.scrollHeight+' edH='+edH].join('<br>');
+      }catch(e){} }
+      window.addEventListener('load', function(){ ciz(); setInterval(ciz, 800); });
+      if(window.visualViewport){ window.visualViewport.addEventListener('resize', ciz); window.visualViewport.addEventListener('scroll', ciz); }
+      document.addEventListener('DOMContentLoaded', ciz);
+    }catch(e){}})();</script>
     <div class="container">
         <!-- Main Workspace -->
         <div class="main-content" style="position: relative;">
@@ -2821,7 +2840,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05m · mobil: ana sayfa min-height forcing KALDIR (scroll düzelt) + üst floor 54/56 (örtülü düzelt) + font dropdown safe-top PROBE';
+        var X_BUILD = '2026-11-05n · TANI katmani (#debug) + onceki mobil fixler';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9107,7 +9126,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4t · 2026-11-05 mobil: min-height kaldir, ust floor, font-dropdown safe-top probe";
+  XE.VERSION = "4u-debug · 2026-11-05 tani-katmani (#debug)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
