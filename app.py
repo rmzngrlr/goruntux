@@ -2065,6 +2065,11 @@ HTML_TEMPLATE = """
         /* [RAPOR OLUŞTUR] kart tıklayınca inen menü (popup değil): Yeni Rapor / Cihazdan Yükle */
         .x-gal-olustur { position: relative; }
         .x-gal-olustur .x-gal-yeni { cursor: pointer; }
+        /* [DİK-MOBİL — GEREKSİZ BOŞLUK/SCROLL] Galeri kart önizlemesi 176px mobilde çok uzun -> 2 kart (Rapor Oluştur +
+           rapor) viewport'u taşırıp scroll yapıyordu (cihaz: içerik 755 > görünür 665). Mobilde kartları kısalt (108px)
+           -> içerik görünür alana sığar, scroll gider. */
+        html.x-mobile.x-dik .x-gal-page { height: 108px; }
+        html.x-mobile.x-dik .x-gal-yeni { height: 108px; }
         /* OPAK ZORUNLU: --bg-card koyu temada rgba(.,.6) = %40 saydam -> arkadaki "Rapor Oluştur" yazısı görünürdü.
            linear-gradient(card,card) over bg-primary ile tam opak yap (koddaki mevcut desen). */
         .x-gal-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; min-width: 190px; background: linear-gradient(var(--bg-card), var(--bg-card)), var(--bg-primary); border: 1px solid var(--border-color); border-radius: 13px; box-shadow: 0 14px 36px rgba(0,0,0,0.3); padding: 6px; z-index: 60; }
@@ -2840,7 +2845,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05n · TANI katmani (#debug) + onceki mobil fixler';
+        var X_BUILD = '2026-11-06a · mobil: galeri kart 176->108 (scroll fix) + font-dropdown 170 kompakt+siki; TANI acik';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2976,14 +2981,15 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var _roomAbove = _r.top - _visTop - 6;       // [SAFE-TOP] üst yer Dynamic Island'ı DIŞLAR
             var _up = _roomAbove > _roomBelow;
             var _room = _up ? _roomAbove : _roomBelow;
-            // [YÜKSEKLİK] Cap 256px (~6 satır): eskiden 340 (~8 satır) listeyi fazla uzatıp üst kenarı durum çubuğuna/
-            // Dynamic Island'a dayıyordu (kullanıcı "üstü düzgün değil"). Daha kısa -> üst kenar aşağıda, kalanı kaydır.
-            list.style.maxHeight = Math.max(96, Math.min(256, _room)) + 'px';
+            // [YÜKSEKLİK] Cap 170px (~4 satır): daha kompakt -> editör içeriğini az kapatır, butona iliştik durur
+            // (kullanıcı "gerekli bölgesinden ayrı" dedi); kalan fontlar kaydırmayla (overflow-y:auto).
+            list.style.maxHeight = Math.max(96, Math.min(170, _room)) + 'px';
             var _lw = list.offsetWidth;
             var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
             list.style.left = Math.round(_left) + 'px';
-            if (_up) { list.style.bottom = Math.round(_ih - _r.top + 5) + 'px'; list.style.top = 'auto'; }
-            else { list.style.top = Math.round(_r.bottom + 5) + 'px'; list.style.bottom = 'auto'; }
+            // [SIKI BAĞLANTI] Butonun hemen üstüne/altına 2px payla yapış (kopuk durmasın).
+            if (_up) { list.style.bottom = Math.round(_ih - _r.top + 2) + 'px'; list.style.top = 'auto'; }
+            else { list.style.top = Math.round(_r.bottom + 2) + 'px'; list.style.bottom = 'auto'; }
         }
         window._xcsKonumlaMobil = _xcsKonumlaMobil;
         function _xcsAc(sel) {
@@ -9126,7 +9132,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4u-debug · 2026-11-05 tani-katmani (#debug)";
+  XE.VERSION = "4v-debug · 2026-11-06 galeri-kart-kisa, font-dropdown-kompakt";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
