@@ -1726,13 +1726,16 @@ HTML_TEMPLATE = """
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
-        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 48px; }
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 0px; }
         /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
            dikey scroll + bounce. 100dvh (dinamik viewport) görünür alana oturur; overscroll-behavior:none bounce'u keser.
            İçerik gerçekten uzunsa scroll yine çıkar. Bayrak yok (düz CSS; dvh desteklenmeyen eski tarayıcı 100vh'a düşer). */
         html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; }
-        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; min-height: 100dvh; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; min-height: 100dvh; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
+        /* [GEREKSİZ BOŞLUK/SCROLL] main-content'e min-height VERME -> içerik kısaysa boş alan OLUŞMAZ (eskiden
+           min-height:100dvh içeriği viewport'a kadar şişirip altta gereksiz boşluk+scroll yapıyordu). Arka plan dolgusu
+           container'da: 100svh (iOS'ta EN KÜÇÜK viewport = araç-çubuğu-açık yükseklik -> her durumda sığar, scroll yok). */
+        html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; min-height: 100svh; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2124,7 +2127,7 @@ HTML_TEMPLATE = """
           // odaklıysa KAPATMA (etkileşim sürüyor). Klavye açılınca (else) timer iptal.
           if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); }catch(e){} }, 120); }
           else { clearTimeout(window.__edYazT); }
-        }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
+        }catch(e){} }; try{ window.__kbOlc = kb; }catch(e){} vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
@@ -2816,7 +2819,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05j · mobil: şerit iOS-form-çubuğu-üstü(--ed-acc) + inline native-menü-gizle + zoom-kapat(pinch) + gereksiz-scroll(100dvh+overscroll)';
+        var X_BUILD = '2026-11-05k · mobil: şerit-offset 0+kb-tazele(snug) + gereksiz-boşluk/scroll (main-content min-height KALDIR, container/editör 100svh)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9097,7 +9100,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4q · 2026-11-05 mobil: şerit iOS-form-çubuğu-üstü(--ed-acc), inline native-menü-gizle, zoom-kapat, gereksiz-scroll(100dvh)";
+  XE.VERSION = "4r · 2026-11-05 mobil: şerit-offset 0+kb-tazele(snug), gereksiz-boşluk/scroll (min-height kaldır, 100svh)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9807,9 +9810,11 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* [ÜST SINIR] Editör başlığı safe-area-top'u İZLER: Safari araç çubuğu açıkken env=0 -> kompakt (14px, eski 34px
    "boşluklu"ydu); araç çubuğu kapanınca/PWA'da env=~59 -> çentiği temizler. Header flex:none (sabit, içerik altına
    sızmaz) + opak arka plan -> çentik şeridi temiz. */
-/* [GEREKSİZ SCROLL] Editör de 100vh yerine 100dvh -> görünür alana oturur, içerik az olunca scroll çıkmaz (preview-body
-   zaten overscroll-behavior:none). */
-html.x-mobile.x-dik #editorModal .preview-modal-content{height:100vh;height:100dvh;}
+/* [GEREKSİZ SCROLL] Editör modal'ı fixed+height:100% ile BÜYÜK viewport kadardı (iOS araç çubuğu açıkken görünürden
+   uzun -> içerik az olsa da scroll). Mobilde modal 100svh (EN KÜÇÜK viewport = her durumda sığar); içerik modal'ı
+   %100 doldurur (çift birim çakışması yok). */
+html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100svh;}
+html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 14px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
@@ -9874,7 +9879,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var de=document.documentElement, m=document.getElementById('editorModal'); if(!m) return;
     function dikMobil(){ return de.classList.contains('x-mobile') && de.classList.contains('x-dik'); }
     function alanMi(t){ return !!(t && (t.isContentEditable || t.tagName==='INPUT' || t.tagName==='TEXTAREA') && t.closest && t.closest('#editor-root')); }
-    m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)) de.classList.add('x-ed-yaz'); });
+    m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
+      // [KB TAZELE] Klavye animasyonu oturunca --kb-inset'i yeniden ölç -> şerit klavye/iOS-çubuğunun hemen üstüne
+      // SNUG oturur (bayat/erken inset'te şerit yanlış konumlanıp "kayboluyordu").
+      try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){}
+    } });
     // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
     // x-ed-yaz kalkar). Böylece metin/link/başlık ARASI geçişte klavye açık kaldığından şerit SABİT -> TİTREMEZ.
     // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
