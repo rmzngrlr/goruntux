@@ -1742,7 +1742,7 @@ HTML_TEMPLATE = """
         /* [ÜST BOŞLUK] Tarayıcı (varsayılan): içerik Safari UI altında -> küçük padding (16). PWA (.x-pwa): çentik arkasını
            doldurduğundan env+floor ile temizle. */
         html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: 16px; padding-bottom: 20px; }
-        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(env(safe-area-inset-top) + 20px), 64px); }
+        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(env(safe-area-inset-top) + 14px), 30px); }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2173,7 +2173,7 @@ HTML_TEMPLATE = """
     <!-- [TANI KATMANI] URL'ye #debug eklenince (ya da localStorage x_debug='1') köşede gerçek ölçüm değerlerini gösterir.
          iOS viewport/klavye/çentik değerlerini cihazdan okuyup kesin düzeltme yapmak için. Kapatmak için #debug'ı sil. -->
     <script>(function(){try{
-      var acik=true; try{ if(localStorage.getItem('x_debug')==='0') acik=false; }catch(e){}   // [DEBUG BUILD] her zaman açık (PWA'da #debug eklenemiyor); x_debug='0' kapatır
+      var acik=false; try{ acik=(location.hash.indexOf('debug')>=0)||(localStorage.getItem('x_debug')==='1'); }catch(e){}   // #debug veya x_debug='1' ile açılır
       if(!acik) return;
       function U(unit){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:100'+unit+';'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
       function ST(){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:env(safe-area-inset-top,0px);'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
@@ -2864,7 +2864,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06g · mobil: PWA/tarayici ust-bosluk + DEBUG her-zaman-acik(sol-alt, safeTop+PWA/tarayici)';
+        var X_BUILD = '2026-11-06h · mobil: PWA ust-bosluk env+14 (safeTop=59 ile net); debug gated';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9154,7 +9154,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5b-debug · 2026-11-06 pwa-tarayici-bosluk, debug-herzaman";
+  XE.VERSION = "5c · 2026-11-06 pwa-ust-env14, debug-gated";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9871,7 +9871,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
-html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(env(safe-area-inset-top) + 8px), 68px);}
+html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(env(safe-area-inset-top) + 14px), 30px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
