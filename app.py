@@ -1739,7 +1739,7 @@ HTML_TEMPLATE = """
            (çok rapor/havuz) scroll yine çıkar (meşru). */
         html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; min-height: 0; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 0; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 56px); padding-bottom: 20px; }
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 62px); padding-bottom: 20px; }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2852,7 +2852,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06c · mobil: font-dropdown da top+translateY (butona iliştik, lvh fix); TANI acik';
+        var X_BUILD = '2026-11-06d · mobil: editor header ust floor 64 (island arkasi net degildi) + main 62; TANI acik';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9142,7 +9142,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4x-debug · 2026-11-06 dropdown-top-translateY";
+  XE.VERSION = "4y-debug · 2026-11-06 ust-floor-64";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9858,7 +9858,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
    hem içerik sığar (scroll yok). İçerik modal'ı %100 doldurur. */
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 54px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 64px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
