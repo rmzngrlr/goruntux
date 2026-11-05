@@ -2802,7 +2802,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05e · renk-toggle + font-renk-tap(scroll-değil) + font-menü-tema + klavye-koru';
+        var X_BUILD = '2026-11-05f · boş-rapor önizleme(link+parça-görsel) + editör-PWA masaüstü-gizle + galeri-yükleme-eşiği + yeni-bölüm görsel-slotu';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5060,6 +5060,10 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 var rec = await window.XSavedReports.get(id);
                 if (!rec) { showToast('Kayıtlı rapor bulunamadı.', 'danger'); return; }   // Faz 2: BOŞ rapor da açılabilir (aktif olur)
                 if (!rec.items) { rec.items = []; }
+                // [GALERİ HİDRASYON] Rapor yükleniyor -> galeri açıksa baştan "yükleniyor" göstersin; poll havuz dolumunu
+                // BÜYÜME görsün diye baseline sıfırla; büyüme durunca poll bayrağı kapatıp galeriyi gerçek kartlarla çizer.
+                // Bayrak x_galeri_hidre='0' -> kapalı (eski davranış).
+                try { if (localStorage.getItem('x_galeri_hidre') !== '0' && rec.items && rec.items.length) { window.__xEdHidre = true; window.__xSonHavuzSayi = 0; } } catch (e) {}
                 // Oto-kayıt KAPALIysa (kaçış kapısı) eski "değişiklik kaybolur" uyarısı.
                 if (!xOtoKayitAcik()) {
                     var curItems = [];
@@ -5985,6 +5989,14 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                             if (!_yaziyor && (Date.now() - window.__xEdBekle) > 5000) { window.__xEdBekle = Date.now(); _ciz = true; }
                         } else if (window.__xEdBekle != null && !_yaziyor) {
                             window.__xEdBekle = null; _ciz = true;   // büyüme DURDU + bekleyen -> son hali 1 kez çiz
+                        }
+                        // [GALERİ HİDRASYON] büyürken bayrak=açık (galeri "İçerikler yükleniyor" gösterir); büyüme bu tick
+                        // DURUNCA kapat -> aşağıdaki _ciz (XE.ac) galeriyi gerçek kartlarla 1 kez çizer (titreme yok).
+                        // Takılmaya karşı: _ciz tetiklenmediyse (XE.ac yok) ve galeri modundaysak doğrudan _galeriCiz çağır.
+                        if (_buyudu) { window.__xEdHidre = true; }
+                        else if (window.__xEdHidre && !_yaziyor && window.__xEdBekle == null) {
+                            window.__xEdHidre = false;
+                            if (!_ciz && window.XEditor && window.XEditor._galeriModu && window.XEditor._galeriCiz) { try { window.XEditor._galeriCiz(); } catch (e) {} }
                         }
                         if (_ciz) { Promise.resolve(window.XEditor.ac({})).catch(function () {}); }
                         if (!_yaziyor) { window.__xSonHavuzSayi = _simdikiSayi; }   // yazarken sayacı dondur (içerik kaybolmasın)
@@ -8900,9 +8912,17 @@ X_SAVED_REPORTS_JS = r'''
       if(it.h1_override!=null && (''+it.h1_override).trim()!==''){ lines.push({t:'h', s:(''+it.h1_override).trim().slice(0,70)}); }
       var h=(it.h2_override!=null && (''+it.h2_override).trim()!=='') ? (''+it.h2_override) : (it.title||'');
       if(h && h.trim() && lines.length<8){ lines.push({t:'h', s:h.trim().slice(0,70)}); }
-      // GÖRSEL (rapordaki sırasına göre): images[normLink] varsa küçük thumbnail
-      try{ var ik=nk(it.link||''); var im=images[ik]; if(im && im.dataUrl && lines.length<8){ var th=await _onizThumb(ik, im.dataUrl); if(th){ lines.push({t:'img', s:th}); } } }catch(e){}
-      if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<8;p++){ var pc=it.parcalar[p]; if(pc && pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } } } }
+      // GÖRSEL (birincil, rapordaki sırasına göre): images[normLink] varsa küçük thumbnail
+      var _primThumb=null;
+      try{ var ik=nk(it.link||''); var im=images[ik]; if(im && im.dataUrl && lines.length<8){ var th=await _onizThumb(ik, im.dataUrl); if(th){ _primThumb=th; lines.push({t:'img', s:th}); } } }catch(e){}
+      // PARÇALAR: metin + LİNK (url) + PARÇA-İÇİ GÖRSEL (b64). Eskiden yalnız 'metin' okunuyordu -> link+parça-görsel
+      // içeren manuel bölüm "Boş rapor" görünüyordu. Artık link URL'si metin satırı, parça görseli thumbnail olur
+      // (birincille aynı görsel çift basılmasın diye _primThumb ile karşılaştır).
+      if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<8;p++){ var pc=it.parcalar[p]; if(!pc) continue;
+        if(pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } }
+        else if(pc.tur==='link' && pc.url){ var lu=(''+pc.url).trim(); if(lu){ lines.push({t:'p', s:lu.slice(0,90)}); } }
+        else if(pc.tur==='gorsel' && pc.b64){ try{ var pth=await _onizThumb((it.link||'')+':p'+p, 'data:'+(pc.mime||'image/jpeg')+';base64,'+pc.b64); if(pth && pth!==_primThumb){ lines.push({t:'img', s:pth}); } }catch(e){} }
+      } }
     }
     return lines;
   }
@@ -9050,7 +9070,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4l-mobil · 2026-11-05 renk-toggle+tap, font-tap(scroll-değil), menü-tema, klavye-koru";
+  XE.VERSION = "4m · 2026-11-05 boş-rapor önizleme(link+parça-görsel), editör-PWA masaüstü-gizle, galeri-yükleme-eşiği, yeni-bölüm görsel-slotu";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9524,6 +9544,12 @@ X_EDITOR_JS = r'''
 /* Başlık ikon butonları (✕/Kaydet/İndir/Geri/İleri): dinlenmede TEK gri renk, hover'da semantik renk
    CANLANIR, pasif (geri/ileri alınacak yokken) SİLİK. SVG currentColor ile renk alır. */
 #editorModal .ed-ikon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}
+/* [PWA/TAM EKRAN — editör] #editorModal .ed-ikon-btn{display:inline-flex} özgüllüğü (1,1,0) genel .js-pwa-btn{display:none} (0,1,0)
+   kuralını EZİYORDU -> "Ana ekrana ekle" editörde MASAÜSTÜNDE de görünüyordu. ID-özgüllüklü kurallarla düzelt:
+   masaüstü editörde PWA gizli/fs görünür; mobil editörde fs gizli/PWA görünür (panel header'daki ayrımla aynı). */
+#editorModal .ed-ikon-btn.js-pwa-btn{display:none;}
+html.x-mobile #editorModal .ed-ikon-btn.js-fs-btn{display:none;}
+html.x-mobile #editorModal .ed-ikon-btn.js-pwa-btn{display:inline-flex;}
 /* [AYARLAR] menüdeki tema/tam-ekran ikonları: xTemaUygula/_fsIkonGuncelle attribute'suz SVG basıyor -> üst çubuk ikonlarıyla aynı 19px'e sabitle */
 #editorModal .ayar-menu .ed-ikon-btn svg{width:19px;height:19px;}
 #editorModal .ed-ikon-btn:hover:not(:disabled){background:#eef2f6;}
@@ -9541,6 +9567,12 @@ X_EDITOR_JS = r'''
 #editorModal .ed-gal-pad{padding:16px 20px 24px;}
 html.x-mobile.x-dik #editorModal .ed-gal-pad{padding:12px 12px 20px;}
 #editorModal .ed-gal-ipucu{font-size:12px;color:#5b6b7b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:9px 13px;margin:0 0 16px;line-height:1.5;}
+/* [GALERİ HİDRASYON] Uzun rapor yüklenirken galeri "İçerikler yükleniyor" göster -> yükleme bitince kartlar 1 kez çizilir (titreme yok). */
+#editorModal .ed-gal-yuk{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:220px;color:#5b6b7b;font-size:14px;text-align:center;padding:40px 20px;}
+#editorModal .ed-gal-yuk .ed-gal-spin{width:30px;height:30px;border:3px solid #d5dde5;border-top-color:#1d9bf0;border-radius:50%;animation:edGalSpin .8s linear infinite;}
+@keyframes edGalSpin{to{transform:rotate(360deg);}}
+body:not(.light-theme) #editorModal .ed-gal-yuk{color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4a;border-top-color:#1d9bf0;}
 #editorModal .ed-gal-ipucu b{color:#1d4a6b;}
 #editorModal .ed-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding-bottom:24px;}
 #editorModal .ed-gal-card{position:relative;background:#fff;border:1px solid #dfe4ea;border-radius:11px;padding:11px;padding-top:36px;cursor:grab;transition:box-shadow .12s,border-color .12s,transform .12s;user-select:none;}
@@ -9559,7 +9591,7 @@ html.x-mobile.x-dik #editorModal .ed-gal-pad{padding:12px 12px 20px;}
 #editorModal .ed-gal-imgyok{height:58px;display:flex;align-items:center;justify-content:center;color:#b6c0cb;font-size:11px;border-style:dashed;}
 #editorModal .ed-gal-metin{font-size:11px;color:#64748b;line-height:1.5;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 #editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
-#editorModal .ed-img-pano{min-height:90px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:13px;background:#f7fafd;cursor:text;outline:none;padding:12px;}
+#editorModal .ed-img-pano{min-height:56px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:12.5px;background:#f7fafd;cursor:text;outline:none;padding:8px 12px;}
 #editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
 #editorModal .ed-img-pano .ed-img-pcsec{display:inline-flex;align-items:center;gap:4px;margin-left:12px;background:#1565c0;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;}
 #editorModal .ed-img-pano .ed-img-pcsec:hover{background:#0d47a1;}
@@ -10397,11 +10429,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(afterUid){ for(var i2=0;i2<B.length;i2++){ if(B[i2].item && B[i2].item.uid===afterUid && B[i2].item.index!=null){ afterIndex=B[i2].item.index; break; } } }
       else if(afterUid==='') afterIndex=0;
     }
-    // Overlay'e ŞABLON tohumu -> "+" hemen başlık+metin+link iskeleti doğursun ve havuz yeniden-fetch'inde yaşasın.
-    // [Link üstte] açıksa link kutusu metnin ÜSTÜNDE tohumlanır (kullanıcı isteği); kapalıysa metin üstte.
+    // Overlay'e ŞABLON tohumu -> "+" hemen GÖRSEL+başlık+metin+link iskeleti doğursun ve havuz yeniden-fetch'inde yaşasın.
+    // [GÖRSEL OTONOM] Yeni bölüme boş {tur:'gorsel'} slotu da tohumlanır -> görsel ekleme kutusu (.ed-img-pano) otomatik
+    // çıkar (kullanıcı isteği; _panoBekle YOK -> odak çalınmaz, link/metin önce yazılabilir). Bayrak x_yeni_bolum_gorsel='0'
+    // -> eski davranış (görsel slotu yok). [Link üstte] açıksa link kutusu metnin ÜSTÜNDE tohumlanır; kapalıysa metin üstte.
+    var _gorselSeed=true; try{ _gorselSeed=(localStorage.getItem('x_yeni_bolum_gorsel')!=='0'); }catch(e){}
     var _luSeed = linkUstteFlag()
       ? [{tur:'link', url:''},{tur:'metin', id:yeniId(), metin:''}]
       : [{tur:'metin', id:yeniId(), metin:''},{tur:'link', url:''}];
+    if(_gorselSeed){ _luSeed.unshift({tur:'gorsel'}); }   // görsel en üstte (ekran görüntüsü tipik olarak başta)
     try{ ovStore().byLink[ovKey(link)] = { parcalar:_luSeed, h2:'', grup:null }; }catch(e){}
     var body={ title:'', link:link, local:true };
     if(afterIndex!=null) body.after_index=afterIndex;       // GÖRSEL konumun ardına (normalize edildi) ya da eski ham-indeks
@@ -10451,6 +10487,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   };
   XE._galeriCiz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
+    // [GALERİ HİDRASYON] Rapor içerikleri HÂLÂ yükleniyorsa (poll havuzu dolduruyor) kartları çizME -> titreme.
+    // "İçerikler yükleniyor" göster; poll büyüme durunca __xEdHidre'yi kapatıp _galeriCiz'i YENİDEN çağırır (gerçek kartlar).
+    if(window.__xEdHidre){ if(!root.querySelector('.ed-gal-yuk')){ root.innerHTML='<div class="ed-gal-pad"><div class="ed-gal-yuk"><div class="ed-gal-spin"></div><div>İçerikler yükleniyor…<br><span style="font-size:12px;opacity:.8">Rapor hazır olunca kartlar görünecek.</span></div></div></div>'; } return; }
     var B=XE.belge.birimler||[];
     if(!B.length){ root.innerHTML='<div class="ed-bos">Henüz bölüm yok. Düzenleme görünümünde "+ Bölüm" ile ekleyebilirsin.</div>'; return; }
     // [GALERİ KENAR BOŞLUĞU] Galeri #editor-root'a DOĞRUDAN render oluyor (.ed-root padding'i YOK) -> kartlar
