@@ -2852,7 +2852,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06b · mobil: serit top:--vv-bottom+translateY (klavye arkasi fix) + html overscroll-behavior (esneme); TANI acik';
+        var X_BUILD = '2026-11-06c · mobil: font-dropdown da top+translateY (butona iliştik, lvh fix); TANI acik';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2994,9 +2994,12 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var _lw = list.offsetWidth;
             var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
             list.style.left = Math.round(_left) + 'px';
-            // [SIKI BAĞLANTI] Butonun hemen üstüne/altına 2px payla yapış (kopuk durmasın).
-            if (_up) { list.style.bottom = Math.round(_ih - _r.top + 2) + 'px'; list.style.top = 'auto'; }
-            else { list.style.top = Math.round(_r.bottom + 2) + 'px'; list.style.bottom = 'auto'; }
+            // [SIKI BAĞLANTI — layout/visual viewport fix] Şerit gibi top+translateY ile konumla. ÖNCEKİ bottom:(_ih-_r.top)
+            // yöntemi KOPUK bırakıyordu: position:fixed'in bottom'u iOS'ta LAYOUT viewport'a (lvh=773) göre ama _ih
+            // innerHeight=665 -> 108px kayma. getBoundingClientRect (=layout, vvTop=0) ile top konumla: yukarı açılımda
+            // translateY(-100%) alt kenarı select'in 2px üstüne, aşağıda select'in 2px altına OTURTUR -> butona iliştik.
+            if (_up) { list.style.top = Math.round(_r.top - 2) + 'px'; list.style.bottom = 'auto'; list.style.transform = 'translateY(-100%)'; }
+            else { list.style.top = Math.round(_r.bottom + 2) + 'px'; list.style.bottom = 'auto'; list.style.transform = 'none'; }
         }
         window._xcsKonumlaMobil = _xcsKonumlaMobil;
         function _xcsAc(sel) {
@@ -9139,7 +9142,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4w-debug · 2026-11-06 serit-vv-bottom, overscroll";
+  XE.VERSION = "4x-debug · 2026-11-06 dropdown-top-translateY";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
