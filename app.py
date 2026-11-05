@@ -1870,6 +1870,10 @@ HTML_TEMPLATE = """
         .xcs-list--ed { background: #ffffff; color: #15202b; border-color: #d0d7de; }
         .xcs-list--ed .xcs-opt { color: #15202b; }
         .xcs-list--ed .xcs-opt.xcs-hl, .xcs-list--ed .xcs-opt:hover { background: #1d9bf0; color: #fff; }
+        /* [TEMAYA UYUMLU] Font/Stil dropdown'u (editör xcs) KOYU temada da temaya uysun (eskiden hep beyazdı). */
+        body:not(.light-theme) .xcs-list--ed { background: #17212e; color: #e7e9ea; border-color: #2c3a4a; }
+        body:not(.light-theme) .xcs-list--ed .xcs-opt { color: #e7e9ea; }
+        body:not(.light-theme) .xcs-list--ed .xcs-opt.xcs-hl, body:not(.light-theme) .xcs-list--ed .xcs-opt:hover { background: #1d9bf0; color: #fff; }
         /* [DİK-MOBİL] XCS dropdown = butona İLİŞİK kompakt liste (kullanıcı tercihi "butona iliştik küçük liste").
            Konum JS'te (_xcsAc dik-mobil dalı): şerit klavye üstünde olduğundan liste YUKARI açılır; dokunuş-dostu
            satır. Şeridin (z-4000) ÜSTÜNE gelir (z-4300). Renk/tema .xcs-list / .xcs-list--ed'den gelir. */
@@ -2112,7 +2116,7 @@ HTML_TEMPLATE = """
           // kapanır -> kullanıcı "klavye kapanınca/input-dışı tıklayınca şerit kapansın". Alan-geçişinde inset kısa
           // süre düşüp geri çıkar -> timer iptal (titremez). Font/stil xcs listesi AÇIK veya şerit renk/boyut input'u
           // odaklıysa KAPATMA (etkileşim sürüyor). Klavye açılınca (else) timer iptal.
-          if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); }catch(e){} }, 120); }
+          if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); }catch(e){} }, 120); }
           else { clearTimeout(window.__edYazT); }
         }catch(e){} }; vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
@@ -2798,7 +2802,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05d · font-tap-toggle + şerit-klavye-sync + iOS-kenar + mobil-seçim-menü';
+        var X_BUILD = '2026-11-05e · renk-toggle + font-renk-tap(scroll-değil) + font-menü-tema + klavye-koru';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9046,7 +9050,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4k-mobil · 2026-11-05 özel renk paleti (native yerine, tutarlı)";
+  XE.VERSION = "4l-mobil · 2026-11-05 renk-toggle+tap, font-tap(scroll-değil), menü-tema, klavye-koru";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9817,21 +9821,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       serit.addEventListener('touchstart', function(e){
         if(!dikMobil()) return;
         var p=e.touches&&e.touches[0];
-        var s=_selHedef(e.target);
-        if(s){
-          // [NET DOKUNUŞ] yalnız select KUTUSUNA (Font/Stil açılır alanı) dokununca aç; label "Font"/"Stil" metnine
-          // dokunursa AÇMA (pointer-events:none select -> dokunuş label'a düşüyordu, tüm label açıyordu).
-          var r0=s.getBoundingClientRect();
-          var icinde = p && p.clientX>=r0.left-2 && p.clientX<=r0.right+2 && p.clientY>=r0.top-2 && p.clientY<=r0.bottom+2;
-          if(icinde){
-            e.preventDefault();
-            // [TOGGLE] bu select için liste ZATEN açıksa KAPAT; değilse aç (re-tap kapatır).
-            try{ if(window._xcsSel===s && document.querySelector('.xcs-list')){ window._xcsKapat&&window._xcsKapat(); } else { window._xcsAc&&window._xcsAc(s); } }catch(_){}
-            _tmoved=true; return;
-          }
-          // select kutusu DIŞI (label metni) -> normal davran (açma; kaydırma serbest)
-        }
-        _tx=p?p.clientX:0; _ty=p?p.clientY:0; _tmoved=false;   // kaydırma için preventDefault YOK
+        // Font/Stil/Renk/buton TAP'te (touchend) açılır -> ŞERİTİ SAĞA-SOLA KAYDIRIRKEN (drag) MENÜ AÇILMAZ
+        // (eskiden touchstart'ta açıyordu; parmak değer değmez açıyordu). touchstart yalnız tap/scroll izler.
+        _tx=p?p.clientX:0; _ty=p?p.clientY:0; _tmoved=false;   // preventDefault YOK -> kaydırma serbest
       }, {passive:false});
       serit.addEventListener('touchmove', function(e){
         if(!dikMobil()||_tmoved) return;
@@ -9839,18 +9831,34 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         if(Math.abs(p.clientX-_tx)>8 || Math.abs(p.clientY-_ty)>8) _tmoved=true;   // sürükleme -> tap değil (kaydırma)
       }, {passive:true});
       serit.addEventListener('touchend', function(e){
-        if(!dikMobil() || _tmoved) return;   // kaydırmaysa dokunma (native scroll oldu)
+        if(!dikMobil() || _tmoved) return;   // kaydırmaysa dokunma (scroll oldu -> menü AÇMA)
         var t=e.target; if(!t||!t.closest) return;
-        if(t.closest('input,textarea,option,.xcs-list,select')) return;   // input(renk/boyut)/liste/select: native
+        var ce=e.changedTouches&&e.changedTouches[0];
+        // [FONT/STİL] net-tap (select KUTUSU rect'i; label metni değil) -> xcs TOGGLE. touchend'de preventDefault ->
+        // sentetik click/mousedown bastırılır -> label->select odak-ilişkisi tetiklenmez -> editable odaklı KALIR
+        // -> KLAVYE KAPANMAZ. Scroll (_tmoved) buraya hiç gelmez.
+        var s=_selHedef(t);
+        if(s){
+          var r0=s.getBoundingClientRect();
+          var icinde = ce && ce.clientX>=r0.left-2 && ce.clientX<=r0.right+2 && ce.clientY>=r0.top-2 && ce.clientY<=r0.bottom+2;
+          if(icinde){ e.preventDefault(); try{ if(window._xcsSel===s && document.querySelector('.xcs-list')){ window._xcsKapat&&window._xcsKapat(); } else { window._xcsAc&&window._xcsAc(s); } }catch(_){} }
+          return;
+        }
+        if(t.closest('input,textarea,option,.xcs-list')) return;   // renk/boyut input -> renk document handler / native
         var tgl=t.closest('.ed-tgl');
         if(tgl){ var cb=tgl.querySelector('input[type=checkbox]'); if(cb){ e.preventDefault(); cb.checked=!cb.checked; try{ cb.dispatchEvent(new Event('change',{bubbles:true})); }catch(_){} } return; }   // toggle: manuel (odak editable'da kalır)
         var btn=t.closest('button');
         if(btn){ e.preventDefault(); try{ btn.click(); }catch(_){} return; }   // buton (hiza vb): programatik click -> odak taşımaz
       }, {passive:false});
-      serit.addEventListener('mousedown', function(e){   // pane/fare: select -> xcs; buton/toggle -> odağı koru
+      serit.addEventListener('mousedown', function(e){   // pane/fare: select -> xcs (net-tap); buton/toggle -> odağı koru
         if(!dikMobil()) return;
         var t=e.target; var s=_selHedef(t);
-        if(s){ e.preventDefault(); try{ if(window._xcsSel===s && document.querySelector('.xcs-list')){ window._xcsKapat&&window._xcsKapat(); } else { window._xcsAc&&window._xcsAc(s); } }catch(_){} return; }   // re-tap toggle
+        if(s){   // net-tap: select KUTUSU rect'i (sentetik mousedown "Font" metninde AÇMASIN)
+          var r0=s.getBoundingClientRect();
+          var icinde = e.clientX>=r0.left-2 && e.clientX<=r0.right+2 && e.clientY>=r0.top-2 && e.clientY<=r0.bottom+2;
+          if(icinde){ e.preventDefault(); try{ if(window._xcsSel===s && document.querySelector('.xcs-list')){ window._xcsKapat&&window._xcsKapat(); } else { window._xcsAc&&window._xcsAc(s); } }catch(_){} }
+          return;
+        }
         if(t && t.closest && t.closest('input,textarea,option,.xcs-list')) return;
         e.preventDefault();   // mousedown preventDefault click'i İPTAL ETMEZ (native toggle/click çalışır), odağı korur
       });
@@ -9864,17 +9872,23 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // açar (şerit + seçim-menüsü renk input'ları). Swatch seç -> input.value + input/change dispatch (mevcut handler
     // uygular). "Özel" -> native picker (kaçış yolu). Bir kez kurulur (_mobilSeritKur guard'lı).
     var RENK_PALET=['#000000','#555555','#888888','#bbbbbb','#dddddd','#ffffff','#e0245e','#f7931e','#ffcd00','#00ba7c','#1d9bf0','#1565c0','#7856ff','#f91880','#8b572a','#2e7d32','#c62828','#283593'];
-    function _renkPaletKapat(){ var p=document.getElementById('ed-renk-pop'); if(p&&p.parentNode) p.parentNode.removeChild(p); }
+    var _renkAcikInput=null;   // [TOGGLE] palet hangi input için açık (re-tap kapatır)
+    function _renkPaletKapat(){ var p=document.getElementById('ed-renk-pop'); if(p&&p.parentNode) p.parentNode.removeChild(p); _renkAcikInput=null; }
     function _renkHedef(t){ if(!t||!t.closest) return null; var ci=t.closest('input[type=color]'); if(!ci){ var lbl=t.closest('label'); if(lbl) ci=lbl.querySelector('input[type=color]'); } return (ci && (ci.closest('#editor-serit')||ci.closest('#ed-rt-panel')))?ci:null; }
     function _renkPaletKonumla(pop, inputEl){ var r=inputEl.getBoundingClientRect(); var ih=window.innerHeight||document.documentElement.clientHeight; var vw=window.innerWidth||document.documentElement.clientWidth; var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0; var visBottom=ih-kb; var pw=pop.offsetWidth; var left=r.left; if(left+pw>vw-8) left=vw-8-pw; if(left<8) left=8; pop.style.left=Math.round(left)+'px'; var rb=visBottom-r.bottom-10, ra=r.top-10; if(ra>rb){ pop.style.bottom=Math.round(ih-r.top+6)+'px'; pop.style.top='auto'; } else { pop.style.top=Math.round(r.bottom+6)+'px'; pop.style.bottom='auto'; } }
-    function _renkPaletAc(inputEl){ _renkPaletKapat(); var cur=(inputEl.value||'').toLowerCase(); var pop=document.createElement('div'); pop.className='ed-renk-pop'; pop.id='ed-renk-pop'; var grid=document.createElement('div'); grid.className='ed-renk-grid'; RENK_PALET.forEach(function(c){ var sw=document.createElement('button'); sw.type='button'; sw.className='ed-renk-sw'+((c.toLowerCase()===cur)?' sec':''); sw.style.background=c; sw.setAttribute('data-c',c); sw.title=c; grid.appendChild(sw); }); pop.appendChild(grid); var ozel=document.createElement('button'); ozel.type='button'; ozel.className='ed-renk-ozel'; ozel.textContent='Özel renk…'; pop.appendChild(ozel); document.body.appendChild(pop); _renkPaletKonumla(pop, inputEl);
+    function _renkPaletAc(inputEl){ _renkPaletKapat(); _renkAcikInput=inputEl; var cur=(inputEl.value||'').toLowerCase(); var pop=document.createElement('div'); pop.className='ed-renk-pop'; pop.id='ed-renk-pop'; var grid=document.createElement('div'); grid.className='ed-renk-grid'; RENK_PALET.forEach(function(c){ var sw=document.createElement('button'); sw.type='button'; sw.className='ed-renk-sw'+((c.toLowerCase()===cur)?' sec':''); sw.style.background=c; sw.setAttribute('data-c',c); sw.title=c; grid.appendChild(sw); }); pop.appendChild(grid); var ozel=document.createElement('button'); ozel.type='button'; ozel.className='ed-renk-ozel'; ozel.textContent='Özel renk…'; pop.appendChild(ozel); document.body.appendChild(pop); _renkPaletKonumla(pop, inputEl);
       function uygula(c){ try{ inputEl.value=c; inputEl.dispatchEvent(new Event('input',{bubbles:true})); inputEl.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){} _renkPaletKapat(); }
       grid.addEventListener('click', function(e){ var b=e.target&&e.target.closest?e.target.closest('.ed-renk-sw'):null; if(b){ e.preventDefault(); e.stopPropagation(); uygula(b.getAttribute('data-c')); } }, true);
       ozel.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); _renkPaletKapat(); try{ var oPE=inputEl.style.pointerEvents; inputEl.style.pointerEvents='auto'; inputEl.focus(); inputEl.click(); setTimeout(function(){ inputEl.style.pointerEvents=oPE||''; }, 400); }catch(e){} }, true);
     }
-    // Renk input dokunuşu (NET-TAP: swatch rect içinde) -> native yerine palet. pointer-events:none -> hedef label.
-    document.addEventListener('touchstart', function(e){ if(!dikMobil()) return; var ci=_renkHedef(e.target); if(!ci) return; var p=e.touches&&e.touches[0]; var r=ci.getBoundingClientRect(); if(p && !(p.clientX>=r.left-2&&p.clientX<=r.right+2&&p.clientY>=r.top-2&&p.clientY<=r.bottom+2)) return; e.preventDefault(); e.stopPropagation(); _renkPaletAc(ci); }, {passive:false, capture:true});
-    document.addEventListener('mousedown', function(e){ if(!dikMobil()) return; var ci=_renkHedef(e.target); if(ci){ e.preventDefault(); e.stopPropagation(); _renkPaletAc(ci); } }, true);
+    // Renk input: TAP'te (touchend, kaydırma değil) aç -> ŞERİT KAYDIRIRKEN AÇILMAZ. NET-TAP (swatch rect içinde).
+    // TOGGLE: aynı input için palet açıksa re-tap KAPATIR. touchend preventDefault -> sentetik click bastırılır ->
+    // label->color-input odak-ilişkisi tetiklenmez -> editable odaklı KALIR -> KLAVYE KAPANMAZ. (pointer-events:none)
+    var _renkPend=null,_renkTx=0,_renkTy=0,_renkMoved=false;
+    document.addEventListener('touchstart', function(e){ if(!dikMobil()){ _renkPend=null; return; } var ci=_renkHedef(e.target); if(!ci){ _renkPend=null; return; } var p=e.touches&&e.touches[0]; var r=ci.getBoundingClientRect(); if(p && !(p.clientX>=r.left-2&&p.clientX<=r.right+2&&p.clientY>=r.top-2&&p.clientY<=r.bottom+2)){ _renkPend=null; return; } _renkPend=ci; _renkTx=p?p.clientX:0; _renkTy=p?p.clientY:0; _renkMoved=false; }, {capture:true, passive:true});
+    document.addEventListener('touchmove', function(e){ if(!_renkPend||_renkMoved) return; var p=e.touches&&e.touches[0]; if(p && (Math.abs(p.clientX-_renkTx)>8||Math.abs(p.clientY-_renkTy)>8)) _renkMoved=true; }, {capture:true, passive:true});
+    document.addEventListener('touchend', function(e){ if(!dikMobil()||!_renkPend||_renkMoved){ _renkPend=null; return; } var ci=_renkPend; _renkPend=null; e.preventDefault(); e.stopPropagation(); if(_renkAcikInput===ci && document.getElementById('ed-renk-pop')){ _renkPaletKapat(); } else { _renkPaletAc(ci); } }, {capture:true, passive:false});
+    document.addEventListener('mousedown', function(e){ if(!dikMobil()) return; var ci=_renkHedef(e.target); if(ci){ e.preventDefault(); e.stopPropagation(); if(_renkAcikInput===ci && document.getElementById('ed-renk-pop')){ _renkPaletKapat(); } else { _renkPaletAc(ci); } } }, true);
     document.addEventListener('click', function(e){ if(!dikMobil()) return; if(_renkHedef(e.target)) e.preventDefault(); }, true);
     // dışarı tıkla kapat (palet dışı)
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-renk-pop'); if(pp && !(e.target.closest&&e.target.closest('#ed-renk-pop')) && !_renkHedef(e.target)) _renkPaletKapat(); });
