@@ -9046,7 +9046,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4j-mobil · 2026-11-05 font-net-tap+toggle, şerit-sync/kenar, mobil-seçim-menü";
+  XE.VERSION = "4k-mobil · 2026-11-05 özel renk paleti (native yerine, tutarlı)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9758,6 +9758,16 @@ html.x-mobile.x-dik #editorModal .ed-panel select,html.x-mobile.x-dik #editorMod
 html.x-mobile.x-dik #editorModal .ed-panel select{pointer-events:none;}
 html.x-mobile.x-dik #editorModal .ed-panel label:has(select){cursor:pointer;}
 html.x-mobile.x-dik #editorModal .ed-panel input[type=color]{width:38px;height:38px;}
+/* [RENK PALETİ] Mobilde native color picker her OS'ta FARKLI -> tutarlı özel palet. Color input pointer-events:none
+   (dokunuş label'a düşer, handler paleti açar); _renkPaletAc popup'ı sabit renkler + "Özel"(native) gösterir. */
+html.x-mobile.x-dik #editorModal .ed-panel input[type=color],html.x-mobile.x-dik #ed-rt-panel input[type=color]{pointer-events:none;}
+.ed-renk-pop{position:fixed;z-index:4300;background:#fff;border:1px solid #d0d7de;border-radius:13px;padding:11px;box-shadow:0 12px 34px rgba(16,24,40,0.42);max-width:92vw;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
+body:not(.light-theme) .ed-renk-pop{background:#17212e;border-color:#2c3a4a;}
+.ed-renk-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;}
+.ed-renk-sw{width:36px;height:36px;border-radius:9px;border:2px solid rgba(0,0,0,.12);cursor:pointer;padding:0;}
+.ed-renk-sw.sec{border-color:#1d9bf0;box-shadow:0 0 0 2px #1d9bf0;}
+.ed-renk-ozel{display:block;width:100%;margin-top:11px;padding:10px;border:1px solid #d0d7de;background:#f6f8fa;color:#15202b;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;}
+body:not(.light-theme) .ed-renk-ozel{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}
 html.x-mobile.x-dik #editorModal .ed-tgl,html.x-mobile.x-dik #editorModal .ed-hb{height:38px;min-width:38px;}
 html.x-mobile.x-dik #editorModal .ed-tgl-metinli{height:38px;}
 html.x-mobile.x-dik #editorModal .ed-root{padding:10px 12px 40px;}
@@ -9849,6 +9859,26 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // blur -> klavye kapanır. Select-label click'ini preventDefault et -> select ODAKLANMAZ, klavye KALIR.
       serit.addEventListener('click', function(e){ if(!dikMobil()) return; if(_selHedef(e.target)) e.preventDefault(); });
     }
+    // ===== [RENK PALETİ] Mobilde native color picker her OS'ta FARKLI -> tutarlı özel palet (kullanıcı isteği) =====
+    // Color input pointer-events:none (CSS) -> dokunuş label'a düşer; aşağıdaki doküman handler'ı NET-TAP ise paleti
+    // açar (şerit + seçim-menüsü renk input'ları). Swatch seç -> input.value + input/change dispatch (mevcut handler
+    // uygular). "Özel" -> native picker (kaçış yolu). Bir kez kurulur (_mobilSeritKur guard'lı).
+    var RENK_PALET=['#000000','#555555','#888888','#bbbbbb','#dddddd','#ffffff','#e0245e','#f7931e','#ffcd00','#00ba7c','#1d9bf0','#1565c0','#7856ff','#f91880','#8b572a','#2e7d32','#c62828','#283593'];
+    function _renkPaletKapat(){ var p=document.getElementById('ed-renk-pop'); if(p&&p.parentNode) p.parentNode.removeChild(p); }
+    function _renkHedef(t){ if(!t||!t.closest) return null; var ci=t.closest('input[type=color]'); if(!ci){ var lbl=t.closest('label'); if(lbl) ci=lbl.querySelector('input[type=color]'); } return (ci && (ci.closest('#editor-serit')||ci.closest('#ed-rt-panel')))?ci:null; }
+    function _renkPaletKonumla(pop, inputEl){ var r=inputEl.getBoundingClientRect(); var ih=window.innerHeight||document.documentElement.clientHeight; var vw=window.innerWidth||document.documentElement.clientWidth; var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0; var visBottom=ih-kb; var pw=pop.offsetWidth; var left=r.left; if(left+pw>vw-8) left=vw-8-pw; if(left<8) left=8; pop.style.left=Math.round(left)+'px'; var rb=visBottom-r.bottom-10, ra=r.top-10; if(ra>rb){ pop.style.bottom=Math.round(ih-r.top+6)+'px'; pop.style.top='auto'; } else { pop.style.top=Math.round(r.bottom+6)+'px'; pop.style.bottom='auto'; } }
+    function _renkPaletAc(inputEl){ _renkPaletKapat(); var cur=(inputEl.value||'').toLowerCase(); var pop=document.createElement('div'); pop.className='ed-renk-pop'; pop.id='ed-renk-pop'; var grid=document.createElement('div'); grid.className='ed-renk-grid'; RENK_PALET.forEach(function(c){ var sw=document.createElement('button'); sw.type='button'; sw.className='ed-renk-sw'+((c.toLowerCase()===cur)?' sec':''); sw.style.background=c; sw.setAttribute('data-c',c); sw.title=c; grid.appendChild(sw); }); pop.appendChild(grid); var ozel=document.createElement('button'); ozel.type='button'; ozel.className='ed-renk-ozel'; ozel.textContent='Özel renk…'; pop.appendChild(ozel); document.body.appendChild(pop); _renkPaletKonumla(pop, inputEl);
+      function uygula(c){ try{ inputEl.value=c; inputEl.dispatchEvent(new Event('input',{bubbles:true})); inputEl.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){} _renkPaletKapat(); }
+      grid.addEventListener('click', function(e){ var b=e.target&&e.target.closest?e.target.closest('.ed-renk-sw'):null; if(b){ e.preventDefault(); e.stopPropagation(); uygula(b.getAttribute('data-c')); } }, true);
+      ozel.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); _renkPaletKapat(); try{ var oPE=inputEl.style.pointerEvents; inputEl.style.pointerEvents='auto'; inputEl.focus(); inputEl.click(); setTimeout(function(){ inputEl.style.pointerEvents=oPE||''; }, 400); }catch(e){} }, true);
+    }
+    // Renk input dokunuşu (NET-TAP: swatch rect içinde) -> native yerine palet. pointer-events:none -> hedef label.
+    document.addEventListener('touchstart', function(e){ if(!dikMobil()) return; var ci=_renkHedef(e.target); if(!ci) return; var p=e.touches&&e.touches[0]; var r=ci.getBoundingClientRect(); if(p && !(p.clientX>=r.left-2&&p.clientX<=r.right+2&&p.clientY>=r.top-2&&p.clientY<=r.bottom+2)) return; e.preventDefault(); e.stopPropagation(); _renkPaletAc(ci); }, {passive:false, capture:true});
+    document.addEventListener('mousedown', function(e){ if(!dikMobil()) return; var ci=_renkHedef(e.target); if(ci){ e.preventDefault(); e.stopPropagation(); _renkPaletAc(ci); } }, true);
+    document.addEventListener('click', function(e){ if(!dikMobil()) return; if(_renkHedef(e.target)) e.preventDefault(); }, true);
+    // dışarı tıkla kapat (palet dışı)
+    document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-renk-pop'); if(pp && !(e.target.closest&&e.target.closest('#ed-renk-pop')) && !_renkHedef(e.target)) _renkPaletKapat(); });
+    document.addEventListener('touchstart', function(e){ var pp=document.getElementById('ed-renk-pop'); if(pp && !(e.target.closest&&e.target.closest('#ed-renk-pop')) && !_renkHedef(e.target)) _renkPaletKapat(); }, true);
   }
 
   function stilCss(o, pre){
