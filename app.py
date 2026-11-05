@@ -1726,7 +1726,7 @@ HTML_TEMPLATE = """
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
-        html.x-mobile.x-dik { --content-pad: 12px; }
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); }
         html.x-mobile.x-dik body { overflow: auto; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 100vh; }
         html.x-mobile.x-dik .main-content { position: relative; height: auto; min-height: 100vh; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 46px); padding-bottom: 20px; }
@@ -2112,6 +2112,9 @@ HTML_TEMPLATE = """
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
         var vv=window.visualViewport;
         if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px');
+          // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
+          // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
+          try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
           // [ŞERİT KAPAT] KLAVYE durumuna göre (odak değil): klavye GERÇEKTEN kapalıysa (inset<80, ~350ms sabit) şerit
           // kapanır -> kullanıcı "klavye kapanınca/input-dışı tıklayınca şerit kapansın". Alan-geçişinde inset kısa
           // süre düşüp geri çıkar -> timer iptal (titremez). Font/stil xcs listesi AÇIK veya şerit renk/boyut input'u
@@ -2801,7 +2804,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05h · boş-rapor önizleme + editör-PWA masaüstü-gizle + galeri-yükleme-eşiği + yeni-bölüm görsel-slotu(input-boyut, buton cihaz/pc, tek-satır) + rapormatik-mobil-metin-kaldır';
+        var X_BUILD = '2026-11-05i · mobil: font-dropdown safe-area-klemp + dropdown klavye-takip + başlık-seçim native-menü-gizle + editör üst-sınır safe-area';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -2900,7 +2903,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         // Bayrak: localStorage x_custom_select='0' -> kapalı (yerel davranışa döner). Dışlamak için select'e data-xcs-off.
         var XCS_ON = true; try { if (localStorage.getItem('x_custom_select') === '0') XCS_ON = false; } catch (e) {}
         var _xcsList = null, _xcsSel = null, _xcsIdx = -1;
-        function _xcsKapat() { if (_xcsList && _xcsList.parentNode) _xcsList.parentNode.removeChild(_xcsList); _xcsList = null; _xcsSel = null; _xcsIdx = -1; try { window._xcsSel = null; } catch (e) {} }
+        function _xcsKapat() { if (_xcsList && _xcsList.parentNode) _xcsList.parentNode.removeChild(_xcsList); _xcsList = null; _xcsSel = null; _xcsIdx = -1; try { window._xcsSel = null; window._xcsList = null; } catch (e) {} }
         window._xcsKapat = _xcsKapat;
         function _xcsVurgu(i) {
             if (!_xcsList) return; var opts = _xcsList.children, n = opts.length; if (n === 0) return;
@@ -2916,6 +2919,32 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
             }
         }
+        // [DİK-MOBİL DROPDOWN KONUM] Butona iliştik liste: safe-area-top (Dynamic Island/çentik) DIŞLANIR -> liste
+        // asla çentik arkasına taşmaz; klavye üstü görünür alt sınır (--kb-inset) dikkate alınır; en çok yer olan
+        // yöne (yukarı/aşağı) açılır, o yöndeki yere maxHeight ile sığdırılır (overflow-y:auto -> kaydırılabilir).
+        // vv handler (klavye aç/kapa) bu fonksiyonu YENİDEN çağırır -> dropdown şeride bağlı kalır (altta/üstte kopmaz).
+        function _xcsKonumlaMobil(list, sel) {
+            var _dem = document.documentElement;
+            var _r = sel.getBoundingClientRect();
+            var _ih = window.innerHeight || _dem.clientHeight;
+            var _vw = window.innerWidth || _dem.clientWidth;
+            var _kb = parseFloat(getComputedStyle(_dem).getPropertyValue('--kb-inset')) || 0;
+            var _safeTop = parseFloat(getComputedStyle(_dem).getPropertyValue('--safe-top')) || 0;
+            var _visTop = _safeTop + 8;                  // çentik altı görünür üst sınır
+            var _visBottom = _ih - _kb;                  // klavye üstü görünür alt sınır
+            list.style.minWidth = Math.max(150, Math.round(_r.width)) + 'px';
+            var _roomBelow = _visBottom - _r.bottom - 6;
+            var _roomAbove = _r.top - _visTop - 6;       // [SAFE-TOP] üst yer Dynamic Island'ı DIŞLAR
+            var _up = _roomAbove > _roomBelow;
+            var _room = _up ? _roomAbove : _roomBelow;
+            list.style.maxHeight = Math.max(96, Math.min(340, _room)) + 'px';
+            var _lw = list.offsetWidth;
+            var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
+            list.style.left = Math.round(_left) + 'px';
+            if (_up) { list.style.bottom = Math.round(_ih - _r.top + 5) + 'px'; list.style.top = 'auto'; }
+            else { list.style.top = Math.round(_r.bottom + 5) + 'px'; list.style.bottom = 'auto'; }
+        }
+        window._xcsKonumlaMobil = _xcsKonumlaMobil;
         function _xcsAc(sel) {
             _xcsKapat(); _xcsSel = sel; try { window._xcsSel = sel; } catch (e) {}
             var list = document.createElement('div');
@@ -2931,23 +2960,10 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             // innerHeight - --kb-inset (klavye alanı hariç). Klavye yoksa (ör. Paylaş ayarları) yer neredeyse ona göre.
             var _dem = document.documentElement;
             if (_dem.classList.contains('x-mobile') && _dem.classList.contains('x-dik')) {
-                var _r = sel.getBoundingClientRect();
-                var _ih = window.innerHeight || document.documentElement.clientHeight;
-                var _vw = window.innerWidth || document.documentElement.clientWidth;
-                var _kb = parseFloat(getComputedStyle(_dem).getPropertyValue('--kb-inset')) || 0;
-                var _visBottom = _ih - _kb;                 // klavye üstü görünür alt sınır
                 list.classList.add('xcs-anc-m');
-                list.style.minWidth = Math.max(150, Math.round(_r.width)) + 'px';
-                var _roomBelow = _visBottom - _r.bottom - 10;
-                var _roomAbove = _r.top - 10;
-                var _up = _roomAbove > _roomBelow;          // daha çok görünür yer hangi yönde
-                list.style.maxHeight = Math.min(340, Math.max(120, _up ? _roomAbove : _roomBelow)) + 'px';
-                var _lw = list.offsetWidth;
-                var _left = _r.left; if (_left + _lw > _vw - 8) _left = _vw - 8 - _lw; if (_left < 8) _left = 8;
-                list.style.left = Math.round(_left) + 'px';
-                if (_up) { list.style.bottom = Math.round(_ih - _r.top + 5) + 'px'; list.style.top = 'auto'; }
-                else { list.style.top = Math.round(_r.bottom + 5) + 'px'; list.style.bottom = 'auto'; }
-                _xcsList = list; _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
+                _xcsList = list; try { window._xcsList = list; } catch (e) {}
+                _xcsKonumlaMobil(list, sel);
+                _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
                 try { var _s = list.querySelector('.xcs-sel') || list.querySelector('.xcs-opt'); if (_s) _s.scrollIntoView({ block: 'nearest' }); } catch (e) {}
                 return;
             }
@@ -9069,7 +9085,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4o · 2026-11-05 boş-rapor önizleme, editör-PWA masaüstü-gizle, galeri-yükleme-eşiği, yeni-bölüm görsel-slotu(input-boyut, buton cihaz/pc, tek-satır)";
+  XE.VERSION = "4p · 2026-11-05 mobil: font-dropdown safe-area+klavye-takip, başlık-seçim native-menü-gizle, editör üst-sınır safe-area";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9776,7 +9792,11 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 /* ===================== DİK-MOBİL EDİTÖR (Faz 2-3) — yalnız html.x-mobile.x-dik ===================== */
 /* Üst çubuk: başlık metni + uzun rapor-adı (tarih), ✕/Paylaş/galeri/ayar butonlarını ekran dışına İTMESİN.
    Başlık metni gizlenir (ikon kalır), rapor-adı DARALIR (min-width:0), butonlar HER ZAMAN görünür. */
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(8px + env(safe-area-inset-top)), 34px);gap:4px;}
+/* [ÜST SINIR] Editör başlığı safe-area-top'u İZLER: Safari araç çubuğu açıkken env=0 -> kompakt (14px, eski 34px
+   "boşluklu"ydu); araç çubuğu kapanınca/PWA'da env=~59 -> çentiği temizler. Header flex:none (sabit, içerik altına
+   sızmaz) + opak arka plan -> çentik şeridi temiz. */
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 14px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
+html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
 html.x-mobile.x-dik #editorModal .x-shead{font-size:0;gap:0;flex:none;}
@@ -11201,15 +11221,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [MOBİL SEÇİM] Dokunmatik seçimde `mouseup` GÜVENİLİR fire ETMEZ -> menü hiç çıkmıyordu. Dik-mobilde
     // `selectionchange` (debounce) ile aç. Başlık (.ed-h2/.ed-plat) da desteklenir (üstteki mouseup yalnız .ed-metin
     // idi). Masaüstü mouseup yolunda kalır (dik-mobil guard). Panel ZATEN açıksa yeniden açma (kullanıcı etkileşimi).
-    var _mobSelTmr=null;
+    var _mobSelTmr=null, _mobSelCollapsing=false;
     document.addEventListener('selectionchange', function(){
       try{ if(localStorage.getItem('x_secim_toolbar')==='0') return; }catch(_){}
       var de=document.documentElement; if(!(de.classList.contains('x-mobile')&&de.classList.contains('x-dik'))) return;
-      if(_inlineBusy) return;
+      if(_inlineBusy||_mobSelCollapsing) return;
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
       clearTimeout(_mobSelTmr);
       _mobSelTmr=setTimeout(function(){ try{
-        if(_inlineBusy) return;
+        if(_inlineBusy||_mobSelCollapsing) return;
         var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block') return;   // açıkken yeniden açma
         var sel=window.getSelection(); if(!sel || sel.isCollapsed || !sel.rangeCount) return;
         if(String(sel).trim().length<1) return;
@@ -11222,6 +11242,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         else if(ed.classList.contains('ed-metin')){ info={mode:'inline', metinEl:ed, range:rng.cloneRange(), clipEl:ed, clipRange:rng.cloneRange()}; }
         else return;   // başlık ama override kapalı -> inline formatlanamaz
         _sagTikGoster(info, rect.left, rect.bottom);
+        // [NATIVE SEÇİM MENÜSÜ GİZLE] Başlık biçimi TÜM-başlığa uygulanır -> seçime gerek yok; özel menü açıldıktan
+        // sonra seçimi daralt -> iOS'un Kes/Kopyala/Yapıştır balonu kaybolur (özel menü yeterli). Bayrak
+        // x_native_sel_gizle='0' -> daraltma yok. (Inline/.ed-metin'de seçim KORUNUR -> kullanıcı ne seçtiğini görür.)
+        if(info.mode==='heading'){ var _nsg=true; try{ _nsg=(localStorage.getItem('x_native_sel_gizle')!=='0'); }catch(e){} if(_nsg){ try{ _mobSelCollapsing=true; sel.collapseToEnd(); setTimeout(function(){ _mobSelCollapsing=false; }, 90); }catch(e){ _mobSelCollapsing=false; } } }
       }catch(_){} }, 450);
     });
     document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
