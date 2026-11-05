@@ -2273,8 +2273,7 @@ HTML_TEMPLATE = """
                     <div style="font-size:66px; line-height:1; margin-bottom:22px;">💻</div>
                     <h3 style="font-size:22px; font-weight:700; color:var(--text-primary); margin:0 0 16px;">Masaüstü Bilgisayar Gerekli</h3>
                     <p style="max-width:470px; margin:0 auto; font-size:14px; line-height:1.75; color:var(--text-secondary);">
-                        <b>GörüntüX</b>'in otomatik tarama işlemleri bir <b>tarayıcı eklentisine</b> ihtiyaç duyar. Mobil cihazlar eklenti desteğine sahip olmadığından, bu bölümü yalnızca bilgisayarınızdaki bir masaüstü tarayıcıdan (Chrome, Edge, Brave vb.) kullanabilirsiniz.<br><br>
-                        <b>Manuel Rapor Hazırla</b> ve <b>Kayıtlı Raporlar</b> sekmeleri mobilde de çalışır.
+                        <b>GörüntüX</b>'in otomatik tarama işlemleri bir <b>tarayıcı eklentisine</b> ihtiyaç duyar. Mobil cihazlar eklenti desteğine sahip olmadığından, bu bölümü yalnızca bilgisayarınızdaki bir masaüstü tarayıcıdan (Chrome, Edge, Brave vb.) kullanabilirsiniz.
                     </p>
                 </div>
                 <div class="card" id="auto-desktop-content">
@@ -2802,7 +2801,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-05f · boş-rapor önizleme(link+parça-görsel) + editör-PWA masaüstü-gizle + galeri-yükleme-eşiği + yeni-bölüm görsel-slotu';
+        var X_BUILD = '2026-11-05h · boş-rapor önizleme + editör-PWA masaüstü-gizle + galeri-yükleme-eşiği + yeni-bölüm görsel-slotu(input-boyut, buton cihaz/pc, tek-satır) + rapormatik-mobil-metin-kaldır';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9070,7 +9069,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4m · 2026-11-05 boş-rapor önizleme(link+parça-görsel), editör-PWA masaüstü-gizle, galeri-yükleme-eşiği, yeni-bölüm görsel-slotu";
+  XE.VERSION = "4o · 2026-11-05 boş-rapor önizleme, editör-PWA masaüstü-gizle, galeri-yükleme-eşiği, yeni-bölüm görsel-slotu(input-boyut, buton cihaz/pc, tek-satır)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9591,9 +9590,13 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 #editorModal .ed-gal-imgyok{height:58px;display:flex;align-items:center;justify-content:center;color:#b6c0cb;font-size:11px;border-style:dashed;}
 #editorModal .ed-gal-metin{font-size:11px;color:#64748b;line-height:1.5;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 #editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
-#editorModal .ed-img-pano{min-height:56px;border:2px dashed #9ab;border-radius:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#57606a;font-size:12.5px;background:#f7fafd;cursor:text;outline:none;padding:8px 12px;}
-#editorModal .ed-img-pano:focus{border-color:#1565c0;background:#eef5ff;}
-#editorModal .ed-img-pano .ed-img-pcsec{display:inline-flex;align-items:center;gap:4px;margin-left:12px;background:#1565c0;color:#fff;border:none;border-radius:7px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;}
+/* [GÖRSEL ALANI = link/metin input] Kullanıcı isteği: boş görsel kutusu link (.ed-link-edit) ve metin (.ed-metin)
+   input'larıyla BİRE BİR aynı boyut/görünüm (1px dashed #d0d7de, radius 6, min-height 20, pad 5/8, bg #fff, sol hizalı)
+   olsun; "Bilgisayardan seç" (cihazdan görsel yükle) butonu input'un SAĞINA yaslı kalır. */
+#editorModal .ed-img-pano{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:4px 8px;min-height:20px;line-height:1.3;background:#fff;display:flex;align-items:center;justify-content:flex-start;gap:8px;text-align:left;color:#57606a;font-size:12px;cursor:text;}
+#editorModal .ed-img-pano:focus{border-color:#1565c0;border-style:solid;background:rgba(21,101,192,0.05);}
+#editorModal .ed-img-pano .ed-img-ph{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}   /* placeholder tek satır -> dar alanda da pano input yüksekliğinde kalır (sarma yok) */
+#editorModal .ed-img-pano .ed-img-pcsec{display:inline-flex;align-items:center;gap:4px;margin-left:auto;flex:none;line-height:1.2;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;}
 #editorModal .ed-img-pano .ed-img-pcsec:hover{background:#0d47a1;}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
 #editorModal .ed-metin{outline:none;border:1px dashed #d0d7de;border-radius:6px;padding:5px 8px;min-height:20px;background:#fff;}
@@ -9739,8 +9742,8 @@ body:not(.light-theme) #editorModal .ed-root [style*="color:black"]{color:#e7e9e
 body:not(.light-theme) #editorModal .ed-h2:hover{border-color:#3a4a5c;}
 body:not(.light-theme) #editorModal .ed-h2:focus{background:rgba(29,161,242,0.1);}
 body:not(.light-theme) #editorModal .ed-h2:empty:before,body:not(.light-theme) #editorModal .ed-metin:empty:before,body:not(.light-theme) #editorModal .ed-link-edit:empty:before,body:not(.light-theme) #editorModal .ed-parca-bos{color:#6b7785;}
-body:not(.light-theme) #editorModal .ed-img-pano{background:#15202d;border-color:#3a4a5c;color:#9aa6b2;}
-body:not(.light-theme) #editorModal .ed-img-pano:focus{background:#1e3650;border-color:#1d9bf0;}
+body:not(.light-theme) #editorModal .ed-img-pano{background:#121b26;border-color:#2c3a4a;color:#9aa6b2;}
+body:not(.light-theme) #editorModal .ed-img-pano:focus{background:rgba(29,161,242,0.08);border-color:#1d9bf0;}
 body:not(.light-theme) #editorModal .ed-metin-ekle,body:not(.light-theme) #editorModal .ed-pe-btn{background:#1b2735;color:#4ea3ec;border-color:#3a4a5c;}
 body:not(.light-theme) #editorModal .ed-metin-ekle:hover,body:not(.light-theme) #editorModal .ed-pe-wrap:hover .ed-pe-btn{background:#1e3650;}
 body:not(.light-theme) #editorModal .ed-metin-sil:hover{background:#3a1f28;}
@@ -11354,7 +11357,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           var _gSty=(_gAl==='center')?'margin-left:auto;margin-right:auto':(_gAl==='right')?'margin-left:auto;margin-right:0':'';
           h.push((_g && _g.b64)
             ? ('<img class="ed-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>')
-            : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır">📋 Görseli buraya <b>Ctrl+V</b> (⌘V) ile yapıştır<button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Bilgisayardan görsel seç">📁 Bilgisayardan seç</button></div>')); }
+            : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır"><span class="ed-img-ph">📋 Görseli yapıştır (Ctrl+V)</span><button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Cihazdan görsel seç">📁 '+(document.documentElement.classList.contains('x-mobile')?'Cihazdan':'Bilgisayardan')+' seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item);
           // [SORUN 2] boş url -> item.link YALNIZ ASIL link parçasına düşsün (konumdan bağımsız: görsel üstüne
