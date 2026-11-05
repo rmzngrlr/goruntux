@@ -1739,7 +1739,10 @@ HTML_TEMPLATE = """
            (çok rapor/havuz) scroll yine çıkar (meşru). */
         html.x-mobile.x-dik body { overflow: auto; overscroll-behavior: none; min-height: 0; }
         html.x-mobile.x-dik .container { display: block; width: 100%; height: auto; min-height: 0; }
-        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: max(calc(env(safe-area-inset-top) + 20px), 62px); padding-bottom: 20px; }
+        /* [ÜST BOŞLUK] Tarayıcı (varsayılan): içerik Safari UI altında -> küçük padding (16). PWA (.x-pwa): çentik arkasını
+           doldurduğundan env+floor ile temizle. */
+        html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: 16px; padding-bottom: 20px; }
+        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(env(safe-area-inset-top) + 20px), 64px); }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -2119,6 +2122,14 @@ HTML_TEMPLATE = """
     <script>(function(){try{
         if(localStorage.getItem('x_mobil_responsive')==='0') return;
         var de=document.documentElement;
+        // [PWA vs TARAYICI — ÜST BOŞLUK] Standalone (ana ekrana eklenmiş PWA) ise .x-pwa (çentik arkasını env+floor ile
+        // temizle). TARAYICIDA (Safari URL çubuğu var) viewport-fit=cover ÇIKARILIR -> içerik Safari UI'nin ALTINDA kalır,
+        // env=0 ve üstte DEVASA gereksiz boşluk oluşmaz (kullanıcı: tarayıcıda kötü üst boşluk, PWA'da normal).
+        try {
+          var _pwa = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+          if (_pwa) { de.classList.add('x-pwa'); }
+          else { var _vp = document.querySelector('meta[name=viewport]'); if (_vp) { _vp.setAttribute('content', (_vp.getAttribute('content')||'').replace(/,?\s*viewport-fit=cover/i, '')); } }
+        } catch(e){}
         if(!de.classList.contains('x-mobile')) return;
         var mq=window.matchMedia('(orientation: portrait)');
         function yon(){ if(mq.matches){ de.classList.add('x-dik'); de.classList.remove('x-yatay'); } else { de.classList.add('x-yatay'); de.classList.remove('x-dik'); } }
@@ -2162,7 +2173,7 @@ HTML_TEMPLATE = """
     <!-- [TANI KATMANI] URL'ye #debug eklenince (ya da localStorage x_debug='1') köşede gerçek ölçüm değerlerini gösterir.
          iOS viewport/klavye/çentik değerlerini cihazdan okuyup kesin düzeltme yapmak için. Kapatmak için #debug'ı sil. -->
     <script>(function(){try{
-      var acik=false; try{ acik=(location.hash.indexOf('debug')>=0)||(localStorage.getItem('x_debug')==='1'); }catch(e){}
+      var acik=true; try{ if(localStorage.getItem('x_debug')==='0') acik=false; }catch(e){}   // [DEBUG BUILD] her zaman açık (PWA'da #debug eklenemiyor); x_debug='0' kapatır
       if(!acik) return;
       function U(unit){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:100'+unit+';'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
       function ST(){ try{ var d=document.createElement('div'); d.style.cssText='position:fixed;top:0;left:-9999px;width:0;height:env(safe-area-inset-top,0px);'; document.body.appendChild(d); var h=d.offsetHeight; d.parentNode.removeChild(d); return h; }catch(e){ return '?'; } }
@@ -2171,8 +2182,9 @@ HTML_TEMPLATE = """
         var ver=''; try{ ver=(window.XEditor&&window.XEditor.VERSION)||''; }catch(e){} ver=(''+ver).slice(0,16);
         var kb=0; try{ kb=Math.round(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0); }catch(e){}
         var edM=document.getElementById('editorModal'); var edH=(edM&&edM.classList.contains('active'))?edM.offsetHeight:'-';
-        var b=document.getElementById('x-dbg'); if(!b){ b=document.createElement('div'); b.id='x-dbg'; b.style.cssText='position:fixed;top:4px;right:4px;z-index:2147483647;background:rgba(0,0,0,.88);color:#3f6;font:10px/1.35 ui-monospace,monospace;padding:5px 7px;border:1px solid #3f6;border-radius:6px;max-width:66vw;pointer-events:none;text-align:right;'; document.body.appendChild(b); }
-        b.innerHTML=['VER '+ver,'ih='+window.innerHeight+' vvH='+(vv?Math.round(vv.height):'-')+' vvTop='+(vv?Math.round(vv.offsetTop):'-'),'vh='+U('vh')+' svh='+U('svh'),'dvh='+U('dvh')+' lvh='+U('lvh'),'safeTop='+ST()+' kb='+kb,'bodyScrollH='+document.body.scrollHeight+' edH='+edH].join('<br>');
+        var b=document.getElementById('x-dbg'); if(!b){ b=document.createElement('div'); b.id='x-dbg'; b.style.cssText='position:fixed;bottom:4px;left:4px;z-index:2147483647;background:rgba(0,0,0,.9);color:#3f6;font:10px/1.35 ui-monospace,monospace;padding:5px 7px;border:1px solid #3f6;border-radius:6px;max-width:72vw;pointer-events:none;text-align:left;'; document.body.appendChild(b); }
+        var _pwaDbg=''; try{ _pwaDbg=((window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone===true)?'PWA':'TARAYICI'; }catch(e){}
+        b.innerHTML=['VER '+ver+' ['+_pwaDbg+']','SAFETOP='+ST()+'  kb='+kb,'ih='+window.innerHeight+' vvH='+(vv?Math.round(vv.height):'-')+' vvTop='+(vv?Math.round(vv.offsetTop):'-'),'vh='+U('vh')+' svh='+U('svh')+' dvh='+U('dvh')+' lvh='+U('lvh'),'bodyScrollH='+document.body.scrollHeight+' edH='+edH].join('<br>');
       }catch(e){} }
       window.addEventListener('load', function(){ ciz(); setInterval(ciz, 800); });
       if(window.visualViewport){ window.visualViewport.addEventListener('resize', ciz); window.visualViewport.addEventListener('scroll', ciz); }
@@ -2852,7 +2864,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06d · mobil: editor header ust floor 64 (island arkasi net degildi) + main 62; TANI acik';
+        var X_BUILD = '2026-11-06g · mobil: PWA/tarayici ust-bosluk + DEBUG her-zaman-acik(sol-alt, safeTop+PWA/tarayici)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9142,7 +9154,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "4y-debug · 2026-11-06 ust-floor-64";
+  XE.VERSION = "5b-debug · 2026-11-06 pwa-tarayici-bosluk, debug-herzaman";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9858,7 +9870,8 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
    hem içerik sığar (scroll yok). İçerik modal'ı %100 doldurur. */
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
-html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:max(calc(env(safe-area-inset-top) + 8px), 64px);gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
+html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
+html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(env(safe-area-inset-top) + 8px), 68px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
@@ -9922,10 +9935,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var de=document.documentElement, m=document.getElementById('editorModal'); if(!m) return;
     function dikMobil(){ return de.classList.contains('x-mobile') && de.classList.contains('x-dik'); }
     function alanMi(t){ return !!(t && (t.isContentEditable || t.tagName==='INPUT' || t.tagName==='TEXTAREA') && t.closest && t.closest('#editor-root')); }
+    // [iOS ^v✓ ÇUBUĞU AZALT] iOS klavye-üstü form-asistan çubuğundaki < > okları SAYFADAKİ form alanları (select/number/
+    // color) arasında gezinmek için çıkar. Bu alanları iOS gezinmesinden çıkar (tabindex=-1) -> oklar (belki çubuk) gider.
+    // Mobilde select'ler zaten xcs/pointer-events:none (tabindex gereksiz); sayı/renk tap ile yine odaklanır. NOT: iOS
+    // keyboard accessory bar web'den TAM garantiyle kaldırılamaz; bu bir azaltma denemesi. Bayrak x_ios_bar='0' kapatır.
+    var _iosBarOff=true; try{ _iosBarOff=(localStorage.getItem('x_ios_bar')!=='0'); }catch(e){}
+    var _barSweepT=null, _barSweep=function(){ clearTimeout(_barSweepT); _barSweepT=setTimeout(function(){ try{ if(!dikMobil()) return; m.querySelectorAll('select,input[type=number],input[type=color],input[type=range]').forEach(function(el){ if(el.getAttribute('tabindex')!=='-1') el.setAttribute('tabindex','-1'); }); }catch(e){} }, 120); };
+    if(_iosBarOff){ _barSweep(); try{ new MutationObserver(function(){ _barSweep(); }).observe(m, {childList:true, subtree:true}); }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       // [KB TAZELE] Klavye animasyonu oturunca --kb-inset'i yeniden ölç -> şerit klavye/iOS-çubuğunun hemen üstüne
       // SNUG oturur (bayat/erken inset'te şerit yanlış konumlanıp "kayboluyordu").
       try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){}
+      if(_iosBarOff) _barSweep();
     } });
     // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
     // x-ed-yaz kalkar). Böylece metin/link/başlık ARASI geçişte klavye açık kaldığından şerit SABİT -> TİTREMEZ.
