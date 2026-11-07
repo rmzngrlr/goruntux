@@ -2884,7 +2884,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-07c · RESPONSIVE Faz3-basla: tablet hibrit (galeri kartlari normal boy)';
+        var X_BUILD = '2026-11-07d · RESPONSIVE Faz3: editor-tablet (duzenleme ortala 760px, galeri tam-genislik :has)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9175,7 +9175,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5f · 2026-11-07 responsive-faz3-tablet-hibrit-basla";
+  XE.VERSION = "5g · 2026-11-07 responsive-faz3-editor-tablet";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9894,6 +9894,10 @@ html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
 html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 14px), 30px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
+/* [TABLET HİBRİT — editör] Tablette düzenleme alanı tam genişlikte yayılmasın (belge çok geniş); ~760px'e ORTALA
+   (tablette standart belge editörü deseni). Galeri/Sırala görünümü (.ed-gal-pad varsa) tam genişlik KALSIN (çok-sütun
+   sıralama için) -> :not(:has(.ed-gal-pad)) ile ayır (:has desteklenmezse kural uygulanmaz = tam genişlik, güvenli). */
+html.x-mobile.x-dik.x-tablet #editorModal #editor-root:not(:has(.ed-gal-pad)){max-width:760px;margin-left:auto;margin-right:auto;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
 html.x-mobile.x-dik #editorModal .x-shead{font-size:0;gap:0;flex:none;}
