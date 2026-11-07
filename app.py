@@ -1729,7 +1729,7 @@ HTML_TEMPLATE = """
         /* [SAFE-AREA — tek kaynak] --safe-top/--safe-bottom: JS çekirdek (_olcCekirdek) PROBE ile ÇÖZÜLMÜŞ px yazar
            (getComputedStyle env'i çözemediği için). Buradaki env(...) yalnız JS-öncesi/JS-yoksa FALLBACK; tüm CSS
            var(--safe-*) kullanır (Faz 2 konsolidasyon). */
-        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --ed-acc: 0px; overscroll-behavior: none; }
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); overscroll-behavior: none; }
         /* [ESNEME/BOUNCE] İçerik viewport'tan kısa olsa da iOS rubber-band esniyordu -> html+body overscroll-behavior:none
            (iOS 16+). İçerik uzunsa normal scroll yine çalışır. */
         /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
@@ -2181,12 +2181,9 @@ HTML_TEMPLATE = """
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
     <script>(function(){try{if(localStorage.getItem('theme')==='light'){document.body.classList.add('light-theme');}}catch(e){}})();</script>
-    <!-- [ZOOM KAPAT + iOS form-çubuğu offset bayrağı] Panelde zoom olmasın (kullanıcı); iOS user-scalable=no'yu yok
-         sayar -> pinch gesture olaylarını engelle (yalnız pinch; double-tap metin seçimini bozma). Bayrak x_zoom_kapali='0'.
-         Ayrıca x_ios_acc='0' ise şerit form-çubuğu offset'ini (--ed-acc) sıfırla. -->
+    <!-- [ZOOM KAPAT] Panelde zoom olmasın (kullanıcı); iOS user-scalable=no'yu yok sayar -> pinch gesture
+         olaylarını engelle (yalnız pinch; double-tap metin seçimini bozma). Bayrak x_zoom_kapali='0'. -->
     <script>(function(){try{
-      var de=document.documentElement;
-      try{ if(localStorage.getItem('x_ios_acc')==='0') de.style.setProperty('--ed-acc','0px'); }catch(e){}
       var zoomOff=true; try{ zoomOff=(localStorage.getItem('x_zoom_kapali')!=='0'); }catch(e){}
       if(zoomOff){ ['gesturestart','gesturechange','gestureend'].forEach(function(ev){ document.addEventListener(ev, function(e){ e.preventDefault(); }, {passive:false}); }); }
     }catch(e){}})();</script>
@@ -2884,7 +2881,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-07d · RESPONSIVE Faz3: editor-tablet (duzenleme ortala 760px, galeri tam-genislik :has)';
+        var X_BUILD = '2026-11-07e · RESPONSIVE Faz4: temizlik (olu --ed-acc + x_ios_acc kaldirildi)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9175,7 +9172,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5g · 2026-11-07 responsive-faz3-editor-tablet";
+  XE.VERSION = "5h · 2026-11-07 responsive-faz4-temizlik";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9939,9 +9936,9 @@ html.x-mobile.x-dik #editorModal .ed-serit{display:none;}
 /* [iOS KENAR-SWIPE] Şerit bottom:0'da (iPhone home-bar bölgesi) iken yatay çekiş iOS app-geçiş gesture'ını
    tetikliyordu. bottom = max(kb-inset, safe-area) -> klavye kapalıyken home-bar'ın ÜSTÜnde kalır (gesture bölgesi
    dışı); klavye açıkken zaten inset>safe-area -> klavyenin üstünde. touch-action:pan-x -> yatay kaydırma bizde. */
-/* [iOS FORM ÇUBUĞU] iOS klavye üstünde kendi "^v✓" form-asistan çubuğunu basar (native, web'den kaldırılamaz) ve bizim
-   şeridimizi (bottom:kb-inset) ÖRTÜYOR ("şerit nerede kaldı"). Şeridi o çubuğun kadarı (--ed-acc, ~48px) kadar YUKARI
-   kaldır -> iOS çubuğunun ÜstÜnde görünür. Bayrak x_ios_acc='0' -> --ed-acc:0 (offset yok). */
+/* [iOS FORM ÇUBUĞU] iOS klavye üstünde kendi "^v✓" form-asistan çubuğunu basar (native, web'den kaldırılamaz).
+   Şeridi onun üstüne oturtmak için bottom:kb-inset DEĞİL, top:var(--vv-bottom)+translateY(-100%) kullan:
+   --vv-bottom = görünür alanın alt kenarı (visualViewport.offsetTop+height) -> şerit daima klavye/çubuğun üstünde. */
 html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed;left:0;right:0;bottom:auto;top:var(--vv-bottom, 100%);transform:translateY(-100%);z-index:4000;box-shadow:0 -2px 12px rgba(16,24,40,0.22);border-top:1px solid #d0d7de;border-bottom:none;touch-action:pan-x;}
 /* [DİK-MOBİL Faz 3+] Yazarken SAYFAYI KİLİTLE: iOS'ta ekranı aşağı çekince (overscroll/rubber-band)
    visualViewport.offsetTop oynuyor -> --kb-inset şişip SABİT şerit ekranın ortasına kayıyordu. Body/html
@@ -9949,7 +9946,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed
    şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
 html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
-html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + var(--ed-acc,0px) + 64px);}
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 64px);}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
   // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
