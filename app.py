@@ -1726,7 +1726,10 @@ HTML_TEMPLATE = """
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
-        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --ed-acc: 0px; overscroll-behavior: none; }
+        /* [SAFE-AREA — tek kaynak] --safe-top/--safe-bottom: JS çekirdek (_olcCekirdek) PROBE ile ÇÖZÜLMÜŞ px yazar
+           (getComputedStyle env'i çözemediği için). Buradaki env(...) yalnız JS-öncesi/JS-yoksa FALLBACK; tüm CSS
+           var(--safe-*) kullanır (Faz 2 konsolidasyon). */
+        html.x-mobile.x-dik { --content-pad: 12px; --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); --ed-acc: 0px; overscroll-behavior: none; }
         /* [ESNEME/BOUNCE] İçerik viewport'tan kısa olsa da iOS rubber-band esniyordu -> html+body overscroll-behavior:none
            (iOS 16+). İçerik uzunsa normal scroll yine çalışır. */
         /* [GEREKSİZ SCROLL] 100vh iOS'ta tarayıcı çubuğu altını da sayar -> görünür alandan UZUN -> içerik az olsa da
@@ -1742,21 +1745,21 @@ HTML_TEMPLATE = """
         /* [ÜST BOŞLUK] Tarayıcı (varsayılan): içerik Safari UI altında -> küçük padding (16). PWA (.x-pwa): çentik arkasını
            doldurduğundan env+floor ile temizle. */
         html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: 16px; padding-bottom: 20px; }
-        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(env(safe-area-inset-top) + 14px), 30px); }
+        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(var(--safe-top) + 14px), 30px); }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
         html.x-mobile.x-dik .header { margin-bottom: 16px; padding-right: 52px; }
         /* [AYARLAR BUTONU] Dik-mobilde başlık+alt-yazının ALTINA düşüyordu (order:3) -> kullanıcı "orda olmaz".
            Sağ-üst köşeye sabitle (absolute; ext-status zaten gizli -> yalnız dişli kalır). Başlıkla aynı sıra. */
-        html.x-mobile.x-dik .header-controls { position: absolute; top: max(calc(env(safe-area-inset-top) + 16px), 42px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
+        html.x-mobile.x-dik .header-controls { position: absolute; top: max(calc(var(--safe-top) + 16px), 42px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
         html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
         html.x-mobile.x-dik .tab-btn { padding: 10px 14px; font-size: 13px; }
         /* Havuz alt aksiyon çubuğu: kırılgan negatif-margin sticky yerine SABİT alt çubuk
            (yalnız havuz sekmesi görünürken DOM'da olduğundan diğer sekmelerde görünmez). */
-        html.x-mobile.x-dik .pool-actions { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; border-radius: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--bg-primary); border-top: 1px solid var(--border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.08); z-index: 60; }
+        html.x-mobile.x-dik .pool-actions { position: fixed; left: 0; right: 0; bottom: 0; margin: 0; border-radius: 0; padding: 10px 12px calc(10px + var(--safe-bottom)); background: var(--bg-primary); border-top: 1px solid var(--border-color); box-shadow: 0 -2px 10px rgba(0,0,0,0.08); z-index: 60; }
 
         /* Eklenti durum kutusu (pill). Üç durum: hazır=yeşil, güncelleme gerek=sarı, yok=kırmızı.
            Kırmızı/sarı tıklanabilir (modal); yeşil değil. */
@@ -1871,7 +1874,7 @@ HTML_TEMPLATE = """
         /* [DİK-MOBİL Faz 4] Paylaş/İndir = ALTTAN ÇIKAN SAYFA (bottom sheet) + karartma. Yalnız x-mobile.x-dik. */
         html.x-mobile.x-dik #paylasModal.paylas-sheet { position: fixed; inset: 0; width: auto; height: auto; background: rgba(0,0,0,0.42); -webkit-backdrop-filter: none; backdrop-filter: none; display: none; align-items: flex-end; justify-content: center; }
         html.x-mobile.x-dik #paylasModal.paylas-sheet.active { display: flex; }
-        html.x-mobile.x-dik #paylasModal.paylas-sheet .modal-content { width: 100%; max-width: 640px; border-radius: 18px 18px 0 0; transform-origin: bottom center; animation: paylasSheetUp .22s cubic-bezier(.2,.8,.3,1); padding-bottom: env(safe-area-inset-bottom); }
+        html.x-mobile.x-dik #paylasModal.paylas-sheet .modal-content { width: 100%; max-width: 640px; border-radius: 18px 18px 0 0; transform-origin: bottom center; animation: paylasSheetUp .22s cubic-bezier(.2,.8,.3,1); padding-bottom: var(--safe-bottom); }
         @keyframes paylasSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         /* [XCS] Özel OPAK dropdown listesi — yerel <select>'in saydam sistem menüsü (macOS) yerine. var(--bg-input) iki temada da OPAK (#111622 / #fff). Editör her zaman açık tema. */
@@ -2876,7 +2879,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-07a · RESPONSIVE Faz1: cekirdek (x-tablet + --app-vh + safe-area probe), additif; debug gated';
+        var X_BUILD = '2026-11-07b · RESPONSIVE Faz2: safe-area tek kaynak (3 probe->1 --safe-*; CSS env->var)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3001,10 +3004,11 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var _ih = window.innerHeight || _dem.clientHeight;
             var _vw = window.innerWidth || _dem.clientWidth;
             var _kb = parseFloat(getComputedStyle(_dem).getPropertyValue('--kb-inset')) || 0;
-            // [SAFE-TOP ÖLÇÜMÜ] env(safe-area-inset-top) bir CSS değişkenine konunca getComputedStyle onu ÇÖZMEZ (ham
-            // "env(...)" döner -> parseFloat=NaN -> 0). GERÇEK değeri gizli PROBE öğesinin yüksekliğinden ölç.
+            // [SAFE-TOP — Faz 2 KONSOLİDASYON] Global responsive çekirdeğin (--safe-top) ölçtüğü değeri oku. Çekirdek
+            // JS ile ÇÖZÜLMÜŞ px yazdığı için getComputedStyle artık okuyabilir (env'i doğrudan var'a koymak çözülmez).
+            // Ayrı 'x-safe-probe' KALDIRILDI; tek kaynak. Açılmadan hemen önce tazele.
             var _safeTop = 0;
-            try { var _pr = document.getElementById('x-safe-probe'); if(!_pr){ _pr = document.createElement('div'); _pr.id='x-safe-probe'; _pr.style.cssText='position:fixed;top:0;left:0;width:0;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none;z-index:-1;'; (document.body||_dem).appendChild(_pr); } _safeTop = _pr.offsetHeight || 0; } catch(e){}
+            try { if(window.__olcCekirdek) window.__olcCekirdek(); _safeTop = parseFloat(getComputedStyle(_dem).getPropertyValue('--safe-top')) || 0; } catch(e){}
             var _visTop = _safeTop + 10;                 // çentik/durum çubuğu altı görünür üst sınır (+10 pay)
             var _visBottom = _ih - _kb;                  // klavye üstü görünür alt sınır
             list.style.minWidth = Math.max(150, Math.round(_r.width)) + 'px';
@@ -9166,7 +9170,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5d · 2026-11-07 responsive-faz1-cekirdek";
+  XE.VERSION = "5e · 2026-11-07 responsive-faz2-safe-area-konsolidasyon";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9883,7 +9887,7 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
-html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(env(safe-area-inset-top) + 14px), 30px);}
+html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 14px), 30px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 html.x-mobile.x-dik #editorModal .modal-header > div:first-child{flex:none;gap:4px;}
 html.x-mobile.x-dik #editorModal .modal-header > div:last-child{flex:1 1 auto;min-width:0;justify-content:flex-end;}
