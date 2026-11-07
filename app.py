@@ -2078,6 +2078,11 @@ HTML_TEMPLATE = """
            -> içerik görünür alana sığar, scroll gider. */
         html.x-mobile.x-dik .x-gal-page { height: 108px; }
         html.x-mobile.x-dik .x-gal-yeni { height: 108px; }
+        /* [TABLET HİBRİT — Faz 3] Gerçek tablet (iPad = Macintosh+touch -> x-mobile) telefon düzenini alır; tabletin
+           GENİŞ ekranını kullan: galeri kartları normal boy (108px telefona özgü, tablette çok kısa/garip). Çok-sütun
+           zaten .x-gal-grid auto-fill'den (768'de ~4 sütun). x-tablet = x-mobile + min(screen boyutu)>=600. */
+        html.x-mobile.x-dik.x-tablet .x-gal-page { height: 176px; }
+        html.x-mobile.x-dik.x-tablet .x-gal-yeni { height: 176px; }
         /* OPAK ZORUNLU: --bg-card koyu temada rgba(.,.6) = %40 saydam -> arkadaki "Rapor Oluştur" yazısı görünürdü.
            linear-gradient(card,card) over bg-primary ile tam opak yap (koddaki mevcut desen). */
         .x-gal-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; min-width: 190px; background: linear-gradient(var(--bg-card), var(--bg-card)), var(--bg-primary); border: 1px solid var(--border-color); border-radius: 13px; box-shadow: 0 14px 36px rgba(0,0,0,0.3); padding: 6px; z-index: 60; }
@@ -2879,7 +2884,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-07b · RESPONSIVE Faz2: safe-area tek kaynak (3 probe->1 --safe-*; CSS env->var)';
+        var X_BUILD = '2026-11-07c · RESPONSIVE Faz3-basla: tablet hibrit (galeri kartlari normal boy)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9170,7 +9175,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5e · 2026-11-07 responsive-faz2-safe-area-konsolidasyon";
+  XE.VERSION = "5f · 2026-11-07 responsive-faz3-tablet-hibrit-basla";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
