@@ -2136,7 +2136,19 @@ HTML_TEMPLATE = """
         yon();
         if(mq.addEventListener){ mq.addEventListener('change', yon); } else if(mq.addListener){ mq.addListener(yon); }
         window.addEventListener('orientationchange', function(){ setTimeout(yon, 60); });
+        // [RESPONSIVE ÇEKİRDEK — Faz 1 (ADDİTİF)] Tablet sınıfı + --app-vh (100vh yerine; iOS'ta 100vh görünürden uzun)
+        // + gerçek safe-area (PROBE; getComputedStyle env'i çözmez -> gizli env-öğesi offsetHeight). Mevcut kb/şerit/
+        // dropdown mantığı DEĞİŞMEZ (additif); Faz 2'de CSS bu değişkenlere geçirilecek. bkz [[responsive-plan]].
+        try { if (Math.min(screen.width||9999, screen.height||9999) >= 600) de.classList.add('x-tablet'); } catch(e){}
+        function _safeProbe(side){ try{ var id='x-sp-'+side, p=document.getElementById(id); if(!p){ p=document.createElement('div'); p.id=id; p.style.cssText='position:fixed;left:0;width:0;'+(side==='top'?'top:0;':'bottom:0;')+'height:env(safe-area-inset-'+side+',0px);visibility:hidden;pointer-events:none;z-index:-1;'; (document.body||de).appendChild(p); } return p.offsetHeight||0; }catch(e){ return 0; } }
+        function _olcCekirdek(){ try{ de.style.setProperty('--app-vh', (window.innerHeight||0)+'px'); de.style.setProperty('--safe-top', _safeProbe('top')+'px'); de.style.setProperty('--safe-bottom', _safeProbe('bottom')+'px'); }catch(e){} }
+        try{ window.__olcCekirdek = _olcCekirdek; }catch(e){}
+        _olcCekirdek();
+        window.addEventListener('load', _olcCekirdek);
+        window.addEventListener('resize', _olcCekirdek);
+        window.addEventListener('orientationchange', function(){ setTimeout(_olcCekirdek, 120); });
         var vv=window.visualViewport;
+        if(vv){ vv.addEventListener('resize', _olcCekirdek); }
         if(vv){ var kb=function(){ try{ var ih=(window.innerHeight||0); var ot=vv.offsetTop||0; if(ot<0) ot=0; var inset=Math.round(ih - vv.height - ot); if(inset<0) inset=0; var cap=Math.round(ih*0.72); if(inset>cap) inset=cap; de.style.setProperty('--kb-inset', inset+'px');
           // [ŞERİT KONUMU — layout/visual viewport farkı] position:fixed iOS'ta LAYOUT viewport'a (lvh) göre; innerHeight
           // ise bu cihazda KÜÇÜK viewport (svh) olabiliyor -> bottom:kb-inset şeridi klavyenin ALTINA itiyordu. ÇÖZÜM:
@@ -2864,7 +2876,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-06h · mobil: PWA ust-bosluk env+14 (safeTop=59 ile net); debug gated';
+        var X_BUILD = '2026-11-07a · RESPONSIVE Faz1: cekirdek (x-tablet + --app-vh + safe-area probe), additif; debug gated';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9154,7 +9166,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5c · 2026-11-06 pwa-ust-env14, debug-gated";
+  XE.VERSION = "5d · 2026-11-07 responsive-faz1-cekirdek";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
