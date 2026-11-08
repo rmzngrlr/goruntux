@@ -2953,7 +2953,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08j · editor: BOLUM ust bar altina hizalanir (bir kez; uzayinca imlec gorunur)';
+        var X_BUILD = '2026-11-08k · editor: alan gecisi titreme fix (sync hizala + scroll pin)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10054,6 +10054,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _bandAlt(){ var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom')); if(!vvB){ vvB=window.visualViewport?(window.visualViewport.offsetTop+window.visualViewport.height):(window.innerHeight||0); } var sr=document.getElementById('editor-serit'); var rh=(sr&&getComputedStyle(sr).display!=='none')?sr.offsetHeight:0; return vvB-rh-10; }
     function _imlecRect(el){ var r=null; try{ var s=window.getSelection(); if(s&&s.rangeCount){ var rg=s.getRangeAt(0); if(el.contains&&el.contains(rg.startContainer)){ var rr=rg.getBoundingClientRect(); if(rr&&(rr.height>0||rr.top>0)) r=rr; } } }catch(_){} return r||(el?el.getBoundingClientRect():null); }
     function _pbKaydir(delta){ var pb=_edPB(); if(!pb) return; delta=Math.round(delta); if(Math.abs(delta)>2){ try{ pb.scrollTo({top: pb.scrollTop+delta, behavior:'smooth'}); }catch(_){ pb.scrollTop+=delta; } } }
+    // [TİTREME ÖNLE] Aynı bölümde alan geçişinde native focus-scroll bölümü oynatıp titretiyor -> kısa süre (280ms)
+    // preview-body scroll'unu PINLE (her scroll olayında eski değere geri çek) -> bölüm SABİT kalır, titreme olmaz.
+    function _pinScroll(sure){ try{ var pb=_edPB(); if(!pb) return; var top=pb.scrollTop, until=Date.now()+(sure||280);
+      if(XE.__pinH){ try{ pb.removeEventListener('scroll', XE.__pinH); }catch(_){} }
+      XE.__pinH=function(){ if(Date.now()<until){ if(Math.abs(pb.scrollTop-top)>1) pb.scrollTop=top; } else { try{ pb.removeEventListener('scroll', XE.__pinH); }catch(_){} XE.__pinH=null; } };
+      pb.addEventListener('scroll', XE.__pinH, {passive:true});
+    }catch(e){} }
     function _odakKart(el, mode){ try{
       if(!el || !dikMobil()) return;
       try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
@@ -10071,10 +10078,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }
     }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
-      var _odakEl=e.target;
-      // [KB TAZELE] Klavye animasyonu oturunca --kb-inset'i yeniden ölç -> şerit klavye/iOS-çubuğunun hemen üstüne
-      // SNUG oturur (bayat/erken inset'te şerit yanlış konumlanıp "kayboluyordu").
-      try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){}
+      var _odakEl=e.target, _card=_edKart(_odakEl);
+      // [TİTREME ÖNLE] YENİ bölüm -> HEMEN (sync, instant) üst bar altına hizala: alan anında görünür olur, iOS
+      // native focus-scroll tetiklenmez (çift-hareket/titreme yok). AYNI bölüm -> olduğu yerde kal. Her iki halde
+      // konumu ~280ms pinle -> native scroll bölümü oynatamaz.
+      try{ if(_card && _card!==XE.__odakKart){ var _pb=_edPB(); if(_pb){ var _d=Math.round(_card.getBoundingClientRect().top-(_barAlti()+8)); if(Math.abs(_d)>2) _pb.scrollTop+=_d; } XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; } if(_card){ _pinScroll(); } }catch(_){}
+      // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç -> şerit snug otursun. Alanlar arası
+      // geçişte (klavye zaten açık, --kb-inset>80) bu re-ölçümü ATLA -> şerit gereksiz oynamaz (titreme yok).
+      var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
+      if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
       // [BÖLÜM HİZALA] kb/layout oturduktan SONRA bölümü üst barın altına hizala (iki kez: idempotent — yeni bölümse kaydırır).
       try{ [380,680].forEach(function(ms){ setTimeout(function(){ _odakKart(_odakEl,'focus'); }, ms); }); }catch(_){}
       if(_iosBarOff) _barSweep();
