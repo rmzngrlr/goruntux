@@ -1757,20 +1757,22 @@ HTML_TEMPLATE = """
         /* [ÜST BOŞLUK] Tarayıcı (varsayılan): içerik Safari UI altında -> küçük padding (16). PWA (.x-pwa): çentik arkasını
            doldurduğundan env+floor ile temizle. */
         html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: 16px; padding-bottom: 20px; }
-        /* [BAŞLIK KONUM 2026-11-08e] Kullanıcı: PWA'da başlık çentik/durum-çubuğuna sıkışıktı -> +24px daha
-           aşağı (cihaz safe-top=59 ölçüldü; +14 -> +38). Dişli de aynı +24 ile hizada (aşağıdaki .x-pwa kuralı). */
-        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(var(--safe-top) + 38px), 54px); }
+        /* [BAŞLIK KONUM 2026-11-08f] PWA'da başlık çentik/durum-çubuğundan +16px aşağı (safe-top=59; +14 -> +30).
+           Dişli de logo ile hizalı (aşağıdaki .x-pwa .header-controls). */
+        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(var(--safe-top) + 30px), 46px); }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
         html.x-mobile.x-dik .header { margin-bottom: 16px; padding-right: 52px; }
         /* [AYARLAR BUTONU] Dik-mobilde başlık+alt-yazının ALTINA düşüyordu (order:3) -> kullanıcı "orda olmaz".
            Sağ-üst köşeye sabitle (absolute; ext-status zaten gizli -> yalnız dişli kalır). Başlıkla aynı sıra. */
-        html.x-mobile.x-dik .header-controls { position: absolute; top: max(calc(var(--safe-top) + 16px), 42px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
-        /* [AYARLAR HİZA 2026-11-08e] PWA'da başlık +24 indi -> dişli MERKEZİ logo satırı merkeziyle hizalanır.
-           Logo satırı merkezi = padding-top(safe-top+38) + logo-yarı(15) = safe-top+53; dişli(38px) için
-           top = merkez - 19 = safe-top+34. Yalnız PWA; tarayıcı-dik dokunulmaz. */
-        html.x-mobile.x-dik.x-pwa .header-controls { top: max(calc(var(--safe-top) + 34px), 50px); }
+        /* [AYARLAR HİZA 2026-11-08f] Dişli MERKEZİ logo satırı merkeziyle hizalı — HEM tarayıcı HEM PWA.
+           Geometri: logo satırı merkezi = main-content padding-top + logo-yarı(15); dişli(38px) merkezi =
+           top + 19. Hizalı => top = padding-top - 4. Tarayıcı-dik: padding-top 16 -> top 12.
+           (PWA: aşağıdaki .x-pwa override padding-top'a göre.) */
+        html.x-mobile.x-dik .header-controls { position: absolute; top: 12px; right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
+        /* PWA: padding-top max(safe-top+30,46) -> dişli top = padding - 4 = max(safe-top+26,42). */
+        html.x-mobile.x-dik.x-pwa .header-controls { top: max(calc(var(--safe-top) + 26px), 42px); }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
         html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
@@ -2167,7 +2169,15 @@ HTML_TEMPLATE = """
         // dropdown mantığı DEĞİŞMEZ (additif); Faz 2'de CSS bu değişkenlere geçirilecek. bkz [[responsive-plan]].
         try { if (Math.min(screen.width||9999, screen.height||9999) >= 600) de.classList.add('x-tablet'); } catch(e){}
         function _safeProbe(side){ try{ var id='x-sp-'+side, p=document.getElementById(id); if(!p){ p=document.createElement('div'); p.id=id; p.style.cssText='position:fixed;left:0;width:0;'+(side==='top'?'top:0;':'bottom:0;')+'height:env(safe-area-inset-'+side+',0px);visibility:hidden;pointer-events:none;z-index:-1;'; (document.body||de).appendChild(p); } return p.offsetHeight||0; }catch(e){ return 0; } }
-        function _olcCekirdek(){ try{ de.style.setProperty('--app-vh', (window.innerHeight||0)+'px'); de.style.setProperty('--safe-top', _safeProbe('top')+'px'); de.style.setProperty('--safe-bottom', _safeProbe('bottom')+'px'); }catch(e){} }
+        // [AÇILIŞ FLASH FIX 2026-11-08f] Erken (senkron) probe env'i daha çözmeden 0 dönebiliyor -> inline --safe-top=0
+        // CSS env() fallback'ini EZİYOR -> başlık bir an YUKARIDA (padding floor) sonra load'da aşağı sıçrıyor (flash).
+        // Çözüm: probe>0 DEĞİLSE inline'ı KOYMA/KALDIR -> CSS kuralındaki env(safe-area-inset-*) ilk boyamada çentiği
+        // çözer (reaktif), 0'a ezilmez. Probe gerçek px döndüğünde (load/resize) inline'a yazılır (kb/vv matematiği için).
+        function _olcCekirdek(){ try{ de.style.setProperty('--app-vh', (window.innerHeight||0)+'px');
+          var _st=_safeProbe('top'), _sb=_safeProbe('bottom');
+          if(_st>0){ de.style.setProperty('--safe-top', _st+'px'); } else { de.style.removeProperty('--safe-top'); }
+          if(_sb>0){ de.style.setProperty('--safe-bottom', _sb+'px'); } else { de.style.removeProperty('--safe-bottom'); }
+        }catch(e){} }
         try{ window.__olcCekirdek = _olcCekirdek; }catch(e){}
         _olcCekirdek();
         window.addEventListener('load', _olcCekirdek);
@@ -2208,7 +2218,7 @@ HTML_TEMPLATE = """
       var startY=0, pulling=false, armed=false, dist=0, ind=null;
       var TH=110;
       function mkInd(){ if(ind) return ind; ind=document.createElement('div'); ind.id='x-ptr';
-        ind.style.cssText='position:fixed;left:50%;top:0;z-index:4000;background:var(--bg-card,#15202b);color:var(--text-primary,#e7e9ea);border:1px solid var(--border-color,rgba(136,153,166,.3));border-top:none;border-radius:0 0 14px 14px;padding:8px 16px;font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.3);pointer-events:none;opacity:0;transform:translate(-50%,-100%);transition:opacity .15s;white-space:nowrap;';
+        ind.style.cssText='position:fixed;left:50%;top:0;z-index:4000;background:var(--bg-input,#161c2a);color:var(--text-primary,#e7e9ea);border:1px solid var(--border-color,rgba(136,153,166,.3));border-top:none;border-radius:0 0 14px 14px;padding:8px 16px;font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.35);pointer-events:none;opacity:0;transform:translate(-50%,-100%);transition:opacity .15s;white-space:nowrap;';
         (document.body||de).appendChild(ind); return ind; }
       function scroller(node){ while(node && node!==document.body && node!==de){ try{ var cs=getComputedStyle(node); var oy=cs.overflowY; if((oy==='auto'||oy==='scroll') && node.scrollHeight>node.clientHeight+2) return node; }catch(e){} node=node.parentElement; } return null; }
       function modalOpen(){ try{ var ms=document.querySelectorAll('.modal'); for(var i=0;i<ms.length;i++){ if(ms[i].offsetHeight>0 && getComputedStyle(ms[i]).display!=='none') return true; } return false; }catch(e){ return false; } }
@@ -2941,7 +2951,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08e · PWA baslik/disli +24 asagi, editor ust ayni, pull-to-refresh';
+        var X_BUILD = '2026-11-08f · +16 asagi, disli hiza (tarayici+PWA), PTR opak, acilis flash fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9949,8 +9959,8 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
-/* [EDİTÖR ÜST 2026-11-08e] Ana panel başlığı +24 indi -> editör modal başlığı da aynı (safe-top+14 -> +38). */
-html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 38px), 54px);}
+/* [EDİTÖR ÜST 2026-11-08f] Ana panelle aynı (+16 -> safe-top+30). */
+html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 30px), 46px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 /* [TABLET HİBRİT — editör] Tablette düzenleme alanı tam genişlikte yayılmasın (belge çok geniş); ~760px'e ORTALA
    (tablette standart belge editörü deseni). Galeri/Sırala görünümü (.ed-gal-pad varsa) tam genişlik KALSIN (çok-sütun
