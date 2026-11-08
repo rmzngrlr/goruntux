@@ -2951,7 +2951,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08f · +16 asagi, disli hiza (tarayici+PWA), PTR opak, acilis flash fix';
+        var X_BUILD = '2026-11-08g · mobil editor: odaklanan alan ust banda kayar (dropdown kapatmaz)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10017,7 +10017,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed
    şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
 html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
-html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 64px);}
+/* [ODAK KAYDIR 2026-11-08g] Alt-dolgu 64px -> +50vh: EN ALTTAKİ alanlar da imleci ÜST banda kaydırabilsin
+   (yoksa son alan yalnız 64px yükselirdi, dropdown altında kalırdı). Dolgu katlanırın altında (klavye/şerit
+   arkasında) kalır -> normalde görünmez; yalnız yazarken (x-ed-yaz). */
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 50vh);}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
   // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
@@ -10035,10 +10038,34 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var _iosBarOff=true; try{ _iosBarOff=(localStorage.getItem('x_ios_bar')!=='0'); }catch(e){}
     var _barSweepT=null, _barSweep=function(){ clearTimeout(_barSweepT); _barSweepT=setTimeout(function(){ try{ if(!dikMobil()) return; m.querySelectorAll('select,input[type=number],input[type=color],input[type=range]').forEach(function(el){ if(el.getAttribute('tabindex')!=='-1') el.setAttribute('tabindex','-1'); }); }catch(e){} }, 120); };
     if(_iosBarOff){ _barSweep(); try{ new MutationObserver(function(){ _barSweep(); }).observe(m, {childList:true, subtree:true}); }catch(e){} }
+    // [ODAK KAYDIR x_odak_kaydir 2026-11-08g] Bir alana odaklanınca (düzenlemeye başlayınca) o alanın İMLECİNİ görünür
+    // bandın ÜST kısmına kaydır -> alt şeritten YUKARI açılan font/boyut dropdown'u alanı KAPATMAZ (kullanıcı: "bölüm
+    // focus olsun ki dropdownlar şaşmasın"). Bant: üst=safe-top+12, alt=--vv-bottom - şerit yüksekliği. İmleç yoksa
+    // (input) alanın kendi rect'i. Idempotent (banttaysa no-op). Bayrak x_odak_kaydir=0 kapatır.
+    function _odakKaydir(el){ try{
+      if(!el || !dikMobil()) return;
+      try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
+      var pb=document.querySelector('#editorModal .preview-body'); if(!pb) return;
+      var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'));
+      if(!vvB){ vvB = window.visualViewport ? (window.visualViewport.offsetTop + window.visualViewport.height) : (window.innerHeight||0); }
+      var _sr=document.getElementById('editor-serit');
+      var ribbonH=(_sr && getComputedStyle(_sr).display!=='none') ? _sr.offsetHeight : 0;
+      var safeTop=parseFloat(getComputedStyle(de).getPropertyValue('--safe-top'))||0;
+      var bandTop=safeTop+12, bandBottom=vvB-ribbonH-12;
+      if(bandBottom-bandTop < 70) return;   // bant çok dar -> karışma
+      var r=null;
+      try{ var s=window.getSelection(); if(s && s.rangeCount){ var rg=s.getRangeAt(0); if(el.contains && el.contains(rg.startContainer)){ var rr=rg.getBoundingClientRect(); if(rr && (rr.height>0 || rr.top>0)) r=rr; } } }catch(_){}
+      if(!r) r=el.getBoundingClientRect();
+      var delta=Math.round(r.top - (bandTop+8));   // imleci üst banda getir
+      if(Math.abs(delta) > 20){ try{ pb.scrollTo({top: pb.scrollTop+delta, behavior:'smooth'}); }catch(_){ pb.scrollTop += delta; } }
+    }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
+      var _odakEl=e.target;
       // [KB TAZELE] Klavye animasyonu oturunca --kb-inset'i yeniden ölç -> şerit klavye/iOS-çubuğunun hemen üstüne
       // SNUG oturur (bayat/erken inset'te şerit yanlış konumlanıp "kayboluyordu").
       try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){}
+      // [ODAK KAYDIR] kb/--vv-bottom oturduktan SONRA alanı üst banda getir (iki kez: idempotent, banttaysa no-op).
+      try{ [380,680].forEach(function(ms){ setTimeout(function(){ _odakKaydir(_odakEl); }, ms); }); }catch(_){}
       if(_iosBarOff) _barSweep();
     } });
     // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
