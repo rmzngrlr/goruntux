@@ -1723,6 +1723,18 @@ HTML_TEMPLATE = """
            (Tema + Stil Ayarları kalır; onlar Manuel/Kayıtlı Raporlar için mobilde de geçerli). */
         html.x-mobile #ext-status-box { display: none; }
 
+        /* ===================== MOBİL-YATAY (Faz 3) =====================
+           812×375'te başlık bloğu (logo+GörüntüX+alt-yazı+dişli) ekranın ~%48'ini yiyordu
+           (scroll'la kaçsa da ilk görünümde israf). Kompakt başlık: alt-yazı gizle, h1 küçült,
+           üst/alt boşluk azalt -> tabs + ilk içerik satırı scroll'suz görünür. Düzen yine
+           masaüstü (tek-sütun, iç-scroll); YALNIZ boşluk/boyut kısılır. Kapsam x-mobile.x-yatay
+           -> masaüstü + dik-mobil DEĞİŞMEZ; bayrak x_mobil_responsive=0 -> x-yatay eklenmez = pasif. */
+        html.x-mobile.x-yatay .main-content { padding-top: 10px; }
+        html.x-mobile.x-yatay .header { margin-bottom: 10px; }
+        html.x-mobile.x-yatay .header h1 { font-size: 20px; margin-bottom: 4px; }
+        html.x-mobile.x-yatay .header p { display: none; }
+        html.x-mobile.x-yatay .header-controls { margin-top: 8px; }
+
         /* ========================= DİK-MOBİL RESPONSIVE (Faz 0-1) =========================
            Bayrak x_mobil_responsive=0 -> x-dik sınıfı eklenmez -> bu kurallar pasif.
            TÜM kurallar html.x-mobile.x-dik altında -> masaüstü + mobil-landscape ETKİLENMEZ. */
@@ -2881,7 +2893,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-07e · RESPONSIVE Faz4: temizlik (olu --ed-acc + x_ios_acc kaldirildi)';
+        var X_BUILD = '2026-11-08a · RESPONSIVE Faz3: mobil-yatay kompakt baslik (x-yatay scope)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
