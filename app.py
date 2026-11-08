@@ -2224,12 +2224,15 @@ HTML_TEMPLATE = """
       function modalOpen(){ try{ var ms=document.querySelectorAll('.modal'); for(var i=0;i<ms.length;i++){ if(ms[i].offsetHeight>0 && getComputedStyle(ms[i]).display!=='none') return true; } return false; }catch(e){ return false; } }
       function winTop(){ try{ return (window.scrollY||0)<=0 && (de.scrollTop||0)<=0 && ((document.body&&document.body.scrollTop)||0)<=0; }catch(e){ return false; } }
       function reset(){ pulling=false; armed=false; dist=0; if(ind){ ind.style.opacity='0'; ind.style.transform='translate(-50%,-100%)'; } }
+      // [PERF 2026-11-08i] touchstart: ÖNCE ucuz winTop() -> üstte değilse (çoğu dokunuş) hemen çık, ağır
+      // modalOpen()/scroller()'ı hiç çalıştırma. touchmove PASSIVE (preventDefault YOK) -> compositor hızlı
+      // kaydırma korunur, panel yavaşlamaz; bounce'u overscroll-behavior:none zaten kesiyor.
       document.addEventListener('touchstart', function(e){ try{
         pulling=false;
         if(!e.touches || e.touches.length!==1) return;
+        if(!winTop()) return;
         if(modalOpen()) return;
         var sa=scroller(e.target); if(sa && sa.scrollTop>0) return;
-        if(!winTop()) return;
         startY=e.touches[0].clientY; pulling=true; armed=false; dist=0;
       }catch(err){} }, {passive:true});
       document.addEventListener('touchmove', function(e){ try{
@@ -2239,8 +2242,7 @@ HTML_TEMPLATE = """
         if(d<=0){ if(ind) ind.style.opacity='0'; return; }
         dist=d; var i=mkInd(); i.style.opacity='1'; i.style.transform='translate(-50%,'+Math.min(d*0.5,120)+'px)';
         armed = d>=TH; i.textContent = armed ? '↻ Bırak → yenile' : '↓ Yenilemek için çek';
-        if(d>8 && e.cancelable){ e.preventDefault(); }
-      }catch(err){} }, {passive:false});
+      }catch(err){} }, {passive:true});
       document.addEventListener('touchend', function(){ try{
         if(!pulling) return;
         if(armed && dist>=TH){ if(ind){ ind.textContent='↻ Yenileniyor...'; ind.style.transform='translate(-50%,16px)'; ind.style.opacity='1'; } pulling=false; armed=false; setTimeout(function(){ try{ location.reload(); }catch(e){ window.location.href=window.location.href; } }, 60); return; }
@@ -2951,7 +2953,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08h · editor: dropdown serit oturunca yeniden hizalanir (kopukluk fix)';
+        var X_BUILD = '2026-11-08i · PERF: pull-to-refresh touchmove PASSIVE (panel kaydirma yavasligi fix)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
