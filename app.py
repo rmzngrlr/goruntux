@@ -2953,7 +2953,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08i · PERF: pull-to-refresh touchmove PASSIVE (panel kaydirma yavasligi fix)';
+        var X_BUILD = '2026-11-08j · editor: BOLUM ust bar altina hizalanir (bir kez; uzayinca imlec gorunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10044,37 +10044,44 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var _iosBarOff=true; try{ _iosBarOff=(localStorage.getItem('x_ios_bar')!=='0'); }catch(e){}
     var _barSweepT=null, _barSweep=function(){ clearTimeout(_barSweepT); _barSweepT=setTimeout(function(){ try{ if(!dikMobil()) return; m.querySelectorAll('select,input[type=number],input[type=color],input[type=range]').forEach(function(el){ if(el.getAttribute('tabindex')!=='-1') el.setAttribute('tabindex','-1'); }); }catch(e){} }, 120); };
     if(_iosBarOff){ _barSweep(); try{ new MutationObserver(function(){ _barSweep(); }).observe(m, {childList:true, subtree:true}); }catch(e){} }
-    // [ODAK KAYDIR x_odak_kaydir 2026-11-08g] Bir alana odaklanınca (düzenlemeye başlayınca) o alanın İMLECİNİ görünür
-    // bandın ÜST kısmına kaydır -> alt şeritten YUKARI açılan font/boyut dropdown'u alanı KAPATMAZ (kullanıcı: "bölüm
-    // focus olsun ki dropdownlar şaşmasın"). Bant: üst=safe-top+12, alt=--vv-bottom - şerit yüksekliği. İmleç yoksa
-    // (input) alanın kendi rect'i. Idempotent (banttaysa no-op). Bayrak x_odak_kaydir=0 kapatır.
-    function _odakKaydir(el){ try{
+    // [BÖLÜM HİZALA x_odak_kaydir 2026-11-08j] Kullanıcı: düzenlenen BÖLÜM (kart), editör üst barının (başlık+indir)
+    // HEMEN ALTINA hizalansın — içindeki alan değil, bölümün kendisi. Bir kez hizalanır; bölüm uzunluğu DEĞİŞMEDİKÇE
+    // sabit kalır (alanlar arası geçişte kaymaz). Bölüm UZARSA (yazarken) imleç görünür kalacak şekilde ayarlanır.
+    // Bayrak x_odak_kaydir=0 kapatır; yalnız dik-mobil.
+    function _edKart(el){ return (el && el.closest) ? el.closest('#editor-root .ed-card') : null; }
+    function _edPB(){ return document.querySelector('#editorModal .preview-body'); }
+    function _barAlti(){ var pb=_edPB(); return pb ? pb.getBoundingClientRect().top : 0; }   // üst bar (modal-header) hemen altı = preview-body üstü
+    function _bandAlt(){ var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom')); if(!vvB){ vvB=window.visualViewport?(window.visualViewport.offsetTop+window.visualViewport.height):(window.innerHeight||0); } var sr=document.getElementById('editor-serit'); var rh=(sr&&getComputedStyle(sr).display!=='none')?sr.offsetHeight:0; return vvB-rh-10; }
+    function _imlecRect(el){ var r=null; try{ var s=window.getSelection(); if(s&&s.rangeCount){ var rg=s.getRangeAt(0); if(el.contains&&el.contains(rg.startContainer)){ var rr=rg.getBoundingClientRect(); if(rr&&(rr.height>0||rr.top>0)) r=rr; } } }catch(_){} return r||(el?el.getBoundingClientRect():null); }
+    function _pbKaydir(delta){ var pb=_edPB(); if(!pb) return; delta=Math.round(delta); if(Math.abs(delta)>2){ try{ pb.scrollTo({top: pb.scrollTop+delta, behavior:'smooth'}); }catch(_){ pb.scrollTop+=delta; } } }
+    function _odakKart(el, mode){ try{
       if(!el || !dikMobil()) return;
       try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
-      if(document.querySelector('.xcs-list') || document.getElementById('ed-renk-pop')) return;   // dropdown/picker açıksa kaydırma (konumu bozma)
-      var pb=document.querySelector('#editorModal .preview-body'); if(!pb) return;
-      var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'));
-      if(!vvB){ vvB = window.visualViewport ? (window.visualViewport.offsetTop + window.visualViewport.height) : (window.innerHeight||0); }
-      var _sr=document.getElementById('editor-serit');
-      var ribbonH=(_sr && getComputedStyle(_sr).display!=='none') ? _sr.offsetHeight : 0;
-      var safeTop=parseFloat(getComputedStyle(de).getPropertyValue('--safe-top'))||0;
-      var bandTop=safeTop+12, bandBottom=vvB-ribbonH-12;
-      if(bandBottom-bandTop < 70) return;   // bant çok dar -> karışma
-      var r=null;
-      try{ var s=window.getSelection(); if(s && s.rangeCount){ var rg=s.getRangeAt(0); if(el.contains && el.contains(rg.startContainer)){ var rr=rg.getBoundingClientRect(); if(rr && (rr.height>0 || rr.top>0)) r=rr; } } }catch(_){}
-      if(!r) r=el.getBoundingClientRect();
-      var delta=Math.round(r.top - (bandTop+8));   // imleci üst banda getir
-      if(Math.abs(delta) > 20){ try{ pb.scrollTo({top: pb.scrollTop+delta, behavior:'smooth'}); }catch(_){ pb.scrollTop += delta; } }
+      if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;   // dropdown/picker açıksa karışma
+      var card=_edKart(el); if(!card) return;
+      if(mode==='focus'){
+        if(card!==XE.__odakKart){ _pbKaydir(card.getBoundingClientRect().top - (_barAlti()+8)); XE.__odakKart=card; XE.__odakKartH=card.offsetHeight; }
+        // AYNI bölüm: uzunluk değişmedikçe SABİT kal (alanlar arası geçişte kaydırma)
+      } else if(mode==='input'){
+        if(card===XE.__odakKart && card.offsetHeight > (XE.__odakKartH||0)+4){   // bölüm UZADI
+          var cr=_imlecRect(el), bb=_bandAlt();
+          if(cr && cr.bottom > bb){ _pbKaydir(cr.bottom - bb + 20); }   // imleç klavye/şerit altına kaçtıysa görünür yap
+          XE.__odakKartH=card.offsetHeight;
+        }
+      }
     }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target;
       // [KB TAZELE] Klavye animasyonu oturunca --kb-inset'i yeniden ölç -> şerit klavye/iOS-çubuğunun hemen üstüne
       // SNUG oturur (bayat/erken inset'te şerit yanlış konumlanıp "kayboluyordu").
       try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){}
-      // [ODAK KAYDIR] kb/--vv-bottom oturduktan SONRA alanı üst banda getir (iki kez: idempotent, banttaysa no-op).
-      try{ [380,680].forEach(function(ms){ setTimeout(function(){ _odakKaydir(_odakEl); }, ms); }); }catch(_){}
+      // [BÖLÜM HİZALA] kb/layout oturduktan SONRA bölümü üst barın altına hizala (iki kez: idempotent — yeni bölümse kaydırır).
+      try{ [380,680].forEach(function(ms){ setTimeout(function(){ _odakKart(_odakEl,'focus'); }, ms); }); }catch(_){}
       if(_iosBarOff) _barSweep();
     } });
+    // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
+    var _edInpT=null;
+    m.addEventListener('input', function(e){ if(!dikMobil() || !alanMi(e.target)) return; var el=e.target; clearTimeout(_edInpT); _edInpT=setTimeout(function(){ _odakKart(el,'input'); }, 60); }, true);
     // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
     // x-ed-yaz kalkar). Böylece metin/link/başlık ARASI geçişte klavye açık kaldığından şerit SABİT -> TİTREMEZ.
     // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
