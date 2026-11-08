@@ -2197,31 +2197,24 @@ HTML_TEMPLATE = """
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
     <!-- [PWA] "Ana ekrana ekle": Chrome/Android yükleme istemini YAKALA (ertele) -> xPwaYukleAc tetikler. iOS'ta bu olay YOK -> yönerge gösterilir. -->
     <script>(function(){try{ window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__pwaPrompt = e; }); window.addEventListener('appinstalled', function(){ window.__pwaPrompt = null; }); }catch(e){}})();</script>
-    <!-- [GEÇİCİ TEŞHİS x_titlefix_ab 2026-11-08c] PWA baslik netlik: -webkit-font-smoothing iOS'ta
-         NO-OP cikti. Gercek nedeni cihazda izole etmek icin: logo ikonuna DOKUNUNCA .title-text farkli
-         render varyantlari arasinda gecer, altindaki etiket hangisi oldugunu yazar. Kullanici telefonda
-         hangisinin NET oldugunu soyleyince gercek fix uygulanir ve BU BLOK + etiket SILINIR. -->
+    <!-- [GEÇİCİ TEŞHİS x_titlepos_ab 2026-11-08d] Kullanici derdi: PWA'da "GoruntuX" basligi fazla
+         YUKARIDA; DAHA ASAGIDA olsun istiyor (durum cubugu/centik bolgesinde sikisik). Oznel "ne kadar"
+         sorusunu cihazda cozmek icin: logo ikonuna DOKUNUNCA baslik adim adim (12px) asagi iner; etiket
+         mevcut ek-bosluk + cihazin gercek safe-top'unu yazar. Kullanici istedigi degeri soyleyince
+         .x-pwa .main-content padding-top'a BAKILIR ve BU BLOK + etiket SILINIR. -->
     <script>(function(){try{
       function init(){
         var h1=document.querySelector('.header h1'); if(!h1) return;
-        var emoji=h1.querySelector('span.emoji'); var tt=h1.querySelector('span.title-text');
-        if(!emoji||!tt) return;
-        var lab=document.createElement('div'); lab.id='x-tf-lab';
+        var emoji=h1.querySelector('span.emoji'); var hdr=document.querySelector('.header');
+        if(!emoji||!hdr) return;
+        var lab=document.createElement('div'); lab.id='x-tp-lab';
         lab.style.cssText='font-size:11px;color:#8aa0b4;margin:3px 0 0;letter-spacing:.3px;line-height:1.3;';
-        var hdr=document.querySelector('.header'); if(hdr) hdr.appendChild(lab);
-        var sys='-apple-system, system-ui, Segoe UI, Roboto, sans-serif';
-        var V=[
-          {k:'0 normal (Outfit 700)', f:function(){ tt.style.cssText='color:var(--text-primary);display:inline-block;'; }},
-          {k:'1 sistem-font 700', f:function(){ tt.style.cssText='color:var(--text-primary);display:inline-block;font-family:'+sys+';'; }},
-          {k:'2 Outfit 600', f:function(){ tt.style.cssText='color:var(--text-primary);display:inline-block;font-weight:600;'; }},
-          {k:'3 Outfit 700 soluk renk', f:function(){ tt.style.cssText='display:inline-block;color:#d3dbe4;'; }},
-          {k:'4 Outfit 700 + GPU katman', f:function(){ tt.style.cssText='color:var(--text-primary);display:inline-block;transform:translateZ(0);-webkit-backface-visibility:hidden;backface-visibility:hidden;'; }},
-          {k:'5 Outfit 700 + geometricPrecision', f:function(){ tt.style.cssText='color:var(--text-primary);display:inline-block;text-rendering:geometricPrecision;'; }}
-        ];
-        var i=0;
-        function apply(){ V[i].f(); lab.textContent='Baslik testi — ikona dokun: '+V[i].k; }
-        emoji.style.cursor='pointer'; emoji.setAttribute('title','Baslik render testi');
-        emoji.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); i=(i+1)%V.length; apply(); });
+        hdr.appendChild(lab);
+        var STEP=12, MAX=96, off=0;
+        function safeTop(){ try{ var v=document.documentElement.style.getPropertyValue('--safe-top'); return v?v.trim():'?'; }catch(e){ return '?'; } }
+        function apply(){ hdr.style.marginTop=off+'px'; lab.textContent='Baslik konum — ikona dokun: +'+off+'px (asagi) · safe-top='+safeTop(); }
+        emoji.style.cursor='pointer'; emoji.setAttribute('title','Baslik konum testi');
+        emoji.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); off+=STEP; if(off>MAX) off=0; apply(); });
         apply();
       }
       if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); } else { init(); }
@@ -2929,7 +2922,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08c · GECICI TESHIS: baslik render A/B (logo ikonuna dokun)';
+        var X_BUILD = '2026-11-08d · GECICI TESHIS: baslik KONUM ayari (logo ikonuna dokun = asagi)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
