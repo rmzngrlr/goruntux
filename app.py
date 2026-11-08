@@ -946,13 +946,6 @@ HTML_TEMPLATE = """
             background-color: var(--bg-primary);
             color: var(--text-primary);
             font-family: var(--font-family);
-            /* [x_font_smoothing 2026-11-08b] iOS/WebKit VARSAYILAN font-smoothing, koyu zemin
-               uzerindeki acik-renk + kalin (700) buyuk metni (ozellikle .header h1 "GoruntuX")
-               sisirip yumusatiyordu ("net degil"). antialiased/grayscale glyph'i inceltip
-               netlestirir. Masaustu Chromium'da etkisiz (orada zaten net) -> yalniz Apple
-               cihazlarda fark eder; geri-al: iki satiri sil. */
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
             margin: 0;
             padding: 0;
             display: flex;
@@ -1764,7 +1757,9 @@ HTML_TEMPLATE = """
         /* [ÜST BOŞLUK] Tarayıcı (varsayılan): içerik Safari UI altında -> küçük padding (16). PWA (.x-pwa): çentik arkasını
            doldurduğundan env+floor ile temizle. */
         html.x-mobile.x-dik .main-content { position: relative; height: auto; overflow: visible; padding: 16px; padding-top: 16px; padding-bottom: 20px; }
-        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(var(--safe-top) + 14px), 30px); }
+        /* [BAŞLIK KONUM 2026-11-08e] Kullanıcı: PWA'da başlık çentik/durum-çubuğuna sıkışıktı -> +24px daha
+           aşağı (cihaz safe-top=59 ölçüldü; +14 -> +38). Dişli de aynı +24 ile hizada (aşağıdaki .x-pwa kuralı). */
+        html.x-mobile.x-dik.x-pwa .main-content { padding-top: max(calc(var(--safe-top) + 38px), 54px); }
         /* [GEREKSİZ SCROLL] 84px alt dolgu YALNIZ havuz alt çubuğu (position:fixed) VARKEN gerek; yoksa (boş havuz/
            Raporlarım) boş scroll alanı yaratıyordu -> koşullu (:has). */
         html.x-mobile.x-dik .main-content:has(.pool-actions) { padding-bottom: 84px; }
@@ -1772,6 +1767,10 @@ HTML_TEMPLATE = """
         /* [AYARLAR BUTONU] Dik-mobilde başlık+alt-yazının ALTINA düşüyordu (order:3) -> kullanıcı "orda olmaz".
            Sağ-üst köşeye sabitle (absolute; ext-status zaten gizli -> yalnız dişli kalır). Başlıkla aynı sıra. */
         html.x-mobile.x-dik .header-controls { position: absolute; top: max(calc(var(--safe-top) + 16px), 42px); right: 14px; order: 0; margin-top: 0; flex-wrap: nowrap; z-index: 20; }
+        /* [AYARLAR HİZA 2026-11-08e] PWA'da başlık +24 indi -> dişli MERKEZİ logo satırı merkeziyle hizalanır.
+           Logo satırı merkezi = padding-top(safe-top+38) + logo-yarı(15) = safe-top+53; dişli(38px) için
+           top = merkez - 19 = safe-top+34. Yalnız PWA; tarayıcı-dik dokunulmaz. */
+        html.x-mobile.x-dik.x-pwa .header-controls { top: max(calc(var(--safe-top) + 34px), 50px); }
         html.x-mobile.x-dik .header h1 { font-size: 22px; }
         html.x-mobile.x-dik .card { padding: 16px; border-radius: 12px; }
         html.x-mobile.x-dik .tabs { flex-wrap: wrap; }
@@ -2197,27 +2196,47 @@ HTML_TEMPLATE = """
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
     <!-- [PWA] "Ana ekrana ekle": Chrome/Android yükleme istemini YAKALA (ertele) -> xPwaYukleAc tetikler. iOS'ta bu olay YOK -> yönerge gösterilir. -->
     <script>(function(){try{ window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__pwaPrompt = e; }); window.addEventListener('appinstalled', function(){ window.__pwaPrompt = null; }); }catch(e){}})();</script>
-    <!-- [GEÇİCİ TEŞHİS x_titlepos_ab 2026-11-08d] Kullanici derdi: PWA'da "GoruntuX" basligi fazla
-         YUKARIDA; DAHA ASAGIDA olsun istiyor (durum cubugu/centik bolgesinde sikisik). Oznel "ne kadar"
-         sorusunu cihazda cozmek icin: logo ikonuna DOKUNUNCA baslik adim adim (12px) asagi iner; etiket
-         mevcut ek-bosluk + cihazin gercek safe-top'unu yazar. Kullanici istedigi degeri soyleyince
-         .x-pwa .main-content padding-top'a BAKILIR ve BU BLOK + etiket SILINIR. -->
+    <!-- [PULL-TO-REFRESH x_pull_refresh 2026-11-08e] Kullanici: mobilde/PWA'da ekrani YOGUN sekilde asagi
+         cekince sayfa yenilensin. Yalniz x-mobile + sayfa/scroller EN USTTE iken + tek parmak + asagi cekis
+         esigi (110px) asilinca; modal/editor acikken veya ic-scroller ustte degilken DEVRE DISI. Gorsel
+         gostergeyle. Bayrak x_pull_refresh=0 -> kapali; x_mobil_responsive=0 -> zaten kapali. -->
     <script>(function(){try{
-      function init(){
-        var h1=document.querySelector('.header h1'); if(!h1) return;
-        var emoji=h1.querySelector('span.emoji'); var hdr=document.querySelector('.header');
-        if(!emoji||!hdr) return;
-        var lab=document.createElement('div'); lab.id='x-tp-lab';
-        lab.style.cssText='font-size:11px;color:#8aa0b4;margin:3px 0 0;letter-spacing:.3px;line-height:1.3;';
-        hdr.appendChild(lab);
-        var STEP=12, MAX=96, off=0;
-        function safeTop(){ try{ var v=document.documentElement.style.getPropertyValue('--safe-top'); return v?v.trim():'?'; }catch(e){ return '?'; } }
-        function apply(){ hdr.style.marginTop=off+'px'; lab.textContent='Baslik konum — ikona dokun: +'+off+'px (asagi) · safe-top='+safeTop(); }
-        emoji.style.cursor='pointer'; emoji.setAttribute('title','Baslik konum testi');
-        emoji.addEventListener('click', function(ev){ ev.preventDefault(); ev.stopPropagation(); off+=STEP; if(off>MAX) off=0; apply(); });
-        apply();
-      }
-      if(document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); } else { init(); }
+      if(localStorage.getItem('x_mobil_responsive')==='0') return;
+      if(localStorage.getItem('x_pull_refresh')==='0') return;
+      var de=document.documentElement;
+      if(!de.classList.contains('x-mobile')) return;
+      var startY=0, pulling=false, armed=false, dist=0, ind=null;
+      var TH=110;
+      function mkInd(){ if(ind) return ind; ind=document.createElement('div'); ind.id='x-ptr';
+        ind.style.cssText='position:fixed;left:50%;top:0;z-index:4000;background:var(--bg-card,#15202b);color:var(--text-primary,#e7e9ea);border:1px solid var(--border-color,rgba(136,153,166,.3));border-top:none;border-radius:0 0 14px 14px;padding:8px 16px;font-size:13px;font-weight:600;box-shadow:0 6px 18px rgba(0,0,0,.3);pointer-events:none;opacity:0;transform:translate(-50%,-100%);transition:opacity .15s;white-space:nowrap;';
+        (document.body||de).appendChild(ind); return ind; }
+      function scroller(node){ while(node && node!==document.body && node!==de){ try{ var cs=getComputedStyle(node); var oy=cs.overflowY; if((oy==='auto'||oy==='scroll') && node.scrollHeight>node.clientHeight+2) return node; }catch(e){} node=node.parentElement; } return null; }
+      function modalOpen(){ try{ var ms=document.querySelectorAll('.modal'); for(var i=0;i<ms.length;i++){ if(ms[i].offsetHeight>0 && getComputedStyle(ms[i]).display!=='none') return true; } return false; }catch(e){ return false; } }
+      function winTop(){ try{ return (window.scrollY||0)<=0 && (de.scrollTop||0)<=0 && ((document.body&&document.body.scrollTop)||0)<=0; }catch(e){ return false; } }
+      function reset(){ pulling=false; armed=false; dist=0; if(ind){ ind.style.opacity='0'; ind.style.transform='translate(-50%,-100%)'; } }
+      document.addEventListener('touchstart', function(e){ try{
+        pulling=false;
+        if(!e.touches || e.touches.length!==1) return;
+        if(modalOpen()) return;
+        var sa=scroller(e.target); if(sa && sa.scrollTop>0) return;
+        if(!winTop()) return;
+        startY=e.touches[0].clientY; pulling=true; armed=false; dist=0;
+      }catch(err){} }, {passive:true});
+      document.addEventListener('touchmove', function(e){ try{
+        if(!pulling) return;
+        if(!winTop()){ reset(); return; }
+        var y=e.touches[0].clientY, d=y-startY;
+        if(d<=0){ if(ind) ind.style.opacity='0'; return; }
+        dist=d; var i=mkInd(); i.style.opacity='1'; i.style.transform='translate(-50%,'+Math.min(d*0.5,120)+'px)';
+        armed = d>=TH; i.textContent = armed ? '↻ Bırak → yenile' : '↓ Yenilemek için çek';
+        if(d>8 && e.cancelable){ e.preventDefault(); }
+      }catch(err){} }, {passive:false});
+      document.addEventListener('touchend', function(){ try{
+        if(!pulling) return;
+        if(armed && dist>=TH){ if(ind){ ind.textContent='↻ Yenileniyor...'; ind.style.transform='translate(-50%,16px)'; ind.style.opacity='1'; } pulling=false; armed=false; setTimeout(function(){ try{ location.reload(); }catch(e){ window.location.href=window.location.href; } }, 60); return; }
+        reset();
+      }catch(err){} }, {passive:true});
+      document.addEventListener('touchcancel', reset, {passive:true});
     }catch(e){}})();</script>
     <!-- [TEMA FLASH FİX] Kaydedilmiş tema 'light' ise body SINIFINI boyamadan ÖNCE (senkron) ekle -> açılışta/
          yenilemede anlık dark flash'ı OLMAZ. DOMContentLoaded zaten tekrar uygular + buton ikonunu kurar. -->
@@ -2922,7 +2941,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08d · GECICI TESHIS: baslik KONUM ayari (logo ikonuna dokun = asagi)';
+        var X_BUILD = '2026-11-08e · PWA baslik/disli +24 asagi, editor ust ayni, pull-to-refresh';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9930,7 +9949,8 @@ body:not(.light-theme) #ed-rt-panel .rt-linkyap{background:#17314a;border-color:
 html.x-mobile.x-dik #editorModal.modal{height:100vh;height:100dvh;}
 html.x-mobile.x-dik #editorModal .preview-modal-content{height:100%;}
 html.x-mobile.x-dik #editorModal .modal-header{padding:8px 8px;padding-top:14px;gap:4px;background:var(--bg-modal);position:relative;z-index:5;}
-html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 14px), 30px);}
+/* [EDİTÖR ÜST 2026-11-08e] Ana panel başlığı +24 indi -> editör modal başlığı da aynı (safe-top+14 -> +38). */
+html.x-mobile.x-dik.x-pwa #editorModal .modal-header{padding-top:max(calc(var(--safe-top) + 38px), 54px);}
 html.x-mobile.x-dik body:not(.light-theme) #editorModal .modal-header{background:#0f1621;}
 /* [TABLET HİBRİT — editör] Tablette düzenleme alanı tam genişlikte yayılmasın (belge çok geniş); ~760px'e ORTALA
    (tablette standart belge editörü deseni). Galeri/Sırala görünümü (.ed-gal-pad varsa) tam genişlik KALSIN (çok-sütun
