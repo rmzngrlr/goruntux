@@ -2951,7 +2951,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08g · mobil editor: odaklanan alan ust banda kayar (dropdown kapatmaz)';
+        var X_BUILD = '2026-11-08h · editor: dropdown serit oturunca yeniden hizalanir (kopukluk fix)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3120,6 +3120,10 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 list.classList.add('xcs-anc-m');
                 _xcsList = list; try { window._xcsList = list; } catch (e) {}
                 _xcsKonumlaMobil(list, sel);
+                // [KOPUK DROPDOWN FIX 2026-11-08h] Klavye/şerit henüz OTURMADAN açılırsa dropdown select'ten KOPUK
+                // (yukarıda havada) kalıyordu -> şerit konumu oturunca birkaç kez yeniden hizala (idempotent; liste
+                // kapanmış/değişmişse atla).
+                try { [70, 180, 360].forEach(function (ms) { setTimeout(function () { if (window._xcsList === list && window._xcsSel === sel && document.body.contains(list)) { try { _xcsKonumlaMobil(list, sel); } catch (_) {} } }, ms); }); } catch (_) {}
                 _xcsVurgu(sel.selectedIndex >= 0 ? sel.selectedIndex : 0);
                 try { var _s = list.querySelector('.xcs-sel') || list.querySelector('.xcs-opt'); if (_s) _s.scrollIntoView({ block: 'nearest' }); } catch (e) {}
                 return;
@@ -10045,6 +10049,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _odakKaydir(el){ try{
       if(!el || !dikMobil()) return;
       try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
+      if(document.querySelector('.xcs-list') || document.getElementById('ed-renk-pop')) return;   // dropdown/picker açıksa kaydırma (konumu bozma)
       var pb=document.querySelector('#editorModal .preview-body'); if(!pb) return;
       var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'));
       if(!vvB){ vvB = window.visualViewport ? (window.visualViewport.offsetTop + window.visualViewport.height) : (window.innerHeight||0); }
