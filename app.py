@@ -946,6 +946,13 @@ HTML_TEMPLATE = """
             background-color: var(--bg-primary);
             color: var(--text-primary);
             font-family: var(--font-family);
+            /* [x_font_smoothing 2026-11-08b] iOS/WebKit VARSAYILAN font-smoothing, koyu zemin
+               uzerindeki acik-renk + kalin (700) buyuk metni (ozellikle .header h1 "GoruntuX")
+               sisirip yumusatiyordu ("net degil"). antialiased/grayscale glyph'i inceltip
+               netlestirir. Masaustu Chromium'da etkisiz (orada zaten net) -> yalniz Apple
+               cihazlarda fark eder; geri-al: iki satiri sil. */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             margin: 0;
             padding: 0;
             display: flex;
@@ -2893,7 +2900,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-08a · RESPONSIVE Faz3: mobil-yatay kompakt baslik (x-yatay scope)';
+        var X_BUILD = '2026-11-08b · PWA baslik netlik: -webkit-font-smoothing antialiased (iOS)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
