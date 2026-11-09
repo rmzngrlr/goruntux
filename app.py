@@ -2200,7 +2200,7 @@ HTML_TEMPLATE = """
           // kapanır -> kullanıcı "klavye kapanınca/input-dışı tıklayınca şerit kapansın". Alan-geçişinde inset kısa
           // süre düşüp geri çıkar -> timer iptal (titremez). Font/stil xcs listesi AÇIK veya şerit renk/boyut input'u
           // odaklıysa KAPATMA (etkileşim sürüyor). Klavye açılınca (else) timer iptal.
-          if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); }catch(e){} }, 120); }
+          if(inset < 80){ clearTimeout(window.__edYazT); window.__edYazT=setTimeout(function(){ try{ var v3=window.visualViewport; var ih3=(window.innerHeight||0); var o3=v3?(v3.offsetTop||0):0; if(o3<0)o3=0; var i3=v3?Math.round(ih3 - v3.height - o3):0; if(i3<0)i3=0; if(i3>=80) return; if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return; var a3=document.activeElement; if(a3 && a3.closest && a3.closest('#editor-serit') && (a3.tagName==='INPUT'||a3.tagName==='SELECT'||a3.tagName==='TEXTAREA')) return; de.classList.remove('x-ed-yaz'); try{ var _er=document.getElementById('editor-root'); if(_er) _er.style.paddingBottom=''; }catch(_){} }catch(e){} }, 120); }
           else { clearTimeout(window.__edYazT); }
         }catch(e){} }; try{ window.__kbOlc = kb; }catch(e){} vv.addEventListener('resize', kb); vv.addEventListener('scroll', kb); kb(); }
     }catch(e){}})();</script>
@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09k · creep onle: scroll-padding-top 118->8 (bolum sabit)';
+        var X_BUILD = '2026-11-09l · bolum-tut (odakta yukari kaymasin) + inline padding reset (klavye kapali scroll)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10078,8 +10078,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       root.style.paddingBottom=base+'px';   // dinamik ekstrayı sıfırla -> ölçüm doğru olsun
       var delta=Math.round(card.getBoundingClientRect().top-(_barAlti()+8));
       var D=pb.scrollTop+delta; if(D<0) D=0;
-      var hedef=D;
-      if(el){ try{ var fr=el.getBoundingClientRect(), bb=_bandAlt(); var frB=fr.bottom-(D-pb.scrollTop); if(frB>bb) hedef=D+Math.round(frB-bb)+20; }catch(_){} }   // alan kart-üstü hizada görünmüyorsa alanı göster
+      var hedef=D;   // [09l] YALNIZCA bölüm üstünü bara hizala. (Odaklı alanı göstermek için EKSTRA yukarı-kaydırma
+      // KALDIRILDI -> alt alana/link'e odaklanınca "Başlık yukarı kaymıyor". Uzun bölümde alt alan yazarken
+      // _odakKart('input') görünür tutar; odakta değil.)
       var maxNat=pb.scrollHeight-pb.clientHeight;
       if(hedef>maxNat){ root.style.paddingBottom=(base+Math.round(hedef-maxNat))+'px'; }   // tam hedef kadar -> max-scroll=hedef, void yok
       pb.scrollTop=hedef;
@@ -10102,6 +10103,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // focus-scroll SCROLL EDEMEZ; programatik _hizalaBolum yine çalışır (scrollTop set edilebilir). ~450ms sonra geri aç.
     // Böylece geçiş sabit/sarsıntısız; bölüm konumunu yalnız BİZ belirleriz. (Pin'in tersine: çekişme değil, kilit.)
     function _odakKilit(){ try{ var pb=_edPB(); if(!pb) return; pb.style.overflowY='hidden'; clearTimeout(XE.__okT); XE.__okT=setTimeout(function(){ try{ pb.style.overflowY=''; }catch(_){} }, 450); }catch(e){} }
+    // [BÖLÜM TUT 09l] Odakta tarayıcı, odaklı alanı sabit bir noktaya yerleştirmek için içeriği YUKARI kaydırıyor
+    // (alan zaten görünürken bile) -> bölüm yukarı kayıyordu. Odak anındaki scroll'u yakala, ~280ms geri zorla ->
+    // bölüm SABİT kalır. (Titreme kaynağı iOS vv kayması scroll-padding-bottom ile gitti; bu container-scroll tutması
+    // titreme getirmez.)
+    function _bolumTut(){ try{ var pb=_edPB(); if(!pb) return; var hedef=pb.scrollTop; cancelAnimationFrame(XE.__tutRaf||0); var until=Date.now()+280;
+      (function tut(){ try{ if(Math.abs(pb.scrollTop-hedef)>2) pb.scrollTop=hedef; }catch(_){} if(Date.now()<until) XE.__tutRaf=requestAnimationFrame(tut); })();
+    }catch(e){} }
     // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
     // scroll=içerik kaydırma, vv=--vv-bottom, serit=şeridin görünür konumu, kart=ilk kartın konumu. En büyük Δ = titreme
     // kaynağı. Kullanıcı Δ'ları söyleyince gerçek fix uygulanıp BU BLOK SİLİNİR.
@@ -10127,9 +10135,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
       var _yeni=!!(_card && _card!==XE.__odakKart);
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
-      // [CREEP ÖNLE 09k] (09j overflow-kilidi İŞE YARAMADI: kayma tarayıcı-container değil iOS OS-seviye odak-kaydırması;
-      // overflow onu durdurmuyor.) Çözüm CSS'te: scroll-padding-top küçültüldü -> iOS'un odağı getirdiği pencere tüm
-      // görünür alanı kaplar -> görünür alanlar yeniden-konumlanmaz, bölüm sabit kalır.
+      // [BÖLÜM TUT 09l] Hem yeni (hizalanmış) hem aynı bölümde: tarayıcının odaklı alanı yukarı-çekme creep'ini
+      // ~280ms geri zorlayarak engelle -> bölüm odakta yukarı KAYMAZ. (scroll-padding-top:8 09k tek başına yetmedi.)
+      try{ _bolumTut(); }catch(_){}
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
