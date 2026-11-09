@@ -2197,7 +2197,17 @@ HTML_TEMPLATE = """
           // offsetTop; editor modal'inin TOP'u buna ayarlanir (CSS) -> fixed modal asagi kayip gorsel-itisi NOTRLER,
           // icerik (Baslik) sabit kalir. Serit fixed+viewport-rel oldugundan etkilenmez (top transform DEGIL -> containing
           // block yaratmaz). Kutuyla ayni kanitli mekanizma (fixed oge + top=+vvOffset).
-          try { de.style.setProperty('--vv-offset', Math.round(vv.offsetTop||0) + 'px'); } catch(e){}
+          // [TITREME FIX 10f] Alan A->B gecisinde iOS offsetTop'u bir an dusurup geri kaldiriyor (125->0->125) -> modal
+          // top (--vv-offset) her kareyi takip edince TITRIYOR. ASIMETRIK: ARTIS'i hemen uygula (odak alani klavye
+          // ustunde kalsin), AZALIS'i ~180ms geciktir (gecici dip yerlesmeden commit etme; geri ciktiysa commit yok ->
+          // titreme gider). Yuksek alana GERCEK gecis ise azalis yerlesir -> tek temiz hareket, titreme degil.
+          try {
+            var _off = Math.round(vv.offsetTop||0);
+            var _cur = parseFloat(de.style.getPropertyValue('--vv-offset')) || 0;
+            clearTimeout(window.__vvOffT);
+            if(_off >= _cur){ de.style.setProperty('--vv-offset', _off + 'px'); }
+            else { window.__vvOffT = setTimeout(function(){ try{ var v2=window.visualViewport; if(v2){ de.style.setProperty('--vv-offset', Math.round(v2.offsetTop||0) + 'px'); } }catch(e){} }, 180); }
+          } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
           try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
@@ -2975,7 +2985,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10e · icerik sabit: modal top = --vv-offset (iOS itisini notrle, serit bozulmaz)';
+        var X_BUILD = '2026-11-10f · alan-gecisi titreme fix: --vv-offset asimetrik (artis an, azalis gecikmeli)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
