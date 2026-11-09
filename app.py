@@ -2970,7 +2970,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10c · CANLI OLCUM: kutu vvTop takip eder (ekranda kalir)';
+        var X_BUILD = '2026-11-10d · DENEY: scroll-padding-bottom kb+64 -> kb+8 (iOS itisini olc)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10046,7 +10046,10 @@ html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!i
 /* [CREEP ÖNLE 09k] scroll-padding-top 118 -> 8: iOS odağı getirdiği pencere = [scroll-padding-top, alt]. 118 çok
    büyüktü -> pencere daralıp alt alanlar sığmayınca her tıkta YUKARI kayıyordu. 8 ile pencere tüm görünür alanı
    kaplar -> görünür alanlar yeniden-konumlanmaz, bölüm SABİT kalır. (bottom = kb+64: titreme fix, alan şerit üstünde.) */
-html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kb-inset,0px) + 64px);}
+/* [DENEY 10d] scroll-padding-bottom kb+64 -> kb+8: iOS odakta alani (kb+pad) ustune ceker; 64 cok buyuktu ->
+   vvTop=125 gibi fazla itiyordu. 8 ile iOS daha az iter (alan klavyeye daha yakin ama Baslik daha az kayar).
+   Olcumle (vvTop) etkisi dogrulanacak. */
+html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kb-inset,0px) + 8px);}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
