@@ -2970,7 +2970,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09m · widget Eklentiyi-guncelle + panel eklenti-guncelle modal; editor bolum-tut + padding-reset';
+        var X_BUILD = '2026-11-10a · bolum-tut v2: dokunmada odak-oncesi scroll yakala (iOS up-scroll geri al)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10118,13 +10118,20 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // focus-scroll SCROLL EDEMEZ; programatik _hizalaBolum yine çalışır (scrollTop set edilebilir). ~450ms sonra geri aç.
     // Böylece geçiş sabit/sarsıntısız; bölüm konumunu yalnız BİZ belirleriz. (Pin'in tersine: çekişme değil, kilit.)
     function _odakKilit(){ try{ var pb=_edPB(); if(!pb) return; pb.style.overflowY='hidden'; clearTimeout(XE.__okT); XE.__okT=setTimeout(function(){ try{ pb.style.overflowY=''; }catch(_){} }, 450); }catch(e){} }
-    // [BÖLÜM TUT 09l] Odakta tarayıcı, odaklı alanı sabit bir noktaya yerleştirmek için içeriği YUKARI kaydırıyor
-    // (alan zaten görünürken bile) -> bölüm yukarı kayıyordu. Odak anındaki scroll'u yakala, ~280ms geri zorla ->
-    // bölüm SABİT kalır. (Titreme kaynağı iOS vv kayması scroll-padding-bottom ile gitti; bu container-scroll tutması
-    // titreme getirmez.)
-    function _bolumTut(){ try{ var pb=_edPB(); if(!pb) return; var hedef=pb.scrollTop; cancelAnimationFrame(XE.__tutRaf||0); var until=Date.now()+280;
-      (function tut(){ try{ if(Math.abs(pb.scrollTop-hedef)>2) pb.scrollTop=hedef; }catch(_){} if(Date.now()<until) XE.__tutRaf=requestAnimationFrame(tut); })();
+    // [BÖLÜM TUT 09n] iOS (SADECE iPhone; Android'de yok) odakta içeriği YUKARI kaydırıyor -> bölüm yukarı kayıyordu.
+    // hedef verilirse (DOKUNMA anında yakalanan odak-ÖNCESİ scroll) ona, yoksa mevcut scroll'a ~550ms geri zorla ->
+    // iOS'un kaydırmasını geri alır, bölüm SABİT kalır. (Titreme iOS vv'den; scroll-padding-bottom ile gitti -> tutma
+    // titreme getirmez.) KRİTİK: iOS kaydırmayı odaktan ÖNCE yapabildiği için focusin'de yakalamak GEÇ -> touchstart'ta
+    // yakalanan __preOdakScroll kullanılır (aşağıda).
+    function _bolumTut(hedef){ try{ var pb=_edPB(); if(!pb) return; var h=(hedef!=null)?hedef:pb.scrollTop; cancelAnimationFrame(XE.__tutRaf||0); var until=Date.now()+550;
+      (function tut(){ try{ if(Math.abs(pb.scrollTop-h)>2) pb.scrollTop=h; }catch(_){} if(Date.now()<until) XE.__tutRaf=requestAnimationFrame(tut); })();
     }catch(e){} }
+    // [ODAK-ÖNCESİ SCROLL YAKALA 09n] iOS odak-scroll'u focusin'den ÖNCE olabildiğinden, DOKUNMA (pointerdown/touchstart,
+    // capture) anında — henüz kaymadan — preview-body scroll'unu sakla. focusin'de AYNI bölümse buraya geri zorlanır.
+    try{
+      m.addEventListener('touchstart', function(e){ try{ if(dikMobil() && alanMi(e.target)){ var pb=_edPB(); XE.__preOdakScroll = pb ? pb.scrollTop : null; XE.__preOdakKart = _edKart(e.target); } }catch(_){} }, true);
+      m.addEventListener('pointerdown', function(e){ try{ if(dikMobil() && alanMi(e.target)){ var pb=_edPB(); XE.__preOdakScroll = pb ? pb.scrollTop : null; XE.__preOdakKart = _edKart(e.target); } }catch(_){} }, true);
+    }catch(_){}
     // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
     // scroll=içerik kaydırma, vv=--vv-bottom, serit=şeridin görünür konumu, kart=ilk kartın konumu. En büyük Δ = titreme
     // kaynağı. Kullanıcı Δ'ları söyleyince gerçek fix uygulanıp BU BLOK SİLİNİR.
@@ -10149,10 +10156,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // yanlış konumda dondurup klavyeden KOPARDI -> çağrılar kaldırıldı. (Ölçüm kutusuyla gerçek kaynağı bulacağız.)
       // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
       var _yeni=!!(_card && _card!==XE.__odakKart);
-      if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
-      // [BÖLÜM TUT 09l] Hem yeni (hizalanmış) hem aynı bölümde: tarayıcının odaklı alanı yukarı-çekme creep'ini
-      // ~280ms geri zorlayarak engelle -> bölüm odakta yukarı KAYMAZ. (scroll-padding-top:8 09k tek başına yetmedi.)
-      try{ _bolumTut(); }catch(_){}
+      // [BÖLÜM TUT 09n] YENİ bölüm -> hizala, sonra hizalanmış konumu tut. AYNI bölüm -> DOKUNMA anında yakalanan
+      // odak-ÖNCESİ scroll'a tut (iOS'un up-scroll'unu geri al) -> bölüm yukarı KAYMAZ. (iPhone-özel; Android'de yok.)
+      if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} try{ _bolumTut(); }catch(_){} }
+      else { try{ _bolumTut((XE.__preOdakKart===_card && XE.__preOdakScroll!=null) ? XE.__preOdakScroll : null); }catch(_){} }
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
