@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09d · GECICI TESHIS: alan gecisi titreme olcum kutusu (sol-ust)';
+        var X_BUILD = '2026-11-09e · TESHIS: olcum kutusu gorunur/canli + 09c (serit kopan) geri alindi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10100,32 +10100,29 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _titreDebug(){ try{
       var pb=_edPB(); if(!pb) return;
       var serit=document.getElementById('editor-serit'), kart=document.querySelector('#editor-root .ed-card');
+      var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:120px;left:8px;z-index:2147483647;background:rgba(0,0,0,.92);color:#6f8;font:13px/1.5 ui-monospace,monospace;padding:7px 10px;border:2px solid #6f8;border-radius:7px;pointer-events:none;max-width:92vw;'; (document.body||de).appendChild(b); }
+      b.textContent='ölçülüyor…';
       var mn={s:1e9,v:1e9,r:1e9,k:1e9}, mx={s:-1e9,v:-1e9,r:-1e9,k:-1e9}, t0=Date.now();
       function örnek(){
         var s=pb.scrollTop, v=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'))||0;
         var r=serit?serit.getBoundingClientRect().top:0, k=kart?kart.getBoundingClientRect().top:0;
         if(s<mn.s)mn.s=s; if(s>mx.s)mx.s=s; if(v<mn.v)mn.v=v; if(v>mx.v)mx.v=v;
         if(r<mn.r)mn.r=r; if(r>mx.r)mx.r=r; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
-        if(Date.now()-t0<800){ requestAnimationFrame(örnek); }
-        else{ var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:2px;left:2px;z-index:2147483647;background:rgba(0,0,0,.92);color:#3f6;font:11px/1.4 ui-monospace,monospace;padding:4px 7px;border:1px solid #3f6;border-radius:5px;pointer-events:none;'; (document.body||de).appendChild(b); }
-          b.textContent='Δ scroll='+Math.round(mx.s-mn.s)+' vv='+Math.round(mx.v-mn.v)+' serit='+Math.round(mx.r-mn.r)+' kart='+Math.round(mx.k-mn.k); }
+        b.textContent='Δ scroll='+Math.round(mx.s-mn.s)+' vv='+Math.round(mx.v-mn.v)+' serit='+Math.round(mx.r-mn.r)+' kart='+Math.round(mx.k-mn.k);
+        if(Date.now()-t0<1200){ requestAnimationFrame(örnek); }
       }
       requestAnimationFrame(örnek);
     }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
-      try{ _odakKilit(); }catch(_){}   // iOS native focus-scroll'u geçiş boyunca BLOKE et (sarsıntı kaynağı)
-      // [VOID/SARSINTI ÖNLE 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolguyla max-scroll'u
-      // hedefe KİLİTLE (boş void yok). AYNI bölüm -> DOKUNMA (overflow:hidden zaten sabit tutar).
+      // [09c GERİ ALINDI] _odakKilit (overflow) + __vvDondur (vv dondur) titremeyi ÇÖZMEDİ, üstelik vv-dondur ŞERİDİ
+      // yanlış konumda dondurup klavyeden KOPARDI -> çağrılar kaldırıldı. (Ölçüm kutusuyla gerçek kaynağı bulacağız.)
+      // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
       var _yeni=!!(_card && _card!==XE.__odakKart);
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
-      // [ŞERİT DONDUR 09c] Klavye ZATEN açıkken (alan geçişi) iOS visual-viewport'u (offsetTop) odağı göstermek için
-      // oynatabiliyor -> --vv-bottom'a bağlı şerit zıplar (SARSINTI). Geçiş boyunca --vv-bottom güncellemesini DONDUR
-      // (kb handler kontrol eder) -> şerit sabit. İlk açılışta (kb kapalı) DONDURMA (şerit klavyeyle yükselsin).
-      if(_kbAcik){ try{ window.__vvDondur=Date.now()+450; }catch(_){} }
       // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
       if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
       try{ _titreDebug(); }catch(_){}   // [GEÇİCİ TEŞHİS 09d] alan geçişinde ne oynuyor -> ekrandaki kutu
