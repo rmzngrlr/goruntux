@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09c · editor: odak-gecis kilit (overflow + serit vv-dondur) sarsinti fix';
+        var X_BUILD = '2026-11-09d · GECICI TESHIS: alan gecisi titreme olcum kutusu (sol-ust)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10094,6 +10094,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // focus-scroll SCROLL EDEMEZ; programatik _hizalaBolum yine çalışır (scrollTop set edilebilir). ~450ms sonra geri aç.
     // Böylece geçiş sabit/sarsıntısız; bölüm konumunu yalnız BİZ belirleriz. (Pin'in tersine: çekişme değil, kilit.)
     function _odakKilit(){ try{ var pb=_edPB(); if(!pb) return; pb.style.overflowY='hidden'; clearTimeout(XE.__okT); XE.__okT=setTimeout(function(){ try{ pb.style.overflowY=''; }catch(_){} }, 450); }catch(e){} }
+    // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
+    // scroll=içerik kaydırma, vv=--vv-bottom, serit=şeridin görünür konumu, kart=ilk kartın konumu. En büyük Δ = titreme
+    // kaynağı. Kullanıcı Δ'ları söyleyince gerçek fix uygulanıp BU BLOK SİLİNİR.
+    function _titreDebug(){ try{
+      var pb=_edPB(); if(!pb) return;
+      var serit=document.getElementById('editor-serit'), kart=document.querySelector('#editor-root .ed-card');
+      var mn={s:1e9,v:1e9,r:1e9,k:1e9}, mx={s:-1e9,v:-1e9,r:-1e9,k:-1e9}, t0=Date.now();
+      function örnek(){
+        var s=pb.scrollTop, v=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'))||0;
+        var r=serit?serit.getBoundingClientRect().top:0, k=kart?kart.getBoundingClientRect().top:0;
+        if(s<mn.s)mn.s=s; if(s>mx.s)mx.s=s; if(v<mn.v)mn.v=v; if(v>mx.v)mx.v=v;
+        if(r<mn.r)mn.r=r; if(r>mx.r)mx.r=r; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
+        if(Date.now()-t0<800){ requestAnimationFrame(örnek); }
+        else{ var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:2px;left:2px;z-index:2147483647;background:rgba(0,0,0,.92);color:#3f6;font:11px/1.4 ui-monospace,monospace;padding:4px 7px;border:1px solid #3f6;border-radius:5px;pointer-events:none;'; (document.body||de).appendChild(b); }
+          b.textContent='Δ scroll='+Math.round(mx.s-mn.s)+' vv='+Math.round(mx.v-mn.v)+' serit='+Math.round(mx.r-mn.r)+' kart='+Math.round(mx.k-mn.k); }
+      }
+      requestAnimationFrame(örnek);
+    }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
       try{ _odakKilit(); }catch(_){}   // iOS native focus-scroll'u geçiş boyunca BLOKE et (sarsıntı kaynağı)
@@ -10110,6 +10128,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(_kbAcik){ try{ window.__vvDondur=Date.now()+450; }catch(_){} }
       // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
       if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
+      try{ _titreDebug(); }catch(_){}   // [GEÇİCİ TEŞHİS 09d] alan geçişinde ne oynuyor -> ekrandaki kutu
       if(_iosBarOff) _barSweep();
     } });
     // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
