@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09i · odak kayma onle: scroll-padding-bottom (transform geri alindi)';
+        var X_BUILD = '2026-11-09j · ayni bolum geciste creep-scroll kilidi (bolum sabit)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10124,12 +10124,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
       var _yeni=!!(_card && _card!==XE.__odakKart);
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
+      // [CREEP ÖNLE 09j] AYNI bölümde alan değişince tarayıcı "odaklı alanı görünüme getir" diye içeriği YUKARI
+      // kaydırıyordu (scroll-padding-bottom ile birlikte bölüm her tıkta yukarı kayıyordu). Aynı bölümde geçişte
+      // preview-body'yi kısa süre overflow:hidden yap -> tarayıcı creep-scroll EDEMEZ, bölüm SABİT kalır. (Titreme
+      // zaten scroll-padding-bottom ile gitti; alan görünür olduğundan kilit titreme getirmez.)
+      else if(_card){ try{ _odakKilit(); }catch(_){} }
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
       // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
       if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
-      try{ _titreDebug(); }catch(_){}   // [GEÇİCİ TEŞHİS 09d] alan geçişinde ne oynuyor -> ekrandaki kutu
       if(_iosBarOff) _barSweep();
     } });
     // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
