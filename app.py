@@ -2190,7 +2190,9 @@ HTML_TEMPLATE = """
           // ise bu cihazda KÜÇÜK viewport (svh) olabiliyor -> bottom:kb-inset şeridi klavyenin ALTINA itiyordu. ÇÖZÜM:
           // görünür viewport'un ALT kenarını (vv.offsetTop+vv.height, layout koordinatı) --vv-bottom'a yaz; şerit
           // top:var(--vv-bottom)+translateY(-100%) ile ALT kenarını oraya (klavye/iOS-çubuğu üstüne) oturtur.
-          try { de.style.setProperty('--vv-bottom', Math.round((vv.offsetTop||0) + vv.height) + 'px'); } catch(e){}
+          // [ŞERİT DONDUR 09c] Editör alan-geçişinde (window.__vvDondur) --vv-bottom'u GÜNCELLEME -> şerit iOS'un
+          // geçici vv-offset oynamasıyla zıplamaz (sarsıntı fix). Süre dolunca normal takip sürer.
+          try { var _vzf=window.__vvDondur||0; if(!(_vzf && Date.now()<_vzf)){ de.style.setProperty('--vv-bottom', Math.round((vv.offsetTop||0) + vv.height) + 'px'); } } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
           try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
@@ -2953,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09b · editor: dinamik dolgu (void + overscroll-sarsinti fix)';
+        var X_BUILD = '2026-11-09c · editor: odak-gecis kilit (overflow + serit vv-dondur) sarsinti fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10087,15 +10089,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         }
       }
     }catch(e){} }
+    // [ODAK KİLİT 09c] iOS, bir alana odaklanınca scroll container'ı o alanı göstermek için KAYDIRIR -> alan geçişinde
+    // SARSINTI (iPhone'a özgü; Android'de yok). Odak geçişi SIRASINDA preview-body'yi overflow:hidden yap -> iOS native
+    // focus-scroll SCROLL EDEMEZ; programatik _hizalaBolum yine çalışır (scrollTop set edilebilir). ~450ms sonra geri aç.
+    // Böylece geçiş sabit/sarsıntısız; bölüm konumunu yalnız BİZ belirleriz. (Pin'in tersine: çekişme değil, kilit.)
+    function _odakKilit(){ try{ var pb=_edPB(); if(!pb) return; pb.style.overflowY='hidden'; clearTimeout(XE.__okT); XE.__okT=setTimeout(function(){ try{ pb.style.overflowY=''; }catch(_){} }, 450); }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
+      try{ _odakKilit(); }catch(_){}   // iOS native focus-scroll'u geçiş boyunca BLOKE et (sarsıntı kaynağı)
       // [VOID/SARSINTI ÖNLE 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolguyla max-scroll'u
-      // hedefe KİLİTLE (boş void yok -> iOS overscroll-sarsıntısı için boşluk yok). AYNI bölüm -> DOKUNMA (sabit kal).
+      // hedefe KİLİTLE (boş void yok). AYNI bölüm -> DOKUNMA (overflow:hidden zaten sabit tutar).
       var _yeni=!!(_card && _card!==XE.__odakKart);
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
+      // [ŞERİT DONDUR 09c] Klavye ZATEN açıkken (alan geçişi) iOS visual-viewport'u (offsetTop) odağı göstermek için
+      // oynatabiliyor -> --vv-bottom'a bağlı şerit zıplar (SARSINTI). Geçiş boyunca --vv-bottom güncellemesini DONDUR
+      // (kb handler kontrol eder) -> şerit sabit. İlk açılışta (kb kapalı) DONDURMA (şerit klavyeyle yükselsin).
+      if(_kbAcik){ try{ window.__vvDondur=Date.now()+450; }catch(_){} }
       // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
       if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
       if(_iosBarOff) _barSweep();
