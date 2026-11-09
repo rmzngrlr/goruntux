@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09e · TESHIS: olcum kutusu gorunur/canli + 09c (serit kopan) geri alindi';
+        var X_BUILD = '2026-11-09f · TESHIS: vvTop vs vvH ayir (sayfa kaymasi mi klavye mi)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10102,13 +10102,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var serit=document.getElementById('editor-serit'), kart=document.querySelector('#editor-root .ed-card');
       var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:120px;left:8px;z-index:2147483647;background:rgba(0,0,0,.92);color:#6f8;font:13px/1.5 ui-monospace,monospace;padding:7px 10px;border:2px solid #6f8;border-radius:7px;pointer-events:none;max-width:92vw;'; (document.body||de).appendChild(b); }
       b.textContent='ölçülüyor…';
-      var mn={s:1e9,v:1e9,r:1e9,k:1e9}, mx={s:-1e9,v:-1e9,r:-1e9,k:-1e9}, t0=Date.now();
+      var mn={t:1e9,h:1e9,k:1e9}, mx={t:-1e9,h:-1e9,k:-1e9}, t0=Date.now();
       function örnek(){
-        var s=pb.scrollTop, v=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom'))||0;
-        var r=serit?serit.getBoundingClientRect().top:0, k=kart?kart.getBoundingClientRect().top:0;
-        if(s<mn.s)mn.s=s; if(s>mx.s)mx.s=s; if(v<mn.v)mn.v=v; if(v>mx.v)mx.v=v;
-        if(r<mn.r)mn.r=r; if(r>mx.r)mx.r=r; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
-        b.textContent='Δ scroll='+Math.round(mx.s-mn.s)+' vv='+Math.round(mx.v-mn.v)+' serit='+Math.round(mx.r-mn.r)+' kart='+Math.round(mx.k-mn.k);
+        var vv=window.visualViewport;
+        var vt=vv?vv.offsetTop:0, vh=vv?vv.height:0, k=kart?kart.getBoundingClientRect().top:0;
+        if(vt<mn.t)mn.t=vt; if(vt>mx.t)mx.t=vt; if(vh<mn.h)mn.h=vh; if(vh>mx.h)mx.h=vh; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
+        b.textContent='Δ vvTop='+Math.round(mx.t-mn.t)+' vvH='+Math.round(mx.h-mn.h)+' kart='+Math.round(mx.k-mn.k);
         if(Date.now()-t0<1200){ requestAnimationFrame(örnek); }
       }
       requestAnimationFrame(örnek);
