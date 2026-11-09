@@ -2193,6 +2193,11 @@ HTML_TEMPLATE = """
           // [ŞERİT DONDUR 09c] Editör alan-geçişinde (window.__vvDondur) --vv-bottom'u GÜNCELLEME -> şerit iOS'un
           // geçici vv-offset oynamasıyla zıplamaz (sarsıntı fix). Süre dolunca normal takip sürer.
           try { var _vzf=window.__vvDondur||0; if(!(_vzf && Date.now()<_vzf)){ de.style.setProperty('--vv-bottom', Math.round((vv.offsetTop||0) + vv.height) + 'px'); } } catch(e){}
+          // [İÇERİK SABİT 10e] iOS odakta visual-viewport'u offsetTop kadar itiyor (issue 1, vvTop=125). --vv-offset=
+          // offsetTop; editor modal'inin TOP'u buna ayarlanir (CSS) -> fixed modal asagi kayip gorsel-itisi NOTRLER,
+          // icerik (Baslik) sabit kalir. Serit fixed+viewport-rel oldugundan etkilenmez (top transform DEGIL -> containing
+          // block yaratmaz). Kutuyla ayni kanitli mekanizma (fixed oge + top=+vvOffset).
+          try { de.style.setProperty('--vv-offset', Math.round(vv.offsetTop||0) + 'px'); } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
           try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
@@ -2970,7 +2975,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10d · DENEY: scroll-padding-bottom kb+64 -> kb+8 (iOS itisini olc)';
+        var X_BUILD = '2026-11-10e · icerik sabit: modal top = --vv-offset (iOS itisini notrle, serit bozulmaz)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10046,10 +10051,13 @@ html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!i
 /* [CREEP ÖNLE 09k] scroll-padding-top 118 -> 8: iOS odağı getirdiği pencere = [scroll-padding-top, alt]. 118 çok
    büyüktü -> pencere daralıp alt alanlar sığmayınca her tıkta YUKARI kayıyordu. 8 ile pencere tüm görünür alanı
    kaplar -> görünür alanlar yeniden-konumlanmaz, bölüm SABİT kalır. (bottom = kb+64: titreme fix, alan şerit üstünde.) */
-/* [DENEY 10d] scroll-padding-bottom kb+64 -> kb+8: iOS odakta alani (kb+pad) ustune ceker; 64 cok buyuktu ->
-   vvTop=125 gibi fazla itiyordu. 8 ile iOS daha az iter (alan klavyeye daha yakin ama Baslik daha az kayar).
-   Olcumle (vvTop) etkisi dogrulanacak. */
-html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kb-inset,0px) + 8px);}
+/* (10d deneyi: scroll-padding-bottom kb+8 vvTop'u DEGISTIRMEDI -> iOS itisi scroll-padding'den bagimsiz. kb+64'e geri.) */
+html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kb-inset,0px) + 64px);}
+/* [İÇERİK SABİT 10e] iOS odakta visual-viewport'u offsetTop (--vv-offset) kadar yukari itiyor (issue 1) -> icerik
+   gorsel olarak yukari kayiyordu. Modal fixed; TOP'unu --vv-offset'e ayarla -> modal asagi kayip itisi NOTRLER, icerik
+   (Baslik) gorsel SABIT kalir. Serit (#editor-serit) fixed+viewport-rel; 'top' transform DEGIL -> ribbon'a containing
+   block yaratmaz, serit bozulmaz. (position:fixed kutu top=+vvOffset ile ekranda kaliyordu -> ayni kanitli mekanizma.) */
+html.x-mobile.x-dik.x-ed-yaz #editorModal{top:var(--vv-offset,0px);}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
