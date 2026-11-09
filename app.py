@@ -2958,7 +2958,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09g · icerik viewport takibi (translateY --vv-offset) titreme fix';
+        var X_BUILD = '2026-11-09h · icerik viewport takibi: transform ISARETI ters cevrildi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10031,7 +10031,7 @@ html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!i
    Şerit (--vv-bottom) viewport'u takip ediyor; içerik de etsin: #editor-root'a translateY(--vv-offset) -> iOS itince
    içerik ters-sarılır, görsel SABİT (titreme yok). #editor-serit KARDEŞ (içinde değil) -> fixed şerit etkilenmez.
    (translateY tam-sayı px -> metin bulanıklaşmaz.) */
-html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{transform:translateY(var(--vv-offset,0px));}
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{transform:translateY(calc(-1 * var(--vv-offset,0px)));}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
