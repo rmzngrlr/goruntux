@@ -2193,6 +2193,9 @@ HTML_TEMPLATE = """
           // [ŞERİT DONDUR 09c] Editör alan-geçişinde (window.__vvDondur) --vv-bottom'u GÜNCELLEME -> şerit iOS'un
           // geçici vv-offset oynamasıyla zıplamaz (sarsıntı fix). Süre dolunca normal takip sürer.
           try { var _vzf=window.__vvDondur||0; if(!(_vzf && Date.now()<_vzf)){ de.style.setProperty('--vv-bottom', Math.round((vv.offsetTop||0) + vv.height) + 'px'); } } catch(e){}
+          // [İÇERİK VIEWPORT TAKİBİ 09g] iOS odakta sayfayı offsetTop kadar itiyor -> içerik 51px kayıp SARSILIYOR.
+          // --vv-offset = offsetTop; editör içeriği (#editor-root) buna translateY ile ters-sarılır -> görsel SABİT.
+          try { de.style.setProperty('--vv-offset', Math.round(vv.offsetTop||0) + 'px'); } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
           try { if(window._xcsList && window._xcsSel && window._xcsKonumlaMobil && de.classList.contains('x-mobile') && de.classList.contains('x-dik')) window._xcsKonumlaMobil(window._xcsList, window._xcsSel); } catch(e){}
@@ -2955,7 +2958,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09f · TESHIS: vvTop vs vvH ayir (sayfa kaymasi mi klavye mi)';
+        var X_BUILD = '2026-11-09g · icerik viewport takibi (translateY --vv-offset) titreme fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10024,6 +10027,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed
    scroll+bounce kapalı -> editör içeriği .preview-body'nin KENDİ iç scroll'uyla kayar (sayfa oynamaz),
    şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
 html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
+/* [İÇERİK VIEWPORT TAKİBİ 09g] iOS odakta visual-viewport'u offsetTop kadar itiyor -> içerik kayıp sarsılıyordu.
+   Şerit (--vv-bottom) viewport'u takip ediyor; içerik de etsin: #editor-root'a translateY(--vv-offset) -> iOS itince
+   içerik ters-sarılır, görsel SABİT (titreme yok). #editor-serit KARDEŞ (içinde değil) -> fixed şerit etkilenmez.
+   (translateY tam-sayı px -> metin bulanıklaşmaz.) */
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{transform:translateY(var(--vv-offset,0px));}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
