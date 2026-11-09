@@ -2985,7 +2985,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10f · alan-gecisi titreme fix: --vv-offset asimetrik (artis an, azalis gecikmeli)';
+        var X_BUILD = '2026-11-10g · TESHIS: alan-gecisi titreme Delta-olcum (vvTop/scroll/modalTop/kart)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10171,20 +10171,27 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
     // scroll=içerik kaydırma, vv=--vv-bottom, serit=şeridin görünür konumu, kart=ilk kartın konumu. En büyük Δ = titreme
     // kaynağı. Kullanıcı Δ'ları söyleyince gerçek fix uygulanıp BU BLOK SİLİNİR.
+    // [TEŞHİS 10g] Alan geçişinde NE oynuyor? focusin'de çağrılır; ~1500ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ)
+    // sarı kutuda gösterir: vvTop=iOS viewport itişi, scroll=container kaydırma (_bolumTut vs iOS çekişmesi),
+    // modalTop=modalın top'u (--vv-offset jitter), kart=ilk kartın görünür konumu (kullanıcının GÖRDÜĞÜ net oynama).
+    // En büyük Δ (kart ile korelasyonlu olan) = titreme kaynağı. Kullanıcı 4 sayıyı söyleyince KESİN fix uygulanır.
     function _titreDebug(){ try{
       var pb=_edPB(); if(!pb) return;
-      var serit=document.getElementById('editor-serit'), kart=document.querySelector('#editor-root .ed-card');
-      var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:120px;left:8px;z-index:2147483647;background:rgba(0,0,0,.92);color:#6f8;font:13px/1.5 ui-monospace,monospace;padding:7px 10px;border:2px solid #6f8;border-radius:7px;pointer-events:none;max-width:92vw;'; (document.body||de).appendChild(b); }
-      b.textContent='ölçülüyor…';
-      var mn={t:1e9,h:1e9,k:1e9}, mx={t:-1e9,h:-1e9,k:-1e9}, t0=Date.now();
+      var modal=document.getElementById('editorModal'), kart=document.querySelector('#editor-root .ed-card');
+      var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:150px;left:8px;z-index:2147483647;background:rgba(0,0,0,.94);color:#fd6;font:13px/1.5 ui-monospace,monospace;padding:7px 10px;border:2px solid #fd6;border-radius:7px;pointer-events:none;max-width:94vw;'; (document.body||de).appendChild(b); }
+      var vv0=window.visualViewport; b.style.top=(150+(vv0?Math.round(vv0.offsetTop):0))+'px';
+      cancelAnimationFrame(XE.__tdRaf||0);
+      var mn={t:1e9,s:1e9,m:1e9,k:1e9}, mx={t:-1e9,s:-1e9,m:-1e9,k:-1e9}, t0=Date.now();
       function örnek(){
         var vv=window.visualViewport;
-        var vt=vv?vv.offsetTop:0, vh=vv?vv.height:0, k=kart?kart.getBoundingClientRect().top:0;
-        if(vt<mn.t)mn.t=vt; if(vt>mx.t)mx.t=vt; if(vh<mn.h)mn.h=vh; if(vh>mx.h)mx.h=vh; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
-        b.textContent='Δ vvTop='+Math.round(mx.t-mn.t)+' vvH='+Math.round(mx.h-mn.h)+' kart='+Math.round(mx.k-mn.k);
-        if(Date.now()-t0<1200){ requestAnimationFrame(örnek); }
+        var vt=vv?vv.offsetTop:0, s=pb.scrollTop, mt=modal?(parseFloat(getComputedStyle(modal).top)||0):0, k=kart?kart.getBoundingClientRect().top:0;
+        if(vt<mn.t)mn.t=vt; if(vt>mx.t)mx.t=vt; if(s<mn.s)mn.s=s; if(s>mx.s)mx.s=s;
+        if(mt<mn.m)mn.m=mt; if(mt>mx.m)mx.m=mt; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
+        b.style.top=(150+(vv?Math.round(vv.offsetTop):0))+'px';
+        b.textContent='Δ vvTop='+Math.round(mx.t-mn.t)+' scroll='+Math.round(mx.s-mn.s)+' modalTop='+Math.round(mx.m-mn.m)+' kart='+Math.round(mx.k-mn.k);
+        if(Date.now()-t0<1500){ XE.__tdRaf=requestAnimationFrame(örnek); }
       }
-      requestAnimationFrame(örnek);
+      XE.__tdRaf=requestAnimationFrame(örnek);
     }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
@@ -10196,6 +10203,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // odak-ÖNCESİ scroll'a tut (iOS'un up-scroll'unu geri al) -> bölüm yukarı KAYMAZ. (iPhone-özel; Android'de yok.)
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} try{ _bolumTut(); }catch(_){} }
       else { try{ _bolumTut((XE.__preOdakKart===_card && XE.__preOdakScroll!=null) ? XE.__preOdakScroll : null); }catch(_){} }
+      try{ _titreDebug(); }catch(_){}   // [TEŞHİS 10g] alan geçişinde Δ ölç
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
