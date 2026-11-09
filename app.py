@@ -2953,7 +2953,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09a · editor: alan gecisi SARSINTI fix (iOS pin kaldirildi)';
+        var X_BUILD = '2026-11-09b · editor: dinamik dolgu (void + overscroll-sarsinti fix)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10023,10 +10023,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .ed-serit{display:block;position:fixed
    şerit klavyenin üstünde SABİT kalır. Yalnız yazarken (x-ed-yaz); odak çıkınca kilit kalkar. */
 html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!important;overscroll-behavior:none;}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
-/* [ODAK KAYDIR 2026-11-08g] Alt-dolgu 64px -> +50vh: EN ALTTAKİ alanlar da imleci ÜST banda kaydırabilsin
-   (yoksa son alan yalnız 64px yükselirdi, dropdown altında kalırdı). Dolgu katlanırın altında (klavye/şerit
-   arkasında) kalır -> normalde görünmez; yalnız yazarken (x-ed-yaz). */
-html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 50vh);}
+/* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
+   bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
+   kilitler -> boş VOID yok (eski 50vh sabit dolgunun yarattığı "istenmeyen scroll" + overscroll-sarsıntı gitti). */
+html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(--kb-inset,0px) + 24px);}
 `;
   function stilEnjekte(){ if(document.getElementById('x-editor-style')) return; var st=document.createElement('style'); st.id='x-editor-style'; st.textContent=CSS; (document.head||document.documentElement).appendChild(st); }
   // [DİK-MOBİL Faz 3] Şerit klavye üstünde: editör-root'taki bir alan ODAKLANINCA <html>.x-ed-yaz ekle
@@ -10054,35 +10054,50 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _bandAlt(){ var vvB=parseFloat(getComputedStyle(de).getPropertyValue('--vv-bottom')); if(!vvB){ vvB=window.visualViewport?(window.visualViewport.offsetTop+window.visualViewport.height):(window.innerHeight||0); } var sr=document.getElementById('editor-serit'); var rh=(sr&&getComputedStyle(sr).display!=='none')?sr.offsetHeight:0; return vvB-rh-10; }
     function _imlecRect(el){ var r=null; try{ var s=window.getSelection(); if(s&&s.rangeCount){ var rg=s.getRangeAt(0); if(el.contains&&el.contains(rg.startContainer)){ var rr=rg.getBoundingClientRect(); if(rr&&(rr.height>0||rr.top>0)) r=rr; } } }catch(_){} return r||(el?el.getBoundingClientRect():null); }
     function _pbKaydir(delta){ var pb=_edPB(); if(!pb) return; delta=Math.round(delta); if(Math.abs(delta)>2){ try{ pb.scrollTo({top: pb.scrollTop+delta, behavior:'smooth'}); }catch(_){ pb.scrollTop+=delta; } } }
+    // [BÖLÜM HİZALA + VOID/SARSINTI ÖNLE 2026-11-09b] Bölümü üst bar altına hizala; kart üstü hizalanınca odaklı alan
+    // bandın ALTINA kaçıyorsa alanı görünür yapacak kadar DAHA kaydır. Dinamik alt-dolgu: max-scroll = TAM hedef konum
+    // -> altta BOŞ VOID yok + iOS'un odakta overscroll-SARSINTISI için boşluk yok. (50vh sabit dolgu YERİNE bu.) Anlık
+    // (instant) -> native focus-scroll ile çekişmez (titreme yok).
+    function _hizalaBolum(card, el){ try{
+      if(!card || !dikMobil()) return;
+      try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
+      if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;
+      var pb=_edPB(), root=document.getElementById('editor-root'); if(!pb||!root) return;
+      var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0;
+      var base=Math.round(kb+24);
+      root.style.paddingBottom=base+'px';   // dinamik ekstrayı sıfırla -> ölçüm doğru olsun
+      var delta=Math.round(card.getBoundingClientRect().top-(_barAlti()+8));
+      var D=pb.scrollTop+delta; if(D<0) D=0;
+      var hedef=D;
+      if(el){ try{ var fr=el.getBoundingClientRect(), bb=_bandAlt(); var frB=fr.bottom-(D-pb.scrollTop); if(frB>bb) hedef=D+Math.round(frB-bb)+20; }catch(_){} }   // alan kart-üstü hizada görünmüyorsa alanı göster
+      var maxNat=pb.scrollHeight-pb.clientHeight;
+      if(hedef>maxNat){ root.style.paddingBottom=(base+Math.round(hedef-maxNat))+'px'; }   // tam hedef kadar -> max-scroll=hedef, void yok
+      pb.scrollTop=hedef;
+    }catch(e){} }
     function _odakKart(el, mode){ try{
       if(!el || !dikMobil()) return;
       try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
       if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;   // dropdown/picker açıksa karışma
       var card=_edKart(el); if(!card) return;
-      if(mode==='focus'){
-        if(card!==XE.__odakKart){ _pbKaydir(card.getBoundingClientRect().top - (_barAlti()+8)); XE.__odakKart=card; XE.__odakKartH=card.offsetHeight; }
-        // AYNI bölüm: uzunluk değişmedikçe SABİT kal (alanlar arası geçişte kaydırma)
-      } else if(mode==='input'){
+      if(mode==='input'){
         if(card===XE.__odakKart && card.offsetHeight > (XE.__odakKartH||0)+4){   // bölüm UZADI
           var cr=_imlecRect(el), bb=_bandAlt();
-          if(cr && cr.bottom > bb){ _pbKaydir(cr.bottom - bb + 20); }   // imleç klavye/şerit altına kaçtıysa görünür yap
+          if(cr && cr.bottom > bb){ var _pb=_edPB(); if(_pb) _pb.scrollTop += Math.round(cr.bottom - bb + 20); }   // imleç klavye/şerit altına kaçtıysa görünür yap (ANLIK)
           XE.__odakKartH=card.offsetHeight;
         }
       }
     }catch(e){} }
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
-      // [TİTREME ÖNLE] YENİ bölüm -> HEMEN (sync, instant) üst bar altına hizala: alan anında görünür olur, iOS
-      // native focus-scroll tetiklenmez. AYNI bölüm -> olduğu yerde kal (hiçbir şey yapma — görünür alanlar native
-      // scroll tetiklemez). (08k'deki scroll-PIN KALDIRILDI: her scroll olayında geri-zorlama, iOS odak-geçişinin
-      // çoklu scroll olaylarıyla TEKRAR-TEKRAR çekişip SARSINTI yapıyordu.)
-      try{ if(_card && _card!==XE.__odakKart){ var _pb=_edPB(); if(_pb){ var _d=Math.round(_card.getBoundingClientRect().top-(_barAlti()+8)); if(Math.abs(_d)>2) _pb.scrollTop+=_d; } XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; } }catch(_){}
-      // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç -> şerit snug otursun. Alanlar arası
-      // geçişte (klavye zaten açık, --kb-inset>80) bu re-ölçümü ATLA -> şerit gereksiz oynamaz (titreme yok).
+      // [VOID/SARSINTI ÖNLE 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolguyla max-scroll'u
+      // hedefe KİLİTLE (boş void yok -> iOS overscroll-sarsıntısı için boşluk yok). AYNI bölüm -> DOKUNMA (sabit kal).
+      var _yeni=!!(_card && _card!==XE.__odakKart);
+      if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
+      // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
-      // [BÖLÜM HİZALA] kb/layout oturduktan SONRA bölümü üst barın altına hizala (iki kez: idempotent — yeni bölümse kaydırır).
-      try{ [380,680].forEach(function(ms){ setTimeout(function(){ _odakKart(_odakEl,'focus'); }, ms); }); }catch(_){}
+      // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
+      if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
       if(_iosBarOff) _barSweep();
     } });
     // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
