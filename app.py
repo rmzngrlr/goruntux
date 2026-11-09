@@ -2970,7 +2970,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10b · GECICI CANLI OLCUM: editor scroll/vvTop/padB/fazla (issue 1+3 teshis)';
+        var X_BUILD = '2026-11-10c · CANLI OLCUM: kutu vvTop takip eder (ekranda kalir)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10144,6 +10144,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var padB=root?Math.round(parseFloat(getComputedStyle(root).paddingBottom)||0):0;
       var b=document.getElementById('x-cm'); if(!b){ b=document.createElement('div'); b.id='x-cm'; b.style.cssText='position:fixed;top:118px;left:8px;z-index:2147483647;background:rgba(0,0,0,.92);color:#6f8;font:12px/1.4 ui-monospace,monospace;padding:6px 9px;border:2px solid #6f8;border-radius:6px;pointer-events:none;white-space:nowrap;'; document.body.appendChild(b); }
       b.style.display='block';
+      b.style.top=(118+(vv?Math.round(vv.offsetTop):0))+'px';   // vvTop'u takip et -> iOS sayfayı itse de kutu EKRANDA kalır
       b.textContent='scroll='+Math.round(pb.scrollTop)+' vvTop='+(vv?Math.round(vv.offsetTop):'-')+' padB='+padB+' fazla='+Math.round(pb.scrollHeight-pb.clientHeight);
     }catch(_){} }, 150); }catch(_){}
     // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
