@@ -3178,6 +3178,14 @@
                     window.open(`${res.server_origin}/api/extension/download_zip`, "_blank");
                 });
             };
+            // [GÜNCELLE LİNKİ] "Eklentiyi güncelle!" -> paneli #eklenti-guncelle hash'iyle aç; panel eklenti-güncelleme
+            // KILAVUZU modalini acar (indirme + 'ayni klasore ac + yenile + X F5' adimlari o modalda). Eskiden dogrudan
+            // zip indiriyordu (nasil guncellenecegini anlatmadan).
+            const acGuncelle = () => {
+                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                    window.open(`${res.server_origin}/#eklenti-guncelle`, "_blank");
+                });
+            };
 
             buton.classList.remove('connected');
             buton.classList.add('outdated');
@@ -3191,8 +3199,8 @@
 
             const warn = document.getElementById('w-conn-warn');
             if (warn) {
-                warn.innerHTML = `⚠️ <b>Güncelleme gerekli.</b><br>Sizdeki v${localVersion}, güncel v${latestVersion}.<br><span class="xdock-warn-link">Eklentiyi indir →</span>`;
-                warn.onclick = (e) => { e.stopPropagation(); acIndir(); };
+                warn.innerHTML = `⚠️ <b>Güncelleme gerekli.</b><br>Sizdeki v${localVersion}, güncel v${latestVersion}.<br><span class="xdock-warn-link">Eklentiyi güncelle! →</span>`;
+                warn.onclick = (e) => { e.stopPropagation(); acGuncelle(); };
             }
         } catch (e) {
             showError(e);

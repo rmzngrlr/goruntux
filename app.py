@@ -2939,6 +2939,21 @@ HTML_TEMPLATE = """
             const m = document.getElementById('extModal');
             if (m) { m.classList.remove('active'); }
         }
+        // [WIDGET GÜNCELLE LİNKİ] X sayfasındaki widget "Eklentiyi güncelle!" -> paneli #eklenti-guncelle hash'iyle
+        // açar; panel burada eklenti-güncelleme kılavuzu modalını AÇAR + hash'i temizler. (İndirme + 'aynı klasöre
+        // aç + ↻' adımları o modalda.)
+        function _eklentiGuncelleHashKontrol() {
+            try {
+                if ((location.hash || '').replace('#', '') === 'eklenti-guncelle') {
+                    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+                    // Birkaç kez dene (yük/durum-yoklama zamanlaması oynak; idempotent -> fazlası zararsız).
+                    [300, 900, 1600].forEach(function (ms) { setTimeout(function () { try { openExtModal(); } catch (_) {} }, ms); });
+                }
+            } catch (e) {}
+        }
+        document.addEventListener('DOMContentLoaded', _eklentiGuncelleHashKontrol);
+        window.addEventListener('load', _eklentiGuncelleHashKontrol);
+        window.addEventListener('hashchange', _eklentiGuncelleHashKontrol);
 
         // Close modals when clicking outside of them
         window.addEventListener('click', function(event) {
@@ -2955,7 +2970,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09l · bolum-tut (odakta yukari kaymasin) + inline padding reset (klavye kapali scroll)';
+        var X_BUILD = '2026-11-09m · widget Eklentiyi-guncelle + panel eklenti-guncelle modal; editor bolum-tut + padding-reset';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
