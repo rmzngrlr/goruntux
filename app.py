@@ -2955,7 +2955,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-09j · ayni bolum geciste creep-scroll kilidi (bolum sabit)';
+        var X_BUILD = '2026-11-09k · creep onle: scroll-padding-top 118->8 (bolum sabit)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10028,7 +10028,10 @@ html.x-mobile.x-dik.x-ed-yaz,html.x-mobile.x-dik.x-ed-yaz body{overflow:hidden!i
    alanı klavyenin hemen üstüne çeker; şeridimiz orada olduğundan alanı ŞERİDİN ALTINA çekmek için sayfayı kaydırıyor
    (titreme ~şerit yüksekliği). scroll-padding-bottom'a klavye+şerit payı koy -> tarayıcı/iOS odaklı alanı ŞERİDİN
    ÜSTÜNDE tutar -> aşağı çekmez, kayma/titreme azalır. Standart mekanizma, risksiz. */
-html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-bottom:calc(var(--kb-inset,0px) + 64px);}
+/* [CREEP ÖNLE 09k] scroll-padding-top 118 -> 8: iOS odağı getirdiği pencere = [scroll-padding-top, alt]. 118 çok
+   büyüktü -> pencere daralıp alt alanlar sığmayınca her tıkta YUKARI kayıyordu. 8 ile pencere tüm görünür alanı
+   kaplar -> görünür alanlar yeniden-konumlanmaz, bölüm SABİT kalır. (bottom = kb+64: titreme fix, alan şerit üstünde.) */
+html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kb-inset,0px) + 64px);}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
@@ -10124,11 +10127,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
       var _yeni=!!(_card && _card!==XE.__odakKart);
       if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} }
-      // [CREEP ÖNLE 09j] AYNI bölümde alan değişince tarayıcı "odaklı alanı görünüme getir" diye içeriği YUKARI
-      // kaydırıyordu (scroll-padding-bottom ile birlikte bölüm her tıkta yukarı kayıyordu). Aynı bölümde geçişte
-      // preview-body'yi kısa süre overflow:hidden yap -> tarayıcı creep-scroll EDEMEZ, bölüm SABİT kalır. (Titreme
-      // zaten scroll-padding-bottom ile gitti; alan görünür olduğundan kilit titreme getirmez.)
-      else if(_card){ try{ _odakKilit(); }catch(_){} }
+      // [CREEP ÖNLE 09k] (09j overflow-kilidi İŞE YARAMADI: kayma tarayıcı-container değil iOS OS-seviye odak-kaydırması;
+      // overflow onu durdurmuyor.) Çözüm CSS'te: scroll-padding-top küçültüldü -> iOS'un odağı getirdiği pencere tüm
+      // görünür alanı kaplar -> görünür alanlar yeniden-konumlanmaz, bölüm sabit kalır.
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
