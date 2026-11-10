@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10n · gorsel kopya yalniz IC pano (OS-kirletme yok); metne gorsel yapismaz; slot Ctrl+V ic-pano yedegi';
+        var X_BUILD = '2026-11-10o · metin/baslik/link e gorsel yapistirma ENGELI + gorsel KESME geri-al (imgLinks senkron)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9430,9 +9430,14 @@ X_EDITOR_JS = r'''
   }
   XE._snap = function(){
     _imgStoreTopla();
+    // [GÖRSEL KESME GERİ-AL 2026-11-10o] O an BİRİNCİL görseli (image_b64) OLAN linkler -> restore'da XLocalImages'ı
+    // bu listeye göre senkronlar (listede olan link görseli geri konur, olmayan kaldırılır). Böylece birincil görsel
+    // KESME geri-al'da döner, redo'da gitmiş kalır. (Parça görselleri overlay.parcalar ile zaten dönüyor.)
+    var _imgLinks=[]; try{ (XE.belge.birimler||[]).forEach(function(b){ if(b&&b.item&&b.item.link&&b.item.image_b64) _imgLinks.push(b.item.link); }); }catch(e){}
     var base = { overlay: JSON.parse(JSON.stringify(window.__xEditorOverlay||{byLink:{},style:null})),
       manual: JSON.parse(JSON.stringify(window.__xManualClusters||[])),
       openName: window.__openReportName||'',
+      imgLinks: _imgLinks,
       style: (typeof window.xBuildStyleOpts==='function'? window.xBuildStyleOpts():{}) };
     if(XE._externalMode){
       // [1]: Word Düzenle (dış öğeler, havuz YOK) -> belge item'larının TAM kopyası; restore ac({items}) ile replay.
@@ -9479,6 +9484,19 @@ X_EDITOR_JS = r'''
           try{ await fetch('/api/manual/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}); }catch(e){}
         }
       }
+      // [GÖRSEL KESME GERİ-AL 2026-11-10o] Havuz üyeliği DEĞİŞMESE de (yalnız görsel silme/kesme -> link listesi aynı)
+      // birincil görseli snapshot'a göre senkronla: snap.imgLinks'te olan link -> görseli XLocalImages'a geri koy
+      // (iç _imgStore'dan); olmayan -> kaldır. -> kesilen birincil görsel geri-al'da DÖNER, redo'da gitmiş kalır.
+      // (ac() manuel öğelerin image_b64'ünü XLocalImages'tan enjekte ediyor.) Bayrak x_gorsel_geri='0' -> kapalı.
+      try{
+        if(localStorage.getItem('x_gorsel_geri')!=='0' && window.XLocalImages && snap.pool){
+          var _imgSet={}; (snap.imgLinks||[]).forEach(function(l){ _imgSet[l]=1; });
+          for(var _si=0;_si<snap.pool.length;_si++){ var _sp=snap.pool[_si]; if(!_sp||!_sp.link) continue;
+            if(_imgSet[_sp.link]){ var _sim=XE._imgStore[_sp.link]; if(_sim && _sim.dataUrl && window.XLocalImages.put){ try{ await window.XLocalImages.put(_sp.link, _sim.dataUrl, _sim.mime); }catch(e){} } }
+            else if(window.XLocalImages.remove){ try{ await window.XLocalImages.remove(_sp.link); }catch(e){} }
+          }
+        }
+      }catch(e){}
       XE._dirty=true;
       await XE.ac({});   // non-fresh -> yığınları sıfırlamaz; taze havuz+overlay'den çizer
     } finally { _restoring=false; _busy=false; _geriBtnGuncelle(); }
@@ -11527,6 +11545,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [MENÜ KAPAT] Menüdeki herhangi bir BUTONA tıklayınca (kendi işlevi çalıştıktan sonra) menü kapanır.
     // setTimeout 0 -> butonun kendi handler'ı (hatta yeniden-çizen Tümünü seç) bitince kapat. Select/renk/input buton değil -> açık kalır.
     p.addEventListener('click', function(e){ if(e.target && e.target.closest && e.target.closest('button')){ setTimeout(_sagTikKapat, 0); } });
+    // [GÖRSEL YAPIŞTIRMA ENGELİ 2026-11-10o] Kullanıcı: metin/başlık/LİNK alanlarına görsel yapıştırmak MÜMKÜN OLMASIN
+    // (görsel yalnız görsel kutusuna .ed-img-pano). Tek document-level CAPTURE dinleyici -> tüm editable'ları kapsar;
+    // görsel kutusu HARİÇ. Metin YOK + (image öğesi VEYA text/html'de <img>) -> engelle. Metin varsa dokunma (alanın
+    // kendi handler'ı metni işler). Bayrak x_metne_gorsel='1' -> engel kapanır (eski davranış).
+    document.addEventListener('paste', function(e){
+      try{
+        if(localStorage.getItem('x_metne_gorsel')==='1') return;
+        var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
+        var t=e.target; if(!t||!t.closest) return;
+        var ed=t.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit'); if(!ed) return;   // yalnız bu alanlar; görsel kutusu HARİÇ
+        var cd=e.clipboardData||window.clipboardData; if(!cd) return;
+        var txt=''; try{ txt=cd.getData('text/plain')||''; }catch(_){}
+        if(txt) return;   // metin var -> görsel değil
+        var hasImg=false; try{ var its=cd.items||[]; for(var j=0;j<its.length;j++){ if(its[j]&&its[j].type&&its[j].type.indexOf('image/')===0){ hasImg=true; break; } } }catch(_){}
+        if(!hasImg){ try{ var _hi=cd.getData('text/html')||''; if(/<img[\s\/>]/i.test(_hi)) hasImg=true; }catch(_){} }
+        if(hasImg){ e.preventDefault(); e.stopPropagation(); try{ if(window.showToast) window.showToast('Görsel bu alana yapıştırılamaz — bir görsel kutusuna yapıştırın.','warning'); }catch(_){} }
+      }catch(_){}
+    }, true);
     document.addEventListener('contextmenu', function(e){
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
       var t=e.target; if(!t||!t.closest) return;
