@@ -1117,14 +1117,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
     chrome.tabs.query({}, (tabs) => {
       try {
+        // v4.43: BASLIK eslesmesi KALDIRILDI. Sunucu droplet'inin ADI "goruntux" oldugu icin
+        // DigitalOcean yonetim sayfasinin (cloud.digitalocean.com) basligi da "goruntux" iceriyor ->
+        // widget onu PANEL saniyordu. Panel DAIMA sunucu host'unda (server_origin) -> YALNIZ host
+        // eslesmesi kesin ve dogru. (Panel yoksa asagida yeni sekme hedef origin'de acilir.)
         let panelTab = tabs.find(t => {
           if (!t.url) return false;
           let tabHost = "";
           try { tabHost = new URL(t.url).hostname; } catch (e) {}
-          const hostMatch = targetHost && tabHost && targetHost === tabHost;
-          const cleanTitle = t.title ? t.title.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-          const titleMatch = cleanTitle.includes("xrapor") || cleanTitle.includes("goruntux");
-          return hostMatch || titleMatch;
+          return targetHost && tabHost && targetHost === tabHost;
         });
         if (panelTab) {
           chrome.tabs.update(panelTab.id, { active: true }, () => {
@@ -1263,19 +1264,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     chrome.tabs.query({}, (tabs) => {
       try {
+        // v4.43: BASLIK eslesmesi KALDIRILDI (goToPanel ile tutarli). Panel DAIMA sunucu host'unda
+        // (server_origin) -> host eslesmesi kesin. (titleMatch "xrapor" zaten panel basligi "GörüntüX"
+        // ile eslesmiyordu; host-only hem dogru hem de yabanci "goruntux/xrapor" baslikli sayfalari secmez.)
         let panelTab = tabs.find(t => {
         if (!t.url) return false;
-        
+
         let tabHost = "";
         try {
           tabHost = new URL(t.url).hostname;
         } catch(e) {}
 
-        const hostMatch = targetHost && tabHost && targetHost === tabHost;
-        const cleanTitle = t.title ? t.title.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-        const titleMatch = cleanTitle.includes("xrapor");
-
-        return hostMatch || titleMatch;
+        return targetHost && tabHost && targetHost === tabHost;
       });
       
       if (panelTab) {
