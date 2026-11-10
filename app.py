@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10u · yazi kutusu metne SIKI (alt bosluk yok) + ILERI-AL butonu (redo) + Ctrl+Z/Y';
+        var X_BUILD = '2026-11-10v · geri-al FIX: snapshot mutasyondan ONCE (yazi/cizim eklenince aktif + gercekten siler)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -11285,9 +11285,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         _selBtn(); ciz(); return; }
       if(tool==='kirp'){ var ct=cropTut(p); if(ct){ drag={tip:'crop', mod:ct, sx:p.x, sy:p.y, o:JSON.parse(JSON.stringify(crop))}; } else { crop={x:p.x,y:p.y,w:0,h:0}; drag={tip:'crop', mod:{kose:'xw_yh'}, sx:p.x, sy:p.y, o:JSON.parse(JSON.stringify(crop))}; } ciz(); return; }
       if(tool==='yazi'){ _yaziEkle(p); return; }
-      if(tool==='ok'){ var o2={t:'ok', x1:p.x, y1:p.y, x2:p.x, y2:p.y, renk:renk, kal:kalinlik}; objs.push(o2); drag={tip:'ciz', o:o2}; return; }
-      if(tool==='dikdortgen'){ var o3={t:'dikdortgen', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik}; objs.push(o3); drag={tip:'ciz', o:o3}; return; }
-      if(tool==='kalem'){ var o4={t:'kalem', nk:[{x:p.x,y:p.y}], renk:renk, kal:kalinlik}; objs.push(o4); drag={tip:'kalem', o:o4}; return; }
+      if(tool==='ok'){ itUndo(); var o2={t:'ok', x1:p.x, y1:p.y, x2:p.x, y2:p.y, renk:renk, kal:kalinlik}; objs.push(o2); drag={tip:'ciz', o:o2}; return; }   // snapshot MUTASYONDAN ÖNCE (geri-al gerçekten silsin + buton hemen aktif)
+      if(tool==='dikdortgen'){ itUndo(); var o3={t:'dikdortgen', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik}; objs.push(o3); drag={tip:'ciz', o:o3}; return; }
+      if(tool==='kalem'){ itUndo(); var o4={t:'kalem', nk:[{x:p.x,y:p.y}], renk:renk, kal:kalinlik}; objs.push(o4); drag={tip:'kalem', o:o4}; return; }
     }
     function pm(e){
       if(!drag) return; var p=noktaSrc(e);
@@ -11320,8 +11320,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(d.tip==='tasi'){ itUndoGrup(d); }
       else if(d.tip==='marquee'){ if(marq && (marq.w>3||marq.h>3)){ secili=objs.filter(function(o){ return kutuKesisir(objKutu(o), marq); }); if(secili.length===1) _stilYansit(); } marq=null; _selBtn(); ciz(); }
       else if(d.tip==='crop'){ /* kırp uygula butonuyla */ }
-      else if(d.tip==='ciz'){ var o=d.o; var kutu=objKutu(o); if((o.t==='ok' && Math.hypot(o.x2-o.x1,o.y2-o.y1)<4) || (o.t==='dikdortgen' && (Math.abs(o.w)<4||Math.abs(o.h)<4))){ objs.pop(); ciz(); } else { itUndo(); } }
-      else if(d.tip==='kalem'){ if(d.o.nk.length<2){ objs.pop(); ciz(); } else { itUndo(); } }
+      else if(d.tip==='ciz'){ var o=d.o; if((o.t==='ok' && Math.hypot(o.x2-o.x1,o.y2-o.y1)<4) || (o.t==='dikdortgen' && (Math.abs(o.w)<4||Math.abs(o.h)<4))){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); } }   // iptal -> snapshot'ı da geri al
+      else if(d.tip==='kalem'){ if(d.o.nk.length<2){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); } }
       _kirpBtnGoster();
     }
     function itUndoGrup(d){ // GRUP taşıma geri-al: öğeleri taşımadan ÖNCEKİ hale koy -> itUndo (o anı yakalar) -> sonra taşınmış hale geri koy.
@@ -11336,6 +11336,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
     // ---- yazı ----
     function _yaziEkle(p){
+      itUndo();   // snapshot MUTASYONDAN ÖNCE -> yazı eklenince geri-al hemen aktif + gerçekten siler (iptal edilirse geri alınır)
       var o={t:'yazi', x:p.x, y:p.y, metin:'', boyut:yaziBoyut, renk:renk, kalin:false, arka:yaziArka};
       objs.push(o); secili=[o]; tool='sec'; _toolYansit(); _selBtn();
       _yaziDuzenle(o, true);
@@ -11353,8 +11354,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _yaziBitir(){
       var o=yaziInp.__obj; if(!o){ yaziInp.style.display='none'; return; }
       o.metin=yaziInp.value; yaziInp.style.display='none'; var yeni=yaziInp.__yeni; yaziInp.__obj=null;
-      if(!o.metin.trim()){ var ix=objs.indexOf(o); if(ix>=0) objs.splice(ix,1); secili=[]; _selBtn(); }
-      else { itUndo(); }
+      // snapshot _yaziEkle/dblclik'te ÖNCEDEN alındı. Boş + YENİ ise hiç yazı olmadı -> snapshot'ı geri al (hayalet undo yok).
+      if(!o.metin.trim()){ var ix=objs.indexOf(o); if(ix>=0) objs.splice(ix,1); secili=[]; _selBtn(); if(yeni && hist.length){ hist.pop(); _geriBtn(); } }
       ciz();
     }
     yaziInp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); _yaziBitir(); } else if(e.key==='Escape'){ e.preventDefault(); yaziInp.value=yaziInp.__yeni?'':( yaziInp.__obj?yaziInp.__obj.metin:''); _yaziBitir(); } });
@@ -11406,7 +11407,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cv.addEventListener('pointermove', pm);
     cv.addEventListener('pointerup', pu);
     cv.addEventListener('pointercancel', pu);
-    cv.addEventListener('dblclick', function(e){ var p=noktaSrc(e); var o=vurus(p); if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); _yaziDuzenle(o,false); } });
+    cv.addEventListener('dblclick', function(e){ var p=noktaSrc(e); var o=vurus(p); if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); itUndo(); _yaziDuzenle(o,false); } });   // yeniden düzenleme de geri-al'a dahil
     ov.addEventListener('keydown', function(e){
       if(e.key==='Escape' && yaziInp.style.display==='none'){ e.preventDefault(); kapat(); return; }
       if((e.key==='Delete'||e.key==='Backspace') && secili.length && document.activeElement!==yaziInp){ e.preventDefault(); itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); return; }
