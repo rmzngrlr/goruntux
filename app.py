@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10t · Kirp buton+geri ikon duzelt + marquee (lasso) coklu secim/tasi/sil';
+        var X_BUILD = '2026-11-10u · yazi kutusu metne SIKI (alt bosluk yok) + ILERI-AL butonu (redo) + Ctrl+Z/Y';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -11120,7 +11120,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var yaziBoyut=Math.max(16, Math.round(Math.max(baseW,baseH)/20));
     var yaziArka=true;
     var crop=null;               // kırp modunda {x,y,w,h} src
-    var hist=[];                 // editör-içi geri al: {objs, base, baseW, baseH}
+    var hist=[];                 // editör-içi geri al yığını: {objs, b, w, h}
+    var redoHist=[];             // ileri al yığını
     // ---- DOM ----
     var ov=document.createElement('div'); ov.className='ed-gd-ov'; ov.id='ed-gd-ov';
     var araclar=[
@@ -11147,6 +11148,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    </div>'
       +'    <div class="ed-gd-sag">'
       +'      <button type="button" class="ed-gd-mini ed-gd-geri" title="Geri al" disabled><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.5h7a4 4 0 1 1 0 8H8.5"/><path d="M7.5 4.5l-3 3 3 3"/></svg></button>'
+      +'      <button type="button" class="ed-gd-mini ed-gd-ileri" title="İleri al" disabled><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 7.5h-7a4 4 0 1 0 0 8h3"/><path d="M12.5 4.5l3 3-3 3"/></svg></button>'
       +'      <button type="button" class="ed-gd-mini ed-gd-sil" title="Seçiliyi sil" disabled>Sil</button>'
       +'      <button type="button" class="ed-gd-mini ed-gd-kirpuygula" title="Kırpmayı uygula" style="display:none;">Kırp ✓</button>'
       +'      <button type="button" class="ed-gd-btn ed-gd-vaz">Vazgeç</button>'
@@ -11173,25 +11175,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function noktaSrc(e){ var r=cv.getBoundingClientRect(); return { x:U(e.clientX-r.left), y:U(e.clientY-r.top) }; }
 
     // ---- çizim ----
-    function yaziMetrik(o){
-      ctx.save(); ctx.font=(o.kalin?'bold ':'')+S(o.boyut)+'px Arial'; var m=ctx.measureText(o.metin||' '); ctx.restore();
-      var w=m.width, h=S(o.boyut)*1.25;
-      return { w:w, h:h };                                  // ekran px (çizim için)
+    // [YAZI KUTUSU SIKI 2026-11-10u] Gerçek glif metrikleri (actualBoundingBox) -> kutu/arka metne TAM otursun
+    // (eski boyut*1.25 + 'top' baseline leading'i gereksiz ALT BOŞLUK bırakıyordu).
+    function yaziMetrikPx(o, fpx){
+      ctx.save(); ctx.font=(o.kalin?'bold ':'')+fpx+'px Arial'; var m=ctx.measureText(o.metin||' '); ctx.restore();
+      var asc=m.actualBoundingBoxAscent, desc=m.actualBoundingBoxDescent;
+      if(!(asc>0)) asc=fpx*0.8; if(!(desc>=0)) desc=fpx*0.22;
+      return { w:m.width, asc:asc, desc:desc };
     }
-    function yaziKutuSrc(o){
-      ctx.save(); ctx.font=(o.kalin?'bold ':'')+o.boyut+'px Arial'; var m=ctx.measureText(o.metin||' '); ctx.restore();
-      return { x:o.x, y:o.y, w:m.width+o.boyut*0.4, h:o.boyut*1.25 };   // src px (hit-test) — x,y SOL-ÜST
+    function yaziKutuSrc(o){   // src px (hit-test/seçim) — x,y SOL-ÜST, metne SIKI
+      var pX=o.boyut*0.14, pY=o.boyut*0.1, mm=yaziMetrikPx(o, o.boyut);
+      return { x:o.x-pX, y:o.y-pY, w:mm.w+pX*2, h:mm.asc+mm.desc+pY*2 };
     }
     function cizObj(o){
       ctx.save();
       if(o.t==='yazi'){
-        var pad=S(o.boyut)*0.18;
-        ctx.font=(o.kalin?'bold ':'')+S(o.boyut)+'px Arial'; ctx.textBaseline='top';
-        var mw=ctx.measureText(o.metin||'').width;
-        if(o.arka){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(S(o.x)-pad, S(o.y)-pad*0.6, mw+pad*2, S(o.boyut)*1.25+pad*0.6); }
+        var fs=S(o.boyut), pX=fs*0.14, pY=fs*0.1, mm=yaziMetrikPx(o, fs);
+        var bx=S(o.x), by=S(o.y), baseY=by+mm.asc;   // o.y = görsel ÜST; baseline = üst + ascent (metne SIKI)
+        ctx.font=(o.kalin?'bold ':'')+fs+'px Arial'; ctx.textBaseline='alphabetic';
+        if(o.arka){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx-pX, by-pY, mm.w+pX*2, mm.asc+mm.desc+pY*2); }
         ctx.fillStyle=o.renk;
-        if(!o.arka){ ctx.lineWidth=Math.max(2,S(o.boyut)*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', S(o.x), S(o.y)); }
-        ctx.fillText(o.metin||'', S(o.x), S(o.y));
+        if(!o.arka){ ctx.lineWidth=Math.max(2,fs*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', bx, baseY); }
+        ctx.fillText(o.metin||'', bx, baseY);
       } else if(o.t==='dikdortgen'){
         ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk;
         ctx.strokeRect(S(o.x), S(o.y), S(o.w), S(o.h));
@@ -11242,9 +11247,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
     // ---- geri al (editör-içi) ----
     function anlik(){ return { objs:JSON.parse(JSON.stringify(objs)), b:base.src, w:baseW, h:baseH }; }
-    function itUndo(){ hist.push(anlik()); if(hist.length>40) hist.shift(); _geriBtn(); }
-    function geriAl(){ if(!hist.length) return; var s=hist.pop(); objs=s.objs; if(base.src!==s.b){ var ni=new Image(); ni.onload=function(){ base=ni; baseW=s.w; baseH=s.h; olcekle(); ciz(); }; ni.src=s.b; } else { baseW=s.w; baseH=s.h; } secili=[]; _selBtn(); ciz(); _geriBtn(); }
-    function _geriBtn(){ var b=ov.querySelector('.ed-gd-geri'); if(b) b.disabled=!hist.length; }
+    function itUndo(){ hist.push(anlik()); if(hist.length>40) hist.shift(); redoHist=[]; _geriBtn(); }   // YENİ değişiklik -> ileri yığını geçersiz
+    function _uygula(s){ objs=JSON.parse(JSON.stringify(s.objs)); if(base.src!==s.b){ var ni=new Image(); ni.onload=function(){ base=ni; baseW=s.w; baseH=s.h; olcekle(); ciz(); }; ni.src=s.b; } else { baseW=s.w; baseH=s.h; } secili=[]; _selBtn(); ciz(); }
+    function geriAl(){ if(!hist.length) return; redoHist.push(anlik()); _uygula(hist.pop()); _geriBtn(); }
+    function ileriAl(){ if(!redoHist.length) return; hist.push(anlik()); _uygula(redoHist.pop()); _geriBtn(); }
+    function _geriBtn(){ var g=ov.querySelector('.ed-gd-geri'); if(g) g.disabled=!hist.length; var f=ov.querySelector('.ed-gd-ileri'); if(f) f.disabled=!redoHist.length; }
     function _selBtn(){ var b=ov.querySelector('.ed-gd-sil'); if(b) b.disabled=!secili.length; }
 
     // ---- hit test ----
@@ -11388,6 +11395,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelector('.ed-gd-yzb').addEventListener('input', function(){ yaziBoyut=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); ciz(); } });
     ov.querySelector('.ed-gd-arka').addEventListener('click', function(){ yaziArka=!yaziArka; this.classList.toggle('aktif',yaziArka); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.arka=yaziArka; }); ciz(); } });
     ov.querySelector('.ed-gd-geri').addEventListener('click', geriAl);
+    ov.querySelector('.ed-gd-ileri').addEventListener('click', ileriAl);
     ov.querySelector('.ed-gd-sil').addEventListener('click', function(){ if(!secili.length) return; itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); });
     ov.querySelector('.ed-gd-kirpuygula').addEventListener('click', kirpUygula);
     ov.querySelector('.ed-gd-vaz').addEventListener('click', kapat);
@@ -11399,8 +11407,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cv.addEventListener('pointerup', pu);
     cv.addEventListener('pointercancel', pu);
     cv.addEventListener('dblclick', function(e){ var p=noktaSrc(e); var o=vurus(p); if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); _yaziDuzenle(o,false); } });
-    ov.addEventListener('keydown', function(e){ if(e.key==='Escape' && yaziInp.style.display==='none'){ e.preventDefault(); kapat(); } else if((e.key==='Delete'||e.key==='Backspace') && secili.length && document.activeElement!==yaziInp){ e.preventDefault(); itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); } });
-    ov.tabIndex=-1;
+    ov.addEventListener('keydown', function(e){
+      if(e.key==='Escape' && yaziInp.style.display==='none'){ e.preventDefault(); kapat(); return; }
+      if((e.key==='Delete'||e.key==='Backspace') && secili.length && document.activeElement!==yaziInp){ e.preventDefault(); itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); return; }
+      if((e.ctrlKey||e.metaKey) && document.activeElement!==yaziInp){ var k=(e.key||'').toLowerCase();   // stopPropagation: Ctrl+Z ANA editöre SIZMASIN (görsel düzenleyici kendi geri/ileri'si)
+        if(k==='z' && !e.shiftKey){ e.preventDefault(); e.stopPropagation(); geriAl(); return; }
+        if(k==='y' || (k==='z' && e.shiftKey)){ e.preventDefault(); e.stopPropagation(); ileriAl(); return; }
+      }
+    }, true);
+    ov.tabIndex=-1; try{ ov.focus(); }catch(_){}   // klavye kısayolları için modal odaklı
     window.addEventListener('resize', ciz);
 
     function kapat(){ try{ window.removeEventListener('resize', ciz); }catch(_){} try{ ov.remove(); }catch(_){} }
