@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10p · GORSEL DUZENLEYICI: kirp + yazi + ok/dikdortgen/kalem (canvas, sag-tik Duzenle)';
+        var X_BUILD = '2026-11-10q · gorsel duzenleyici TAM EKRAN + kucuk gorsel buyur (<=4x, export native)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9839,8 +9839,9 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 #editorModal .ed-img-pano .ed-img-pcsec:hover{background:#0d47a1;}
 #editorModal .ed-img{max-width:100%;max-height:380px;border-radius:8px;display:block;object-fit:contain;}
 /* [GÖRSEL DÜZENLEYİCİ 2026-11-10p] crop + yazı + ok/dikdörtgen/kalem modalı (body'ye eklenir; #editorModal'dan BAĞIMSIZ) */
-.ed-gd-ov{position:fixed;inset:0;z-index:5000;background:rgba(10,15,22,0.72);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;}
-.ed-gd-box{background:#fff;border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,0.45);display:flex;flex-direction:column;max-width:96vw;max-height:94vh;width:900px;overflow:hidden;box-sizing:border-box;}
+.ed-gd-ov{position:fixed;inset:0;z-index:5000;background:rgba(10,15,22,0.72);display:flex;align-items:center;justify-content:center;padding:0;box-sizing:border-box;}
+/* [TAM EKRAN 2026-11-10q] Kullanıcı: düzenleyici tam ekran olsun -> kutu viewport'u KAPLAR. */
+.ed-gd-box{background:#fff;border-radius:0;box-shadow:none;display:flex;flex-direction:column;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;box-sizing:border-box;}
 .ed-gd-ust{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #e3e8ee;background:#f7f9fc;}
 .ed-gd-tools{display:inline-flex;gap:3px;}
 .ed-gd-tool{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;cursor:pointer;}
@@ -9860,7 +9861,7 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 .ed-gd-tuval-sar{flex:1;min-height:200px;display:flex;align-items:center;justify-content:center;background:#2b3440;padding:10px;overflow:auto;box-sizing:border-box;}
 .ed-gd-tuval{display:block;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.3);touch-action:none;}
 .ed-gd-yazi-inp{position:fixed;z-index:5100;border:1px solid #1565c0;border-radius:4px;padding:2px 6px;font-family:Arial;background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,0.25);min-width:120px;}
-html.x-mobile.x-dik .ed-gd-box{width:100%;max-height:96vh;}
+html.x-mobile.x-dik .ed-gd-box{width:100%;height:100%;}
 html.x-mobile.x-dik .ed-gd-say input[type=range]{width:60px;}
 html.x-mobile.x-dik .ed-gd-ust{gap:6px;padding:6px 8px;}
 body:not(.light-theme) .ed-gd-box{background:#0f1720;}
@@ -11158,7 +11159,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
     function olcekle(){
       var maxW=Math.max(200, sar.clientWidth-4), maxH=Math.max(200, sar.clientHeight-4);
-      scale=Math.min(maxW/baseW, maxH/baseH, 1); if(!(scale>0)) scale=1;
+      scale=Math.min(maxW/baseW, maxH/baseH, 4); if(!(scale>0)) scale=1;   // [10q] tam-ekranda küçük görsel büyüsün (<=4x; export native)
       cv.width=Math.round(baseW*scale); cv.height=Math.round(baseH*scale);
       cv.style.width=cv.width+'px'; cv.style.height=cv.height+'px';
     }
