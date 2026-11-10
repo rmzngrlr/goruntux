@@ -2159,7 +2159,7 @@ HTML_TEMPLATE = """
           else { var _vp = document.querySelector('meta[name=viewport]'); if (_vp) { _vp.setAttribute('content', (_vp.getAttribute('content')||'').replace(/,?\s*viewport-fit=cover/i, '')); } }
         } catch(e){}
         if(!de.classList.contains('x-mobile')) return;
-        try{ if(localStorage.getItem('x_kompakt_duzen')!=='0') de.classList.add('x-komp'); }catch(e){}   // [KOMPAKT 10j] CSS gate
+        try{ var _ua=navigator.userAgent||''; if(/iPhone|iPad|iPod/i.test(_ua) || (/Macintosh/.test(_ua) && (navigator.maxTouchPoints||0)>1)) de.classList.add('x-ios'); }catch(e){}   // [ANDROID FİX 10l] iOS-özel CSS kapısı
         var mq=window.matchMedia('(orientation: portrait)');
         function yon(){ if(mq.matches){ de.classList.add('x-dik'); de.classList.remove('x-yatay'); } else { de.classList.add('x-yatay'); de.classList.remove('x-dik'); } }
         yon();
@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10k · gorsel-gizleme KALDIRILDI + emniyet payi %35 (vvTop=0 hedef, gorsel gorunur)';
+        var X_BUILD = '2026-11-10l · ANDROID FIX: odak-hizalama+teshis YALNIZ iOS (Android native); kutular kaldirildi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10077,17 +10077,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;s
    gorsel olarak yukari kayiyordu. Modal fixed; TOP'unu --vv-offset'e ayarla -> modal asagi kayip itisi NOTRLER, icerik
    (Baslik) gorsel SABIT kalir. Serit (#editor-serit) fixed+viewport-rel; 'top' transform DEGIL -> ribbon'a containing
    block yaratmaz, serit bozulmaz. (position:fixed kutu top=+vvOffset ile ekranda kaliyordu -> ayni kanitli mekanizma.) */
-html.x-mobile.x-dik.x-ed-yaz #editorModal{top:var(--vv-offset,0px);}
-/* [KOMPAKT 10j] Kullanıcı: "ilgili bölüm üstte sabit olsun". Bölüm üstü tepeye hizalanınca ALT alanlar (link) iOS'un
-   itme bölgesine düşmesin diye, düzenlenen KARTI (:has(:focus)) daralt: boş görsel-yapıştır satırını gizle + başlık/
-   satır boşluklarını kıs. Böylece kart kısalır, alt alan güvenli bölgede kalır, bölüm tepede sabit durur. Yalnız
-   x-komp (flag x_kompakt_duzen!='0') + x-ed-yaz (yazarken) + odaklı kart. iOS 17 :has destekli; desteklemezse kural
-   pasif kalır (zararsız; _hizalaAlan emniyet payı yine çalışır). */
-/* [10k] Görsel-yapıştır satırını GİZLEME kaldırıldı (kullanıcı: "görsel alanı neden gizlendi") -> görünür kalır.
-   Bölümü kısaltmak için yalnız BOŞLUKLARI kıs (içerik gizlenmez). */
-html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-h2{margin-top:2px;margin-bottom:2px;}
-html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-kume-satir{margin-bottom:3px;}
-html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-pz{min-height:0;margin:-3px 0;}
+/* [ANDROID FİX 10l] Modal-top counter YALNIZ iOS'ta (x-ios): --vv-offset Android'de rol oynamaz; .x-ios kapısıyla
+   Android'de top hiç ellenmez. (10j/10k kompakt CSS kaldırıldı — kullanıcı 10i'yi seçti, kompakt artık yok.) */
+html.x-mobile.x-dik.x-ios.x-ed-yaz #editorModal{top:var(--vv-offset,0px);}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
@@ -10102,6 +10094,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(XE.__mobSeritKuruldu) return; XE.__mobSeritKuruldu=true;
     var de=document.documentElement, m=document.getElementById('editorModal'); if(!m) return;
     function dikMobil(){ return de.classList.contains('x-mobile') && de.classList.contains('x-dik'); }
+    // [ANDROID FİX 10l] iOS tespiti: klavye-kaçınma viewport itişi (vvTop) YALNIZ iOS'ta olur -> odak-hizalama/scroll
+    // müdahaleleri yalnız burada çalışır. Android (ve diğerleri) native klavye yönetimiyle sorunsuz -> müdahale YOK.
+    function iOS(){ try{ var ua=navigator.userAgent||''; return /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints||0)>1); }catch(e){ return false; } }
     function alanMi(t){ return !!(t && (t.isContentEditable || t.tagName==='INPUT' || t.tagName==='TEXTAREA') && t.closest && t.closest('#editor-root')); }
     // [iOS ^v✓ ÇUBUĞU AZALT] iOS klavye-üstü form-asistan çubuğundaki < > okları SAYFADAKİ form alanları (select/number/
     // color) arasında gezinmek için çıkar. Bu alanları iOS gezinmesinden çıkar (tabindex=-1) -> oklar (belki çubuk) gider.
@@ -10141,30 +10136,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(hedef>maxNat){ root.style.paddingBottom=(base+Math.round(hedef-maxNat))+'px'; }   // tam hedef kadar -> max-scroll=hedef, void yok
       pb.scrollTop=hedef;
     }catch(e){} }
-    // [KOMPAKT HİZALA 10j] Hedef: BÖLÜM üstü tepede sabit (kullanıcı: "ilgili bölüm üstte sabit olsun") + iOS İTMESİN.
-    // iOS itişi, odaklanan alan "klavye bölgesinde" sayılınca olur (vvTop). Çözüm: (1) bölüm üstünü bara hizala; (2) bu
-    // hizalamadan SONRA odaklı alanın DİBİ güvenli bandın (üst ~%55) ALTINA düşüyorsa YALNIZ o kadar fazladan yukarı
-    // kaydır (emniyet payı) -> alan güvenli bölgede kalır, iOS itmez. Kısa bölümde fazla=0 -> bölüm tam tepede. UZUN
-    // bölümde x-ed-yaz kompakt CSS zaten boş görsel satırını gizleyip daralttığından çoğu zaman fazla=0. counter KAPALI.
-    // ANLIK (native focus-scroll ile çekişmesin). Flag x_kompakt_duzen='0' -> kapalı (varsayılan AÇIK).
+    // [ODAK HİZALA 10i — YALNIZ iOS] iOS odakta visual-viewport'u itiyordu (vvTop); odaklanan ALANI üst bara hizalayınca
+    // alan iOS'un itme eşiğinin üstüne çıkar -> iOS İTMEZ (vvTop=0) -> ne kayma ne titreme (kullanıcı onayladı). Dinamik
+    // alt-dolgu = tam-hedef (void yok). ANLIK (native focus-scroll ile çekişmesin). Android'de ÇALIŞMAZ (iOS() kapısı;
+    // orada native yönetim sorunsuz, müdahale gerekmez). counter KAPALI.
     function _hizalaAlan(el){ try{
-      if(!el || !dikMobil()) return;
-      if(localStorage.getItem('x_kompakt_duzen')==='0') return;
+      if(!el || !dikMobil() || !iOS()) return;
       if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;
       var pb=_edPB(), root=document.getElementById('editor-root'); if(!pb||!root) return;
-      var card=_edKart(el); if(!card) return;
       var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0;
       var base=Math.round(kb+24);
       root.style.paddingBottom=base+'px';
-      var barT=_barAlti();
-      var shift=Math.round(card.getBoundingClientRect().top-(barT+8));   // bölüm üstünü bara getirecek kaydırma (göreli)
-      // hizalama SONRASI odak alanının tahmini konumu (şimdiki rect - shift):
-      var fr=el.getBoundingClientRect();
-      var fBotAfter=(fr.top - shift) + fr.height;
-      var band=Math.max(140, Math.round(_bandAlt()-barT));               // görünür düzenleme yüksekliği
-      var safeBot=barT + Math.round(band*0.35);                          // [10k] %55->%35: alan DİBİ üst-%35'in altına inmesin (vvTop=60->0 için daha yukarı)
-      var extra=Math.max(0, Math.round(fBotAfter - safeBot));
-      var D=pb.scrollTop + shift + extra; if(D<0) D=0;
+      var delta=Math.round(el.getBoundingClientRect().top-(_barAlti()+8));
+      var D=pb.scrollTop+delta; if(D<0) D=0;
       var maxNat=pb.scrollHeight-pb.clientHeight;
       if(D>maxNat){ root.style.paddingBottom=(base+Math.round(D-maxNat))+'px'; }
       pb.scrollTop=D;
@@ -10201,74 +10185,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       m.addEventListener('touchstart', function(e){ try{ if(dikMobil() && alanMi(e.target)){ var pb=_edPB(); XE.__preOdakScroll = pb ? pb.scrollTop : null; XE.__preOdakKart = _edKart(e.target); } }catch(_){} }, true);
       m.addEventListener('pointerdown', function(e){ try{ if(dikMobil() && alanMi(e.target)){ var pb=_edPB(); XE.__preOdakScroll = pb ? pb.scrollTop : null; XE.__preOdakKart = _edKart(e.target); } }catch(_){} }, true);
     }catch(_){}
-    // [GEÇİCİ CANLI ÖLÇÜM 10b] Issue 1 (odakta yukari kayma) + Issue 3 (klavye kapali fazla scroll) GERCEK nedenini
-    // cihazda gormek icin: editor acikken sol-ust kutuda CANLI: scroll=preview-body.scrollTop, vvTop=vv.offsetTop,
-    // padB=#editor-root alt-dolgu, fazla=scrollHeight-clientHeight. (Kutu goruyorsan YENI kod canli demektir.) Gercek
-    // fix uygulanip BU BLOK silinir.
-    try{ setInterval(function(){ try{
-      if(!dikMobil()){ var b0=document.getElementById('x-cm'); if(b0) b0.style.display='none'; return; }
-      if(!m.classList.contains('active')){ var b1=document.getElementById('x-cm'); if(b1) b1.style.display='none'; return; }
-      var pb=_edPB(), root=document.getElementById('editor-root'); if(!pb){ return; }
-      var vv=window.visualViewport;
-      var padB=root?Math.round(parseFloat(getComputedStyle(root).paddingBottom)||0):0;
-      var b=document.getElementById('x-cm'); if(!b){ b=document.createElement('div'); b.id='x-cm'; b.style.cssText='position:fixed;top:118px;left:8px;z-index:2147483647;background:rgba(0,0,0,.92);color:#6f8;font:12px/1.4 ui-monospace,monospace;padding:6px 9px;border:2px solid #6f8;border-radius:6px;pointer-events:none;white-space:nowrap;'; document.body.appendChild(b); }
-      b.style.display='block';
-      b.style.top=(118+(vv?Math.round(vv.offsetTop):0))+'px';   // vvTop'u takip et -> iOS sayfayı itse de kutu EKRANDA kalır
-      b.textContent='scroll='+Math.round(pb.scrollTop)+' vvTop='+(vv?Math.round(vv.offsetTop):'-')+' padB='+padB+' fazla='+Math.round(pb.scrollHeight-pb.clientHeight);
-    }catch(_){} }, 150); }catch(_){}
-    // [GEÇİCİ TEŞHİS 09d] Alan geçişinde NE oynuyor? ~800ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ) küçük kutuda göster:
-    // scroll=içerik kaydırma, vv=--vv-bottom, serit=şeridin görünür konumu, kart=ilk kartın konumu. En büyük Δ = titreme
-    // kaynağı. Kullanıcı Δ'ları söyleyince gerçek fix uygulanıp BU BLOK SİLİNİR.
-    // [TEŞHİS 10g] Alan geçişinde NE oynuyor? focusin'de çağrılır; ~1500ms rAF ile 4 ölçünün min-max ARALIĞINI (Δ)
-    // sarı kutuda gösterir: vvTop=iOS viewport itişi, scroll=container kaydırma (_bolumTut vs iOS çekişmesi),
-    // modalTop=modalın top'u (--vv-offset jitter), kart=ilk kartın görünür konumu (kullanıcının GÖRDÜĞÜ net oynama).
-    // En büyük Δ (kart ile korelasyonlu olan) = titreme kaynağı. Kullanıcı 4 sayıyı söyleyince KESİN fix uygulanır.
-    function _titreDebug(){ try{
-      var pb=_edPB(); if(!pb) return;
-      var modal=document.getElementById('editorModal'), kart=document.querySelector('#editor-root .ed-card');
-      var b=document.getElementById('x-td'); if(!b){ b=document.createElement('div'); b.id='x-td'; b.style.cssText='position:fixed;top:150px;left:8px;z-index:2147483647;background:rgba(0,0,0,.94);color:#fd6;font:13px/1.5 ui-monospace,monospace;padding:7px 10px;border:2px solid #fd6;border-radius:7px;pointer-events:none;max-width:94vw;'; (document.body||de).appendChild(b); }
-      var vv0=window.visualViewport; b.style.top=(150+(vv0?Math.round(vv0.offsetTop):0))+'px';
-      cancelAnimationFrame(XE.__tdRaf||0);
-      var mn={t:1e9,s:1e9,m:1e9,k:1e9}, mx={t:-1e9,s:-1e9,m:-1e9,k:-1e9}, t0=Date.now();
-      function örnek(){
-        var vv=window.visualViewport;
-        var vt=vv?vv.offsetTop:0, s=pb.scrollTop, mt=modal?(parseFloat(getComputedStyle(modal).top)||0):0, k=kart?kart.getBoundingClientRect().top:0;
-        if(vt<mn.t)mn.t=vt; if(vt>mx.t)mx.t=vt; if(s<mn.s)mn.s=s; if(s>mx.s)mx.s=s;
-        if(mt<mn.m)mn.m=mt; if(mt>mx.m)mx.m=mt; if(k<mn.k)mn.k=k; if(k>mx.k)mx.k=k;
-        b.style.top=(150+(vv?Math.round(vv.offsetTop):0))+'px';
-        b.textContent='Δ vvTop='+Math.round(mx.t-mn.t)+' scroll='+Math.round(mx.s-mn.s)+' modalTop='+Math.round(mx.m-mn.m)+' kart='+Math.round(mx.k-mn.k);
-        if(Date.now()-t0<1500){ XE.__tdRaf=requestAnimationFrame(örnek); }
-      }
-      XE.__tdRaf=requestAnimationFrame(örnek);
-    }catch(e){} }
+    // [TEŞHİS KUTULARI KALDIRILDI 10l] #x-cm (yeşil) + #x-td (sarı) geçici ölçüm kutuları ve _titreDebug kaldırıldı.
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
-      // [09c GERİ ALINDI] _odakKilit (overflow) + __vvDondur (vv dondur) titremeyi ÇÖZMEDİ, üstelik vv-dondur ŞERİDİ
-      // yanlış konumda dondurup klavyeden KOPARDI -> çağrılar kaldırıldı. (Ölçüm kutusuyla gerçek kaynağı bulacağız.)
-      // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
-      var _kompakt=true; try{ _kompakt=(localStorage.getItem('x_kompakt_duzen')!=='0'); }catch(_){}
-      var _yeni=!!(_card && _card!==XE.__odakKart);
-      // [KOMPAKT 10i] Varsayılan yol: odaklanan ALANI en üste hizala -> iOS itmez (vvTop=0 hedef) -> kayma+titreme yok.
-      // counter KAPALI kalır. Klavye/layout oturunca birkaç kez tekrar hizala. (Eski bölüm-tut/counter yolu flag ile.)
-      // [BÖLÜM TUT 09n] (eski) YENİ bölüm -> hizala+tut. AYNI bölüm -> odak-öncesi scroll'a tut. (iPhone-özel.)
-      if(_kompakt){
+      // [ANDROID FİX 10l] iOS'un klavye-kaçınma viewport itişine (vvTop) karşı yazılan odak-hizalama YALNIZ iOS'ta çalışır.
+      // Android'de bu sorun HİÇ yok (native klavye yönetimi sorunsuz) -> müdahale Android'i bozuyordu -> Android'de HİÇBİR
+      // scroll-müdahalesi YOK (native). iOS'ta: odaklanan ALANI üst bara hizala (10i: vvTop=0, kayma/titreme yok).
+      if(iOS()){
         XE.__odakKart=_card; XE.__odakKartH=_card?_card.offsetHeight:0;
         try{ _hizalaAlan(_odakEl); }catch(_){}
         try{ [140,340,620].forEach(function(ms){ setTimeout(function(){ try{ if(document.activeElement===_odakEl) _hizalaAlan(_odakEl); }catch(_){} }, ms); }); }catch(_){}
       }
-      else if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} try{ _bolumTut(); }catch(_){} }
-      else { try{ _bolumTut((XE.__preOdakKart===_card && XE.__preOdakScroll!=null) ? XE.__preOdakScroll : null); }catch(_){} }
-      try{ _titreDebug(); }catch(_){}   // [TEŞHİS 10g] alan geçişinde Δ ölç
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
-      // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız ESKİ yol + yeni bölüm + hâlâ odaktaysa)
-      if(!_kompakt && _yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
       if(_iosBarOff) _barSweep();
     } });
     // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
     var _edInpT=null;
-    m.addEventListener('input', function(e){ if(!dikMobil() || !alanMi(e.target)) return; var el=e.target; clearTimeout(_edInpT); _edInpT=setTimeout(function(){ _odakKart(el,'input'); }, 60); }, true);
+    m.addEventListener('input', function(e){ if(!dikMobil() || !iOS() || !alanMi(e.target)) return; var el=e.target; clearTimeout(_edInpT); _edInpT=setTimeout(function(){ _odakKart(el,'input'); }, 60); }, true);
     // GİZLEME artık KLAVYE durumuna bağlı (Faz 0 visualViewport kb handler: klavye kapanınca + alan odaklı değilse
     // x-ed-yaz kalkar). Böylece metin/link/başlık ARASI geçişte klavye açık kaldığından şerit SABİT -> TİTREMEZ.
     // visualViewport YOKSA focusout-yedeği (uzun gecikme, alanlar arası geçişi bozmasın).
