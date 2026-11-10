@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10j · KOMPAKT: BOLUM ustte sabit (bolum-hizala + kart daralt + alan emniyet payi)';
+        var X_BUILD = '2026-11-10k · gorsel-gizleme KALDIRILDI + emniyet payi %35 (vvTop=0 hedef, gorsel gorunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10083,7 +10083,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal{top:var(--vv-offset,0px);}
    satır boşluklarını kıs. Böylece kart kısalır, alt alan güvenli bölgede kalır, bölüm tepede sabit durur. Yalnız
    x-komp (flag x_kompakt_duzen!='0') + x-ed-yaz (yazarken) + odaklı kart. iOS 17 :has destekli; desteklemezse kural
    pasif kalır (zararsız; _hizalaAlan emniyet payı yine çalışır). */
-html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-img-pano{display:none;}
+/* [10k] Görsel-yapıştır satırını GİZLEME kaldırıldı (kullanıcı: "görsel alanı neden gizlendi") -> görünür kalır.
+   Bölümü kısaltmak için yalnız BOŞLUKLARI kıs (içerik gizlenmez). */
 html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-h2{margin-top:2px;margin-bottom:2px;}
 html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-kume-satir{margin-bottom:3px;}
 html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-pz{min-height:0;margin:-3px 0;}
@@ -10161,7 +10162,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var fr=el.getBoundingClientRect();
       var fBotAfter=(fr.top - shift) + fr.height;
       var band=Math.max(140, Math.round(_bandAlt()-barT));               // görünür düzenleme yüksekliği
-      var safeBot=barT + Math.round(band*0.55);                          // alan DİBİ bunun altına inmesin (güvenli üst-orta)
+      var safeBot=barT + Math.round(band*0.35);                          // [10k] %55->%35: alan DİBİ üst-%35'in altına inmesin (vvTop=60->0 için daha yukarı)
       var extra=Math.max(0, Math.round(fBotAfter - safeBot));
       var D=pb.scrollTop + shift + extra; if(D<0) D=0;
       var maxNat=pb.scrollHeight-pb.clientHeight;
