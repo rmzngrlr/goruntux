@@ -3038,7 +3038,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11l · NOT KAGIDI: cizim ALTINA metin akar (cizim varsa metin ust-boslugu cizimin altina ayrilir, uzerine binmez) + ana panel galeride not karti KOYU temada koyu (rapor karti gibi) | 11k genislige-sigar+A4-sinir-kaldir+galeri-mod | 11j yazi-olceklenir';
+        var X_BUILD = '2026-11-11m · NOT KAGIDI: yeni not OTO-ADLI (tarih-saat, adsiz kalmaz) + URL /not/<slug> (rapordan ayri; reload/dogrudan-URL notu acar; bos not kaydedilmez) | 11l cizim-altina-metin+not-karti-koyu | 11k genislige-sigar+galeri-mod';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5604,6 +5604,13 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         // slug yoksa (/) Faz 2 uzlaştırma + URL'i aktif rapora göre düzelt. Slug var ama rapor yoksa uyar + uzlaştır.
         async function xRaporRouterVeyaBagla() {
             try {
+                // [NOT URL] /not/<slug> ise: raporu arkada normal bağla (URL'i /not'ta tutmak için en son notu aç).
+                var _notYolu = (window.location.pathname || '').match(/^\/not\/(.+)$/);
+                if (_notYolu && _notYolu[1]) {
+                    try { await xAktifRaporYenidenBagla(); } catch (e) {}
+                    try { if (window.XNot && window.XNot.acSlug) { await window.XNot.acSlug(decodeURIComponent(_notYolu[1])); } } catch (e) {}
+                    return;
+                }
                 var slug = xUrlSlugOku();
                 if (slug) {
                     var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
@@ -5623,6 +5630,8 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         // Faz 3: popstate (geri/ileri). Yeni URL slug'ı mevcut aktif slug'dan farklıysa o raporu aç.
         async function xPopstateYonet(slug) {
             try {
+                var _np = (window.location.pathname || '').match(/^\/not\/(.+)$/);
+                if (_np && _np[1]) { try { if (window.XNot && window.XNot.acSlug) await window.XNot.acSlug(decodeURIComponent(_np[1])); } catch (e) {} return; }
                 if (slug) {
                     if (slug === (window.__xActiveReportSlug || '')) return;   // zaten o rapordayız
                     var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
@@ -9378,7 +9387,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5r · 2026-11-11 not-kagidi cizim-altina-metin + ana-panel-not-karti-koyu-tema";
+  XE.VERSION = "5s · 2026-11-11 not-kagidi oto-ad + URL /not/<slug> (reload-acilis, bos-not-kaydetme)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12756,13 +12765,32 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var st=document.createElement('style'); st.id='not-stil'; st.textContent=css; (document.head||document.documentElement).appendChild(st);
   }
 
+  // [URL /not/<slug>] Not açıkken adres çubuğu /not/<slug> → raporlardan (/<slug>) AYIRT edilir; reload'da acSlug geri açar.
+  function _notSlug(ad, id){ var s=''; try{ s=(window.XSavedReports&&window.XSavedReports.slugify)?window.XSavedReports.slugify(ad||''):String(ad||'').toLowerCase().trim().replace(/[^a-z0-9ğüşıöçâî]+/gi,'-').replace(/^-+|-+$/g,''); }catch(_){} return s || ('n-'+String(id||'').replace(/[^a-z0-9]/gi,'').slice(0,8)); }
+  var _notOncekiPath=null;
+  function _notUrlYaz(replace){ try{ if(!_doc) return; var slug=_notSlug(_doc.ad,_doc.id); var hedef='/not/'+encodeURIComponent(slug); if(window.location.pathname===hedef) return; var tam=hedef+(window.location.search||''); var st={xnot:slug}; if(replace) history.replaceState(st,'',tam); else history.pushState(st,'',tam); }catch(_){} }
+  function _notUrlGeri(){ try{ var p=_notOncekiPath||'/'; history.replaceState(null,'',p); }catch(_){} _notOncekiPath=null; }
+
   window.yeniNotKagidi=function(){ if(!notAcikMi()) return; XNot.ac(null); };
+  // [URL ROUTER] Sayfa /not/<slug> ile açıldıysa o notu bul-aç (panel router'ı çağırır).
+  XNot.acSlug=function(slug){
+    return (window.XNotlar?window.XNotlar.whenReady():Promise.resolve()).then(function(){ return window.XNotlar?window.XNotlar.list():[]; }).then(function(list){
+      list=list||[]; var hedef=String(slug||''), bulunan=null;
+      for(var i=0;i<list.length;i++){ var n=list[i]; if(_notSlug(n.ad,n.id)===hedef || String(n.id)===hedef){ bulunan=n; break; } }
+      if(bulunan){ try{ XNot.ac(bulunan); }catch(_){} return true; }
+      return false;
+    }).catch(function(){ return false; });
+  };
 
   XNot.ac=function(doc){
     if(_ov) return;
     _stilEnjekte();
     _doc = doc || { id:_uuid(), ad:'', cizgili:false, sayfalar:[{metinHtml:''}], updatedAt:0, _yeni:true };
     if(!_doc.sayfalar || !_doc.sayfalar.length) _doc.sayfalar=[{metinHtml:''}];
+    // [OTO-AD] Yeni not rapor gibi oto-adlandırılır (adsız kalmasın) — tarih-saat damgası.
+    if(_doc._yeni && !(_doc.ad||'').trim()){ try{ _doc.ad='Not '+(window.xTarihSaatDamgasi?window.xTarihSaatDamgasi():new Date().toLocaleString()); }catch(_){ _doc.ad='Not'; } }
+    try{ _notOncekiPath=(/^\/not\//.test(window.location.pathname))?'/':(window.location.pathname+window.location.search); }catch(_){ _notOncekiPath='/'; }
+    _notUrlYaz(false);   // adres çubuğu /not/<slug>
     var fontlar=['Arial','Times New Roman','Georgia','Courier New','Verdana','Tahoma','Trebuchet MS'];
     var fontOpt=fontlar.map(function(f){return '<option value="'+f+'">'+f+'</option>';}).join('');
     var boyutlar=[10,12,14,16,18,20,24,28,32,40,48,64];
@@ -13082,6 +13110,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       _doc.updatedAt=Date.now(); delete _doc._yeni;
       var kopya=JSON.parse(JSON.stringify(_doc));
       window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); }).then(_galTazelePlanla);
+      _notUrlYaz(true);   // ad değişmiş olabilir → slug'ı güncelle (replace)
     }catch(_){}
   }
   function _planlaKaydet(){ try{ if(_otoTimer) clearTimeout(_otoTimer); _otoTimer=setTimeout(_otoKaydetSimdi, 600); }catch(_){} }
@@ -13179,9 +13208,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
   // ---- kapat / kaydet ----
   function _bosMu(){
-    var adBos=!((_doc.ad||'').trim());
+    // [OTO-AD sonrası] Boşluk YALNIZ İÇERİĞE göre (ad'a göre DEĞİL): oto-ad her notta dolu → ad'a bakılırsa içeriksiz yeni not bile kaydedilir (çöp).
     var hepBos=(_doc.sayfalar||[]).every(function(sp){ if((sp.cizimObjeleri||[]).length) return false; var h=(sp.metinHtml||''); if(/<img/i.test(h)) return false; var t=h.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/ /g,' ').trim(); return !t; });
-    return adBos && hepBos && !_doc.cizgili;
+    return hepBos && !_doc.cizgili;
   }
   function _kapat(kaydet){
     if(!_ov) return;
@@ -13200,6 +13229,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }catch(e){}
     }
     try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } if(_galTazeleTimer){ clearTimeout(_galTazeleTimer); _galTazeleTimer=null; } }catch(_){}
+    _notUrlGeri();   // [URL] not kapandı → önceki adrese dön
     try{ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } }); }catch(_){}
     document.removeEventListener('keydown', _tusKapat, true);
     document.removeEventListener('click', _ayarDisari, true);
@@ -13267,6 +13297,13 @@ def index():
 # Nokta içeren yollar (favicon.ico vb. asset istekleri) SPA'ya yönlenmez -> 404.
 @app.route('/<slug>', methods=['GET'])
 def spa_slug(slug):
+    if '.' in slug:
+        return ('', 404)
+    return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
+
+# [NOT URL] /not/<slug> -> SPA'yı sun; istemci (XNot.acSlug) o notu açar. Raporun /<slug>'undan AYRI yol.
+@app.route('/not/<slug>', methods=['GET'])
+def spa_not_slug(slug):
     if '.' in slug:
         return ('', 404)
     return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
