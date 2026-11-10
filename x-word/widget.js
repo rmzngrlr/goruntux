@@ -2555,7 +2555,7 @@
     (function initDockDrag() {
         let dragging = false, moved = false, startX = 0, startY = 0, startTop = 0;
         function goToPanel() {
-            chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+            chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
                 chrome.runtime.sendMessage({ action: "goToPanel", origin: res.server_origin });
             });
         }
@@ -2620,7 +2620,7 @@
         if (interval) clearInterval(interval);
         // Tarama sonlandi: dock'taki "taranıyor" isigini kapat (savunmaci).
         try { const _w = document.getElementById('x-downloader-widget'); if (_w) _w.classList.remove('scanning'); } catch (e) {}
-        chrome.storage.local.get({ server_origin: "http://localhost:3011", client_id: "" }, (res) => {
+        chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011", client_id: "" }, (res) => {
             const origin = serverOrigin || res.server_origin;
             const clientId = res.client_id || "";
             
@@ -2694,7 +2694,7 @@
             buton.disabled = false;
             
             buton.onclick = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
                     window.open(`${res.server_origin}/user/login`, "_blank");
                 });
             };
@@ -2726,7 +2726,7 @@
             if (oldCb) oldCb.remove();
             
             chrome.storage.local.get({
-                server_origin: "http://localhost:3011"
+                server_origin: "http://188.166.126.244:3011"
             }, (res) => {
                 // v3.79: sunucu adresi widget'ta GOSTERILMEZ (kullanici istegi). res.server_origin
                 // asagidaki buton onclick'inde hala kullaniliyor, o yuzden storage okumasi kaliyor.
@@ -3172,7 +3172,7 @@
             printLog("renderVersionLockedWidget çağrıldı...");
 
             const acIndir = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
                     // Guncel eklenti .zip'i (panelin sundugu route). ESKIDEN /x-rapor-arti idi ->
                     // sunucuda boyle bir route YOK (404). Panelin indir dugmesiyle ayni uc.
                     window.open(`${res.server_origin}/api/extension/download_zip`, "_blank");
@@ -3182,7 +3182,7 @@
             // KILAVUZU modalini acar (indirme + 'ayni klasore ac + yenile + X F5' adimlari o modalda). Eskiden dogrudan
             // zip indiriyordu (nasil guncellenecegini anlatmadan).
             const acGuncelle = () => {
-                chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
+                chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
                     window.open(`${res.server_origin}/#eklenti-guncelle`, "_blank");
                 });
             };
@@ -3326,7 +3326,7 @@
                         } else {
                             swSendReliable({
                                 action: "submitWordResult",
-                                origin: gorev.server_origin || "http://localhost:3011",
+                                origin: gorev.server_origin || "http://188.166.126.244:3011",
                                 job_id: gorev.job_id, results: [], final: true
                             }, () => {
                                 chrome.storage.local.remove(storageKey, () => {
@@ -3488,14 +3488,14 @@
                     
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: false
                     }, (response) => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             current: progress,
                             total: totalCount
@@ -3512,14 +3512,14 @@
                     
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: true
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             current: progress,
                             total: progress
@@ -3924,14 +3924,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -3984,7 +3984,7 @@
                         // Kuyruk bitti -> taramayi DUZGUN kapat (reload dongusu YOK).
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             results: [],
                             final: true
@@ -4329,14 +4329,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -4383,7 +4383,7 @@
                     } else {
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id, results: [], final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
@@ -4690,14 +4690,14 @@
                     durumText.innerHTML = `✅ <b>Gönderi alındı</b><br><span style="font-size:11px; color:var(--w-text-muted);">${xPlatformAdi()} · ${gorev.combinedData.length}/${toplam}</span>`;
                     swSendReliable({
                         action: "submitWordResult",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         results: [xStripForServer(resItem, gorev)],
                         final: kaldi === 0
                     }, () => {
                         swSendReliable({
                             action: "updateWordProgress",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             current: gorev.combinedData.length,
                             total: toplam
@@ -4739,7 +4739,7 @@
                     } else {
                         swSendReliable({
                             action: "submitWordResult",
-                            origin: gorev.server_origin || "http://localhost:3011",
+                            origin: gorev.server_origin || "http://188.166.126.244:3011",
                             job_id: gorev.job_id,
                             results: [],
                             final: true
@@ -5196,7 +5196,7 @@
 
                 swSendReliable({
                     action: "submitWordResult",
-                    origin: gorev.server_origin || "http://localhost:3011",
+                    origin: gorev.server_origin || "http://188.166.126.244:3011",
                     job_id: gorev.job_id,
                     results: [xStripForServer(resItem, gorev)],
                     final: false
@@ -5209,7 +5209,7 @@
                     }
                     swSendReliable({
                         action: "updateWordProgress",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         current: progress,
                         total: totalCount
@@ -5234,14 +5234,14 @@
                 
                 swSendReliable({
                     action: "submitWordResult",
-                    origin: gorev.server_origin || "http://localhost:3011",
+                    origin: gorev.server_origin || "http://188.166.126.244:3011",
                     job_id: gorev.job_id,
                     results: [xStripForServer(resItem, gorev)],
                     final: true
                 }, () => {
                     swSendReliable({
                         action: "updateWordProgress",
-                        origin: gorev.server_origin || "http://localhost:3011",
+                        origin: gorev.server_origin || "http://188.166.126.244:3011",
                         job_id: gorev.job_id,
                         current: progress,
                         total: progress

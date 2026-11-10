@@ -34,6 +34,20 @@ try {
   });
 } catch (e) {}
 
+// 2026-11-10: SUNUCU IP DEGISTI (-> 188.166.126.244:3011). Mevcut istemcilerde chrome.storage'da
+// ESKI IP saklı -> "Panele git" (panel acik degilken) eski/olu adreste sekme aciyor -> panel acilmiyor.
+// server_origin yalniz registerPanel (gercek panel yuklenince) guncellenir ama eski IP'ye ulasilamadigi
+// icin kendini duzeltemez (tavuk-yumurta). Bu migration SW her acildiginda BIR KEZ (bayrak ile) stale
+// server_origin'i yeni IP'ye tasir. Sonra panel baska adreste acilirsa registerPanel yine gunceller.
+// NOT: IP tekrar degisirse yeni bayrakli bir migration gerekir; KALICI cozum sabit DNS adı.
+try {
+  chrome.storage.local.get(['ip_mig_188_166_126_244'], (r) => {
+    if (!r || !r.ip_mig_188_166_126_244) {
+      chrome.storage.local.set({ server_origin: 'http://188.166.126.244:3011', ip_mig_188_166_126_244: true });
+    }
+  });
+} catch (e) {}
+
 let pollIntervalId = null;
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -60,7 +74,7 @@ function resetServerJobReliable(rawOrigin, attempt) {
   attempt = attempt || 1;
   // v3.78: TEK PORT. Eskiden :3011 -> :3012 esleniyordu (API ayri porttaydi). Artik API de
   // panelin portunda (server_origin) -> donusum KALDIRILDI, origin oldugu gibi kullanilir.
-  let origin = rawOrigin || "http://localhost:3011";
+  let origin = rawOrigin || "http://188.166.126.244:3011";
   const url = `${origin}/api/auto/reset`; // client_id'yi sarmalayici ekler
   fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
     .then(r => r.json())
@@ -318,8 +332,8 @@ function isValidOrigin(origin) {
 
 function logToServer(message) {
   try {
-    chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
-      const origin = res.server_origin || "http://localhost:3011";
+    chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
+      const origin = res.server_origin || "http://188.166.126.244:3011";
       if (isValidOrigin(origin)) {
         const data = JSON.stringify({ message: message });
         fetch(`${origin}/api/extension/log`, {
@@ -402,7 +416,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             taramaDurduBildir(null, "Facebook doğrulama ekranı çıktı — tarama durduruldu. "
                                   + "facebook.com'da doğrulamayı tamamlayıp taramayı yeniden başlatın.");
             chrome.storage.local.remove(storageKey, () => {
-              chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (cfg) => {
+              chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (cfg) => {
                 resetServerJobReliable(cfg.server_origin);
               });
             });
@@ -634,7 +648,7 @@ function flushPendingLocalImages(origin) {
 // Paneli ARKA PLANDA ac (active:false -> kullanici X'te kalir). Zaten bir panel sekmesi
 // (3011) aciksa/yukleniyorsa YENISINI ACMA (birden cok tiklamada coklu sekme olmasin).
 function openPanelBackground(origin) {
-  let panelUrl = (origin || "http://localhost:3011");
+  let panelUrl = (origin || "http://188.166.126.244:3011");
   let panelHost = ""; try { panelHost = new URL(panelUrl).hostname; } catch (e) {}
   chrome.tabs.query({}, (tabs) => {
     const varOlan = tabs.find(t => {
@@ -730,7 +744,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.runtime.onInstalled.addListener(() => {
   temizleTumGorevler();
   chrome.storage.local.get(['server_origin'], (res) => {
-    const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3011";
+    const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://188.166.126.244:3011";
     chrome.storage.local.set({
       browser_role: "word",
       server_origin: origin
@@ -747,7 +761,7 @@ chrome.storage.session.get(["initialized"], (sessionRes) => {
     temizleTumGorevler();
     // SILINDI (v3.62): closeRestoredTabs() cagrisi — asagidaki nota bak.
     chrome.storage.local.get(['server_origin'], (res) => {
-      const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://localhost:3011";
+      const origin = (res.server_origin && res.server_origin.startsWith('http')) ? res.server_origin : "http://188.166.126.244:3011";
       chrome.storage.local.set({
         browser_role: "word",
         server_origin: origin
@@ -836,9 +850,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Çözüm: return true ile kanalı açık tut → worker, işi bitirene kadar askıya ALINMAZ;
     // sendResponse'u async iş bitince çağır. Ayrıca yedek olarak yoklama döngüsünü yeniden
     // kur (worker askıya alınınca setInterval ölüyor) — doğrudan yol kaçarsa görev yakalanır.
-    chrome.storage.local.get({ server_origin: "http://localhost:3011" }, (res) => {
-      let raw = res.server_origin || "http://localhost:3011";
-      let origin = (raw.startsWith("http://") || raw.startsWith("https://")) ? raw : "http://localhost:3011";
+    chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011" }, (res) => {
+      let raw = res.server_origin || "http://188.166.126.244:3011";
+      let origin = (raw.startsWith("http://") || raw.startsWith("https://")) ? raw : "http://188.166.126.244:3011";
       try {
         if (typeof processServerJob === "function") processServerJob(job, origin);
       } catch (e) {
@@ -988,7 +1002,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "submitWordResult") {
-    let origin = message.origin || "http://localhost:3011";
+    let origin = message.origin || "http://188.166.126.244:3011";
     let url = `${origin}/api/extension/submit_word_result`;
     fetch(url, {
       method: 'POST',
@@ -1013,7 +1027,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "resetServerJob") {
-    let origin = message.origin || "http://localhost:3011";
+    let origin = message.origin || "http://188.166.126.244:3011";
     let clientId = message.client_id || "";
     let resetUrl = `${origin}/api/auto/reset`;
     if (clientId) {
@@ -1035,7 +1049,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "updateWordProgress") {
-    let origin = message.origin || "http://localhost:3011";
+    let origin = message.origin || "http://188.166.126.244:3011";
     let url = `${origin}/api/extension/update_progress`;
     fetch(url, {
       method: 'POST',
@@ -1061,7 +1075,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // zaten varsa sunucu "duplicate" doner. (Eski generateSingleWord + generate_single yolu
   // ZATEN 410 ile emekliydi; kullanici karariyla buton havuza-ekleme oldu.)
   if (message.action === "addToPool") {
-    let origin = message.origin || "http://localhost:3011";
+    let origin = message.origin || "http://188.166.126.244:3011";
     let url = `${origin}/api/manual/add`;
     // v3.75: YEREL MOD. Sunucuya yalnizca META gider (baslik+link+group_override, GORSELSIZ);
     // gorsel tarayicidaki IndexedDB'ye (panel sayfasi) birakilir -> tikaniklik geri gelmez,
@@ -1098,7 +1112,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // v3.74'te kaldirilan focusOrOpenPanel'in aksine bu EXPLICIT bir kullanici eylemi -> panele
   // GECMEK isteniyor (odaklanir/acilir). MEVCUT X sekmesini KAPATMAZ (gezinme kaybolmasin).
   if (message.action === "goToPanel") {
-    const targetOrigin = message.origin || "http://localhost:3011";
+    const targetOrigin = message.origin || "http://188.166.126.244:3011";
     let targetHost = "";
     try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
     chrome.tabs.query({}, (tabs) => {
@@ -1239,7 +1253,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "completeJobAndFocusPanel") {
-    const targetOrigin = message.origin || "http://localhost:3011";
+    const targetOrigin = message.origin || "http://188.166.126.244:3011";
     logToServer(`[completeJobAndFocusPanel] Otomasyon tamamlandı. Panel aranıyor: ${targetOrigin}`);
     
     let targetHost = "";
@@ -1310,7 +1324,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // FAIL-OPEN: sunucuya ulasilamaz/latest bossa latestVersion="" doner -> widget KILITLEMEZ.
   if (message.action === "getVersionStatus") {
     const localVersion = chrome.runtime.getManifest().version;
-    const origin = message.origin || "http://localhost:3011";
+    const origin = message.origin || "http://188.166.126.244:3011";
     const zamanAsimi = new Promise((resolve) => setTimeout(() => resolve(""), 3000));
     const guncelGetir = fetch(`${origin}/api/status`)
       .then((r) => r.json())
@@ -1365,8 +1379,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
-  chrome.storage.local.get({ server_origin: "http://localhost:3011", panel_tab_id: null }, (res) => {
-    let panelUrl = (res.server_origin || "http://localhost:3011") + '/';
+  chrome.storage.local.get({ server_origin: "http://188.166.126.244:3011", panel_tab_id: null }, (res) => {
+    let panelUrl = (res.server_origin || "http://188.166.126.244:3011") + '/';
     const focusTab = (t) => {
       chrome.tabs.update(t.id, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
       if (t.windowId != null) chrome.windows.update(t.windowId, { focused: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
@@ -1396,10 +1410,10 @@ function checkServerJobs() {
   try {
     chrome.storage.local.get(null, (allStorage) => {
       try {
-        let rawOrigin = allStorage.server_origin || "http://localhost:3011";
+        let rawOrigin = allStorage.server_origin || "http://188.166.126.244:3011";
         let origin = (rawOrigin.startsWith('http://') || rawOrigin.startsWith('https://'))
           ? rawOrigin
-          : "http://localhost:3011";
+          : "http://188.166.126.244:3011";
         let role = allStorage.browser_role || "word";
 
         let activeJobFound = false;
