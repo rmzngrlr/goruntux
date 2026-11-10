@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11g · NOT KAGIDI ust-bar rapor editoruyle BIREBIR (20px 24px / h2 20px) + iki serit ayni boyut + cizim seridi gorsel-duzenleyici temasi (34px kare ikon) | 11f ekrana-sigar+Delete-sil+oto-kaydet | 11e Word-A4-ortali | 11d gzip | 11c yerel-lib';
+        var X_BUILD = '2026-11-11h · NOT KAGIDI: kutu-secim GERCEK cizgiye-dokunma (kalem bbox degil) + mini-kutu secmez + KOYU TEMA A4 (sayfa #17212e/metin acik, rapor editoru dengesi) + oto-kayit galeriyi de tazeler (not gecikmez) | 11g ust-bar-birebir+serit | 11f ekrana-sigar+Delete+oto-kaydet';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5m · 2026-11-11 not-kagidi ust-bar-birebir + serit-esit-boyut + cizim-serit-gorsel-duzenleyici-tema";
+  XE.VERSION = "5n · 2026-11-11 not-kagidi kutu-secim-geometri + koyu-tema-A4 + oto-kayit-galeri-tazele";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12693,6 +12693,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-metin h2{font-size:24px;margin:.4em 0 .3em;font-weight:700;}'
       +'.not-metin h3{font-size:19px;margin:.4em 0 .3em;font-weight:700;}'
       +'.not-metin img{max-width:100%;height:auto;}'
+      // [KOYU TEMA A4 2026-11-11] Koyu temada sayfa da KOYU olsun (rapor editörüyle aynı denge: tuval #0f1621, sayfa #17212e,
+      // metin #e7e9ea — .preview-body/.ed-card/.ed-root). YALNIZ EKRAN; PDF/Word export _sayfalarHtml ile DAİMA beyaz+siyah.
+      +'body:not(.light-theme) .not-sayfalar{background:#0f1621;}'
+      +'body:not(.light-theme) .not-sayfa{background:#17212e;box-shadow:0 3px 18px rgba(0,0,0,.55);}'
+      +'body:not(.light-theme) .not-metin{color:#e7e9ea;}'
+      +'body:not(.light-theme) .not-metin:empty:before{color:#5d6b7a;}'
+      +'body:not(.light-theme) .not-metin.cizgili{background-image:linear-gradient(to bottom,transparent 27px,rgba(226,235,244,.15) 27px,rgba(226,235,244,.15) 28px);}'
+      +'body:not(.light-theme) .not-a4-sinir::before{border-color:rgba(160,180,205,.3);}'
       +'html.x-mobile.x-dik .not-baslik{padding:8px 8px;padding-top:14px;gap:4px;}'
       +'html.x-mobile.x-dik .not-h2{font-size:15px;}'
       +'html.x-mobile.x-dik .not-ad{min-width:0;flex:0 1 110px;max-width:none;font-size:12px;margin-right:2px;}'
@@ -12940,7 +12948,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       else if(o.t==='ok'){ ctx.beginPath(); ctx.moveTo(S(o.x1),S(o.y1)); ctx.lineTo(S(o.x2),S(o.y2)); ctx.stroke(); var ang=Math.atan2(o.y2-o.y1,o.x2-o.x1), hl=Math.max(S(o.kal)*3.2,10); ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2)); ctx.lineTo(S(o.x2)-hl*Math.cos(ang-0.42),S(o.y2)-hl*Math.sin(ang-0.42)); ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42),S(o.y2)-hl*Math.sin(ang+0.42)); ctx.closePath(); ctx.fill(); }
       ctx.restore();
     }
-    function _ortak(o,r){ var k=kutu(o); return !(k.x>r.x+r.w||k.x+k.w<r.x||k.y>r.y+r.h||k.y+k.h<r.y); }   // bbox kesişim
+    // [KUTU-SEÇİM GEOMETRİSİ] Kalem/ok GERÇEK çizgiye dokunmalı (bbox DEĞİL): kalemin sınır-kutusu büyük ama çizgi seyrek →
+    // bbox kullanınca kutu çizgiye dokunmadan seçiyordu. Dikdörtgen bbox=şekil olduğundan bbox örtüşmesi doğru.
+    function _segSeg(ax,ay,bx,by,cx,cy,dx,dy){ function cr(ox,oy,px,py,qx,qy){ return (qx-ox)*(py-oy)-(qy-oy)*(px-ox); }
+      var d1=cr(cx,cy,dx,dy,ax,ay),d2=cr(cx,cy,dx,dy,bx,by),d3=cr(ax,ay,bx,by,cx,cy),d4=cr(ax,ay,bx,by,dx,dy);
+      return ((d1>0)!==(d2>0))&&((d3>0)!==(d4>0)); }
+    function _noktaIc(px,py,r){ return px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h; }
+    function _segKutu(ax,ay,bx,by,r){ if(_noktaIc(ax,ay,r)||_noktaIc(bx,by,r)) return true; var x2=r.x+r.w,y2=r.y+r.h;
+      return _segSeg(ax,ay,bx,by,r.x,r.y,x2,r.y)||_segSeg(ax,ay,bx,by,x2,r.y,x2,y2)||_segSeg(ax,ay,bx,by,x2,y2,r.x,y2)||_segSeg(ax,ay,bx,by,r.x,y2,r.x,r.y); }
+    function _kesisirGeom(o,r){
+      if(o.t==='kalem'){ for(var i=1;i<o.nk.length;i++){ if(_segKutu(o.nk[i-1].x,o.nk[i-1].y,o.nk[i].x,o.nk[i].y,r)) return true; } return false; }
+      if(o.t==='ok'){ return _segKutu(o.x1,o.y1,o.x2,o.y2,r); }
+      var k=kutu(o); return !(k.x>r.x+r.w||k.x+k.w<r.x||k.y>r.y+r.h||k.y+k.h<r.y);   // dikdörtgen: bbox örtüşmesi
+    }
     function _marqDik(){ if(!marquee) return null; return {x:Math.min(marquee.x0,marquee.x1),y:Math.min(marquee.y0,marquee.y1),w:Math.abs(marquee.x1-marquee.x0),h:Math.abs(marquee.y1-marquee.y0)}; }
     function _tasiObj(o,b,dx,dy){ if(o.t==='ok'){o.x1=b.x1+dx;o.y1=b.y1+dy;o.x2=b.x2+dx;o.y2=b.y2+dy;} else if(o.t==='kalem'){for(var i=0;i<o.nk.length;i++){o.nk[i].x=b.nk[i].x+dx;o.nk[i].y=b.nk[i].y+dy;}} else {o.x=b.x+dx;o.y=b.y+dy;} }
     function ciz(){ ctx.clearRect(0,0,cv.width,cv.height); objs.forEach(cizObj);
@@ -12973,7 +12993,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     }
     function pm(e){ if(!drag) return; var p=P(e);
       if(drag.tip==='tasi'){ var dx=p.x-drag.sx,dy=p.y-drag.sy; for(var i=0;i<drag.items.length;i++){ _tasiObj(drag.items[i], drag.base[i], dx, dy); } ciz(); return; }
-      if(drag.tip==='marquee'){ marquee.x1=p.x; marquee.y1=p.y; var mq=_marqDik(); var sl=objs.filter(function(o){ return _ortak(o,mq); }); selSet = drag.add ? drag.taban.concat(sl.filter(function(o){return drag.taban.indexOf(o)<0;})) : sl; ciz(); return; }
+      if(drag.tip==='marquee'){ marquee.x1=p.x; marquee.y1=p.y; var mq=_marqDik();
+        var yeter=(mq.w>=6||mq.h>=6);   // çok küçük kutu = tıklama gibi → HENÜZ seçim yok (ögeye dokunmadan seçmesin)
+        var sl=yeter?objs.filter(function(o){ return _kesisirGeom(o,mq); }):[];
+        selSet = drag.add ? drag.taban.concat(sl.filter(function(o){return drag.taban.indexOf(o)<0;})) : sl; ciz(); return; }
       if(drag.tip==='ciz'){ var oc=drag.o; if(oc.t==='ok'){oc.x2=p.x;oc.y2=p.y;} else {oc.w=p.x-oc.x;oc.h=p.y-oc.y;} ciz(); return; }
       if(drag.tip==='kalem'){ drag.o.nk.push({x:p.x,y:p.y}); ciz(); return; }
     }
@@ -13022,7 +13045,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   // ---- OTO-KAYDET (F5/ani kapanışta veri kaybını önler; editör ×/Esc ile kapanmasa da IndexedDB'ye yazar) ----
   // Rapor editöründeki oto-kayıt deseninin not karşılığı. Her anlamlı düzenlemede DEBOUNCE'lu, ayrıca pagehide/gizlenmede
   // anında flush. Boş not kaydedilmez (_bosMu). Aynı _doc.id → put üzerine yazar (kopya birikmez).
-  var _otoTimer=null;
+  var _otoTimer=null, _galTazeleTimer=null;
+  // [GALERİ GECİKMESİ] Not editörü tam-ekran; galeri eskiden yalnız KAPANINCA yenileniyordu → not, rapor gibi "hemen"
+  // görünmüyordu. Oto-kayıt artık galeriyi de (throttle'lı) tazeler → kapanmadan galeriye yazılır, kapanışta anında görünür.
+  function _galTazele(){ try{ if(window.renderSavedReports) window.renderSavedReports(); }catch(_){} }
+  function _galTazelePlanla(){ try{ if(_galTazeleTimer) return; _galTazeleTimer=setTimeout(function(){ _galTazeleTimer=null; _galTazele(); }, 1200); }catch(_){} }
   function _otoKaydetSimdi(){
     try{
       if(!_ov || !_doc) return;
@@ -13031,7 +13058,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(_bosMu()) return;                       // tamamen boş not: kaydetme
       _doc.updatedAt=Date.now(); delete _doc._yeni;
       var kopya=JSON.parse(JSON.stringify(_doc));
-      window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); });
+      window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); }).then(_galTazelePlanla);
     }catch(_){}
   }
   function _planlaKaydet(){ try{ if(_otoTimer) clearTimeout(_otoTimer); _otoTimer=setTimeout(_otoKaydetSimdi, 600); }catch(_){} }
@@ -13147,7 +13174,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         }
       }catch(e){}
     }
-    try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } }catch(_){}
+    try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } if(_galTazeleTimer){ clearTimeout(_galTazeleTimer); _galTazeleTimer=null; } }catch(_){}
     try{ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } }); }catch(_){}
     document.removeEventListener('keydown', _tusKapat, true);
     document.removeEventListener('click', _ayarDisari, true);
