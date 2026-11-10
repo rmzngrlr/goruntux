@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10l · ANDROID FIX: odak-hizalama+teshis YALNIZ iOS (Android native); kutular kaldirildi';
+        var X_BUILD = '2026-11-10m · gorsel sag-tik: kopya duzeldi (ic pano+execCommand) + bos slot yapistir menusu';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -11230,28 +11230,51 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(b.item.image_b64) return {b64:b.item.image_b64, mime:b.item.image_mime||'image/png'};
     return null;
   }
-  function _gorselClipKopyala(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); }
-  // Kes = panoya kopyala (EN İYİ ÇABA; güvensiz bağlamda pano yazılamaz) + görseli HER durumda sil (kullanıcı: "kes deyince işlev yerine gelsin").
-  function _gorselClipKes(bi, pp){ var d=_gorselClipData(bi,pp); _sagTikKapat(); if(d) _gorselPanoyaKopyala(d.b64,d.mime,null); XE._gorselSil(bi,pp); }
-  function _gorselYapistirVar(){ return !!(navigator.clipboard && navigator.clipboard.read); }   // pano OKUMA (görsel) yalnız güvenli bağlamda
-  // [GÖRSEL YAPIŞTIR] Panoyu YALNIZCA doğrudan oku (navigator.clipboard.read) -> POPUP ASLA YOK.
-  // Güvensiz bağlamda API yok -> buton SİLİK; kullanıcı slota klavyeyle Ctrl+V yapar.
+  // [İÇ GÖRSEL PANO 2026-11-10m] OS panosu güvensiz bağlamda (http IP; https/localhost DEĞİL) ENGELLİ ->
+  // kopyala/yapıştır çalışmıyordu (yalnız kes "çalışıyor" görünüyordu çünkü siliyor). Çözüm: editör-içi JS panosu
+  // (_gorselPano) -> editör-içi kopyala->yapıştır HER bağlamda güvenilir. OS panosuna da EN İYİ ÇABA yazılır
+  // (güvenli bağlamda clipboard.write; değilse DOM'daki img'yi seçip execCommand('copy') -> dış uygulamalara).
+  var _gorselPano=null;
+  // DOM'daki gerçek <img.ed-img> öğesini seçip execCommand('copy') -> güvensiz bağlamda da OS panosuna görsel yazar
+  // (dış uygulamalar için). Seçimi geri yükler. (Eski "görsel execCommand'la kopyalanamaz" varsayımı yanlıştı:
+  // RENDER edilmiş img öğesi seçilip kopyalanabilir.)
+  function _gorselKopyalaExec(bi, pp){
+    try{
+      var root=document.getElementById('editor-root');
+      var img=root && (root.querySelector('img.ed-img[data-i="'+bi+'"][data-p="'+pp+'"]') || root.querySelector('img.ed-img[data-i="'+bi+'"]'));
+      if(!img) return false;
+      var sel=window.getSelection(); var saved=(sel&&sel.rangeCount)?sel.getRangeAt(0).cloneRange():null;
+      var r=document.createRange(); r.selectNode(img); sel.removeAllRanges(); sel.addRange(r);
+      var ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
+      try{ sel.removeAllRanges(); if(saved) sel.addRange(saved); }catch(e){}
+      return ok;
+    }catch(e){ return false; }
+  }
+  function _gorselKopyaUygula(bi, pp){
+    var d=_gorselClipData(bi,pp); if(!d) return;
+    _gorselPano={b64:d.b64, mime:d.mime};                 // İÇ PANO (editör-içi yapıştırma için, her bağlamda)
+    if(_gorselKopyaVar()) _gorselPanoyaKopyala(d.b64,d.mime,null);   // OS panosu (güvenli bağlam)
+    else _gorselKopyalaExec(bi,pp);                        // OS panosu (güvensiz bağlam -> execCommand, dış uygulama)
+  }
+  function _gorselClipKopyala(bi, pp){ _gorselKopyaUygula(bi,pp); _sagTikKapat(); }
+  // Kes = kopyala (iç pano + OS en-iyi-çaba) + görseli HER durumda sil.
+  function _gorselClipKes(bi, pp){ _gorselKopyaUygula(bi,pp); _sagTikKapat(); XE._gorselSil(bi,pp); }
+  function _gorselYapistirVar(){ return !!(navigator.clipboard && navigator.clipboard.read); }   // OS pano OKUMA yalnız güvenli bağlamda
+  // [GÖRSEL YAPIŞTIR] Önce İÇ PANO (editör-içi kopyalanan görsel -> her bağlamda çalışır). Yoksa XE._panoGorsel:
+  // güvenli bağlamda OS panosunu doğrudan okur, güvensizde "Ctrl+V hedef kutusu" modalı açar (insecure'de de çalışır).
   function _gorselClipYapistir(bi, pp){
     _sagTikKapat();
-    if(!_gorselYapistirVar()) return;   // güvensiz bağlam -> sessiz, POPUP YOK
-    navigator.clipboard.read().then(function(items){
-      for(var i=0;i<items.length;i++){ var it=items[i], imgT=null;
-        for(var t=0;t<it.types.length;t++){ if(it.types[t].indexOf('image/')===0){ imgT=it.types[t]; break; } }
-        if(imgT){ (function(mt){ it.getType(mt).then(function(blob){ var rd=new FileReader(); rd.onload=function(){ var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; try{ XE._gorselParcaYaz(bi,pp,du.slice(ci+1),mt); }catch(_){} }; rd.readAsDataURL(blob); }); })(imgT); return; }
-      }
-    }).catch(function(){});   // izin yok / görsel yok -> sessiz, POPUP YOK
+    if(_gorselPano && _gorselPano.b64){ try{ XE._gorselParcaYaz(bi,pp,_gorselPano.b64,_gorselPano.mime); }catch(_){} return; }
+    try{ XE._panoGorsel(function(b64,mime){ try{ XE._gorselParcaYaz(bi,pp,b64,mime); }catch(_){} }); }catch(e){}
   }
   function _gorselClipSatiri(bos, canCopy){
     function bt(cls, aktif, tip, svg){ return '<button type="button" class="rt-ik rt-gclip-'+cls+'"'+(aktif?'':' disabled')+' title="'+tip+'">'+svg+'</button>'; }
     var s='<div class="rt-row rt-clip">';
-    // Kes HER ZAMAN aktif (görseli siler). Kopyala pano-yazma varsa; Yapıştır pano-okuma varsa (güvenli bağlam). POPUP yok -> güvensizde silik.
-    if(!bos){ s+=bt('kes', true, 'Kes (Ctrl+X)', _CLIP_SVG.kes)+bt('kopya', canCopy, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya); }
-    if(_yapistirGoster()) s+=bt('yapistir', _gorselYapistirVar(), 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);   /* ŞİMDİLİK GİZLİ; Ctrl+V ile yapıştırılır */
+    // [2026-11-10m] Kes + Kopyala HER ZAMAN aktif: kopya iç pano + (güvensizde) execCommand ile çalışır (eskiden
+    // güvensiz bağlamda silikti -> "sadece kes çalışıyor"). Yapıştır: BOŞ slotta DAİMA (görsel ekleme alanı ->
+    // bizim menü + çalışan yapıştır); dolu görselde yalnız _yapistirGoster() ile. Hepsi iç pano / Ctrl+V-modal ile her bağlamda çalışır.
+    if(!bos){ s+=bt('kes', true, 'Kes (Ctrl+X)', _CLIP_SVG.kes)+bt('kopya', true, 'Kopyala (Ctrl+C)', _CLIP_SVG.kopya); }
+    if(bos || _yapistirGoster()) s+=bt('yapistir', true, 'Yapıştır (Ctrl+V)', _CLIP_SVG.yapistir);
     return s+'</div>';
   }
   function _gorselClipBagla(p, bi, pp){
@@ -11524,11 +11547,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var t=e.target; if(!t||!t.closest) return;
       var h2=t.closest('.ed-h2'), plat=t.closest('.ed-plat'), metin=t.closest('.ed-metin'), gorsel=t.closest('.ed-img'), gorselBos=t.closest('.ed-img-pano'), linkEd=t.closest('.ed-link-edit');
       // [GÖRSEL PANO/HİZA] görsele (dolu .ed-img ya da boş .ed-img-pano) sağ-tık -> görsel menüsü:
-      //   dolu -> Kes/Kopyala/Yapıştır (+ hizalama); boş -> yalnız Yapıştır. (clip ya da hizalama bayrağı açıkken.)
+      //   dolu -> Kes/Kopyala/Yapıştır (+ hizalama); boş -> Yapıştır (görsel ekleme alanı). (clip ya da hizalama bayrağı açıkken.)
+      // [2026-11-10m] _bosSlotAtla KALDIRILDI: boş slotta artık DAİMA bizim menü (çalışan Yapıştır: iç pano / Ctrl+V-modal)
+      // -> kullanıcı isteği "görsel ekleme alanında sağ tıkta bizim menü". Tarayıcının yerel menüsü artık çıkmaz.
       var gorselEl=gorsel||gorselBos;
-      // BOŞ slotta tek işlem Yapıştır'dır; Yapıştır GİZLİYSE custom menü açma -> tarayıcının yerel menüsü (Yapıştır'ı olan) çıksın.
-      var _bosSlotAtla=(!gorsel && gorselBos && !_yapistirGoster());
-      if(gorselEl && gorselEl.getAttribute('data-i')!=null && !_bosSlotAtla && (clipAcik() || gorselHizaAcik())){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorselEl.getAttribute('data-i'), pp:+gorselEl.getAttribute('data-p'), bos:!gorsel}, e.clientX, e.clientY); return; }
+      if(gorselEl && gorselEl.getAttribute('data-i')!=null && (clipAcik() || gorselHizaAcik())){ e.preventDefault(); _sagTikGoster({mode:'image', bi:+gorselEl.getAttribute('data-i'), pp:+gorselEl.getAttribute('data-p'), bos:!gorsel}, e.clientX, e.clientY); return; }
       // [KES/KOPYALA] editable (metin/başlık/link) sağ-tık -> editöre özel menü (seçim olmasa da). Mod: başlık/inline/clip.
       var edit=metin||h2||plat||linkEd;
       if(clipAcik() && edit){
