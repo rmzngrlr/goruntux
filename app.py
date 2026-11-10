@@ -2080,6 +2080,12 @@ HTML_TEMPLATE = """
         .x-gal-ad.x-gal-ad-edit { white-space: normal; overflow: visible; text-overflow: clip; outline: 2px solid var(--accent-color, #1d9bf0); background: rgba(29,155,240,0.1); border-radius: 6px; padding: 1px 5px; cursor: text; }
         .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
         .x-gal-rozet { position: absolute; top: 7px; right: 7px; background: var(--accent-color); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; z-index: 2; letter-spacing: .3px; }
+        /* [NOT KAĞIDI Faz4] Not kartı: yeşil "Not" rozeti + beyaz kağıt önizleme */
+        .x-gal-not-rozet { background: #17a34a; display: inline-flex; align-items: center; gap: 3px; }
+        .x-gal-notkart .x-gal-page { background: #fff; }
+        .x-gal-not-ic { padding: 14px 13px; height: 100%; box-sizing: border-box; overflow: hidden; }
+        .x-gal-not-metin { font-size: 11px; line-height: 1.55; color: #3a4654; overflow: hidden; }
+        .x-gal-not-bos { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; color: #9aa6b2; }
         .x-gal-check { position: absolute; bottom: 9px; left: 9px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
         .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
         .x-gal-ara { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
@@ -2995,7 +3001,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10y · NOT KAGIDI Faz3: cizim katmani (her A4 overlay canvas; kalem/ok/dikdortgen/sec + renk/kalinlik + geri-ileri; vektor sakla)';
+        var X_BUILD = '2026-11-10z · NOT KAGIDI Faz4: galeri Not rozetli kartlari + tikla-ac + sil + kapatinca galeri tazele';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5095,6 +5101,8 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             try { await window.XSavedReports.whenReady(); } catch (e) {}
             var metas = [];
             try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
+            var notlar = [];   // [NOT KAĞIDI Faz4] notları da galeride göster (ayrı IndexedDB x-notlar)
+            try { if (window.XNotlar) { await window.XNotlar.whenReady(); notlar = await window.XNotlar.list(); } } catch (e) { notlar = []; }
             xUpdateSavedBadge(metas.length);   // sekme adindaki sayaci guncelle (0'da gizli)
             if (section) section.style.display = '';   // galeri HER ZAMAN görünür (boşken bile "Boş Rapor" kartı)
             var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
@@ -5132,10 +5140,52 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     '</div>' +
                 '</div>';
             }).join('');
+            // [NOT KAĞIDI Faz4] Not kartları (📝 Not rozeti) — raporlardan sonra. Tıkla=aç, Sil.
+            function _notOnizle(n) {
+                try {
+                    var sp = (n.sayfalar && n.sayfalar[0]) || {};
+                    var t = (sp.metinHtml || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+                    if (t) return '<div class="x-gal-not-metin">' + escapeHtml(t.slice(0, 180)) + '</div>';
+                    var cz = 0; (n.sayfalar || []).forEach(function (s) { cz += (s.cizimObjeleri || []).length; });
+                    return '<div class="x-gal-not-bos">' + (cz ? 'Çizim notu' : 'Boş not') + '</div>';
+                } catch (e) { return ''; }
+            }
+            var _notRozetSvg = '<svg viewBox="0 0 20 20" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h7l3 3v9H5z"/><path d="M7.5 9h5M7.5 12h3"/></svg>';
+            html += notlar.map(function (n) {
+                var ntar = ''; try { ntar = new Date(n.updatedAt || 0).toLocaleDateString('tr-TR'); } catch (e) { ntar = ''; }
+                var nad = escapeHtml(n.ad || '(adsız not)');
+                var nsay = (n.sayfalar ? n.sayfalar.length : 0);
+                return '<div class="x-gal-card x-gal-notkart" data-nid="' + n.id + '" onclick="xNotGalAc(event,this)" title="Notu aç">' +
+                    '<div class="x-gal-page">' +
+                        '<span class="x-gal-rozet x-gal-not-rozet">' + _notRozetSvg + ' Not</span>' +
+                        '<div class="x-gal-pageinner x-gal-not-ic">' + _notOnizle(n) + '</div>' +
+                        '<div class="x-gal-ara">' +
+                            '<button class="x-gal-ikon" data-nid="' + n.id + '" onclick="xNotGalSil(event,this)" title="Sil">' + _SVG_SIL + '</button>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="x-gal-meta">' +
+                        '<div class="x-gal-ad" style="cursor:default">' + nad + '</div>' +
+                        '<div class="x-gal-alt">' + nsay + ' sayfa · ' + ntar + '</div>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
             html += '</div>';
             container.innerHTML = html;
             xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, çubuğu güncelle
         }
+        window.renderSavedReports = renderSavedReports;   // [NOT KAĞIDI] not editörü kapanınca galeriyi tazeler
+        // [NOT KAĞIDI Faz4] Galeri not kartı: tıkla=aç (kayıtlı dokümanı not editöründe), Sil=kaldır.
+        function xNotGalAc(ev, el) { try { if (ev) ev.stopPropagation(); var id = el.dataset.nid; if (!id || !window.XNotlar) return; window.XNotlar.get(id).then(function (doc) { if (doc && window.XNot && window.XNot.ac) window.XNot.ac(doc); }); } catch (e) {} }
+        function xNotGalSil(ev, el) {
+            if (ev) ev.stopPropagation();
+            try {
+                var id = el.dataset.nid; if (!id) return;
+                Promise.resolve(xConfirm('Bu not silinsin mi? Geri alınamaz.', { title: 'Notu sil', icon: _SVG_SIL, okText: 'Sil', danger: true })).then(function (ok) {
+                    if (ok && window.XNotlar) window.XNotlar.remove(id).then(function () { renderSavedReports(); });
+                });
+            } catch (e) {}
+        }
+        window.xNotGalAc = xNotGalAc; window.xNotGalSil = xNotGalSil;
         // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
         function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid, { editorBosAc: true }); } catch (e) {} }
         function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { xPaylasAc('saved', el, el.dataset.rid); } catch (e) {} }   // [KAYITLI RAPOR] genel indirme sistemi: Paylaş popover'ı karta iliştir (Word=blob / PDF=gizli render); doğrudan indirme yerine
@@ -12823,11 +12873,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       try{
         _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; });
         var adInp=_ov.querySelector('.not-ad'); _doc.ad=(adInp?adInp.value:'').trim();
-        if(_bosMu()){ if(!_doc._yeni){ window.XNotlar.remove(_doc.id); } }
+        var _gTazele=function(){ try{ if(window.renderSavedReports) window.renderSavedReports(); }catch(_){} };   // [Faz4] galeriyi tazele
+        if(_bosMu()){ if(!_doc._yeni){ window.XNotlar.remove(_doc.id).then(_gTazele); } }
         else {
           _doc.updatedAt=Date.now(); var yd=_doc._yeni; delete _doc._yeni;
           var kopya=JSON.parse(JSON.stringify(_doc));
-          window.XNotlar.whenReady().then(function(){ window.XNotlar.save(kopya); });
+          window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); }).then(_gTazele);
           _toast(yd?'Not kaydedildi.':'Not güncellendi.','success');
         }
       }catch(e){}
