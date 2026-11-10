@@ -2994,7 +2994,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10h · DENEY: counter KAPALI (feedback titreme testi; flag x_icerik_sabit=1 eski)';
+        var X_BUILD = '2026-11-10i · KOMPAKT TEST: odak alani en uste hizala (iOS itmesin; flag x_kompakt_duzen=0 eski)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10130,6 +10130,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(hedef>maxNat){ root.style.paddingBottom=(base+Math.round(hedef-maxNat))+'px'; }   // tam hedef kadar -> max-scroll=hedef, void yok
       pb.scrollTop=hedef;
     }catch(e){} }
+    // [KOMPAKT HİZALA 10i] Odaklanan ALANI (bölüm üstü DEĞİL) üst bara hizala -> alan iOS'un "klavye bölgesi" itme
+    // eşiğinin ÇOK üstüne çıkar -> iOS viewport'u İTMEZ (vvTop=0 hedef) -> ne içerik kayar ne titreme. counter KAPALI
+    // kalır (konumlama itişi önler, counter'a gerek yok -> çekişme yok). Dinamik alt-dolgu = tam-hedef (void yok). ANLIK
+    // (native focus-scroll ile çekişmesin). Flag x_kompakt_duzen='0' -> kapalı (varsayılan AÇIK).
+    function _hizalaAlan(el){ try{
+      if(!el || !dikMobil()) return;
+      if(localStorage.getItem('x_kompakt_duzen')==='0') return;
+      if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;
+      var pb=_edPB(), root=document.getElementById('editor-root'); if(!pb||!root) return;
+      var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0;
+      var base=Math.round(kb+24);
+      root.style.paddingBottom=base+'px';
+      var delta=Math.round(el.getBoundingClientRect().top-(_barAlti()+8));
+      var D=pb.scrollTop+delta; if(D<0) D=0;
+      var maxNat=pb.scrollHeight-pb.clientHeight;
+      if(D>maxNat){ root.style.paddingBottom=(base+Math.round(D-maxNat))+'px'; }
+      pb.scrollTop=D;
+    }catch(e){} }
     function _odakKart(el, mode){ try{
       if(!el || !dikMobil()) return;
       try{ if(localStorage.getItem('x_odak_kaydir')==='0') return; }catch(_){}
@@ -10207,17 +10225,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [09c GERİ ALINDI] _odakKilit (overflow) + __vvDondur (vv dondur) titremeyi ÇÖZMEDİ, üstelik vv-dondur ŞERİDİ
       // yanlış konumda dondurup klavyeden KOPARDI -> çağrılar kaldırıldı. (Ölçüm kutusuyla gerçek kaynağı bulacağız.)
       // [VOID 09b] YENİ bölüm -> _hizalaBolum: üst bar altına hizala + dinamik dolgu (void yok). AYNI bölüm -> DOKUNMA.
+      var _kompakt=true; try{ _kompakt=(localStorage.getItem('x_kompakt_duzen')!=='0'); }catch(_){}
       var _yeni=!!(_card && _card!==XE.__odakKart);
-      // [BÖLÜM TUT 09n] YENİ bölüm -> hizala, sonra hizalanmış konumu tut. AYNI bölüm -> DOKUNMA anında yakalanan
-      // odak-ÖNCESİ scroll'a tut (iOS'un up-scroll'unu geri al) -> bölüm yukarı KAYMAZ. (iPhone-özel; Android'de yok.)
-      if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} try{ _bolumTut(); }catch(_){} }
+      // [KOMPAKT 10i] Varsayılan yol: odaklanan ALANI en üste hizala -> iOS itmez (vvTop=0 hedef) -> kayma+titreme yok.
+      // counter KAPALI kalır. Klavye/layout oturunca birkaç kez tekrar hizala. (Eski bölüm-tut/counter yolu flag ile.)
+      // [BÖLÜM TUT 09n] (eski) YENİ bölüm -> hizala+tut. AYNI bölüm -> odak-öncesi scroll'a tut. (iPhone-özel.)
+      if(_kompakt){
+        XE.__odakKart=_card; XE.__odakKartH=_card?_card.offsetHeight:0;
+        try{ _hizalaAlan(_odakEl); }catch(_){}
+        try{ [140,340,620].forEach(function(ms){ setTimeout(function(){ try{ if(document.activeElement===_odakEl) _hizalaAlan(_odakEl); }catch(_){} }, ms); }); }catch(_){}
+      }
+      else if(_yeni){ XE.__odakKart=_card; XE.__odakKartH=_card.offsetHeight; try{ _hizalaBolum(_card, _odakEl); }catch(_){} try{ _bolumTut(); }catch(_){} }
       else { try{ _bolumTut((XE.__preOdakKart===_card && XE.__preOdakScroll!=null) ? XE.__preOdakScroll : null); }catch(_){} }
       try{ _titreDebug(); }catch(_){}   // [TEŞHİS 10g] alan geçişinde Δ ölç
       // [KB TAZELE] YALNIZ klavye AÇILIRKEN (ilk odak) --kb-inset'i yeniden ölç; alanlar arası geçişte (klavye açık) ATLA.
       var _kbAcik=false; try{ _kbAcik=(parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0)>80; }catch(_){}
       if(!_kbAcik){ try{ [140,320,600].forEach(function(ms){ setTimeout(function(){ try{ if(window.__kbOlc) window.__kbOlc(); }catch(_){} }, ms); }); }catch(_){} }
-      // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız yeni bölüm + hâlâ odaktaysa)
-      if(_yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
+      // layout/scrollHeight oturunca bir kez daha hizala (idempotent; yalnız ESKİ yol + yeni bölüm + hâlâ odaktaysa)
+      if(!_kompakt && _yeni){ try{ setTimeout(function(){ if(XE.__odakKart===_card){ _hizalaBolum(_card, _odakEl); } }, 360); }catch(_){} }
       if(_iosBarOff) _barSweep();
     } });
     // [BÖLÜM HİZALA — yazarken büyüme] Bölüm uzadıkça (metin alanı büyür) imleci görünür tut (debounce).
