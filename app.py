@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11h · NOT KAGIDI: kutu-secim GERCEK cizgiye-dokunma (kalem bbox degil) + mini-kutu secmez + KOYU TEMA A4 (sayfa #17212e/metin acik, rapor editoru dengesi) + oto-kayit galeriyi de tazeler (not gecikmez) | 11g ust-bar-birebir+serit | 11f ekrana-sigar+Delete+oto-kaydet';
+        var X_BUILD = '2026-11-11i · NOT KAGIDI: font/boyut/stil DROPDOWN acilmiyordu (not modal z4200 > xcs z3600) -> z3500 fix + Galeri rapor-editoru gibi temali kartlar + not yuklenme fix (DB hazir olunca galeri tazele + render dayanikli) | 11h kutu-secim-geometri+koyu-A4 | 11g ust-bar';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5143,7 +5143,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
             // Önizlemeleri topla (meta.preview varsa anında; eski kayıtta lazy get, önbellekli).
             var previews = [];
-            for (var qi = 0; qi < metas.length; qi++) { previews.push(await xRaporOnizleme(metas[qi])); }
+            for (var qi = 0; qi < metas.length; qi++) { try { previews.push(await xRaporOnizleme(metas[qi])); } catch (e) { previews.push(''); } }   // [NOT YÜKLENME] bir rapor önizlemesi patlarsa notlar da render edilsin
             // İlk kart: Boş Rapor
             var html = '<div class="x-gal-grid">' +
                 '<div class="x-gal-card x-gal-olustur" title="Rapor oluştur">' +
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5n · 2026-11-11 not-kagidi kutu-secim-geometri + koyu-tema-A4 + oto-kayit-galeri-tazele";
+  XE.VERSION = "5o · 2026-11-11 not-kagidi dropdown-z-fix + galeri-rapor-editoru-gibi + not-yuklenme-fix";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12565,7 +12565,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _openDb(){ return new Promise(function(res){ try{ var rq=indexedDB.open('x-notlar',1);
     rq.onupgradeneeded=function(e){ var db=e.target.result; if(!db.objectStoreNames.contains('notlar')) db.createObjectStore('notlar',{keyPath:'id'}); };
     rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }
-  _ready=_openDb().then(function(db){ _db=db; });
+  // [GALERİ YÜKLENME FIX] Panel renderSavedReports'u AÇILIŞTA x-editor.js (XNotlar) hazır olmadan çağırmış olabilir →
+  // notlar "yüklenmiyor/geç". DB açılınca, not VARSA galeriyi bir kez tazele (notlar belirir). Boşsa ekstra render yok.
+  _ready=_openDb().then(function(db){ _db=db;
+    try{ window.XNotlar.list().then(function(a){ if(a && a.length && window.renderSavedReports){ try{ window.renderSavedReports(); }catch(_){} } }); }catch(_){}
+  });
   function _store(mode){ return _db.transaction('notlar',mode).objectStore('notlar'); }
   function _reqP(r){ return new Promise(function(res,rej){ r.onsuccess=function(){res(r.result);}; r.onerror=function(){rej(r.error);}; }); }
   window.XNotlar={
@@ -12608,7 +12612,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _stilEnjekte(){
     if(document.getElementById('not-stil')) return;
     var css=''
-      +'.not-ov{position:fixed;inset:0;z-index:4200;display:flex;flex-direction:column;background:var(--bg-modal,#0f1621);}'
+      // [DROPDOWN FIX 2026-11-11] z-index 4200 İKEN, xcs özel-select listesi (.xcs-list z-3600) not modalının ALTINDA kalıp
+      // "dropdown açılmıyor" oluyordu (rapor editörü modalı z-2000 olduğu için orada çalışıyor). 3500 = xcs(3600) altında,
+      // panel üstünde → font/boyut/stil açılır listeleri görünür. İç menüler (galeri z30 vb.) .not-ov'un bağlamında, sıra değişmez.
+      +'.not-ov{position:fixed;inset:0;z-index:3500;display:flex;flex-direction:column;background:var(--bg-modal,#0f1621);}'
       +'.not-icerik{display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;}'
       // üst bar (rapor editörü .modal-header ile aynı his)
       // [ÜST BAR = RAPOR EDİTÖRÜ BİREBİR] .modal-header ile aynı ölçü: padding 20px 24px, h2 20px (rapor editörüyle eşit yükseklik).
@@ -12715,22 +12722,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-galeri-ov{position:absolute;inset:0;z-index:30;background:var(--bg-modal,#0f1621);display:flex;flex-direction:column;}'
       +'.not-gal-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));}'
       +'.not-gal-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text-primary,#e7edf3);}'
-      +'.not-gal-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding:16px;align-content:start;}'
-      +'.not-gal-kart{position:relative;background:#52606d;border-radius:7px;padding:7px;}'
-      +'.not-gal-th{position:relative;background:#fff;color:#111;aspect-ratio:210/297;overflow:hidden;border-radius:3px;font-size:5px;line-height:1.45;padding:9px;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;}'
-      +'.not-gal-th *{max-width:100%!important;}'
-      +'.not-gal-th img{max-height:60px;}'
-      +'.not-gal-no{position:absolute;top:12px;right:12px;background:#1d9bf0;color:#fff;font-size:12px;font-weight:700;border-radius:11px;padding:1px 9px;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.35);}'
-      +'.not-gal-araclar{display:flex;gap:4px;justify-content:center;margin-top:7px;}'
-      +'.not-gal-araclar button{width:30px;height:28px;border:1px solid var(--border-color,#2c3a4a);border-radius:6px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}'
-      +'.not-gal-araclar button:hover{border-color:#1d9bf0;}'
+      // [GALERİ = RAPOR EDİTÖRÜ GİBİ 2026-11-11] Kart .ed-gal-card ile aynı: temalı yüzey (#fff / #17212e koyu), numara rozeti
+      // sol-üstte, temalı içerik önizlemesi (sabit #52606d slate + beyaz mini-sayfa YERİNE). "koyu görünüyor" çakışması biter.
+      +'.not-gal-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding:16px 20px 24px;align-content:start;}'
+      +'.not-gal-kart{position:relative;background:#fff;border:1px solid #dfe4ea;border-radius:11px;padding:11px;padding-top:34px;cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;}'
+      +'.not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-1px);}'
+      +'.not-gal-no{position:absolute;top:9px;left:9px;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#1d9bf0;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.2);}'
+      +'.not-gal-onizle{font-size:11px;color:#64748b;line-height:1.5;min-height:58px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}'
+      +'.not-gal-onizle.bos{color:#94a3b8;font-style:italic;}'
+      +'.not-gal-araclar{display:flex;gap:4px;justify-content:center;margin-top:9px;}'
+      +'.not-gal-araclar button{width:32px;height:28px;border:1px solid #dfe4ea;border-radius:6px;background:#f6f8fa;color:#334;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}'
+      +'.not-gal-araclar button:hover{border-color:#1d9bf0;color:#1d9bf0;}'
       +'.not-gal-araclar button:disabled{opacity:.35;cursor:default;}'
-      +'.not-gal-araclar .not-gal-sil:hover{border-color:#d62828;color:#ff6b6b;}'
+      +'.not-gal-araclar .not-gal-sil:hover{border-color:#d62828;color:#d62828;}'
       +'.not-gal-ipucu{padding:8px 16px 14px;font-size:12px;color:var(--text-secondary,#9aa6b2);text-align:center;}'
+      +'body:not(.light-theme) .not-gal-kart{background:#17212e;border-color:#2c3a4a;}'
+      +'body:not(.light-theme) .not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.4);}'
+      +'body:not(.light-theme) .not-gal-onizle{color:#9aa6b2;}'
+      +'body:not(.light-theme) .not-gal-onizle.bos{color:#67748a;}'
+      +'body:not(.light-theme) .not-gal-araclar button{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}'
       +'body.light-theme .not-galeri-ov{background:#fff;}'
       +'body.light-theme .not-gal-bar{border-bottom-color:#e3e8ee;}'
       +'body.light-theme .not-gal-bar h3{color:#15202b;}'
-      +'body.light-theme .not-gal-araclar button{background:#fff;color:#15202b;border-color:#cfd8e3;}'
       +'body.light-theme .not-paylas-menu{background:#fff;border-color:#e3e8ee;}'
       +'body.light-theme .not-pay-item{color:#15202b;}'
       +'html.x-mobile.x-dik .not-metin{padding:22px 18px;}'
@@ -13084,15 +13097,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       grid.innerHTML='';
       _doc.sayfalar.forEach(function(sp,i){
         var kart=document.createElement('div'); kart.className='not-gal-kart';
+        kart.addEventListener('click', function(){ _kapatG(); _cizSayfalar(i); });   // karta tıkla → o sayfaya git
         var no=document.createElement('span'); no.className='not-gal-no'; no.textContent=(i+1);
-        var th=document.createElement('div'); th.className='not-gal-th'; th.innerHTML=sp.metinHtml||'';
-        th.addEventListener('click', function(){ _kapatG(); _cizSayfalar(i); });
+        var onizle=document.createElement('div'); onizle.className='not-gal-onizle';
+        var txt=(sp.metinHtml||'').replace(/<br\s*\/?>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+        if(txt){ onizle.textContent=txt.slice(0,160); }
+        else { onizle.className+=' bos'; onizle.textContent=((sp.cizimObjeleri||[]).length?'Çizim sayfası':'Boş sayfa'); }
         var ar=document.createElement('div'); ar.className='not-gal-araclar';
-        var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(){ _tasi(i,-1); });
-        var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(){ _tasi(i,1); });
-        var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(){ _gSil(sp); });
+        var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,-1); });
+        var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,1); });
+        var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(e){ e.stopPropagation(); _gSil(sp); });
         ar.appendChild(sol); ar.appendChild(sag); ar.appendChild(sil);
-        kart.appendChild(no); kart.appendChild(th); kart.appendChild(ar);
+        kart.appendChild(no); kart.appendChild(onizle); kart.appendChild(ar);
         grid.appendChild(kart);
       });
     }
