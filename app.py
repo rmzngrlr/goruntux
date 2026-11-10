@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11e · NOT KAGIDI Word A4 gorunumu: masaustunde sayfa 794px (gercek A4) ORTALI + yan gri tuval; mobilde tam-genislik | 11d gzip | 11c mammoth+sweetalert2 yerel | 11b A4-sinir+coklu-secim+tema | 11a Galeri+Paylas';
+        var X_BUILD = '2026-11-11f · NOT KAGIDI: A4 EKRANA SIGAR (tum sayfa gorunur, kaydirma yok) + cizim Delete/Backspace sil + OTO-KAYDET (F5/kapanista kaybolmaz) | 11e Word-A4-ortali | 11d gzip | 11c yerel-lib | 11b coklu-secim | 11a Galeri+Paylas';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5k · 2026-11-11 not-kagidi Word-A4-ortali-gorunum (masaustu 794px + yan gri)";
+  XE.VERSION = "5l · 2026-11-11 not-kagidi A4-ekrana-sigar + cizim-Delete-sil + oto-kaydet(F5-korur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12550,12 +12550,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 /* Üst bar rapor editörüyle AYNI: geri/ileri + ad + GALERİ (sayfaları sırala/sil ızgarası) + ayarlar(tema/tam-ekran/PWA)
    + PAYLAŞ (PDF olarak indir = gizli iframe window.print; Word olarak indir = .doc blob; çizim katmanı canvas.toDataURL ile
    gömülür) + kapat; biçim şeridi (stil/font/boyut/renk/B-I-U/hiza) + not-özel Çizgili + Görsel + Çizim.
-   A4 TAM GENİŞLİK (sağ/sol gri boşluk YOK; kap scrollbar'ı gizli). Kenar boşluğu = Word standart %12.1 (2.54cm) + kesik-çizgi
-   A4 SINIR kılavuzu (yalnız ekran; export'a dahil değil). Çizgili = 28px satır, metin çizgiye oturur. Sayfa ekle = her
-   sayfanın üst/alt-ortasında yarı-saydam overlay buton (× ile aynı hizada; ayrı gri şerit YOK). Her sayfanın sağ üstünde
-   silme ×. Çizim motoru = kalem/ok/dikdörtgen/SEÇ: tek tık + KUTU(marquee) ÇOKLU SEÇİM + Shift ekle/çıkar + çoklu taşı/sil;
-   çizim ekranı (şerit + sayfa tepsisi) light/dark editör temasına uyumlu. Kapat(×)/Esc = kaydet+kapat. Depo IndexedDB
-   x-notlar. Bayrak x_not_kagidi='0'. */
+   A4 EKRANA SIĞAR (container-type:size + height:min(100cqh,100cqw*297/210,1123px); tüm sayfa görünür, dikey kaydırma yok;
+   masaüstü=ortalı+yan gri, mobil=tam-genişlik). Kenar boşluğu = Word standart %12.1 (2.54cm) + kesik-çizgi A4 SINIR kılavuzu
+   (yalnız ekran; export'a dahil değil). Çizgili = 28px satır, metin çizgiye oturur. Sayfa ekle = her sayfanın üst/alt-ortasında
+   yarı-saydam overlay buton (× ile aynı hizada). Her sayfanın sağ üstünde silme ×. Çizim motoru = kalem/ok/dikdörtgen/SEÇ:
+   tek tık + KUTU(marquee) ÇOKLU SEÇİM + Shift ekle/çıkar + çoklu taşı/sil + Delete/Backspace tuşuyla sil; çizim ekranı
+   light/dark editör temasına uyumlu. OTO-KAYDET: her düzenlemede debounce + pagehide/beforeunload/visibilitychange flush →
+   × ile kapatmasan da F5'te kaybolmaz. Kapat(×)/Esc = kaydet+kapat. Depo IndexedDB x-notlar. Bayrak x_not_kagidi='0'. */
 (function(){
   if(window.XNot) return;
   function notAcikMi(){ try{ return localStorage.getItem('x_not_kagidi')!=='0'; }catch(_){ return true; } }
@@ -12635,15 +12636,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
       +'.not-hgrp{display:inline-flex;gap:2px;}'
       // sayfalar + A4
-      // [TAM GENİŞLİK 2026-11-11] Sayfa sağda-solda gri boşluk OLMADAN tam-genişlik; sayfalar arası yalnız ince ayraç.
-      // Kaydırma çubuğu da sağda gri şerit açmasın diye YALNIZ bu kapta gizli (global '*' DEĞİL; tekerlek/dokunuş çalışır).
-      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;}'
+      // [EKRANA SIĞDIR 2026-11-11] Sayfa kabı; A4'ün TAMAMININ ekrana sığması (fit) için `container-type:size` ver →
+      // `.not-sayfa` gerçek kap boyutuna (cqw/cqh) göre ölçeklenir (kırılgan sabit offset yok). Kaydırma çubuğu sağda gri
+      // şerit açmasın diye YALNIZ bu kapta gizli (global '*' DEĞİL; tekerlek/dokunuş çalışır).
+      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 10px 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;container-type:size;}'
       +'.not-sayfalar::-webkit-scrollbar{width:0;height:0;display:none;}'
-      // [WORD A4 GENİŞLİK 2026-11-11] Word görünümü: sayfa gerçek A4 genişliğinde (210mm@96dpi=794px, kenar boşluğu %12.1 ->
-      // 602px metin kolonu = Word birebir) ORTALANIR; iki yanında gri tuval kalır. Mobilde ekran 794'ten dar -> otomatik
-      // tam-genişlik (gri yok). max-width değişkeni kolay ayar için.
-      +':root{--not-a4-w:794px;}'
-      +'.not-sayfa{position:relative;width:100%;max-width:var(--not-a4-w);margin:0 auto 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);aspect-ratio:210/297;}'
+      // [EKRANA SIĞDIR 2026-11-11] A4'ün TAMAMI ekrana sığsın (dikey kaydırma yok): yükseklik = min(kap-yükseklik, genişlik-
+      // kısıtı, gerçek A4 1123px). width:auto → aspect-ratio'dan türetilir. KURALIN İŞLEYİŞİ: 100cqh-24 bağlarsa (geniş/kısa
+      // masaüstü) yüksekliğe sığar + yanlarda gri tuval; 100cqw*297/210 bağlarsa (dar/uzun = mobil) genişlik=%100 tam-genişlik;
+      // 1123 cap devasa ekranda gerçek A4'ü aşmasın. İçerik başlangıcı: padding %12.1 orantılı → fit sayfada da Word marjı.
+      +'.not-sayfa{position:relative;aspect-ratio:210/297;height:min(100cqh - 24px, 100cqw * 297 / 210, 1123px);width:auto;max-width:100%;margin:12px auto;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);}'
       // [SAYFA EKLE 2026-11-11] Ayrı gri şerit YOK; üst/alt-orta yarı-saydam overlay buton (silme × ile aynı hizada,
       // imleç üstüne gelince netleşir). ust=önüne ekle, alt=ardına ekle. Çizim modunda gizli (canvas boş kalsın).
       +'.not-sayfa-ekle{position:absolute;left:50%;transform:translateX(-50%);z-index:6;height:28px;padding:0 14px;border:none;border-radius:14px;background:rgba(40,110,214,.82);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.4;transition:opacity .12s,background .12s;}'
@@ -12828,6 +12830,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _ov.querySelector('.not-tema').addEventListener('click', function(){ try{ window.toggleTheme&&window.toggleTheme(); }catch(e){} });
     _ov.querySelector('.not-fs').addEventListener('click', function(){ try{ window.toggleFullscreen&&window.toggleFullscreen(); }catch(e){} });
     _ov.querySelector('.not-pwa').addEventListener('click', function(){ try{ window.xPwaYukleAc&&window.xPwaYukleAc(); }catch(e){} });
+    // [OTO-KAYDET] not adı değişimi + sayfa F5/gizlenmeden önce son flush (× ile kapatmasa da kaybolmasın)
+    _ov.querySelector('.not-ad').addEventListener('input', _planlaKaydet);
+    window.addEventListener('pagehide', _pagehideFlush);
+    window.addEventListener('beforeunload', _pagehideFlush);
+    document.addEventListener('visibilitychange', _gizlenince);
 
     // --- biçim şeridi olayları ---
     var serit=_ov.querySelector('.not-serit');
@@ -12841,7 +12848,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _ov.querySelector('.not-i').addEventListener('click', function(){ _selGeri(); _komut('italic'); _aktifSayfaKaydet(); });
     _ov.querySelector('.not-u').addEventListener('click', function(){ _selGeri(); _komut('underline'); _aktifSayfaKaydet(); });
     _ov.querySelectorAll('.not-hiza').forEach(function(b){ b.addEventListener('click', function(){ _selGeri(); var h=b.getAttribute('data-h'); _komut(h==='left'?'justifyLeft':h==='center'?'justifyCenter':h==='right'?'justifyRight':'justifyFull'); _aktifSayfaKaydet(); }); });
-    _ov.querySelector('.not-cizgili').addEventListener('click', function(){ _doc.cizgili=!_doc.cizgili; this.classList.toggle('aktif',_doc.cizgili); _ov.querySelectorAll('.not-metin').forEach(function(m){ m.classList.toggle('cizgili',_doc.cizgili); }); });
+    _ov.querySelector('.not-cizgili').addEventListener('click', function(){ _doc.cizgili=!_doc.cizgili; this.classList.toggle('aktif',_doc.cizgili); _ov.querySelectorAll('.not-metin').forEach(function(m){ m.classList.toggle('cizgili',_doc.cizgili); }); _planlaKaydet(); });
     _ov.querySelector('.not-gorsel').addEventListener('click', function(){ _gorselSec(); });
     // [FAZ3] çizim modu + çizim şeridi
     function _cizimModuAyarla(on){ _cizimModu=on; _ov.classList.toggle('cizim',on); _ov.querySelector('.not-cizim').classList.toggle('aktif',on); if(on){ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); }); _cizBtnGuncelle(); } }
@@ -12867,6 +12874,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _doc.sayfalar.forEach(function(sp, i){ cont.appendChild(_sayfaYap(sp, i)); });
     if(_cizimModu) cont.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); });
     if(focusIdx!=null){ try{ var sf=cont.querySelectorAll('.not-sayfa')[focusIdx]; if(sf){ var mm=sf.querySelector('.not-metin'); if(!_cizimModu) mm.focus(); sf.scrollIntoView({behavior:'smooth',block:'center'}); } }catch(_){} }
+    _planlaKaydet();   // [OTO-KAYDET] sayfa ekle/sil/sırala yapısal değişikliğini de yaz
   }
   function _ekleBtn(konum, hedefIdx){
     var btn=document.createElement('button'); btn.type='button'; btn.className='not-sayfa-ekle '+konum;
@@ -12888,7 +12896,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _sayfaYap(sp, idx){
     var w=document.createElement('div'); w.className='not-sayfa';
     var m=document.createElement('div'); m.className='not-metin'+(_doc.cizgili?' cizgili':''); m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
-    m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; });
+    m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; _planlaKaydet(); });
     m.addEventListener('paste', function(e){ try{ var cd=e.clipboardData||window.clipboardData; if(!cd) return; var its=cd.items||[]; for(var i=0;i<its.length;i++){ if(its[i].type&&its[i].type.indexOf('image/')===0){ var f=its[i].getAsFile(); if(f){ e.preventDefault(); var rd=new FileReader(); rd.onload=function(){ try{ document.execCommand('insertImage', false, rd.result); sp.metinHtml=m.innerHTML; }catch(_){} }; rd.readAsDataURL(f); return; } } } }catch(_){} });
     var sinir=document.createElement('div'); sinir.className='not-a4-sinir';   // [A4 SINIR] Word kenar-boşluğu kılavuzu
     var cv=document.createElement('canvas'); cv.className='not-cizim-cv';
@@ -12913,7 +12921,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _sc(){ return (cv.width||1)/LOGW; }
     function S(v){ return v*_sc(); } function U(v){ return v/_sc(); }
     function P(e){ var r=cv.getBoundingClientRect(); return {x:U(e.clientX-r.left), y:U(e.clientY-r.top)}; }
-    function _kaydet(){ sp.cizimObjeleri=JSON.parse(JSON.stringify(objs)); }
+    function _kaydet(){ sp.cizimObjeleri=JSON.parse(JSON.stringify(objs)); try{ _planlaKaydet(); }catch(_){} }
     function _snap(){ return JSON.stringify(objs); }
     function _itUndo(){ hist.push(_snap()); if(hist.length>60) hist.shift(); redo=[]; }
     function resize(){ var pr=cv.parentNode; if(!pr) return; var w=pr.clientWidth, h=pr.clientHeight; if(w>0&&h>0){ cv.width=w; cv.height=h; cv.style.width=w+'px'; cv.style.height=h+'px'; ciz(); } }
@@ -12985,7 +12993,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var s=window.getSelection(); if(s&&s.anchorNode){ var e=s.anchorNode.nodeType===1?s.anchorNode:s.anchorNode.parentNode; if(e&&e.closest){ var me=e.closest('.not-metin'); if(me) return me; } }
     return _ov?_ov.querySelector('.not-metin'):null;
   }
-  function _aktifSayfaKaydet(){ try{ var el=_aktifMetin(); if(el){ var w=el.closest('.not-sayfa'); if(w&&w.__sp) w.__sp.metinHtml=el.innerHTML; } }catch(e){} }
+  function _aktifSayfaKaydet(){ try{ var el=_aktifMetin(); if(el){ var w=el.closest('.not-sayfa'); if(w&&w.__sp) w.__sp.metinHtml=el.innerHTML; } _planlaKaydet(); }catch(e){} }
   function _selKaydet(){ try{ var s=window.getSelection(); if(s&&s.rangeCount){ var r=s.getRangeAt(0); var el=(r.commonAncestorContainer.nodeType===1?r.commonAncestorContainer:r.commonAncestorContainer.parentNode); var me=el&&el.closest?el.closest('.not-metin'):null; if(me){ _savedRange=r.cloneRange(); _savedEl=me; } } }catch(e){} }
   function _selGeri(){ try{ if(_savedEl) _savedEl.focus(); if(_savedRange){ var s=window.getSelection(); s.removeAllRanges(); s.addRange(_savedRange); } }catch(e){} }
   function _boyutUygula(px){
@@ -12999,9 +13007,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _gorselSec(){
     _selKaydet();
     var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-    inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){ try{ _selGeri(); _komut('insertImage', rd.result); _aktifSayfaKaydet(); }catch(_){} }; rd.readAsDataURL(f); };
+    inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){ try{ _selGeri(); _komut('insertImage', rd.result); _aktifSayfaKaydet(); _planlaKaydet(); }catch(_){} }; rd.readAsDataURL(f); };
     inp.click();
   }
+
+  // ---- OTO-KAYDET (F5/ani kapanışta veri kaybını önler; editör ×/Esc ile kapanmasa da IndexedDB'ye yazar) ----
+  // Rapor editöründeki oto-kayıt deseninin not karşılığı. Her anlamlı düzenlemede DEBOUNCE'lu, ayrıca pagehide/gizlenmede
+  // anında flush. Boş not kaydedilmez (_bosMu). Aynı _doc.id → put üzerine yazar (kopya birikmez).
+  var _otoTimer=null;
+  function _otoKaydetSimdi(){
+    try{
+      if(!_ov || !_doc) return;
+      _flushMetin();
+      var adInp=_ov.querySelector('.not-ad'); if(adInp) _doc.ad=(adInp.value||'').trim();
+      if(_bosMu()) return;                       // tamamen boş not: kaydetme
+      _doc.updatedAt=Date.now(); delete _doc._yeni;
+      var kopya=JSON.parse(JSON.stringify(_doc));
+      window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); });
+    }catch(_){}
+  }
+  function _planlaKaydet(){ try{ if(_otoTimer) clearTimeout(_otoTimer); _otoTimer=setTimeout(_otoKaydetSimdi, 600); }catch(_){} }
+  function _pagehideFlush(){ try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } _otoKaydetSimdi(); }catch(_){} }
+  function _gizlenince(){ try{ if(document.visibilityState==='hidden') _pagehideFlush(); }catch(_){} }
 
   // ---- GALERİ (sayfaları sırala / genel bakış) ----
   function _galeriAc(){
@@ -13112,15 +13139,21 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         }
       }catch(e){}
     }
+    try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } }catch(_){}
     try{ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } }); }catch(_){}
     document.removeEventListener('keydown', _tusKapat, true);
     document.removeEventListener('click', _ayarDisari, true);
+    window.removeEventListener('pagehide', _pagehideFlush);
+    window.removeEventListener('beforeunload', _pagehideFlush);
+    document.removeEventListener('visibilitychange', _gizlenince);
     try{ _ov.remove(); }catch(e){}
     _ov=null; _doc=null; _savedRange=null; _savedEl=null; _cizimModu=false; _aktifCizim=null;
   }
   function _ayarDisari(e){ try{ if(!_ov) return; ['.not-ayar-wrap','.not-paylas-wrap'].forEach(function(s){ var w=_ov.querySelector(s+'.acik'); if(w && !(e.target.closest&&e.target.closest(s))) w.classList.remove('acik'); }); }catch(_){} }
   function _tusKapat(e){
     if(!_ov) return;
+    // [ÇİZİM SİL TUŞU] çizim modunda Delete/Backspace seçili nesneleri siler (metin düzenlemez; mod'da metin pointer-events:none)
+    if(_cizimModu && (e.key==='Delete' || e.key==='Backspace')){ e.preventDefault(); if(_aktifCizim && _aktifCizim.hasSel && _aktifCizim.hasSel()) _aktifCizim.sil(); return; }
     if(e.key==='Escape'){ var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')){ return; } e.preventDefault(); _kapat(true); }
   }
 })();
