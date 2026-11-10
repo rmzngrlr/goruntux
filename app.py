@@ -115,7 +115,42 @@ def add_header(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '-1'
+    # [HIZ 2026-11-11] gzip: `no-store` KORUNUR, yalnız gövde sıkıştırılır. Panel her açılışta render-bloke ~906KB (panel
+    # HTML 465KB + x-editor.js 337KB + yerel JS) indiriyordu → "kabuk geldi, Raporlarım uzun süre boş" = scriptler inene
+    # kadar içerik JS'i çalışamıyor. gzip ~253KB'a düşürür (%72). send_file (direct_passthrough), zaten-kodlanmış ve
+    # küçük/ikili yanıtlar atlanır. Tersine çevrilebilir: bu bloğu kaldır → eski davranış.
+    try:
+        _gzip_yanit(response)
+    except Exception:
+        pass
     return response
+
+def _gzip_yanit(response):
+    import gzip as _gz
+    ae = (request.headers.get('Accept-Encoding') or '').lower()
+    if 'gzip' not in ae:
+        return
+    if getattr(response, 'direct_passthrough', False):      # send_file / streamed → dokunma
+        return
+    if response.headers.get('Content-Encoding'):            # zaten kodlanmış
+        return
+    ct = (response.content_type or '').lower()
+    if not ('text/' in ct or 'javascript' in ct or 'json' in ct or 'html' in ct or 'xml' in ct or 'css' in ct or 'svg' in ct):
+        return
+    data = response.get_data()
+    if data is None or len(data) < 600:                     # küçük yanıt: sıkıştırma kârsız
+        return
+    comp = _gz.compress(data, 6)
+    if len(comp) >= len(data):
+        return
+    response.set_data(comp)
+    response.headers['Content-Encoding'] = 'gzip'
+    response.headers['Content-Length'] = str(len(comp))
+    v = response.headers.get('Vary')
+    if not v:
+        response.headers['Vary'] = 'Accept-Encoding'
+    elif 'accept-encoding' not in v.lower():
+        response.headers['Vary'] = v + ', Accept-Encoding'
 
 # ===================== PWA (dik-mobil: ana ekrana ekle, standalone, zoom/scroll kapalı) =====================
 # İkon BAŞLANGIÇTA bellekte üretilir (PIL container'da var) -> Dockerfile/yeni dosya GEREKMEZ. Marka: mavi
@@ -3001,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11c · HIZ: mammoth+sweetalert2 CDN->YEREL (mammoth defer; internet-bagimli render-blok kalkti) | NOT KAGIDI 11b: A4-sinir + cizim-coklu-secim + tema-uyum; 11a: Galeri+Paylas(PDF/Word)+Sayfa-ekle-overlay+Word-bosluk+tam-genislik';
+        var X_BUILD = '2026-11-11d · HIZ gzip: tum metin/JS yanitlari gzip (no-store korunur; ~906KB->~253KB, panel icerigi hizli dolar) | 11c mammoth+sweetalert2 CDN->yerel | 11b A4-sinir+cizim-coklu-secim+tema | 11a Galeri+Paylas+Sayfa-ekle-overlay';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
