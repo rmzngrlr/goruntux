@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10v · geri-al FIX: snapshot mutasyondan ONCE (yazi/cizim eklenince aktif + gercekten siler)';
+        var X_BUILD = '2026-11-10w · NOT KAGIDI Faz1: Yeni Not Kagidi butonu + A4 not editoru (tek zengin metin, bolum ekle, kaydet)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4845,7 +4845,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             try { e.stopPropagation(); } catch (x) {}
             var menu = btn.closest('.x-gal-menu'); if (menu) menu.classList.remove('acik');
             var sec = btn.getAttribute('data-sec');
-            if (sec === 'cihaz') cihazdanYukle(); else yeniRaporVeEditor();
+            if (sec === 'cihaz') cihazdanYukle(); else if (sec === 'not') { try { if (window.yeniNotKagidi) window.yeniNotKagidi(); } catch (e) {} } else yeniRaporVeEditor();
         }
         window.xRaporMenuSec = xRaporMenuSec;
         try { document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.x-gal-olustur'))) { document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); }); } }); } catch (e) {}
@@ -5107,6 +5107,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     '<div class="x-gal-yeni" onclick="xRaporOlusturAc(event,this)"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Rapor Oluştur</span></div>' +
                     '<div class="x-gal-menu">' +
                         '<button type="button" class="x-gal-menu-item" data-sec="yeni" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg> Yeni Rapor</button>' +
+                        '<button type="button" class="x-gal-menu-item" data-sec="not" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5H5.5A1.5 1.5 0 0 0 4 4v12A1.5 1.5 0 0 0 5.5 17.5H11"/><path d="M11 2.5 14.5 6V9.5"/><path d="M6.5 6.5h4.5M6.5 9.5h3.5M6.5 12.5h2"/><path d="M16 10.2l1.6 1.6-4.3 4.3-2 .4.4-2z"/></svg> Yeni Not Kağıdı</button>' +
                         '<button type="button" class="x-gal-menu-item" data-sec="cihaz" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="9.5" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/></svg> Cihazdan Yükle</button>' +
                     '</div>' +
                 '</div>';
@@ -12458,6 +12459,169 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   };
 
   try { console.log('[XEditor] Faz 4c yüklendi (v'+XE.VERSION+').'); } catch(e){}
+})();
+
+/* ============== NOT KAĞIDI (A4 not defteri) — havuzdan BAĞIMSIZ — Faz 1 ============== */
+/* Giriş: "Rapor Oluştur" menüsü -> "Yeni Not Kağıdı" -> window.yeniNotKagidi(). Depo: IndexedDB x-notlar.
+   Kapat (×) = kaydet + kapat. Faz 1: A4 sayfalar + tek zengin metin (başlık türü/font/boyut/kalın) + Bölüm ekle.
+   Bayrak x_not_kagidi='0' -> kapalı. */
+(function(){
+  if(window.XNot) return;
+  function notAcikMi(){ try{ return localStorage.getItem('x_not_kagidi')!=='0'; }catch(_){ return true; } }
+  // ---- IndexedDB: x-notlar / notlar ----
+  var _db=null, _ready=null;
+  function _openDb(){ return new Promise(function(res){ try{ var rq=indexedDB.open('x-notlar',1);
+    rq.onupgradeneeded=function(e){ var db=e.target.result; if(!db.objectStoreNames.contains('notlar')) db.createObjectStore('notlar',{keyPath:'id'}); };
+    rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }
+  _ready=_openDb().then(function(db){ _db=db; });
+  function _st(mode){ return _db.transaction('notlar',mode).objectStore('notlar'); }
+  function _reqP(r){ return new Promise(function(res,rej){ r.onsuccess=function(){res(r.result);}; r.onerror=function(){rej(r.error);}; }); }
+  window.XNotlar={
+    whenReady:function(){ return _ready||Promise.resolve(); },
+    save:function(doc){ if(!_db) return Promise.resolve(); return _reqP(_st('readwrite').put(doc)).catch(function(){}); },
+    get:function(id){ if(!_db) return Promise.resolve(null); return _reqP(_st('readonly').get(id)).catch(function(){return null;}); },
+    list:function(){ if(!_db) return Promise.resolve([]); return _reqP(_st('readonly').getAll()).then(function(a){ a=a||[]; a.sort(function(x,y){return (y.updatedAt||0)-(x.updatedAt||0);}); return a; }).catch(function(){return [];}); },
+    remove:function(id){ if(!_db) return Promise.resolve(); return _reqP(_st('readwrite').delete(id)).catch(function(){}); }
+  };
+
+  var XNot=window.XNot={};
+  var _ov=null, _doc=null, _savedRange=null, _savedEl=null;
+
+  function _uuid(){ try{ return (window.crypto&&crypto.randomUUID&&crypto.randomUUID())||('n-'+Date.now()+'-'+Math.floor(Math.random()*1e6)); }catch(e){ return 'n-'+Date.now()+'-'+Math.floor(Math.random()*1e6); } }
+  function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function _stilEnjekte(){
+    if(document.getElementById('not-stil')) return;
+    var css=''
+      +'.not-ov{position:fixed;inset:0;z-index:4200;background:#52606d;display:flex;flex-direction:column;}'
+      +'.not-box{display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;}'
+      +'.not-ust{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:#f7f9fc;border-bottom:1px solid #e3e8ee;}'
+      +'.not-ad{flex:0 0 190px;max-width:240px;height:34px;padding:0 10px;border:1px solid #cfd8e3;border-radius:8px;font-size:14px;font-weight:600;background:#fff;color:#15202b;box-sizing:border-box;}'
+      +'.not-serit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}'
+      +'.not-serit select{height:32px;border:1px solid #cfd8e3;border-radius:7px;padding:0 6px;font-size:13px;background:#fff;color:#15202b;cursor:pointer;}'
+      +'.not-serit button{height:32px;min-width:32px;padding:0 12px;border:1px solid #cfd8e3;border-radius:7px;background:#fff;color:#334;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}'
+      +'.not-bolumekle{color:#1565c0!important;border-color:#cfe0f5!important;background:#eef5ff!important;}'
+      +'.not-kapat{margin-left:auto;width:36px;height:36px;border:none;background:#eef1f5;border-radius:8px;font-size:22px;line-height:1;cursor:pointer;color:#334;}'
+      +'.not-sayfalar{flex:1;overflow:auto;padding:24px 10px;background:#52606d;}'
+      +'.not-sayfa{width:794px;max-width:96%;margin:0 auto 24px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,0.35);border-radius:2px;position:relative;}'
+      +'.not-metin{width:100%;min-height:1123px;box-sizing:border-box;padding:56px 64px;outline:none;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#111;word-wrap:break-word;}'
+      +'.not-metin:empty:before{content:"Buraya yazın…";color:#9aa3ad;}'
+      +'.not-metin h1{font-size:30px;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin h2{font-size:24px;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin h3{font-size:19px;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin img{max-width:100%;height:auto;}'
+      +'html.x-mobile.x-dik .not-ust{gap:6px;padding:6px 8px;}'
+      +'html.x-mobile.x-dik .not-ad{flex-basis:120px;}'
+      +'html.x-mobile.x-dik .not-sayfa{max-width:100%;}'
+      +'html.x-mobile.x-dik .not-metin{padding:24px 20px;min-height:70vh;}'
+      +'body:not(.light-theme) .not-ust{background:#0f1720;border-color:#24323f;}'
+      +'body:not(.light-theme) .not-ad,body:not(.light-theme) .not-serit select,body:not(.light-theme) .not-serit button{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}'
+      +'body:not(.light-theme) .not-bolumekle{background:#14314a!important;color:#6fb4ef!important;border-color:#2f5f8a!important;}'
+      +'body:not(.light-theme) .not-kapat{background:#24323f;color:#e7e9ea;}';
+    var st=document.createElement('style'); st.id='not-stil'; st.textContent=css; (document.head||document.documentElement).appendChild(st);
+  }
+
+  window.yeniNotKagidi=function(){ if(!notAcikMi()) return; XNot.ac(null); };
+
+  XNot.ac=function(doc){
+    if(_ov) return;
+    _stilEnjekte();
+    _doc = doc || { id:_uuid(), ad:'', sayfalar:[{metinHtml:''}], updatedAt:0, _yeni:true };
+    if(!_doc.sayfalar || !_doc.sayfalar.length) _doc.sayfalar=[{metinHtml:''}];
+    var fontlar=['Arial','Times New Roman','Georgia','Courier New','Verdana','Tahoma'];
+    var fontOpt=fontlar.map(function(f){return '<option value="'+f+'">'+f+'</option>';}).join('');
+    var boyutlar=[10,12,14,16,18,20,24,28,32,40,48,64];
+    var boyutOpt=boyutlar.map(function(s){return '<option value="'+s+'"'+(s===16?' selected':'')+'>'+s+'</option>';}).join('');
+    _ov=document.createElement('div'); _ov.className='not-ov'; _ov.id='not-ov';
+    _ov.innerHTML=''
+      +'<div class="not-box">'
+      +'  <div class="not-ust">'
+      +'    <input class="not-ad" type="text" placeholder="Not adı" value="'+_esc(_doc.ad||'')+'">'
+      +'    <div class="not-serit">'
+      +'      <select class="not-basl" title="Başlık türü"><option value="p">Başlık türü</option><option value="h1">Başlık 1</option><option value="h2">Başlık 2</option><option value="h3">Başlık 3</option><option value="p">Normal</option></select>'
+      +'      <select class="not-font" title="Yazı tipi">'+fontOpt+'</select>'
+      +'      <select class="not-boyut" title="Boyut">'+boyutOpt+'</select>'
+      +'      <button type="button" class="not-b" title="Kalın"><b>B</b></button>'
+      +'      <button type="button" class="not-bolumekle" title="Yeni A4 sayfa ekle">+ Bölüm ekle</button>'
+      +'    </div>'
+      +'    <button type="button" class="not-kapat" title="Kaydet ve kapat">&times;</button>'
+      +'  </div>'
+      +'  <div class="not-sayfalar"></div>'
+      +'</div>';
+    (document.body||document.documentElement).appendChild(_ov);
+    var sayfalarEl=_ov.querySelector('.not-sayfalar');
+    _doc.sayfalar.forEach(function(sp){ sayfalarEl.appendChild(_sayfaYap(sp)); });
+
+    // seçim koruma: şeritteki herhangi bir kontrole BASARKEN editördeki seçimi sakla (kontrol odağı çalınca kaybolmasın)
+    _ov.querySelector('.not-serit').addEventListener('mousedown', _selKaydet, true);
+    _ov.querySelector('.not-serit').addEventListener('touchstart', _selKaydet, true);
+
+    _ov.querySelector('.not-kapat').addEventListener('click', function(){ _kapat(true); });
+    _ov.querySelector('.not-bolumekle').addEventListener('click', function(){ var sp={metinHtml:''}; _doc.sayfalar.push(sp); var el=_sayfaYap(sp); sayfalarEl.appendChild(el); try{ el.scrollIntoView({behavior:'smooth',block:'start'}); el.querySelector('.not-metin').focus(); }catch(_){} });
+    _ov.querySelector('.not-basl').addEventListener('change', function(){ var v=this.value; _selGeri(); _komut('formatBlock','<'+v+'>'); this.selectedIndex=0; _aktifSayfaKaydet(); });
+    _ov.querySelector('.not-font').addEventListener('change', function(){ _selGeri(); _komut('fontName', this.value); _aktifSayfaKaydet(); });
+    _ov.querySelector('.not-boyut').addEventListener('change', function(){ _selGeri(); _boyutUygula(+this.value); });
+    _ov.querySelector('.not-b').addEventListener('mousedown', function(e){ e.preventDefault(); });
+    _ov.querySelector('.not-b').addEventListener('click', function(){ _selGeri(); _komut('bold'); _aktifSayfaKaydet(); });
+    document.addEventListener('keydown', _tusKapat, true);
+    try{ _doc.sayfalar.length && _ov.querySelector('.not-metin').focus(); }catch(_){}
+  };
+
+  function _sayfaYap(sp){
+    var w=document.createElement('div'); w.className='not-sayfa';
+    var m=document.createElement('div'); m.className='not-metin'; m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
+    m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; });
+    w.appendChild(m); w.__sp=sp; w.__metin=m;
+    return w;
+  }
+  function _komut(cmd, val){ try{ document.execCommand(cmd, false, (val==null?null:val)); }catch(e){} }
+  function _aktifMetin(){
+    if(_savedEl && document.contains(_savedEl)) return _savedEl;
+    var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')) return a;
+    var s=window.getSelection(); if(s&&s.anchorNode){ var e=s.anchorNode.nodeType===1?s.anchorNode:s.anchorNode.parentNode; if(e&&e.closest){ var me=e.closest('.not-metin'); if(me) return me; } }
+    return _ov?_ov.querySelector('.not-metin'):null;
+  }
+  function _aktifSayfaKaydet(){ try{ var el=_aktifMetin(); if(el){ var w=el.closest('.not-sayfa'); if(w&&w.__sp) w.__sp.metinHtml=el.innerHTML; } }catch(e){} }
+  function _selKaydet(){ try{ var s=window.getSelection(); if(s&&s.rangeCount){ var r=s.getRangeAt(0); var el=(r.commonAncestorContainer.nodeType===1?r.commonAncestorContainer:r.commonAncestorContainer.parentNode); var me=el&&el.closest?el.closest('.not-metin'):null; if(me){ _savedRange=r.cloneRange(); _savedEl=me; } } }catch(e){} }
+  function _selGeri(){ try{ if(_savedEl) _savedEl.focus(); if(_savedRange){ var s=window.getSelection(); s.removeAllRanges(); s.addRange(_savedRange); } }catch(e){} }
+  function _boyutUygula(px){
+    try{
+      _selGeri();
+      var sel=window.getSelection(); if(!sel||!sel.rangeCount||sel.isCollapsed) return;   // boyut için seçim şart
+      document.execCommand('fontSize', false, '7');   // geçici işaret -> span font-size ile değiştir
+      var root=_aktifMetin(); if(!root) return;
+      root.querySelectorAll('font[size="7"]').forEach(function(f){ var s=document.createElement('span'); s.style.fontSize=px+'px'; while(f.firstChild) s.appendChild(f.firstChild); f.parentNode.replaceChild(s,f); });
+      _aktifSayfaKaydet();
+    }catch(e){}
+  }
+  function _bosMu(){
+    var adBos=!((_doc.ad||'').trim());
+    var hepsiBos=(_doc.sayfalar||[]).every(function(sp){ var t=(sp.metinHtml||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/ /g,' ').trim(); return !t; });
+    return adBos && hepsiBos;
+  }
+  function _kapat(kaydet){
+    if(!_ov) return;
+    if(kaydet){
+      try{
+        _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; });
+        var adInp=_ov.querySelector('.not-ad'); _doc.ad=(adInp?adInp.value:'').trim();
+        if(_bosMu()){ if(!_doc._yeni){ window.XNotlar.remove(_doc.id); } }   // boş not -> kaydetme (varsa sil)
+        else {
+          _doc.updatedAt=Date.now(); var yd=_doc._yeni; delete _doc._yeni;
+          var kopya=JSON.parse(JSON.stringify(_doc));
+          window.XNotlar.whenReady().then(function(){ window.XNotlar.save(kopya); });
+          try{ if(window.showToast) showToast(yd?'Not kaydedildi.':'Not güncellendi.','success'); }catch(_){}
+        }
+      }catch(e){}
+    }
+    document.removeEventListener('keydown', _tusKapat, true);
+    try{ _ov.remove(); }catch(e){}
+    _ov=null; _doc=null; _savedRange=null; _savedEl=null;
+  }
+  function _tusKapat(e){
+    if(!_ov) return;
+    if(e.key==='Escape'){ var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')){ return; } e.preventDefault(); _kapat(true); }
+  }
 })();
 '''
 
