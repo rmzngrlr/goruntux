@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10m · gorsel sag-tik: kopya duzeldi (ic pano+execCommand) + bos slot yapistir menusu';
+        var X_BUILD = '2026-11-10n · gorsel kopya yalniz IC pano (OS-kirletme yok); metne gorsel yapismaz; slot Ctrl+V ic-pano yedegi';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -11230,41 +11230,26 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(b.item.image_b64) return {b64:b.item.image_b64, mime:b.item.image_mime||'image/png'};
     return null;
   }
-  // [İÇ GÖRSEL PANO 2026-11-10m] OS panosu güvensiz bağlamda (http IP; https/localhost DEĞİL) ENGELLİ ->
-  // kopyala/yapıştır çalışmıyordu (yalnız kes "çalışıyor" görünüyordu çünkü siliyor). Çözüm: editör-içi JS panosu
-  // (_gorselPano) -> editör-içi kopyala->yapıştır HER bağlamda güvenilir. OS panosuna da EN İYİ ÇABA yazılır
-  // (güvenli bağlamda clipboard.write; değilse DOM'daki img'yi seçip execCommand('copy') -> dış uygulamalara).
-  var _gorselPano=null;
-  // DOM'daki gerçek <img.ed-img> öğesini seçip execCommand('copy') -> güvensiz bağlamda da OS panosuna görsel yazar
-  // (dış uygulamalar için). Seçimi geri yükler. (Eski "görsel execCommand'la kopyalanamaz" varsayımı yanlıştı:
-  // RENDER edilmiş img öğesi seçilip kopyalanabilir.)
-  function _gorselKopyalaExec(bi, pp){
-    try{
-      var root=document.getElementById('editor-root');
-      var img=root && (root.querySelector('img.ed-img[data-i="'+bi+'"][data-p="'+pp+'"]') || root.querySelector('img.ed-img[data-i="'+bi+'"]'));
-      if(!img) return false;
-      var sel=window.getSelection(); var saved=(sel&&sel.rangeCount)?sel.getRangeAt(0).cloneRange():null;
-      var r=document.createRange(); r.selectNode(img); sel.removeAllRanges(); sel.addRange(r);
-      var ok=false; try{ ok=document.execCommand('copy'); }catch(e){}
-      try{ sel.removeAllRanges(); if(saved) sel.addRange(saved); }catch(e){}
-      return ok;
-    }catch(e){ return false; }
-  }
+  // [İÇ GÖRSEL PANO 2026-11-10n] OS panosu güvensiz bağlamda (http IP; https/localhost DEĞİL) ENGELLİ ->
+  // kopyala/yapıştır çalışmıyordu. Çözüm: editör-içi JS panosu (XE.__gorselPano) -> editör-içi kopyala->yapıştır
+  // HER bağlamda güvenilir (OS panosuna bağımlı DEĞİL). OS panosuna YALNIZ GÜVENLİ bağlamda yazılır (proper image
+  // dosyası). GÜVENSİZDE OS'a YAZILMAZ: eski execCommand yolu panoya text/html-img koyuyordu -> metin alanına SIZIYOR
+  // (kullanıcı "metne görsel yapışmasın" dedi) + slot image-öğesi aradığından GÖRMÜYORDU. Artık yalnız iç pano.
+  XE.__gorselPano=null;
   function _gorselKopyaUygula(bi, pp){
     var d=_gorselClipData(bi,pp); if(!d) return;
-    _gorselPano={b64:d.b64, mime:d.mime};                 // İÇ PANO (editör-içi yapıştırma için, her bağlamda)
-    if(_gorselKopyaVar()) _gorselPanoyaKopyala(d.b64,d.mime,null);   // OS panosu (güvenli bağlam)
-    else _gorselKopyalaExec(bi,pp);                        // OS panosu (güvensiz bağlam -> execCommand, dış uygulama)
+    XE.__gorselPano={b64:d.b64, mime:d.mime};                 // İÇ PANO (editör-içi yapıştırma için, her bağlamda)
+    if(_gorselKopyaVar()) _gorselPanoyaKopyala(d.b64,d.mime,null);   // OS panosu YALNIZ güvenli bağlam (proper image)
   }
   function _gorselClipKopyala(bi, pp){ _gorselKopyaUygula(bi,pp); _sagTikKapat(); }
-  // Kes = kopyala (iç pano + OS en-iyi-çaba) + görseli HER durumda sil.
+  // Kes = kopyala (iç pano + güvenli bağlamda OS) + görseli HER durumda sil.
   function _gorselClipKes(bi, pp){ _gorselKopyaUygula(bi,pp); _sagTikKapat(); XE._gorselSil(bi,pp); }
   function _gorselYapistirVar(){ return !!(navigator.clipboard && navigator.clipboard.read); }   // OS pano OKUMA yalnız güvenli bağlamda
   // [GÖRSEL YAPIŞTIR] Önce İÇ PANO (editör-içi kopyalanan görsel -> her bağlamda çalışır). Yoksa XE._panoGorsel:
   // güvenli bağlamda OS panosunu doğrudan okur, güvensizde "Ctrl+V hedef kutusu" modalı açar (insecure'de de çalışır).
   function _gorselClipYapistir(bi, pp){
     _sagTikKapat();
-    if(_gorselPano && _gorselPano.b64){ try{ XE._gorselParcaYaz(bi,pp,_gorselPano.b64,_gorselPano.mime); }catch(_){} return; }
+    if(XE.__gorselPano && XE.__gorselPano.b64){ try{ XE._gorselParcaYaz(bi,pp,XE.__gorselPano.b64,XE.__gorselPano.mime); }catch(_){} return; }
     try{ XE._panoGorsel(function(b64,mime){ try{ XE._gorselParcaYaz(bi,pp,b64,mime); }catch(_){} }); }catch(e){}
   }
   function _gorselClipSatiri(bos, canCopy){
@@ -11799,8 +11784,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           var txt=cd.getData('text/plain');
           if(txt==null||txt===''){ var _h=cd.getData('text/html'); if(_h){ var _tmp=document.createElement('div'); _tmp.innerHTML=_h; txt=_tmp.innerText||_tmp.textContent||''; } }
           if(txt==null||txt===''){
-            // [GÖRSELİ METNE YAPIŞTIRMA] metin yok + panoda GÖRSEL var -> metin ögesine YAPIŞTIRMA (görsel kutusuna yapıştır).
+            // [GÖRSELİ METNE YAPIŞTIRMA YASAK] Kullanıcı kuralı: metin alanına görsel ASLA yapışmasın. Metin yoksa ve
+            // panoda görsel (image ÖĞESİ VEYA text/html'de <img>) varsa YAPIŞTIRMAYI ENGELLE -> görsel kutusuna yapıştırılsın.
+            // (html-img kontrolü eklendi: image öğesi olmayan html-img kopyaları da metne SIZIYORDU.)
             var hasImg=false; try{ var its=cd.items||[]; for(var j=0;j<its.length;j++){ if(its[j]&&its[j].type&&its[j].type.indexOf('image/')===0){ hasImg=true; break; } } }catch(_){}
+            if(!hasImg){ try{ var _hi=cd.getData('text/html')||''; if(/<img[\s\/>]/i.test(_hi)) hasImg=true; }catch(_){} }
             if(hasImg){ e.preventDefault(); try{ if(window.showToast) window.showToast('Görsel metin alanına yapıştırılamaz — bir görsel kutusuna yapıştırın.','warning'); }catch(_){} }
             return;   // görselse engellendi; ne metin ne görselse varsayılan
           }
@@ -11834,6 +11822,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
               XE._gorselParcaYaz(bi, pp, du.slice(ci+1), blob.type||'image/png');
             }; rd.readAsDataURL(blob); return; }
         }
+        // [İÇ PANO YEDEĞİ 2026-11-10n] OS panosunda image öğesi yok (güvensiz bağlamda editör-içi kopyalanan görsel
+        // OS'a yazılamaz) -> editör-içi panodan (XE.__gorselPano) yapıştır. Böylece "kopyala -> slota Ctrl+V" çalışır.
+        if(XE.__gorselPano && XE.__gorselPano.b64){ e.preventDefault(); var _bi=+el.getAttribute('data-i'), _pp=+el.getAttribute('data-p'); try{ XE._gorselParcaYaz(_bi, _pp, XE.__gorselPano.b64, XE.__gorselPano.mime); }catch(_){} return; }
         e.preventDefault(); el.innerHTML='Panoda görsel yok. Önce bir görsel kopyalayıp tekrar <b>Ctrl+V</b> yapın.';
       });
     });
