@@ -2201,12 +2201,21 @@ HTML_TEMPLATE = """
           // top (--vv-offset) her kareyi takip edince TITRIYOR. ASIMETRIK: ARTIS'i hemen uygula (odak alani klavye
           // ustunde kalsin), AZALIS'i ~180ms geciktir (gecici dip yerlesmeden commit etme; geri ciktiysa commit yok ->
           // titreme gider). Yuksek alana GERCEK gecis ise azalis yerlesir -> tek temiz hareket, titreme degil.
+          // [10h DENEY] Olcum: Δ vvTop=124 modalTop=124 scroll=0 kart=0. Yani counter (modalTop) iOS'u (vvTop) KOVALIYOR;
+          // alan zaten klavye ustundeyken bile vvTop 198'e cikti -> itisi COUNTER'IN KENDISI doguruyor (feedback: counter
+          // alani asagi iter -> iOS tekrar iter -> ramp). Counter'i KAPAT (modal top=0). Hipotez: itis kaybolur, icerik
+          // dogal halinde sabit kalir + titreme biter. vvTop yine 125'e ciksa (genuine dusuk alan) issue 1 doner -> kompakt
+          // editore geceriz; yesil kutu bunu gosterir. Flag x_icerik_sabit='1' -> eski counter (10e/10f) davranisi.
           try {
-            var _off = Math.round(vv.offsetTop||0);
-            var _cur = parseFloat(de.style.getPropertyValue('--vv-offset')) || 0;
-            clearTimeout(window.__vvOffT);
-            if(_off >= _cur){ de.style.setProperty('--vv-offset', _off + 'px'); }
-            else { window.__vvOffT = setTimeout(function(){ try{ var v2=window.visualViewport; if(v2){ de.style.setProperty('--vv-offset', Math.round(v2.offsetTop||0) + 'px'); } }catch(e){} }, 180); }
+            if(localStorage.getItem('x_icerik_sabit')==='1'){
+              var _off = Math.round(vv.offsetTop||0);
+              var _cur = parseFloat(de.style.getPropertyValue('--vv-offset')) || 0;
+              clearTimeout(window.__vvOffT);
+              if(_off >= _cur){ de.style.setProperty('--vv-offset', _off + 'px'); }
+              else { window.__vvOffT = setTimeout(function(){ try{ var v2=window.visualViewport; if(v2){ de.style.setProperty('--vv-offset', Math.round(v2.offsetTop||0) + 'px'); } }catch(e){} }, 180); }
+            } else {
+              clearTimeout(window.__vvOffT); de.style.setProperty('--vv-offset','0px');
+            }
           } catch(e){}
           // [DROPDOWN TAKİP] Açık font/boyut dropdown'u klavye aç/kapanınca şeride bağlı kalsın (şerit konumu değişti ->
           // dropdown da yeniden konumlanır; yoksa dropdown üstte kalıp şerit altta kopuk görünüyordu — "anlamsız").
@@ -2985,7 +2994,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10g · TESHIS: alan-gecisi titreme Delta-olcum (vvTop/scroll/modalTop/kart)';
+        var X_BUILD = '2026-11-10h · DENEY: counter KAPALI (feedback titreme testi; flag x_icerik_sabit=1 eski)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
