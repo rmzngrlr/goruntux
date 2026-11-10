@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11i · NOT KAGIDI: font/boyut/stil DROPDOWN acilmiyordu (not modal z4200 > xcs z3600) -> z3500 fix + Galeri rapor-editoru gibi temali kartlar + not yuklenme fix (DB hazir olunca galeri tazele + render dayanikli) | 11h kutu-secim-geometri+koyu-A4 | 11g ust-bar';
+        var X_BUILD = '2026-11-11j · NOT KAGIDI: YAZI SAYFAYLA OLCEKLENIR (fit A4 kuculunce font da kuculur = gercek A4 gorunumu; taban JS pw/794, baslik/boyut/cizgili em -> birlikte; export 16px tabanda gercek px) | 11i dropdown-z-fix+galeri+not-yuklenme | 11h kutu-secim+koyu-A4';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5o · 2026-11-11 not-kagidi dropdown-z-fix + galeri-rapor-editoru-gibi + not-yuklenme-fix";
+  XE.VERSION = "5p · 2026-11-11 not-kagidi yazi-sayfayla-olceklenir (gercek-A4-gorunum, em-tabanli, export-gercek-px)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12695,10 +12695,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-metin:empty:before{content:"Buraya yazın…";color:#9aa3ad;}'
       // [ÇİZGİLİ 2026-11-11] Uniform (background-size döşeme, her tile birebir) + metin satırına HİZALI (satır-yüksekliği
       // sabit + çizgiler content-box'ta her satırın DİBİNE; metin çizgiye oturur). Varsayılan 16px font -> 28px satır.
-      +'.not-metin.cizgili{line-height:28px;background-image:linear-gradient(to bottom, transparent 27px, #c3ccd6 27px, #c3ccd6 28px);background-size:100% 28px;background-origin:content-box;background-clip:content-box;background-repeat:repeat-y;}'
-      +'.not-metin h1{font-size:30px;margin:.4em 0 .3em;font-weight:700;}'
-      +'.not-metin h2{font-size:24px;margin:.4em 0 .3em;font-weight:700;}'
-      +'.not-metin h3{font-size:19px;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin.cizgili{line-height:1.75em;background-image:linear-gradient(to bottom, transparent calc(1.75em - 1px), #c3ccd6 calc(1.75em - 1px), #c3ccd6 1.75em);background-size:100% 1.75em;background-origin:content-box;background-clip:content-box;background-repeat:repeat-y;}'
+      // [FONT ÖLÇEK] başlık/boyut em cinsinden → taban font (JS'te sayfayla ölçeklenir) ile birlikte küçülür; export 16px'de em gerçek px'e çözülür.
+      +'.not-metin h1{font-size:1.875em;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin h2{font-size:1.5em;margin:.4em 0 .3em;font-weight:700;}'
+      +'.not-metin h3{font-size:1.1875em;margin:.4em 0 .3em;font-weight:700;}'
       +'.not-metin img{max-width:100%;height:auto;}'
       // [KOYU TEMA A4 2026-11-11] Koyu temada sayfa da KOYU olsun (rapor editörüyle aynı denge: tuval #0f1621, sayfa #17212e,
       // metin #e7e9ea — .preview-body/.ed-card/.ed-root). YALNIZ EKRAN; PDF/Word export _sayfalarHtml ile DAİMA beyaz+siyah.
@@ -12706,7 +12707,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'body:not(.light-theme) .not-sayfa{background:#17212e;box-shadow:0 3px 18px rgba(0,0,0,.55);}'
       +'body:not(.light-theme) .not-metin{color:#e7e9ea;}'
       +'body:not(.light-theme) .not-metin:empty:before{color:#5d6b7a;}'
-      +'body:not(.light-theme) .not-metin.cizgili{background-image:linear-gradient(to bottom,transparent 27px,rgba(226,235,244,.15) 27px,rgba(226,235,244,.15) 28px);}'
+      +'body:not(.light-theme) .not-metin.cizgili{background-image:linear-gradient(to bottom,transparent calc(1.75em - 1px),rgba(226,235,244,.15) calc(1.75em - 1px),rgba(226,235,244,.15) 1.75em);}'
       +'body:not(.light-theme) .not-a4-sinir::before{border-color:rgba(160,180,205,.3);}'
       +'html.x-mobile.x-dik .not-baslik{padding:8px 8px;padding-top:14px;gap:4px;}'
       +'html.x-mobile.x-dik .not-h2{font-size:15px;}'
@@ -12936,7 +12937,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     w.appendChild(_ekleBtn('alt', idx+1));     // ardına sayfa ekle
     w.__sp=sp; w.__metin=m;
     w.__cizim=_cizKatman(cv, sp);   // [FAZ3] çizim motoru (overlay)
-    try{ w.__ro=new ResizeObserver(function(){ try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ try{ w.__cizim.resize(); }catch(e){} }, 80); }
+    // [FONT ÖLÇEK] Taban font sayfanın GERÇEK genişliğiyle ölçeklenir (gerçek A4=794px → 16px): fit edilmiş küçük sayfada
+    // yazı da küçülür → bir sayfaya gerçek A4 kadar yazı sığar. em tabanlı başlık/boyut/çizgili bununla birlikte küçülür.
+    function _fontOlc(){ try{ var pw=w.clientWidth; if(pw>0) m.style.fontSize=Math.max(9,Math.min(16, 16*pw/794)).toFixed(2)+'px'; }catch(_){} }
+    _fontOlc();
+    try{ w.__ro=new ResizeObserver(function(){ _fontOlc(); try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ _fontOlc(); try{ w.__cizim.resize(); }catch(e){} }, 80); }
     return w;
   }
 
@@ -13044,7 +13049,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     try{ _selGeri(); var sel=window.getSelection(); if(!sel||!sel.rangeCount||sel.isCollapsed) return;
       document.execCommand('fontSize', false, '7');
       var root=_aktifMetin(); if(!root) return;
-      root.querySelectorAll('font[size="7"]').forEach(function(f){ var s=document.createElement('span'); s.style.fontSize=px+'px'; while(f.firstChild) s.appendChild(f.firstChild); f.parentNode.replaceChild(s,f); });
+      root.querySelectorAll('font[size="7"]').forEach(function(f){ var s=document.createElement('span'); s.style.fontSize=(px/16)+'em'; while(f.firstChild) s.appendChild(f.firstChild); f.parentNode.replaceChild(s,f); });   // em → sayfayla ölçeklenir; export 16px'de px'e çözülür
       _aktifSayfaKaydet();
     }catch(e){}
   }
@@ -13143,6 +13148,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var css='@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}'
         +'.pg{position:relative;width:21cm;min-height:29.7cm;box-sizing:border-box;overflow:hidden;background:#fff}'
         +'.mt{min-height:29.7cm;box-sizing:border-box;padding:2.54cm;font-family:Arial,sans-serif;font-size:16px;color:#111;word-wrap:break-word}'
+        +'.mt h1{font-size:1.875em}.mt h2{font-size:1.5em}.mt h3{font-size:1.1875em}'   // em → 16px tabanda gerçek px (editörle aynı)
         +'.mt img{max-width:100%;height:auto}';
       var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title><style>'+css+'</style></head><body>'+_sayfalarHtml(false)+'</body></html>';
       var ifr=document.createElement('iframe'); ifr.setAttribute('aria-hidden','true');
@@ -13158,7 +13164,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     try{
       var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title>'
         +'<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->'
-        +'<style>@page{size:A4;margin:2.54cm}body{font-family:Arial,sans-serif;font-size:16px;color:#111}img{max-width:100%;height:auto}</style></head><body>';
+        +'<style>@page{size:A4;margin:2.54cm}body{font-family:Arial,sans-serif;font-size:16px;color:#111}h1{font-size:1.875em}h2{font-size:1.5em}h3{font-size:1.1875em}img{max-width:100%;height:auto}</style></head><body>';
       var post='</body></html>';
       var blob=new Blob(['﻿'+pre+_sayfalarHtml(true)+post], {type:'application/msword'});
       var url=URL.createObjectURL(blob), a=document.createElement('a');
