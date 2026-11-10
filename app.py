@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11j · NOT KAGIDI: YAZI SAYFAYLA OLCEKLENIR (fit A4 kuculunce font da kuculur = gercek A4 gorunumu; taban JS pw/794, baslik/boyut/cizgili em -> birlikte; export 16px tabanda gercek px) | 11i dropdown-z-fix+galeri+not-yuklenme | 11h kutu-secim+koyu-A4';
+        var X_BUILD = '2026-11-11k · NOT KAGIDI: A4 GENISLIGE SIGAR (sagdan-soldan tam genislik, dikey scroll) + kesik-cizgi A4-sinir KALDIRILDI + GALERI rapor-editoru gibi MOD (ayri overlay/Kapat yok, ust bar ayni, galeri butonu toggle) | 11j yazi-olceklenir | 11i dropdown-fix';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5p · 2026-11-11 not-kagidi yazi-sayfayla-olceklenir (gercek-A4-gorunum, em-tabanli, export-gercek-px)";
+  XE.VERSION = "5q · 2026-11-11 not-kagidi A4-genislige-sigar + A4-sinir-kaldirildi + galeri-mod(rapor-editoru-gibi)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12649,16 +12649,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-serit .not-ayr,.not-cizim-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
       +'.not-hgrp{display:inline-flex;gap:2px;}'
       // sayfalar + A4
-      // [EKRANA SIĞDIR 2026-11-11] Sayfa kabı; A4'ün TAMAMININ ekrana sığması (fit) için `container-type:size` ver →
-      // `.not-sayfa` gerçek kap boyutuna (cqw/cqh) göre ölçeklenir (kırılgan sabit offset yok). Kaydırma çubuğu sağda gri
-      // şerit açmasın diye YALNIZ bu kapta gizli (global '*' DEĞİL; tekerlek/dokunuş çalışır).
-      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 10px 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;container-type:size;}'
+      // [GENİŞLİĞE SIĞDIR 2026-11-11] Kullanıcı: A4 sağdan-soldan ekranı DOLDURSUN (tam genişlik), uzunsa DİKEY kaydır (normal).
+      // Kaydırma çubuğu sağda gri şerit açmasın diye YALNIZ bu kapta gizli (tekerlek/dokunuş çalışır).
+      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;}'
       +'.not-sayfalar::-webkit-scrollbar{width:0;height:0;display:none;}'
-      // [EKRANA SIĞDIR 2026-11-11] A4'ün TAMAMI ekrana sığsın (dikey kaydırma yok): yükseklik = min(kap-yükseklik, genişlik-
-      // kısıtı, gerçek A4 1123px). width:auto → aspect-ratio'dan türetilir. KURALIN İŞLEYİŞİ: 100cqh-24 bağlarsa (geniş/kısa
-      // masaüstü) yüksekliğe sığar + yanlarda gri tuval; 100cqw*297/210 bağlarsa (dar/uzun = mobil) genişlik=%100 tam-genişlik;
-      // 1123 cap devasa ekranda gerçek A4'ü aşmasın. İçerik başlangıcı: padding %12.1 orantılı → fit sayfada da Word marjı.
-      +'.not-sayfa{position:relative;aspect-ratio:210/297;height:min(100cqh - 24px, 100cqw * 297 / 210, 1123px);width:auto;max-width:100%;margin:12px auto;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);}'
+      // Sayfa = tam genişlik (sağdan-soldan ekrana sığar), yükseklik A4 oranından (aspect-ratio) → uzun olabilir, dikey kaydırılır.
+      +'.not-sayfa{position:relative;aspect-ratio:210/297;width:100%;margin:0 auto 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);}'
       // [SAYFA EKLE 2026-11-11] Ayrı gri şerit YOK; üst/alt-orta yarı-saydam overlay buton (silme × ile aynı hizada,
       // imleç üstüne gelince netleşir). ust=önüne ekle, alt=ardına ekle. Çizim modunda gizli (canvas boş kalsın).
       +'.not-sayfa-ekle{position:absolute;left:50%;transform:translateX(-50%);z-index:6;height:28px;padding:0 14px;border:none;border-radius:14px;background:rgba(40,110,214,.82);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.4;transition:opacity .12s,background .12s;}'
@@ -12687,11 +12683,6 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [WORD A4 BOŞLUK 2026-11-11] Kenar boşlukları Word'ün standart A4 "Normal" marjı 2.54cm; padding-% GENİŞLİĞE
       // göre olduğundan 2.54/21=%12.1 dört yanda = 2.54cm (oransal; sayfa küçülse de Word görünümü korunur).
       +'.not-metin{position:relative;z-index:2;width:100%;min-height:100%;box-sizing:border-box;padding:12.1%;outline:none;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#111;word-wrap:break-word;}'
-      // [A4 SINIR 2026-11-11] Word kenar-boşluğu kılavuzu: sayfayı tam kaplayan overlay, padding %12.1 (metin ile BİREBİR
-      // aynı), iç ::before = yazı alanının dış çerçevesi (kesik çizgi). Metin üstte (z2), kılavuz altta (z1); yazdırmaya/
-      // Word'e dahil DEĞİL (export yalnız metinHtml+canvas okur). pointer-events yok → tıklama metne geçer.
-      +'.not-a4-sinir{position:absolute;inset:0;padding:12.1%;box-sizing:border-box;pointer-events:none;z-index:1;}'
-      +'.not-a4-sinir::before{content:"";display:block;width:100%;height:100%;border:1px dashed rgba(90,110,140,.5);}'
       +'.not-metin:empty:before{content:"Buraya yazın…";color:#9aa3ad;}'
       // [ÇİZGİLİ 2026-11-11] Uniform (background-size döşeme, her tile birebir) + metin satırına HİZALI (satır-yüksekliği
       // sabit + çizgiler content-box'ta her satırın DİBİNE; metin çizgiye oturur). Varsayılan 16px font -> 28px satır.
@@ -12708,7 +12699,6 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'body:not(.light-theme) .not-metin{color:#e7e9ea;}'
       +'body:not(.light-theme) .not-metin:empty:before{color:#5d6b7a;}'
       +'body:not(.light-theme) .not-metin.cizgili{background-image:linear-gradient(to bottom,transparent calc(1.75em - 1px),rgba(226,235,244,.15) calc(1.75em - 1px),rgba(226,235,244,.15) 1.75em);}'
-      +'body:not(.light-theme) .not-a4-sinir::before{border-color:rgba(160,180,205,.3);}'
       +'html.x-mobile.x-dik .not-baslik{padding:8px 8px;padding-top:14px;gap:4px;}'
       +'html.x-mobile.x-dik .not-h2{font-size:15px;}'
       +'html.x-mobile.x-dik .not-ad{min-width:0;flex:0 1 110px;max-width:none;font-size:12px;margin-right:2px;}'
@@ -12719,13 +12709,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-paylas-wrap.acik .not-paylas-menu{display:flex;}'
       +'.not-pay-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;padding:9px 12px;border-radius:7px;cursor:pointer;}'
       +'.not-pay-item:hover{background:rgba(29,155,240,.14);color:#1d9bf0;}'
-      // [GALERİ 2026-11-11] Sayfa sıralama/genel bakış — not-ov içinde tam kaplayan ızgara; kart tıkla→o sayfaya git.
-      +'.not-galeri-ov{position:absolute;inset:0;z-index:30;background:var(--bg-modal,#0f1621);display:flex;flex-direction:column;}'
-      +'.not-gal-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));}'
-      +'.not-gal-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text-primary,#e7edf3);}'
-      // [GALERİ = RAPOR EDİTÖRÜ GİBİ 2026-11-11] Kart .ed-gal-card ile aynı: temalı yüzey (#fff / #17212e koyu), numara rozeti
-      // sol-üstte, temalı içerik önizlemesi (sabit #52606d slate + beyaz mini-sayfa YERİNE). "koyu görünüyor" çakışması biter.
-      +'.not-gal-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding:16px 20px 24px;align-content:start;}'
+      // [GALERİ = RAPOR EDİTÖRÜ GİBİ 2026-11-11] Ayrı overlay/"Sayfalar/×Kapat" başlığı YOK: galeri butonuyla açılan MOD
+      // (XE._galeriModu deseni). `.not-ov.galeri` → biçim şeridi + sayfa alanı gizlenir, yerine `.not-gal-alan` ızgarası gelir;
+      // üst bar (editör başlığı) AYNI kalır. Kart .ed-gal-card ile aynı (temalı #fff/#17212e, numara rozeti, metin önizleme).
+      +'.not-gal-alan{display:none;flex:1;min-height:0;overflow:auto;flex-direction:column;background:var(--bg-modal,#0f1621);}'
+      +'.not-ov.galeri .not-gal-alan{display:flex;}'
+      +'.not-ov.galeri .not-serit{display:none;}'
+      +'.not-ov.galeri .not-sayfalar{display:none;}'
+      +'.not-gal-ipucu{font-size:12px;color:#5b6b7b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:9px 13px;margin:16px 20px 0;line-height:1.5;flex:none;}'
+      +'.not-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding:16px 20px 24px;align-content:start;}'
       +'.not-gal-kart{position:relative;background:#fff;border:1px solid #dfe4ea;border-radius:11px;padding:11px;padding-top:34px;cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;}'
       +'.not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-1px);}'
       +'.not-gal-no{position:absolute;top:9px;left:9px;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#1d9bf0;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.2);}'
@@ -12736,15 +12728,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-gal-araclar button:hover{border-color:#1d9bf0;color:#1d9bf0;}'
       +'.not-gal-araclar button:disabled{opacity:.35;cursor:default;}'
       +'.not-gal-araclar .not-gal-sil:hover{border-color:#d62828;color:#d62828;}'
-      +'.not-gal-ipucu{padding:8px 16px 14px;font-size:12px;color:var(--text-secondary,#9aa6b2);text-align:center;}'
       +'body:not(.light-theme) .not-gal-kart{background:#17212e;border-color:#2c3a4a;}'
       +'body:not(.light-theme) .not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.4);}'
       +'body:not(.light-theme) .not-gal-onizle{color:#9aa6b2;}'
       +'body:not(.light-theme) .not-gal-onizle.bos{color:#67748a;}'
       +'body:not(.light-theme) .not-gal-araclar button{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}'
-      +'body.light-theme .not-galeri-ov{background:#fff;}'
-      +'body.light-theme .not-gal-bar{border-bottom-color:#e3e8ee;}'
-      +'body.light-theme .not-gal-bar h3{color:#15202b;}'
+      +'body:not(.light-theme) .not-gal-ipucu{background:#17212e;border-color:#2c3a4a;color:#9aa6b2;}'
       +'body.light-theme .not-paylas-menu{background:#fff;border-color:#e3e8ee;}'
       +'body.light-theme .not-pay-item{color:#15202b;}'
       +'html.x-mobile.x-dik .not-metin{padding:22px 18px;}'
@@ -12839,6 +12828,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    <button type="button" class="not-sbtn not-cz-sil" title="Seçilileri sil" disabled>Sil</button>'
       +'  </div>'
       +'  <div class="not-sayfalar"></div>'
+      +'  <div class="not-gal-alan"><div class="not-gal-ipucu">◀ ▶ ile sırala · karta dokununca o sayfaya git · × ile sil</div><div class="not-gal-grid"></div></div>'
       +'</div>';
     (document.body||document.documentElement).appendChild(_ov);
     _cizSayfalar();
@@ -12849,7 +12839,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _ov.querySelector('.not-geri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('undo'); }catch(e){} _aktifSayfaKaydet(); });
     _ov.querySelector('.not-ileri').addEventListener('mousedown', function(e){ e.preventDefault(); });
     _ov.querySelector('.not-ileri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('redo'); }catch(e){} _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-galeri').addEventListener('click', function(){ _galeriAc(); });
+    _ov.querySelector('.not-galeri').addEventListener('click', function(){ _galeriToggle(); });
     var payW=_ov.querySelector('.not-paylas-wrap');
     _ov.querySelector('.not-paylas').addEventListener('click', function(e){ e.stopPropagation(); payW.classList.toggle('acik'); });
     _ov.querySelector('.not-pay-pdf').addEventListener('click', function(){ payW.classList.remove('acik'); _pdfIndir(); });
@@ -12928,11 +12918,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var m=document.createElement('div'); m.className='not-metin'+(_doc.cizgili?' cizgili':''); m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
     m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; _planlaKaydet(); });
     m.addEventListener('paste', function(e){ try{ var cd=e.clipboardData||window.clipboardData; if(!cd) return; var its=cd.items||[]; for(var i=0;i<its.length;i++){ if(its[i].type&&its[i].type.indexOf('image/')===0){ var f=its[i].getAsFile(); if(f){ e.preventDefault(); var rd=new FileReader(); rd.onload=function(){ try{ document.execCommand('insertImage', false, rd.result); sp.metinHtml=m.innerHTML; }catch(_){} }; rd.readAsDataURL(f); return; } } } }catch(_){} });
-    var sinir=document.createElement('div'); sinir.className='not-a4-sinir';   // [A4 SINIR] Word kenar-boşluğu kılavuzu
     var cv=document.createElement('canvas'); cv.className='not-cizim-cv';
     var sil=document.createElement('button'); sil.type='button'; sil.className='not-sayfa-sil'; sil.title='Sayfayı sil'; sil.innerHTML='&times;';
     sil.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); _sayfaSil(sp); });
-    w.appendChild(sinir); w.appendChild(m); w.appendChild(cv); w.appendChild(sil);
+    w.appendChild(m); w.appendChild(cv); w.appendChild(sil);
     w.appendChild(_ekleBtn('ust', idx));       // önüne sayfa ekle
     w.appendChild(_ekleBtn('alt', idx+1));     // ardına sayfa ekle
     w.__sp=sp; w.__metin=m;
@@ -13083,42 +13072,40 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _pagehideFlush(){ try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } _otoKaydetSimdi(); }catch(_){} }
   function _gizlenince(){ try{ if(document.visibilityState==='hidden') _pagehideFlush(); }catch(_){} }
 
-  // ---- GALERİ (sayfaları sırala / genel bakış) ----
-  function _galeriAc(){
-    if(!_ov || _ov.querySelector('.not-galeri-ov')) return;
-    _flushMetin();
-    var gov=document.createElement('div'); gov.className='not-galeri-ov';
-    gov.innerHTML=''
-      +'<div class="not-gal-bar"><h3></h3><button type="button" class="not-sbtn not-gal-kapat">'+_svg('kapat',16)+' Kapat</button></div>'
-      +'<div class="not-gal-grid"></div>'
-      +'<div class="not-gal-ipucu">◀ ▶ ile sırala · karta dokununca o sayfaya git · × ile sil</div>';
-    _ov.querySelector('.not-icerik').appendChild(gov);
-    var grid=gov.querySelector('.not-gal-grid'), baslik=gov.querySelector('.not-gal-bar h3');
-    function _kapatG(){ try{ gov.remove(); }catch(_){} _cizSayfalar(); }
-    function _tasi(i,dir){ var j=i+dir; if(j<0||j>=_doc.sayfalar.length) return; var t=_doc.sayfalar[i]; _doc.sayfalar[i]=_doc.sayfalar[j]; _doc.sayfalar[j]=t; _ciz(); }
-    function _gSil(sp){ var i=_doc.sayfalar.indexOf(sp); if(i<0) return; if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return; _doc.sayfalar.splice(i,1); if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''}); _ciz(); }
-    function _ciz(){
-      baslik.textContent='Sayfalar ('+_doc.sayfalar.length+')';
-      grid.innerHTML='';
-      _doc.sayfalar.forEach(function(sp,i){
-        var kart=document.createElement('div'); kart.className='not-gal-kart';
-        kart.addEventListener('click', function(){ _kapatG(); _cizSayfalar(i); });   // karta tıkla → o sayfaya git
-        var no=document.createElement('span'); no.className='not-gal-no'; no.textContent=(i+1);
-        var onizle=document.createElement('div'); onizle.className='not-gal-onizle';
-        var txt=(sp.metinHtml||'').replace(/<br\s*\/?>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-        if(txt){ onizle.textContent=txt.slice(0,160); }
-        else { onizle.className+=' bos'; onizle.textContent=((sp.cizimObjeleri||[]).length?'Çizim sayfası':'Boş sayfa'); }
-        var ar=document.createElement('div'); ar.className='not-gal-araclar';
-        var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,-1); });
-        var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,1); });
-        var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(e){ e.stopPropagation(); _gSil(sp); });
-        ar.appendChild(sol); ar.appendChild(sag); ar.appendChild(sil);
-        kart.appendChild(no); kart.appendChild(onizle); kart.appendChild(ar);
-        grid.appendChild(kart);
-      });
-    }
-    gov.querySelector('.not-gal-kapat').addEventListener('click', _kapatG);
-    _ciz();
+  // ---- GALERİ (sayfaları sırala / genel bakış) — RAPOR EDİTÖRÜ GİBİ ----
+  // Ayrı overlay / "Sayfalar / × Kapat" başlığı YOK (XE._galeriModu deseni): galeri butonu bir MOD açar; biçim şeridi
+  // gizlenir, sayfa alanı yerine kart ızgarası gelir, ÜST BAR (editör başlığı) AYNI kalır; galeri butonu tekrar basınca kapanır.
+  var _galeriModu=false;
+  function _galeriToggle(){
+    if(!_ov) return;
+    if(_cizimModu){ _cizimModu=false; _ov.classList.remove('cizim'); var cb=_ov.querySelector('.not-cizim'); if(cb) cb.classList.remove('aktif'); }
+    _galeriModu=!_galeriModu;
+    _ov.classList.toggle('galeri', _galeriModu);
+    var gbtn=_ov.querySelector('.not-galeri'); if(gbtn) gbtn.classList.toggle('aktif', _galeriModu);
+    if(_galeriModu){ _flushMetin(); _galeriCiz(); } else { _cizSayfalar(); }   // çıkışta sayfaları (yeni sırayla) yeniden kur
+  }
+  function _galeriCiz(){
+    if(!_ov) return; var grid=_ov.querySelector('.not-gal-grid'); if(!grid) return;
+    function _tasi(i,dir){ var j=i+dir; if(j<0||j>=_doc.sayfalar.length) return; var t=_doc.sayfalar[i]; _doc.sayfalar[i]=_doc.sayfalar[j]; _doc.sayfalar[j]=t; _planlaKaydet(); _galeriCiz(); }
+    function _gSil(sp){ var i=_doc.sayfalar.indexOf(sp); if(i<0) return; if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return; _doc.sayfalar.splice(i,1); if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''}); _planlaKaydet(); _galeriCiz(); }
+    function _git(i){ _galeriModu=false; _ov.classList.remove('galeri'); var gb=_ov.querySelector('.not-galeri'); if(gb) gb.classList.remove('aktif'); _cizSayfalar(i); }
+    grid.innerHTML='';
+    _doc.sayfalar.forEach(function(sp,i){
+      var kart=document.createElement('div'); kart.className='not-gal-kart';
+      kart.addEventListener('click', function(){ _git(i); });   // karta tıkla → o sayfaya git (mod kapanır)
+      var no=document.createElement('span'); no.className='not-gal-no'; no.textContent=(i+1);
+      var onizle=document.createElement('div'); onizle.className='not-gal-onizle';
+      var txt=(sp.metinHtml||'').replace(/<br\s*\/?>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+      if(txt){ onizle.textContent=txt.slice(0,160); }
+      else { onizle.className+=' bos'; onizle.textContent=((sp.cizimObjeleri||[]).length?'Çizim sayfası':'Boş sayfa'); }
+      var ar=document.createElement('div'); ar.className='not-gal-araclar';
+      var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,-1); });
+      var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,1); });
+      var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(e){ e.stopPropagation(); _gSil(sp); });
+      ar.appendChild(sol); ar.appendChild(sag); ar.appendChild(sil);
+      kart.appendChild(no); kart.appendChild(onizle); kart.appendChild(ar);
+      grid.appendChild(kart);
+    });
   }
 
   // ---- PAYLAŞ (PDF / Word indir) — harici kütüphane YOK (vanilla); çizim katmanı canvas.toDataURL ile gömülür ----
@@ -13204,7 +13191,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     window.removeEventListener('beforeunload', _pagehideFlush);
     document.removeEventListener('visibilitychange', _gizlenince);
     try{ _ov.remove(); }catch(e){}
-    _ov=null; _doc=null; _savedRange=null; _savedEl=null; _cizimModu=false; _aktifCizim=null;
+    _ov=null; _doc=null; _savedRange=null; _savedEl=null; _cizimModu=false; _aktifCizim=null; _galeriModu=false;
   }
   function _ayarDisari(e){ try{ if(!_ov) return; ['.not-ayar-wrap','.not-paylas-wrap'].forEach(function(s){ var w=_ov.querySelector(s+'.acik'); if(w && !(e.target.closest&&e.target.closest(s))) w.classList.remove('acik'); }); }catch(_){} }
   function _tusKapat(e){
