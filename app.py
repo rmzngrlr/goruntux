@@ -3001,7 +3001,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10z · NOT KAGIDI Faz4: galeri Not rozetli kartlari + tikla-ac + sil + kapatinca galeri tazele';
+        var X_BUILD = '2026-11-11a · NOT KAGIDI: Galeri (sayfa sirala) + Paylas (PDF/Word) + Sayfa-ekle overlay buton (ust/alt-orta) + sayfa sil + Word A4 bosluk %12.1 + cizgili hizali + tam-genislik (gri gutter yok)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9341,7 +9341,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5h · 2026-11-07 responsive-faz4-temizlik";
+  XE.VERSION = "5i · 2026-11-11 not-kagidi galeri+paylas(PDF/Word)+sayfa-ekle-overlay";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12511,10 +12511,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   try { console.log('[XEditor] Faz 4c yüklendi (v'+XE.VERSION+').'); } catch(e){}
 })();
 
-/* ============== NOT KAĞIDI (A4 not defteri) — havuzdan BAĞIMSIZ — Faz 1+2 ============== */
-/* Üst bar rapor editörüyle AYNI (geri/ileri + ad + galeri[yakında] + ayarlar[tema/tam-ekran/PWA] + paylaş[yakında]
-   + kapat); biçim şeridi (stil/font/boyut/renk/B-I-U/hiza) + not-özel Çizgili + Görsel + Çizim[Faz3]. A4 tam-genişlik.
-   Bölüm ekle = sayfalar arası/üst-alt barlar. Kapat(×)/Esc = kaydet+kapat. Depo IndexedDB x-notlar. Bayrak x_not_kagidi='0'. */
+/* ============== NOT KAĞIDI (A4 not defteri) — havuzdan BAĞIMSIZ ============== */
+/* Üst bar rapor editörüyle AYNI: geri/ileri + ad + GALERİ (sayfaları sırala/sil ızgarası) + ayarlar(tema/tam-ekran/PWA)
+   + PAYLAŞ (PDF olarak indir = gizli iframe window.print; Word olarak indir = .doc blob; çizim katmanı canvas.toDataURL ile
+   gömülür) + kapat; biçim şeridi (stil/font/boyut/renk/B-I-U/hiza) + not-özel Çizgili + Görsel + Çizim.
+   A4 TAM GENİŞLİK (sağ/sol gri boşluk YOK; kap scrollbar'ı gizli). Kenar boşluğu = Word standart %12.1 (2.54cm). Çizgili =
+   28px satır, metin çizgiye oturur. Sayfa ekle = her sayfanın üst/alt-ortasında yarı-saydam overlay buton (× ile aynı hizada;
+   ayrı gri şerit YOK). Her sayfanın sağ üstünde silme ×. Kapat(×)/Esc = kaydet+kapat. Depo IndexedDB x-notlar. Bayrak x_not_kagidi='0'. */
 (function(){
   if(window.XNot) return;
   function notAcikMi(){ try{ return localStorage.getItem('x_not_kagidi')!=='0'; }catch(_){ return true; } }
@@ -12594,11 +12597,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
       +'.not-hgrp{display:inline-flex;gap:2px;}'
       // sayfalar + A4
-      +'.not-sayfalar{flex:1;overflow:auto;padding:10px 10px 48px;background:#52606d;}'
-      +'.not-ekle-bar{display:flex;justify-content:center;padding:5px 0;}'
-      +'.not-ekle-btn{height:30px;padding:0 16px;border:1px dashed rgba(255,255,255,.55);background:rgba(255,255,255,.12);color:#fff;border-radius:16px;font-size:13px;font-weight:600;cursor:pointer;opacity:.8;}'
-      +'.not-ekle-btn:hover{opacity:1;background:rgba(255,255,255,.22);}'
-      +'.not-sayfa{position:relative;width:100%;margin:0 auto;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);border-radius:2px;aspect-ratio:210/297;}'
+      // [TAM GENİŞLİK 2026-11-11] Sayfa sağda-solda gri boşluk OLMADAN tam-genişlik; sayfalar arası yalnız ince ayraç.
+      // Kaydırma çubuğu da sağda gri şerit açmasın diye YALNIZ bu kapta gizli (global '*' DEĞİL; tekerlek/dokunuş çalışır).
+      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;}'
+      +'.not-sayfalar::-webkit-scrollbar{width:0;height:0;display:none;}'
+      +'.not-sayfa{position:relative;width:100%;margin:0 0 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);aspect-ratio:210/297;}'
+      // [SAYFA EKLE 2026-11-11] Ayrı gri şerit YOK; üst/alt-orta yarı-saydam overlay buton (silme × ile aynı hizada,
+      // imleç üstüne gelince netleşir). ust=önüne ekle, alt=ardına ekle. Çizim modunda gizli (canvas boş kalsın).
+      +'.not-sayfa-ekle{position:absolute;left:50%;transform:translateX(-50%);z-index:6;height:28px;padding:0 14px;border:none;border-radius:14px;background:rgba(40,110,214,.82);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.4;transition:opacity .12s,background .12s;}'
+      +'.not-sayfa-ekle.ust{top:8px;}'
+      +'.not-sayfa-ekle.alt{bottom:8px;}'
+      +'.not-sayfa-ekle:hover{opacity:1;background:#1565c0;}'
+      +'html.x-mobile.x-dik .not-sayfa-ekle{opacity:.82;}'
+      +'.not-ov.cizim .not-sayfa-ekle,.not-ov.cizim .not-sayfa-sil{display:none;}'
+      // [SAYFA SİL 2026-11-11] Her A4'ün sağ üst köşesinde silme butonu (dokunmatikte de görünür; z-index canvas üstünde).
+      +'.not-sayfa-sil{position:absolute;top:8px;right:8px;z-index:6;width:28px;height:28px;border:none;border-radius:50%;background:rgba(214,40,40,.78);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.5;transition:opacity .12s,background .12s;}'
+      +'.not-sayfa:hover .not-sayfa-sil{opacity:1;}'
+      +'.not-sayfa-sil:hover{background:#c01818;opacity:1;}'
+      +'html.x-mobile.x-dik .not-sayfa-sil{opacity:.92;}'
       // [FAZ3] çizim overlay + çizim modu + çizim şeridi
       +'.not-cizim-cv{position:absolute;inset:0;pointer-events:none;z-index:2;}'
       +'.not-ov.cizim .not-cizim-cv{pointer-events:auto;cursor:crosshair;touch-action:none;}'
@@ -12611,9 +12627,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-cz-bitir{color:#17a34a!important;border-color:#17a34a!important;}'
       +'body.light-theme .not-cizim-serit{background:#f7f9fc;border-bottom-color:#e3e8ee;}'
       +'body.light-theme .not-cizim-serit select,body.light-theme .not-cizim-serit .not-sbtn{background:#fff;color:#15202b;border-color:#cfd8e3;}'
-      +'.not-metin{width:100%;min-height:100%;box-sizing:border-box;padding:46px 54px;outline:none;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#111;word-wrap:break-word;}'
+      // [WORD A4 BOŞLUK 2026-11-11] Kenar boşlukları Word'ün standart A4 "Normal" marjı 2.54cm; padding-% GENİŞLİĞE
+      // göre olduğundan 2.54/21=%12.1 dört yanda = 2.54cm (oransal; sayfa küçülse de Word görünümü korunur).
+      +'.not-metin{width:100%;min-height:100%;box-sizing:border-box;padding:12.1%;outline:none;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#111;word-wrap:break-word;}'
       +'.not-metin:empty:before{content:"Buraya yazın…";color:#9aa3ad;}'
-      +'.not-metin.cizgili{background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 31px, #bcc7d2 31px, #bcc7d2 32px);background-position:0 46px;background-attachment:local;line-height:32px;}'
+      // [ÇİZGİLİ 2026-11-11] Uniform (background-size döşeme, her tile birebir) + metin satırına HİZALI (satır-yüksekliği
+      // sabit + çizgiler content-box'ta her satırın DİBİNE; metin çizgiye oturur). Varsayılan 16px font -> 28px satır.
+      +'.not-metin.cizgili{line-height:28px;background-image:linear-gradient(to bottom, transparent 27px, #c3ccd6 27px, #c3ccd6 28px);background-size:100% 28px;background-origin:content-box;background-clip:content-box;background-repeat:repeat-y;}'
       +'.not-metin h1{font-size:30px;margin:.4em 0 .3em;font-weight:700;}'
       +'.not-metin h2{font-size:24px;margin:.4em 0 .3em;font-weight:700;}'
       +'.not-metin h3{font-size:19px;margin:.4em 0 .3em;font-weight:700;}'
@@ -12622,6 +12642,34 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'html.x-mobile.x-dik .not-h2{font-size:15px;}'
       +'html.x-mobile.x-dik .not-ad{min-width:0;flex:0 1 110px;max-width:none;font-size:12px;margin-right:2px;}'
       +'html.x-mobile.x-dik .not-serit{padding:6px 8px;gap:4px;}'
+      // [PAYLAŞ 2026-11-11] Paylaş butonuna iliştik açılır menü (PDF / Word indir) — ayar menüsüyle aynı his.
+      +'.not-paylas-wrap{position:relative;}'
+      +'.not-paylas-menu{position:absolute;top:100%;right:0;margin-top:4px;min-width:172px;background:var(--bg-card,#161c2a);border:1px solid var(--border-color,rgba(136,153,166,.25));border-radius:10px;padding:5px;display:none;flex-direction:column;gap:2px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.35);}'
+      +'.not-paylas-wrap.acik .not-paylas-menu{display:flex;}'
+      +'.not-pay-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;padding:9px 12px;border-radius:7px;cursor:pointer;}'
+      +'.not-pay-item:hover{background:rgba(29,155,240,.14);color:#1d9bf0;}'
+      // [GALERİ 2026-11-11] Sayfa sıralama/genel bakış — not-ov içinde tam kaplayan ızgara; kart tıkla→o sayfaya git.
+      +'.not-galeri-ov{position:absolute;inset:0;z-index:30;background:var(--bg-modal,#0f1621);display:flex;flex-direction:column;}'
+      +'.not-gal-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));}'
+      +'.not-gal-bar h3{margin:0;font-size:16px;font-weight:700;color:var(--text-primary,#e7edf3);}'
+      +'.not-gal-grid{flex:1;overflow:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding:16px;align-content:start;}'
+      +'.not-gal-kart{position:relative;background:#52606d;border-radius:7px;padding:7px;}'
+      +'.not-gal-th{position:relative;background:#fff;color:#111;aspect-ratio:210/297;overflow:hidden;border-radius:3px;font-size:5px;line-height:1.45;padding:9px;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:pointer;}'
+      +'.not-gal-th *{max-width:100%!important;}'
+      +'.not-gal-th img{max-height:60px;}'
+      +'.not-gal-no{position:absolute;top:12px;right:12px;background:#1d9bf0;color:#fff;font-size:12px;font-weight:700;border-radius:11px;padding:1px 9px;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.35);}'
+      +'.not-gal-araclar{display:flex;gap:4px;justify-content:center;margin-top:7px;}'
+      +'.not-gal-araclar button{width:30px;height:28px;border:1px solid var(--border-color,#2c3a4a);border-radius:6px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}'
+      +'.not-gal-araclar button:hover{border-color:#1d9bf0;}'
+      +'.not-gal-araclar button:disabled{opacity:.35;cursor:default;}'
+      +'.not-gal-araclar .not-gal-sil:hover{border-color:#d62828;color:#ff6b6b;}'
+      +'.not-gal-ipucu{padding:8px 16px 14px;font-size:12px;color:var(--text-secondary,#9aa6b2);text-align:center;}'
+      +'body.light-theme .not-galeri-ov{background:#fff;}'
+      +'body.light-theme .not-gal-bar{border-bottom-color:#e3e8ee;}'
+      +'body.light-theme .not-gal-bar h3{color:#15202b;}'
+      +'body.light-theme .not-gal-araclar button{background:#fff;color:#15202b;border-color:#cfd8e3;}'
+      +'body.light-theme .not-paylas-menu{background:#fff;border-color:#e3e8ee;}'
+      +'body.light-theme .not-pay-item{color:#15202b;}'
       +'html.x-mobile.x-dik .not-metin{padding:22px 18px;}'
       // açık tema
       +'body.light-theme .not-ov,body.light-theme .not-baslik{background:#fff;}'
@@ -12660,7 +12708,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    </div>'
       +'    <div class="not-sag">'
       +'      <input class="not-ad" type="text" placeholder="Not adı" value="'+_esc(_doc.ad||'')+'">'
-      +'      <button type="button" class="not-ik not-galeri" title="Galeri (yakında)">'+_svg('galeri')+'</button>'
+      +'      <button type="button" class="not-ik not-galeri" title="Galeri — sayfaları sırala">'+_svg('galeri')+'</button>'
       +'      <div class="not-ayar-wrap">'
       +'        <button type="button" class="not-ik not-ayar" title="Ayarlar">'+_svg('ayar')+'</button>'
       +'        <div class="not-ayar-menu">'
@@ -12669,7 +12717,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'          <button type="button" class="not-ik not-pwa" title="Ana ekrana ekle">'+_svg('pwa')+'</button>'
       +'        </div>'
       +'      </div>'
-      +'      <button type="button" class="not-ik not-paylas" title="Paylaş (yakında)">'+_svg('paylas')+'</button>'
+      +'      <div class="not-paylas-wrap">'
+      +'        <button type="button" class="not-ik not-paylas" title="Paylaş / indir">'+_svg('paylas')+'</button>'
+      +'        <div class="not-paylas-menu">'
+      +'          <button type="button" class="not-pay-item not-pay-pdf">'+_svg('paylas',16)+'PDF olarak indir</button>'
+      +'          <button type="button" class="not-pay-item not-pay-word">'+_svg('gorsel',16)+'Word olarak indir</button>'
+      +'        </div>'
+      +'      </div>'
       +'      <button type="button" class="not-ik not-kapat" title="Kaydet ve kapat">'+_svg('kapat')+'</button>'
       +'    </div>'
       +'  </div>'
@@ -12713,8 +12767,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _ov.querySelector('.not-geri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('undo'); }catch(e){} _aktifSayfaKaydet(); });
     _ov.querySelector('.not-ileri').addEventListener('mousedown', function(e){ e.preventDefault(); });
     _ov.querySelector('.not-ileri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('redo'); }catch(e){} _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-galeri').addEventListener('click', function(){ _toast('Not galerisi yakında eklenecek.','info'); });
-    _ov.querySelector('.not-paylas').addEventListener('click', function(){ _toast('Not paylaşımı (PDF/Word) yakında eklenecek.','info'); });
+    _ov.querySelector('.not-galeri').addEventListener('click', function(){ _galeriAc(); });
+    var payW=_ov.querySelector('.not-paylas-wrap');
+    _ov.querySelector('.not-paylas').addEventListener('click', function(e){ e.stopPropagation(); payW.classList.toggle('acik'); });
+    _ov.querySelector('.not-pay-pdf').addEventListener('click', function(){ payW.classList.remove('acik'); _pdfIndir(); });
+    _ov.querySelector('.not-pay-word').addEventListener('click', function(){ payW.classList.remove('acik'); _wordIndir(); });
     var ayarW=_ov.querySelector('.not-ayar-wrap');
     _ov.querySelector('.not-ayar').addEventListener('click', function(e){ e.stopPropagation(); ayarW.classList.toggle('acik'); });
     document.addEventListener('click', _ayarDisari, true);
@@ -12757,23 +12814,39 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cont.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } });
     _aktifCizim=null;
     cont.innerHTML='';
-    _doc.sayfalar.forEach(function(sp, i){ cont.appendChild(_bar(i)); cont.appendChild(_sayfaYap(sp)); });
-    cont.appendChild(_bar(_doc.sayfalar.length));
+    _doc.sayfalar.forEach(function(sp, i){ cont.appendChild(_sayfaYap(sp, i)); });
     if(_cizimModu) cont.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); });
     if(focusIdx!=null){ try{ var sf=cont.querySelectorAll('.not-sayfa')[focusIdx]; if(sf){ var mm=sf.querySelector('.not-metin'); if(!_cizimModu) mm.focus(); sf.scrollIntoView({behavior:'smooth',block:'center'}); } }catch(_){} }
   }
-  function _bar(i){ var b=document.createElement('div'); b.className='not-ekle-bar';
-    var btn=document.createElement('button'); btn.type='button'; btn.className='not-ekle-btn'; btn.textContent='+ Bölüm ekle';
-    btn.addEventListener('click', function(){ _doc.sayfalar.splice(i,0,{metinHtml:''}); _cizSayfalar(i); });
-    b.appendChild(btn); return b;
+  function _ekleBtn(konum, hedefIdx){
+    var btn=document.createElement('button'); btn.type='button'; btn.className='not-sayfa-ekle '+konum;
+    btn.innerHTML='<span style="font-size:15px;line-height:1">+</span> Sayfa ekle';
+    btn.title=(konum==='ust'?'Üste sayfa ekle':'Alta sayfa ekle');
+    btn.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); _doc.sayfalar.splice(hedefIdx,0,{metinHtml:''}); _cizSayfalar(hedefIdx); });
+    return btn;
   }
-  function _sayfaYap(sp){
+  function _sayfaDolu(sp){ return !!(((sp.metinHtml||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,'').trim()) || (sp.cizimObjeleri||[]).length || /<img/i.test(sp.metinHtml||'')); }
+  function _flushMetin(){ try{ if(_ov) _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; }); }catch(_){} }
+  function _sayfaSil(sp){
+    var i=_doc.sayfalar.indexOf(sp); if(i<0) return;
+    _flushMetin();
+    if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return;
+    _doc.sayfalar.splice(i,1);
+    if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''});
+    _cizSayfalar(Math.min(i,_doc.sayfalar.length-1));
+  }
+  function _sayfaYap(sp, idx){
     var w=document.createElement('div'); w.className='not-sayfa';
     var m=document.createElement('div'); m.className='not-metin'+(_doc.cizgili?' cizgili':''); m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
     m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; });
     m.addEventListener('paste', function(e){ try{ var cd=e.clipboardData||window.clipboardData; if(!cd) return; var its=cd.items||[]; for(var i=0;i<its.length;i++){ if(its[i].type&&its[i].type.indexOf('image/')===0){ var f=its[i].getAsFile(); if(f){ e.preventDefault(); var rd=new FileReader(); rd.onload=function(){ try{ document.execCommand('insertImage', false, rd.result); sp.metinHtml=m.innerHTML; }catch(_){} }; rd.readAsDataURL(f); return; } } } }catch(_){} });
     var cv=document.createElement('canvas'); cv.className='not-cizim-cv';
-    w.appendChild(m); w.appendChild(cv); w.__sp=sp; w.__metin=m;
+    var sil=document.createElement('button'); sil.type='button'; sil.className='not-sayfa-sil'; sil.title='Sayfayı sil'; sil.innerHTML='&times;';
+    sil.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); _sayfaSil(sp); });
+    w.appendChild(m); w.appendChild(cv); w.appendChild(sil);
+    w.appendChild(_ekleBtn('ust', idx));       // önüne sayfa ekle
+    w.appendChild(_ekleBtn('alt', idx+1));     // ardına sayfa ekle
+    w.__sp=sp; w.__metin=m;
     w.__cizim=_cizKatman(cv, sp);   // [FAZ3] çizim motoru (overlay)
     try{ w.__ro=new ResizeObserver(function(){ try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ try{ w.__cizim.resize(); }catch(e){} }, 80); }
     return w;
@@ -12861,6 +12934,93 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     inp.click();
   }
 
+  // ---- GALERİ (sayfaları sırala / genel bakış) ----
+  function _galeriAc(){
+    if(!_ov || _ov.querySelector('.not-galeri-ov')) return;
+    _flushMetin();
+    var gov=document.createElement('div'); gov.className='not-galeri-ov';
+    gov.innerHTML=''
+      +'<div class="not-gal-bar"><h3></h3><button type="button" class="not-sbtn not-gal-kapat">'+_svg('kapat',16)+' Kapat</button></div>'
+      +'<div class="not-gal-grid"></div>'
+      +'<div class="not-gal-ipucu">◀ ▶ ile sırala · karta dokununca o sayfaya git · × ile sil</div>';
+    _ov.querySelector('.not-icerik').appendChild(gov);
+    var grid=gov.querySelector('.not-gal-grid'), baslik=gov.querySelector('.not-gal-bar h3');
+    function _kapatG(){ try{ gov.remove(); }catch(_){} _cizSayfalar(); }
+    function _tasi(i,dir){ var j=i+dir; if(j<0||j>=_doc.sayfalar.length) return; var t=_doc.sayfalar[i]; _doc.sayfalar[i]=_doc.sayfalar[j]; _doc.sayfalar[j]=t; _ciz(); }
+    function _gSil(sp){ var i=_doc.sayfalar.indexOf(sp); if(i<0) return; if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return; _doc.sayfalar.splice(i,1); if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''}); _ciz(); }
+    function _ciz(){
+      baslik.textContent='Sayfalar ('+_doc.sayfalar.length+')';
+      grid.innerHTML='';
+      _doc.sayfalar.forEach(function(sp,i){
+        var kart=document.createElement('div'); kart.className='not-gal-kart';
+        var no=document.createElement('span'); no.className='not-gal-no'; no.textContent=(i+1);
+        var th=document.createElement('div'); th.className='not-gal-th'; th.innerHTML=sp.metinHtml||'';
+        th.addEventListener('click', function(){ _kapatG(); _cizSayfalar(i); });
+        var ar=document.createElement('div'); ar.className='not-gal-araclar';
+        var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(){ _tasi(i,-1); });
+        var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(){ _tasi(i,1); });
+        var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(){ _gSil(sp); });
+        ar.appendChild(sol); ar.appendChild(sag); ar.appendChild(sil);
+        kart.appendChild(no); kart.appendChild(th); kart.appendChild(ar);
+        grid.appendChild(kart);
+      });
+    }
+    gov.querySelector('.not-gal-kapat').addEventListener('click', _kapatG);
+    _ciz();
+  }
+
+  // ---- PAYLAŞ (PDF / Word indir) — harici kütüphane YOK (vanilla); çizim katmanı canvas.toDataURL ile gömülür ----
+  function _notAd(){ var inp=_ov&&_ov.querySelector('.not-ad'); return ((inp&&inp.value)||_doc.ad||'Not').trim()||'Not'; }
+  function _cizgiStil(){ return _doc.cizgili ? 'background-image:linear-gradient(to bottom,transparent 27px,#c3ccd6 27px,#c3ccd6 28px);background-size:100% 28px;background-repeat:repeat-y;line-height:28px;' : 'line-height:1.6;'; }
+  // forWord: Word position:absolute'ü yok sayar → çizimi metin altına blok görsel olarak ekleriz; PDF'te tam-sayfa overlay.
+  function _sayfalarHtml(forWord){
+    _flushMetin();
+    var out='', sayfalar=_ov.querySelectorAll('.not-sayfa'), cg=_cizgiStil();
+    sayfalar.forEach(function(w,i){
+      var sp=w.__sp||{}, html=(w.__metin?w.__metin.innerHTML:(sp.metinHtml||''))||'';
+      var cv=w.querySelector('.not-cizim-cv'), ov='';
+      try{ if((sp.cizimObjeleri||[]).length && cv){ var du=cv.toDataURL('image/png');
+        ov = forWord ? '<div style="margin-top:14px;text-align:center"><img src="'+du+'" style="max-width:100%"></div>'
+                     : '<img src="'+du+'" style="position:absolute;top:0;left:0;width:100%;height:100%">'; } }catch(_){}
+      var son=(i===sayfalar.length-1), brk=son?'':'page-break-after:always;';
+      if(forWord){
+        out+='<div style="'+brk+'"><div style="font-family:Arial,sans-serif;font-size:16px;color:#111;'+cg+'">'+html+'</div>'+ov+'</div>';
+      } else {
+        out+='<div class="pg" style="'+brk+'"><div class="mt" style="'+cg+'">'+html+'</div>'+ov+'</div>';
+      }
+    });
+    return out;
+  }
+  function _pdfIndir(){
+    try{
+      var css='@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}'
+        +'.pg{position:relative;width:21cm;min-height:29.7cm;box-sizing:border-box;overflow:hidden;background:#fff}'
+        +'.mt{min-height:29.7cm;box-sizing:border-box;padding:2.54cm;font-family:Arial,sans-serif;font-size:16px;color:#111;word-wrap:break-word}'
+        +'.mt img{max-width:100%;height:auto}';
+      var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title><style>'+css+'</style></head><body>'+_sayfalarHtml(false)+'</body></html>';
+      var ifr=document.createElement('iframe'); ifr.setAttribute('aria-hidden','true');
+      ifr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;';
+      document.body.appendChild(ifr);
+      var d=ifr.contentWindow.document; d.open(); d.write(html); d.close();
+      var bastir=function(){ try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(_){} setTimeout(function(){ try{ ifr.remove(); }catch(_){} }, 1500); };
+      setTimeout(bastir, 450);
+      _toast('Yazdır penceresinde "PDF olarak kaydet"i seçin.','info');
+    }catch(e){ _toast('PDF oluşturulamadı.','error'); }
+  }
+  function _wordIndir(){
+    try{
+      var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title>'
+        +'<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->'
+        +'<style>@page{size:A4;margin:2.54cm}body{font-family:Arial,sans-serif;font-size:16px;color:#111}img{max-width:100%;height:auto}</style></head><body>';
+      var post='</body></html>';
+      var blob=new Blob(['﻿'+pre+_sayfalarHtml(true)+post], {type:'application/msword'});
+      var url=URL.createObjectURL(blob), a=document.createElement('a');
+      a.href=url; a.download=_notAd().replace(/[\\/:*?"<>|]+/g,'_')+'.doc'; document.body.appendChild(a); a.click();
+      setTimeout(function(){ try{ a.remove(); URL.revokeObjectURL(url); }catch(_){} }, 1500);
+      _toast('Word belgesi indiriliyor.','success');
+    }catch(e){ _toast('Word belgesi oluşturulamadı.','error'); }
+  }
+
   // ---- kapat / kaydet ----
   function _bosMu(){
     var adBos=!((_doc.ad||'').trim());
@@ -12889,7 +13049,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     try{ _ov.remove(); }catch(e){}
     _ov=null; _doc=null; _savedRange=null; _savedEl=null; _cizimModu=false; _aktifCizim=null;
   }
-  function _ayarDisari(e){ try{ if(_ov && !(e.target.closest&&e.target.closest('.not-ayar-wrap'))){ var w=_ov.querySelector('.not-ayar-wrap.acik'); if(w) w.classList.remove('acik'); } }catch(_){} }
+  function _ayarDisari(e){ try{ if(!_ov) return; ['.not-ayar-wrap','.not-paylas-wrap'].forEach(function(s){ var w=_ov.querySelector(s+'.acik'); if(w && !(e.target.closest&&e.target.closest(s))) w.classList.remove('acik'); }); }catch(_){} }
   function _tusKapat(e){
     if(!_ov) return;
     if(e.key==='Escape'){ var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')){ return; } e.preventDefault(); _kapat(true); }
