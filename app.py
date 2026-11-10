@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11f · NOT KAGIDI: A4 EKRANA SIGAR (tum sayfa gorunur, kaydirma yok) + cizim Delete/Backspace sil + OTO-KAYDET (F5/kapanista kaybolmaz) | 11e Word-A4-ortali | 11d gzip | 11c yerel-lib | 11b coklu-secim | 11a Galeri+Paylas';
+        var X_BUILD = '2026-11-11g · NOT KAGIDI ust-bar rapor editoruyle BIREBIR (20px 24px / h2 20px) + iki serit ayni boyut + cizim seridi gorsel-duzenleyici temasi (34px kare ikon) | 11f ekrana-sigar+Delete-sil+oto-kaydet | 11e Word-A4-ortali | 11d gzip | 11c yerel-lib';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5l · 2026-11-11 not-kagidi A4-ekrana-sigar + cizim-Delete-sil + oto-kaydet(F5-korur)";
+  XE.VERSION = "5m · 2026-11-11 not-kagidi ust-bar-birebir + serit-esit-boyut + cizim-serit-gorsel-duzenleyici-tema";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12611,9 +12611,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-ov{position:fixed;inset:0;z-index:4200;display:flex;flex-direction:column;background:var(--bg-modal,#0f1621);}'
       +'.not-icerik{display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;}'
       // üst bar (rapor editörü .modal-header ile aynı his)
-      +'.not-baslik{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-modal,#0f1621);flex-wrap:wrap;}'
+      // [ÜST BAR = RAPOR EDİTÖRÜ BİREBİR] .modal-header ile aynı ölçü: padding 20px 24px, h2 20px (rapor editörüyle eşit yükseklik).
+      +'.not-baslik{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 24px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-modal,#0f1621);flex-wrap:wrap;}'
       +'.not-sol{display:flex;gap:10px;align-items:center;}'
-      +'.not-h2{display:flex;align-items:center;gap:7px;margin:0;font-size:17px;font-weight:700;color:var(--text-primary,#e7edf3);}'
+      +'.not-h2{display:flex;align-items:center;gap:7px;margin:0;font-size:20px;font-weight:700;color:var(--text-primary,#e7edf3);}'
       +'.not-nav{display:inline-flex;gap:2px;}'
       +'.not-sag{display:flex;gap:2px;align-items:center;}'
       +'.not-ik{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}'
@@ -12628,12 +12629,17 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'.not-ayar-wrap.acik .not-ayar-menu{display:flex;}'
       // biçim şeridi
       +'.not-serit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 14px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-input,#161c2a);}'
-      +'.not-serit select{height:32px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;padding:0 6px;font-size:13px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);cursor:pointer;}'
-      +'.not-serit .not-sbtn{height:32px;min-width:32px;padding:0 9px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;}'
-      +'.not-serit .not-sbtn:hover{border-color:#1d9bf0;}'
-      +'.not-serit .not-sbtn.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}'
-      +'.not-serit .not-renk{width:34px;height:32px;padding:0;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:none;cursor:pointer;}'
-      +'.not-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
+      // [ŞERİT EŞİTLİĞİ + TEMA] Kontrol stilleri HER İKİ şeritte de aynı (yazı şeridi + çizim şeridi) → aynı yükseklik, görsel-
+      // düzenleyici toolbar'ıyla aynı his (34px kare ikon butonlar, koyu #1b2735 / aktif #1d9bf0; light override aşağıda).
+      // ESKİDEN sadece `.not-serit` kapsamlıydı → çizim şeridi butonları tarayıcı-varsayılanıyla "düzgün değil" görünüyordu.
+      +'.not-serit select,.not-cizim-serit select{height:34px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;padding:0 6px;font-size:13px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);cursor:pointer;}'
+      +'.not-serit .not-sbtn,.not-cizim-serit .not-sbtn{height:34px;min-width:34px;padding:0 9px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;}'
+      +'.not-serit .not-sbtn:hover,.not-cizim-serit .not-sbtn:hover{border-color:#1d9bf0;}'
+      +'.not-serit .not-sbtn.aktif,.not-cizim-serit .not-sbtn.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}'
+      +'.not-serit .not-renk,.not-cizim-serit .not-renk{width:36px;height:34px;padding:0;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:none;cursor:pointer;}'
+      // çizim araç butonları = görsel-düzenleyici gibi KARE ikon (34×34)
+      +'.not-cz-tool{width:34px;min-width:34px;padding:0;}'
+      +'.not-serit .not-ayr,.not-cizim-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
       +'.not-hgrp{display:inline-flex;gap:2px;}'
       // sayfalar + A4
       // [EKRANA SIĞDIR 2026-11-11] Sayfa kabı; A4'ün TAMAMININ ekrana sığması (fit) için `container-type:size` ver →
@@ -12728,6 +12734,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'body.light-theme .not-ik:hover{background:#eef1f5;color:#15202b;}'
       +'body.light-theme .not-serit{background:#f7f9fc;border-bottom-color:#e3e8ee;}'
       +'body.light-theme .not-serit select,body.light-theme .not-serit .not-sbtn{background:#fff;color:#15202b;border-color:#cfd8e3;}'
+      // light temada .aktif, yukarıdaki beyaz-buton kuralından daha özgül olmalı (yoksa seçili araç mavi görünmez)
+      +'body.light-theme .not-serit .not-sbtn.aktif,body.light-theme .not-cizim-serit .not-sbtn.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}'
       // [TEMA 2026-11-11] Sayfa tepsisi (çizim ekranı arka planı) açık temada koyu şerit gibi durmasın → editör temasına uy.
       +'body.light-theme .not-sayfalar{background:#d7dde5;}'
       +'body.light-theme .not-a4-sinir::before{border-color:rgba(120,140,170,.55);}'
