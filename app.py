@@ -2118,8 +2118,10 @@ HTML_TEMPLATE = """
         /* [NOT KAĞIDI Faz4] Not kartı: yeşil "Not" rozeti + beyaz kağıt önizleme */
         .x-gal-not-rozet { background: #17a34a; display: inline-flex; align-items: center; gap: 3px; }
         .x-gal-notkart .x-gal-page { background: #fff; }
+        body:not(.light-theme) .x-gal-notkart .x-gal-page { background: var(--bg-card); }   /* koyu temada not kartı da KOYU (rapor kartı gibi) */
         .x-gal-not-ic { padding: 14px 13px; height: 100%; box-sizing: border-box; overflow: hidden; }
         .x-gal-not-metin { font-size: 11px; line-height: 1.55; color: #3a4654; overflow: hidden; }
+        body:not(.light-theme) .x-gal-not-metin { color: #aeb9c6; }
         .x-gal-not-bos { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; color: #9aa6b2; }
         .x-gal-check { position: absolute; bottom: 9px; left: 9px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
         .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
@@ -3036,7 +3038,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11k · NOT KAGIDI: A4 GENISLIGE SIGAR (sagdan-soldan tam genislik, dikey scroll) + kesik-cizgi A4-sinir KALDIRILDI + GALERI rapor-editoru gibi MOD (ayri overlay/Kapat yok, ust bar ayni, galeri butonu toggle) | 11j yazi-olceklenir | 11i dropdown-fix';
+        var X_BUILD = '2026-11-11l · NOT KAGIDI: cizim ALTINA metin akar (cizim varsa metin ust-boslugu cizimin altina ayrilir, uzerine binmez) + ana panel galeride not karti KOYU temada koyu (rapor karti gibi) | 11k genislige-sigar+A4-sinir-kaldir+galeri-mod | 11j yazi-olceklenir';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9378,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5q · 2026-11-11 not-kagidi A4-genislige-sigar + A4-sinir-kaldirildi + galeri-mod(rapor-editoru-gibi)";
+  XE.VERSION = "5r · 2026-11-11 not-kagidi cizim-altina-metin + ana-panel-not-karti-koyu-tema";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12871,7 +12873,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     _ov.querySelector('.not-cizgili').addEventListener('click', function(){ _doc.cizgili=!_doc.cizgili; this.classList.toggle('aktif',_doc.cizgili); _ov.querySelectorAll('.not-metin').forEach(function(m){ m.classList.toggle('cizgili',_doc.cizgili); }); _planlaKaydet(); });
     _ov.querySelector('.not-gorsel').addEventListener('click', function(){ _gorselSec(); });
     // [FAZ3] çizim modu + çizim şeridi
-    function _cizimModuAyarla(on){ _cizimModu=on; _ov.classList.toggle('cizim',on); _ov.querySelector('.not-cizim').classList.toggle('aktif',on); if(on){ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); }); _cizBtnGuncelle(); } }
+    function _cizimModuAyarla(on){ _cizimModu=on; _ov.classList.toggle('cizim',on); _ov.querySelector('.not-cizim').classList.toggle('aktif',on); if(on){ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); }); _cizBtnGuncelle(); } else { _ov.querySelectorAll('.not-sayfa').forEach(function(w){ _metinBoslukAyarla(w); }); } }
     _ov.querySelector('.not-cizim').addEventListener('click', function(){ _cizimModuAyarla(!_cizimModu); });
     _ov.querySelector('.not-cz-bitir').addEventListener('click', function(){ _cizimModuAyarla(false); });
     _ov.querySelectorAll('.not-cz-tool').forEach(function(b){ b.addEventListener('click', function(){ _cizStil.tool=b.getAttribute('data-ct'); _ov.querySelectorAll('.not-cz-tool').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
@@ -12913,6 +12915,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''});
     _cizSayfalar(Math.min(i,_doc.sayfalar.length-1));
   }
+  // [ÇİZİM ALTINA METİN] Sayfada çizim varsa, metnin üst-boşluğunu çizimin EN ALTINA kadar ayır → yazı çizimin altından
+  // akar, üstüne binmez ("çizim resim gibi, alanına metin yazılmaz"). Çizim yoksa varsayılan %12.1 (Word) marjı.
+  function _metinBoslukAyarla(w){
+    try{
+      if(!w || !w.__metin || !w.__cizim) return;
+      var m=w.__metin, ab=w.__cizim.altSinir();   // 0..1000 (yoksa 0)
+      if(!ab){ m.style.paddingTop=''; return; }
+      var ph=w.clientHeight||0, pw=w.clientWidth||0;
+      var reserve=(ab/1000)*ph + Math.max(10, pw*0.02);   // çizimin altı + küçük boşluk
+      m.style.paddingTop=Math.max(pw*0.121, reserve)+'px';   // en az Word üst marjı
+    }catch(_){}
+  }
   function _sayfaYap(sp, idx){
     var w=document.createElement('div'); w.className='not-sayfa';
     var m=document.createElement('div'); m.className='not-metin'+(_doc.cizgili?' cizgili':''); m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
@@ -12929,8 +12943,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [FONT ÖLÇEK] Taban font sayfanın GERÇEK genişliğiyle ölçeklenir (gerçek A4=794px → 16px): fit edilmiş küçük sayfada
     // yazı da küçülür → bir sayfaya gerçek A4 kadar yazı sığar. em tabanlı başlık/boyut/çizgili bununla birlikte küçülür.
     function _fontOlc(){ try{ var pw=w.clientWidth; if(pw>0) m.style.fontSize=Math.max(9,Math.min(16, 16*pw/794)).toFixed(2)+'px'; }catch(_){} }
-    _fontOlc();
-    try{ w.__ro=new ResizeObserver(function(){ _fontOlc(); try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ _fontOlc(); try{ w.__cizim.resize(); }catch(e){} }, 80); }
+    _fontOlc(); _metinBoslukAyarla(w);
+    try{ w.__ro=new ResizeObserver(function(){ _fontOlc(); _metinBoslukAyarla(w); try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ _fontOlc(); _metinBoslukAyarla(w); try{ w.__cizim.resize(); }catch(e){} }, 80); }
     return w;
   }
 
@@ -12944,7 +12958,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _sc(){ return (cv.width||1)/LOGW; }
     function S(v){ return v*_sc(); } function U(v){ return v/_sc(); }
     function P(e){ var r=cv.getBoundingClientRect(); return {x:U(e.clientX-r.left), y:U(e.clientY-r.top)}; }
-    function _kaydet(){ sp.cizimObjeleri=JSON.parse(JSON.stringify(objs)); try{ _planlaKaydet(); }catch(_){} }
+    function _kaydet(){ sp.cizimObjeleri=JSON.parse(JSON.stringify(objs)); try{ _planlaKaydet(); }catch(_){} try{ _metinBoslukAyarla(cv.closest && cv.closest('.not-sayfa')); }catch(_){} }
     function _snap(){ return JSON.stringify(objs); }
     function _itUndo(){ hist.push(_snap()); if(hist.length>60) hist.shift(); redo=[]; }
     function resize(){ var pr=cv.parentNode; if(!pr) return; var w=pr.clientWidth, h=pr.clientHeight; if(w>0&&h>0){ cv.width=w; cv.height=h; cv.style.width=w+'px'; cv.style.height=h+'px'; ciz(); } }
@@ -13018,7 +13032,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function redoF(){ if(!redo.length) return; hist.push(_snap()); objs=JSON.parse(redo.pop()); selSet=[]; marquee=null; _kaydet(); ciz(); _durum(); }
     function sil(){ if(!selSet.length) return; _itUndo(); selSet.forEach(function(o){ var ix=objs.indexOf(o); if(ix>=0) objs.splice(ix,1); }); selSet=[]; _kaydet(); ciz(); _durum(); }
     cv.addEventListener('pointerdown', pd); cv.addEventListener('pointermove', pm); cv.addEventListener('pointerup', pu); cv.addEventListener('pointercancel', pu);
-    var api={ resize:resize, ciz:ciz, undo:undo, redo:redoF, sil:sil, hasUndo:function(){return !!hist.length;}, hasRedo:function(){return !!redo.length;}, hasSel:function(){return selSet.length>0;} };
+    // [ÇİZİM ALTINA METİN] çizimin EN ALT noktası (LOGW=1000 birimli) → metin bu çizginin altından akar (üstüne binmez).
+    function altSinir(){ if(!objs.length) return 0; var my=0; objs.forEach(function(o){ var k=kutu(o); my=Math.max(my,k.y+k.h); }); return my; }
+    var api={ resize:resize, ciz:ciz, undo:undo, redo:redoF, sil:sil, altSinir:altSinir, hasUndo:function(){return !!hist.length;}, hasRedo:function(){return !!redo.length;}, hasSel:function(){return selSet.length>0;} };
     return api;
   }
   function _cizBtnGuncelle(){ if(!_ov) return; var g=_ov.querySelector('.not-cz-geri'), i=_ov.querySelector('.not-cz-ileri'), s=_ov.querySelector('.not-cz-sil'); if(g) g.disabled=!(_aktifCizim&&_aktifCizim.hasUndo()); if(i) i.disabled=!(_aktifCizim&&_aktifCizim.hasRedo()); if(s) s.disabled=!(_aktifCizim&&_aktifCizim.hasSel()); }
