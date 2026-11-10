@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11d · HIZ gzip: tum metin/JS yanitlari gzip (no-store korunur; ~906KB->~253KB, panel icerigi hizli dolar) | 11c mammoth+sweetalert2 CDN->yerel | 11b A4-sinir+cizim-coklu-secim+tema | 11a Galeri+Paylas+Sayfa-ekle-overlay';
+        var X_BUILD = '2026-11-11e · NOT KAGIDI Word A4 gorunumu: masaustunde sayfa 794px (gercek A4) ORTALI + yan gri tuval; mobilde tam-genislik | 11d gzip | 11c mammoth+sweetalert2 yerel | 11b A4-sinir+coklu-secim+tema | 11a Galeri+Paylas';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9376,7 +9376,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5j · 2026-11-11 not-kagidi A4-sinir + cizim-coklu-secim + tema-uyum";
+  XE.VERSION = "5k · 2026-11-11 not-kagidi Word-A4-ortali-gorunum (masaustu 794px + yan gri)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12639,7 +12639,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // Kaydırma çubuğu da sağda gri şerit açmasın diye YALNIZ bu kapta gizli (global '*' DEĞİL; tekerlek/dokunuş çalışır).
       +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;}'
       +'.not-sayfalar::-webkit-scrollbar{width:0;height:0;display:none;}'
-      +'.not-sayfa{position:relative;width:100%;margin:0 0 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);aspect-ratio:210/297;}'
+      // [WORD A4 GENİŞLİK 2026-11-11] Word görünümü: sayfa gerçek A4 genişliğinde (210mm@96dpi=794px, kenar boşluğu %12.1 ->
+      // 602px metin kolonu = Word birebir) ORTALANIR; iki yanında gri tuval kalır. Mobilde ekran 794'ten dar -> otomatik
+      // tam-genişlik (gri yok). max-width değişkeni kolay ayar için.
+      +':root{--not-a4-w:794px;}'
+      +'.not-sayfa{position:relative;width:100%;max-width:var(--not-a4-w);margin:0 auto 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);aspect-ratio:210/297;}'
       // [SAYFA EKLE 2026-11-11] Ayrı gri şerit YOK; üst/alt-orta yarı-saydam overlay buton (silme × ile aynı hizada,
       // imleç üstüne gelince netleşir). ust=önüne ekle, alt=ardına ekle. Çizim modunda gizli (canvas boş kalsın).
       +'.not-sayfa-ekle{position:absolute;left:50%;transform:translateX(-50%);z-index:6;height:28px;padding:0 14px;border:none;border-radius:14px;background:rgba(40,110,214,.82);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.4;transition:opacity .12s,background .12s;}'
