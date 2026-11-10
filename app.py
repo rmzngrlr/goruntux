@@ -2995,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10q · gorsel duzenleyici TAM EKRAN + kucuk gorsel buyur (<=4x, export native)';
+        var X_BUILD = '2026-11-10r · Kirp-uygula butonu yesil + menu kalem ikonu emoji->SVG';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9854,6 +9854,10 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 .ed-gd-mini{height:30px;padding:0 10px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;}
 .ed-gd-mini.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}
 .ed-gd-mini:disabled{opacity:.4;cursor:default;}
+/* [10r] "Kırp ✓" = kırpmayı UYGULA eylemi -> belirgin yeşil dolgulu (Kaydet mavi'den ayrı, "onay" sinyali). */
+.ed-gd-kirpuygula{background:#17a34a;border-color:#17a34a;color:#fff;font-weight:700;}
+.ed-gd-kirpuygula:hover{background:#148540;border-color:#148540;}
+body:not(.light-theme) .ed-gd-kirpuygula{background:#1e9e5a;border-color:#1e9e5a;color:#fff;}
 .ed-gd-sag{margin-left:auto;display:inline-flex;align-items:center;gap:8px;}
 .ed-gd-btn{height:34px;padding:0 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
 .ed-gd-vaz{background:#eef1f5;color:#334;}
@@ -11643,7 +11647,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [GÖRSEL PANO] üst ikon satırı: dolu görselde Kes/Kopyala/Yapıştır, boş slotta yalnız Yapıştır
       if(clipAcik()) h+=_gorselClipSatiri(_bos, _gorselKopyaVar());
       // [GÖRSEL DÜZENLE 2026-11-10p] Dolu görselde "Düzenle" (kırp + yazı + ok/dikdörtgen/kalem). Boş slotta yok.
-      if(!_bos && _gorselDuzenleAcikMi()) h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-duzen">✏️ Düzenle (Kırp / Yazı)</button></div>';
+      if(!_bos && _gorselDuzenleAcikMi()) h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-duzen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px;"><path d="M12.5 4.5l3 3M4 16l.9-3.4 8.1-8.1 3 3-8.1 8.1L4 16z"/></svg>Düzenle (Kırp / Yazı)</button></div>';
       if(_bos){
         h+='<div class="rt-title">Görsel</div>';
         p.innerHTML=h;
