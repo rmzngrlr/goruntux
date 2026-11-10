@@ -2159,6 +2159,7 @@ HTML_TEMPLATE = """
           else { var _vp = document.querySelector('meta[name=viewport]'); if (_vp) { _vp.setAttribute('content', (_vp.getAttribute('content')||'').replace(/,?\s*viewport-fit=cover/i, '')); } }
         } catch(e){}
         if(!de.classList.contains('x-mobile')) return;
+        try{ if(localStorage.getItem('x_kompakt_duzen')!=='0') de.classList.add('x-komp'); }catch(e){}   // [KOMPAKT 10j] CSS gate
         var mq=window.matchMedia('(orientation: portrait)');
         function yon(){ if(mq.matches){ de.classList.add('x-dik'); de.classList.remove('x-yatay'); } else { de.classList.add('x-yatay'); de.classList.remove('x-dik'); } }
         yon();
@@ -2994,7 +2995,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-10i · KOMPAKT TEST: odak alani en uste hizala (iOS itmesin; flag x_kompakt_duzen=0 eski)';
+        var X_BUILD = '2026-11-10j · KOMPAKT: BOLUM ustte sabit (bolum-hizala + kart daralt + alan emniyet payi)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10077,6 +10078,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal .preview-body{scroll-padding-top:8px;s
    (Baslik) gorsel SABIT kalir. Serit (#editor-serit) fixed+viewport-rel; 'top' transform DEGIL -> ribbon'a containing
    block yaratmaz, serit bozulmaz. (position:fixed kutu top=+vvOffset ile ekranda kaliyordu -> ayni kanitli mekanizma.) */
 html.x-mobile.x-dik.x-ed-yaz #editorModal{top:var(--vv-offset,0px);}
+/* [KOMPAKT 10j] Kullanıcı: "ilgili bölüm üstte sabit olsun". Bölüm üstü tepeye hizalanınca ALT alanlar (link) iOS'un
+   itme bölgesine düşmesin diye, düzenlenen KARTI (:has(:focus)) daralt: boş görsel-yapıştır satırını gizle + başlık/
+   satır boşluklarını kıs. Böylece kart kısalır, alt alan güvenli bölgede kalır, bölüm tepede sabit durur. Yalnız
+   x-komp (flag x_kompakt_duzen!='0') + x-ed-yaz (yazarken) + odaklı kart. iOS 17 :has destekli; desteklemezse kural
+   pasif kalır (zararsız; _hizalaAlan emniyet payı yine çalışır). */
+html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-img-pano{display:none;}
+html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-h2{margin-top:2px;margin-bottom:2px;}
+html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-kume-satir{margin-bottom:3px;}
+html.x-mobile.x-dik.x-komp.x-ed-yaz #editorModal .ed-card:has(:focus) .ed-pz{min-height:0;margin:-3px 0;}
 /* İçerik sonu sabit şeridin ALTINDA kalmasın: şerit+klavye kadar alt dolgu (son satır üste kaydırılabilsin). */
 /* [ODAK KAYDIR 2026-11-09b] Alt-dolgu yalnız BASE (kb + 24): son içerik şerit/klavye altında kalmasın. Bölümü üst
    bara hizalamak için gereken EKSTRA dolguyu _hizalaBolum JS'i DİNAMİK ekler (tam-yeterli) ve max-scroll'u hedefe
@@ -10130,20 +10140,30 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(hedef>maxNat){ root.style.paddingBottom=(base+Math.round(hedef-maxNat))+'px'; }   // tam hedef kadar -> max-scroll=hedef, void yok
       pb.scrollTop=hedef;
     }catch(e){} }
-    // [KOMPAKT HİZALA 10i] Odaklanan ALANI (bölüm üstü DEĞİL) üst bara hizala -> alan iOS'un "klavye bölgesi" itme
-    // eşiğinin ÇOK üstüne çıkar -> iOS viewport'u İTMEZ (vvTop=0 hedef) -> ne içerik kayar ne titreme. counter KAPALI
-    // kalır (konumlama itişi önler, counter'a gerek yok -> çekişme yok). Dinamik alt-dolgu = tam-hedef (void yok). ANLIK
-    // (native focus-scroll ile çekişmesin). Flag x_kompakt_duzen='0' -> kapalı (varsayılan AÇIK).
+    // [KOMPAKT HİZALA 10j] Hedef: BÖLÜM üstü tepede sabit (kullanıcı: "ilgili bölüm üstte sabit olsun") + iOS İTMESİN.
+    // iOS itişi, odaklanan alan "klavye bölgesinde" sayılınca olur (vvTop). Çözüm: (1) bölüm üstünü bara hizala; (2) bu
+    // hizalamadan SONRA odaklı alanın DİBİ güvenli bandın (üst ~%55) ALTINA düşüyorsa YALNIZ o kadar fazladan yukarı
+    // kaydır (emniyet payı) -> alan güvenli bölgede kalır, iOS itmez. Kısa bölümde fazla=0 -> bölüm tam tepede. UZUN
+    // bölümde x-ed-yaz kompakt CSS zaten boş görsel satırını gizleyip daralttığından çoğu zaman fazla=0. counter KAPALI.
+    // ANLIK (native focus-scroll ile çekişmesin). Flag x_kompakt_duzen='0' -> kapalı (varsayılan AÇIK).
     function _hizalaAlan(el){ try{
       if(!el || !dikMobil()) return;
       if(localStorage.getItem('x_kompakt_duzen')==='0') return;
       if(document.querySelector('.xcs-list')||document.getElementById('ed-renk-pop')) return;
       var pb=_edPB(), root=document.getElementById('editor-root'); if(!pb||!root) return;
+      var card=_edKart(el); if(!card) return;
       var kb=parseFloat(getComputedStyle(de).getPropertyValue('--kb-inset'))||0;
       var base=Math.round(kb+24);
       root.style.paddingBottom=base+'px';
-      var delta=Math.round(el.getBoundingClientRect().top-(_barAlti()+8));
-      var D=pb.scrollTop+delta; if(D<0) D=0;
+      var barT=_barAlti();
+      var shift=Math.round(card.getBoundingClientRect().top-(barT+8));   // bölüm üstünü bara getirecek kaydırma (göreli)
+      // hizalama SONRASI odak alanının tahmini konumu (şimdiki rect - shift):
+      var fr=el.getBoundingClientRect();
+      var fBotAfter=(fr.top - shift) + fr.height;
+      var band=Math.max(140, Math.round(_bandAlt()-barT));               // görünür düzenleme yüksekliği
+      var safeBot=barT + Math.round(band*0.55);                          // alan DİBİ bunun altına inmesin (güvenli üst-orta)
+      var extra=Math.max(0, Math.round(fBotAfter - safeBot));
+      var D=pb.scrollTop + shift + extra; if(D<0) D=0;
       var maxNat=pb.scrollHeight-pb.clientHeight;
       if(D>maxNat){ root.style.paddingBottom=(base+Math.round(D-maxNat))+'px'; }
       pb.scrollTop=D;
