@@ -3035,7 +3035,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12h · CIZIM KAGIDI Faz3 HAVUZ/GALERI: cizim kagidi havuz thumb (item-thumb-ck) + galeri onizleme (x-gal-pckimg) temaya gore A4 zeminli gorunur (bos beyaz degil); bos cizim de SEFFAF taban (koyu temada beyaz gorunmez); galeri thumb PNG (seffaflik korunur). + Faz1 zoom + Faz2 koyu tema/seffaf + onceki rotuslar.';
+        var X_BUILD = '2026-11-12i · CIZIM: (A) editor kutusu GENIS (margin 0.05/0.035) + Word/PDF ciktida STANDART A4 kenar boslugu (2.54cm, ortali); (B) metin varsayilan boyutu RAPOR m_size + font dropdown (15 font, yalniz metin aracinda); (C) Arka->Abc 3 kademe (saydam/yari/opak, onizlemeli, yalniz metin aracinda); (E) lightbox carpi KIRMIZI + hover buyume. + onceki (zoom, koyu tema, havuz/galeri).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4425,7 +4425,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 var _pz = 0;
                 while (_pz < _gu.length) {
                     var _a = _gu[_pz], _b = (_pz + 1 < _gu.length) ? _gu[_pz + 1] : null, _cift = false;
-                    if (_a.cizim) { _a.w = CW; _pz += 1; continue; }   // [ÇİZİM KAĞIDI] tam genişlik + tek başına (eşleşmez; PASS3'te sayfa başı)
+                    if (_a.cizim) { _a.w = Math.max(10, CW - 36); _pz += 1; continue; }   // [ÇİZİM KAĞIDI] STANDART A4 kenar boşluğu (2.54cm: CW 0.75" kenar - 36pt = 1" kenar) + ortalı (PASS3) + kendi sayfası
                     if (_b && !_b.cizim) { var _ters = _a.rh + _b.rh, _ara = (_a.aramPay || 0) + (_b.aramPay || 0), _W2 = (_ters > 0) ? Math.min(CW, (PAGE_H - _a.pay - _b.pay - _ara - GUV) / _ters) : CW; if (_W2 >= ESIK) { _a.w = _W2; _b.w = _W2; _pz += 2; _cift = true; } }
                     if (!_cift) { var _k1 = PAGE_H - _a.pay - (_a.aramPay || 0) - GUV; _a.w = (_a.rh > 0) ? Math.min(CW, Math.max(10, _k1) / _a.rh) : CW; _pz += 1; }
                 }
@@ -4435,7 +4435,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             for (var _i2 = 0; _i2 < items.length; _i2++) {
                 var it = items[_i2];
                 if (it.t === 'cizgi') { content.push(cizgiBlok()); continue; }
-                if (it.imgIdx >= 0 && it.img) { var _w = it.w || CW; it.blocks[it.imgIdx] = imgBlok(it.img, _w, _w * it.rh); }
+                if (it.imgIdx >= 0 && it.img) { var _w = it.w || CW; var _ib = imgBlok(it.img, _w, _w * it.rh); if (it.cizim) _ib.alignment = 'center'; it.blocks[it.imgIdx] = _ib; }   // çizim ORTALI (standart kenar boşluğu)
                 var _blk = { stack: it.blocks.filter(function (x) { return !!x; }), unbreakable: true, margin: [0, 0, 0, 8] };
                 if (it.cizim && content.length > 0) _blk.pageBreak = 'before';   // [ÇİZİM KAĞIDI] kendi sayfasında (ilk öğeyse boş sayfa açma)
                 content.push(_blk);
@@ -8637,7 +8637,7 @@ LOCAL_DOCX_JS = r'''
     var _pz=0;
     while(_pz < _imgUnits.length){
       var _a=_imgUnits[_pz], _b=(_pz+1<_imgUnits.length)?_imgUnits[_pz+1]:null;
-      if(_a.cizim){ _a.w=METIN_W; _a.h=_a.ar?(METIN_W/_a.ar):0; _pz+=1; continue; }   // [ÇİZİM KAĞIDI] tam genişlik + tek başına (eşleşmez; emisyonda sayfa başı)
+      if(_a.cizim){ var _ckW=Math.min(METIN_W, METIN_W-0.5); _a.w=_ckW; _a.h=_a.ar?(_ckW/_a.ar):0; _pz+=1; continue; }   // [ÇİZİM KAĞIDI] STANDART A4 kenar boşluğu (2.54cm: METIN_W 6.76in - 0.5 = 6.26in) + ortalı (emisyonda center) + kendi sayfası
       var ciftKuruldu=false;
       if(_b && !_b.cizim){   // çizim ile eşleşme YOK (çizim kendi sayfasını alır)
         var W2=ortakGenislikU(_a,_b);
@@ -8700,7 +8700,7 @@ LOCAL_DOCX_JS = r'''
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
-            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){ var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, !!_iu.cizim)); if(_imgBord) _cizgiKondu=true; } }
+            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){ var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, (_iu.cizim?'center':_iu.align), _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, !!_iu.cizim)); if(_imgBord) _cizgiKondu=true; } }   // çizim ORTALI (standart kenar boşluğu)
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh, _KN_FIX ? (_pi!==_lastEmit) : true)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _pi!==_asilL)?'':u.link);
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:120, _bord, _KN_FIX ? (_pi!==_lastEmit) : false)); if(_bord) _cizgiKondu=true; } }   // [SAYFALAMA] son değilse (link üstte) link alt-boşluğu 120 = link-altta'daki ortadaki görselin af'ı -> iç boşluk deseni eşit
@@ -9341,7 +9341,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6h · 2026-11-12 CIZIM Faz3 HAVUZ/GALERI: cizim havuz thumb + galeri onizleme temaya gore A4 (bos beyaz degil), bos cizim seffaf taban; + Faz2 koyu tema/seffaf + Faz1 zoom/fit/pan/pinch + onceki rotuslar";
+  XE.VERSION = "6i · 2026-11-12 CIZIM: editor kutusu genis + ciktida standart A4 kenar boslugu (ortali); metin boyutu rapor m_size + font dropdown + Arka->Abc 3 kademe (yalniz metin araci); lightbox carpi kirmizi+hover; + onceki fazlar";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9939,6 +9939,17 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 .ed-gd-mini{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:30px;padding:0 10px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
 .ed-gd-mini svg{display:block;}
 .ed-gd-mini.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}
+/* [ÇİZİM METİN] font seçici (rapor editörü gibi) + Abc arka plan önizleme butonu */
+.ed-gd-font{height:30px;max-width:130px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
+body:not(.light-theme) .ed-gd-font{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
+.ed-gd-arka{background:#fff !important;color:#15202b !important;border-color:#cfd8e3 !important;padding:0 8px !important;}
+.ed-gd-arka.aktif{background:#fff !important;border-color:#1565c0 !important;}
+.ed-gd-arka .ed-abc{display:inline-block;padding:2px 7px;border-radius:4px;color:#15202b;font-weight:700;line-height:1.1;}
+.ed-gd-arka.ed-arka-s1 .ed-abc{background:rgba(0,0,0,0.42);color:#fff;}
+.ed-gd-arka.ed-arka-s2 .ed-abc{background:rgba(0,0,0,0.85);color:#fff;}
+body:not(.light-theme) .ed-gd-arka{background:#0f1720 !important;color:#e7e9ea !important;border-color:#2c3a4a !important;}
+body:not(.light-theme) .ed-gd-arka .ed-abc{color:#e7e9ea;}
+body:not(.light-theme) .ed-gd-arka.aktif{border-color:#1d9bf0 !important;}
 .ed-gd-mini:disabled{opacity:.4;cursor:default;}
 /* [10s] "Kırp ✓" = kırpmayı UYGULA eylemi -> belirgin yeşil, Kaydet/Vazgeç ile aynı boyda, yazı+ikon ORTALI. */
 .ed-gd-kirpuygula{height:34px;padding:0 16px;gap:6px;background:#17a34a;border-color:#17a34a;color:#fff;font-size:13px;font-weight:700;}
@@ -10074,10 +10085,10 @@ body:not(.light-theme) #editorModal .ed-ck-img{background:#17212e;border-color:r
 #ed-lightbox{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;overflow:hidden;background:rgba(6,9,14,0.55);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);}
 #ed-lightbox.acik{display:flex;animation:edLbIn .16s ease;}
 #ed-lightbox .ed-lb-img{position:relative;max-width:94vw;max-height:92vh;object-fit:contain;border-radius:8px;box-shadow:0 14px 50px rgba(0,0,0,0.6);cursor:default;}
-#ed-lightbox .ed-lb-kapat{position:fixed;top:16px;right:18px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .12s;}
-#ed-lightbox .ed-lb-kapat:hover{background:rgba(0,0,0,0.78);}
-#ed-lightbox .ed-lb-duzenle{position:fixed;top:16px;right:66px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(21,101,192,0.82);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .12s;}
-#ed-lightbox .ed-lb-duzenle:hover{background:rgba(13,71,161,0.95);}
+#ed-lightbox .ed-lb-kapat{position:fixed;top:16px;right:18px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(224,36,46,0.92);color:#fff;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .14s ease,transform .14s ease;}
+#ed-lightbox .ed-lb-kapat:hover{background:rgba(200,22,36,1);transform:scale(1.14);}
+#ed-lightbox .ed-lb-duzenle{position:fixed;top:16px;right:66px;z-index:2;width:40px;height:40px;border:none;border-radius:50%;background:rgba(21,101,192,0.9);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);transition:background .14s ease,transform .14s ease;}
+#ed-lightbox .ed-lb-duzenle:hover{background:rgba(13,71,161,1);transform:scale(1.14);}
 @keyframes edLbIn{from{opacity:0;}to{opacity:1;}}
 
 /* ================= [DARK TEMA] Editör karanlık tema (app dark iken; body.light-theme'de orijinal açık CSS kalır) ================= */
@@ -11229,8 +11240,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var tool='sec', secili=[], marq=null;   // secili=ÇOKLU seçim dizisi; marq=marquee (lasso) dikdörtgeni src
     var renk='#e02020';
     var kalinlik=Math.max(3, Math.round(Math.max(baseW,baseH)/260));
-    var yaziBoyut=Math.max(16, Math.round(Math.max(baseW,baseH)/20));
-    var yaziArka=true;
+    // [ÇİZİM METİN] font listesi (rapor editörü ile aynı) + varsayılan boyut RAPOR m_size'a göre (pt -> canvas px).
+    var _CK_FONTLAR=['Arial','Calibri','Cambria','Century Gothic','Comic Sans MS','Consolas','Courier New','Georgia','Helvetica','Impact','Segoe UI','Tahoma','Times New Roman','Trebuchet MS','Verdana'];
+    var yaziFont='Arial';
+    var _repMSize=(function(){ try{ return parseInt((document.getElementById('m_size')||{}).value,10)||12; }catch(_){ return 12; } })();
+    var _ckIcerikPx = _cz ? (baseW - 2*_ckMargin(baseW,baseH).mx) : baseW;   // çizim içerik-alanı genişliği (px) -> çıktıda _CK_CIKTI_IN inç
+    var yaziBoyut = _cz ? Math.max(10, Math.round(_repMSize * _ckIcerikPx / (_CK_CIKTI_IN*72))) : Math.max(16, Math.round(Math.max(baseW,baseH)/20));
+    var yaziArkaSev=0;   // [ÇİZİM METİN ARKA] 0=saydam(yok,okunurluk için kontur) | 1=yarı saydam | 2=tam opak
     var crop=null;               // kırp modunda {x,y,w,h} src
     var hist=[];                 // editör-içi geri al yığını: {objs, b, w, h}
     var redoHist=[];             // ileri al yığını
@@ -11250,9 +11266,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
-      +'      <label class="ed-gd-say" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
-      +'      <label class="ed-gd-say ed-gd-yzgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'
-      +'      <button type="button" class="ed-gd-mini ed-gd-arka'+(yaziArka?' aktif':'')+'" title="Yazı arka planı (okunurluk)">Arka</button>'
+      +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
+      +(_cz?('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>'):'')
+      +'      <label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'
+      +'      <button type="button" class="ed-gd-mini ed-gd-arka ed-gd-metgrp ed-arka-s'+yaziArkaSev+(yaziArkaSev>0?' aktif':'')+'" title="Yazı arka planı: saydam / yarı saydam / opak (tıkla değiştir)"><span class="ed-abc">Abc</span></button>'
       +'    </div>'
       +'    <div class="ed-gd-sag">'
       +'      <button type="button" class="ed-gd-mini ed-gd-geri" title="Geri al" disabled><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 7.5h7a4 4 0 1 1 0 8H8.5"/><path d="M7.5 4.5l-3 3 3 3"/></svg></button>'
@@ -11305,7 +11322,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [YAZI KUTUSU SIKI 2026-11-10u] Gerçek glif metrikleri (actualBoundingBox) -> kutu/arka metne TAM otursun
     // (eski boyut*1.25 + 'top' baseline leading'i gereksiz ALT BOŞLUK bırakıyordu).
     function yaziMetrikPx(o, fpx){
-      ctx.save(); ctx.font=(o.kalin?'bold ':'')+fpx+'px Arial'; var m=ctx.measureText(o.metin||' '); ctx.restore();
+      ctx.save(); ctx.font=(o.kalin?'bold ':'')+fpx+'px '+(o.font||'Arial'); var m=ctx.measureText(o.metin||' '); ctx.restore();
       var asc=m.actualBoundingBoxAscent, desc=m.actualBoundingBoxDescent;
       if(!(asc>0)) asc=fpx*0.8; if(!(desc>=0)) desc=fpx*0.22;
       return { w:m.width, asc:asc, desc:desc };
@@ -11319,10 +11336,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(o.t==='yazi'){
         var fs=S(o.boyut), pX=fs*0.14, pY=fs*0.1, mm=yaziMetrikPx(o, fs);
         var bx=S(o.x), by=S(o.y), baseY=by+mm.asc;   // o.y = görsel ÜST; baseline = üst + ascent (metne SIKI)
-        ctx.font=(o.kalin?'bold ':'')+fs+'px Arial'; ctx.textBaseline='alphabetic';
-        if(o.arka){ ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(bx-pX, by-pY, mm.w+pX*2, mm.asc+mm.desc+pY*2); }
+        ctx.font=(o.kalin?'bold ':'')+fs+'px '+(o.font||'Arial'); ctx.textBaseline='alphabetic';
+        var _as=(typeof o.arka==='number')?o.arka:(o.arka?2:0);   // [ARKA] 0 saydam | 1 yarı saydam | 2 tam opak
+        if(_as>0){ ctx.fillStyle=(_as===1?'rgba(0,0,0,0.38)':'rgba(0,0,0,0.82)'); ctx.fillRect(bx-pX, by-pY, mm.w+pX*2, mm.asc+mm.desc+pY*2); }
         ctx.fillStyle=o.renk;
-        if(!o.arka){ ctx.lineWidth=Math.max(2,fs*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', bx, baseY); }
+        if(_as===0){ ctx.lineWidth=Math.max(2,fs*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', bx, baseY); }
         ctx.fillText(o.metin||'', bx, baseY);
       } else if(o.t==='dikdortgen'){
         ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk;
@@ -11388,7 +11406,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function geriAl(){ if(!hist.length) return; redoHist.push(anlik()); _uygula(hist.pop()); _geriBtn(); }
     function ileriAl(){ if(!redoHist.length) return; hist.push(anlik()); _uygula(redoHist.pop()); _geriBtn(); }
     function _geriBtn(){ var g=ov.querySelector('.ed-gd-geri'); if(g) g.disabled=!hist.length; var f=ov.querySelector('.ed-gd-ileri'); if(f) f.disabled=!redoHist.length; }
-    function _selBtn(){ var b=ov.querySelector('.ed-gd-sil'); if(b) b.disabled=!secili.length; }
+    function _selBtn(){ var b=ov.querySelector('.ed-gd-sil'); if(b) b.disabled=!secili.length; try{ _metgrpUygula(); }catch(_){} }
 
     // ---- hit test ----
     function noktaMesafe(px,py,ax,ay,bx,by){ var dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy; if(l2===0) return Math.hypot(px-ax,py-ay); var t=((px-ax)*dx+(py-ay)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+t*dx),py-(ay+t*dy)); }
@@ -11485,7 +11503,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // ---- yazı ----
     function _yaziEkle(p){
       itUndo();   // snapshot MUTASYONDAN ÖNCE -> yazı eklenince geri-al hemen aktif + gerçekten siler (iptal edilirse geri alınır)
-      var o={t:'yazi', x:p.x, y:p.y, metin:'', boyut:yaziBoyut, renk:renk, kalin:false, arka:yaziArka};
+      var o={t:'yazi', x:p.x, y:p.y, metin:'', boyut:yaziBoyut, renk:renk, kalin:false, arka:yaziArkaSev, font:yaziFont};
       objs.push(o); secili=[o]; tool='sec'; _toolYansit(); _selBtn();
       _yaziDuzenle(o, true);
     }
@@ -11531,10 +11549,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // ---- stil yansıtma (seçili obje -> toolbar) ----
     function _stilYansit(){ if(secili.length!==1) return; var sel=secili[0];   // yalnız TEK seçili öğenin stilini toolbar'a yansıt
       var ri=ov.querySelector('.ed-gd-renk-inp'); if(ri && sel.renk){ ri.value=sel.renk; renk=sel.renk; }
-      if(sel.t==='yazi'){ var yb=ov.querySelector('.ed-gd-yzb'); if(yb){ yb.value=sel.boyut; yaziBoyut=sel.boyut; } }
+      if(sel.t==='yazi'){ var yb=ov.querySelector('.ed-gd-yzb'); if(yb){ yb.value=sel.boyut; yaziBoyut=sel.boyut; }
+        var fsel=ov.querySelector('.ed-gd-font'); if(fsel && sel.font){ fsel.value=sel.font; yaziFont=sel.font; }
+        yaziArkaSev=(typeof sel.arka==='number')?sel.arka:(sel.arka?2:0); _arkaBtnYansit(); }
       else if(sel.kal){ var kb=ov.querySelector('.ed-gd-kal'); if(kb){ kb.value=sel.kal; kalinlik=sel.kal; } }
+      _metgrpUygula();
     }
-    function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); }); _kirpBtnGoster(); cv.style.cursor=(tool==='sec'?'default':'crosshair'); }
+    function _arkaBtnYansit(){ var b=ov.querySelector('.ed-gd-arka'); if(!b) return; b.classList.remove('ed-arka-s0','ed-arka-s1','ed-arka-s2'); b.classList.add('ed-arka-s'+yaziArkaSev); b.classList.toggle('aktif', yaziArkaSev>0); }
+    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM METİN] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; aksi halde Kalınlık
+      var mm=(tool==='yazi') || (secili.length && secili.some(function(s){return s.t==='yazi';}));
+      ov.querySelectorAll('.ed-gd-metgrp').forEach(function(e){ e.style.display=mm?'':'none'; });
+      var kg=ov.querySelector('.ed-gd-kalgrp'); if(kg) kg.style.display=mm?'none':'';
+    }
+    function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); }); _kirpBtnGoster(); _metgrpUygula(); cv.style.cursor=(tool==='sec'?'default':'crosshair'); }
     function _kirpBtnGoster(){ var b=ov.querySelector('.ed-gd-kirpuygula'); if(b) b.style.display=(tool==='kirp' && crop && crop.w>2 && crop.h>2)?'inline-flex':'none'; }
 
     // ---- toolbar olayları ----
@@ -11542,7 +11569,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelector('.ed-gd-renk-inp').addEventListener('input', function(){ renk=this.value; if(secili.length){ secili.forEach(function(s){ if(s.renk!=null) s.renk=renk; }); ciz(); } });
     ov.querySelector('.ed-gd-kal').addEventListener('input', function(){ kalinlik=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.kal!=null) s.kal=kalinlik; }); ciz(); } });
     ov.querySelector('.ed-gd-yzb').addEventListener('input', function(){ yaziBoyut=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); ciz(); } });
-    ov.querySelector('.ed-gd-arka').addEventListener('click', function(){ yaziArka=!yaziArka; this.classList.toggle('aktif',yaziArka); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.arka=yaziArka; }); ciz(); } });
+    (function(){ var fsel=ov.querySelector('.ed-gd-font'); if(fsel) fsel.addEventListener('change', function(){ yaziFont=this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.font=yaziFont; }); } ciz(); }); })();
+    ov.querySelector('.ed-gd-arka').addEventListener('click', function(){ yaziArkaSev=(yaziArkaSev+1)%3; _arkaBtnYansit(); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.arka=yaziArkaSev; }); } ciz(); });   // 0 saydam -> 1 yarı -> 2 opak -> 0
     ov.querySelector('.ed-gd-geri').addEventListener('click', geriAl);
     ov.querySelector('.ed-gd-ileri').addEventListener('click', ileriAl);
     ov.querySelector('.ed-gd-sil').addEventListener('click', function(){ if(!secili.length) return; itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); });
@@ -11636,7 +11664,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   }
   // [ÇİZİM KAĞIDI] A4 kenar boşluğu (2.54cm) oranı — Word sayfası birebir (210x297mm). Hem ekran kılavuzu
   // hem KAYDET kırpması bu oranı kullanır -> kılavuz içine çizilen = Word içerik alanını TAM kaplar (WYSIWYG).
-  var _CK_MX=0.12095, _CK_MY=0.08552;
+  // [ÇİZİM] Editör kutusu (çizim alanı + çizgili + margin kılavuzu) GENİŞ -> daha çok yerde çiz. Çıktıda ise
+  // çizim STANDART A4 kenar boşluğuyla (2.54cm) ortalanır (_CK_CIKTI_IN). İki margin AYRI: editör-kutusu != çıktı-boşluğu.
+  var _CK_MX=0.05, _CK_MY=0.035;   // editör kutusu kenar oranı (küçük = büyük çizim alanı)
+  var _CK_CIKTI_IN=6.26;           // çıktı çizim genişliği (inch): A4 8.27 - 2*1.0 (2.54cm) -> standart kenar boşluğu
   function _ckMargin(w,h){ return { mx:Math.round(w*_CK_MX), my:Math.round(h*_CK_MY) }; }
   function _ckMarginCiz(x, w, h){   // Word-sayfası kenar boşluğu kılavuzu (YALNIZ ekran; çıktıya ASLA gömülmez)
     var m=_ckMargin(w,h);
