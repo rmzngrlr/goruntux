@@ -3032,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12e · CIZIM KAGIDI: cizgili defter cizgileri ARTIK margin kutusu ICINDE (Word yazi alani ile hizali, tasmaz). + "+ Cizim Kagidi" editoru otomatik acmaz, cizim-only kart, lightbox kalem, margin kilavuzu + ciktida tam-sayfa, masaustu odak-uste.';
+        var X_BUILD = '2026-11-12f · CIZIM KAGIDI Faz1 ZOOM: cizim editorunde A4 yakinlastir/uzaklastir (sag-alt silik butonlar + fare tekeri + mobil pinch) + fit-modu (genislige/yukseklige sigdir) + pan. + onceki (cizgiler kutu icinde, otomatik acma yok, cizim-only kart, lightbox kalem, margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9334,7 +9334,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6e · 2026-11-12 CIZIM KAGIDI: cizgili cizgiler margin kutusu ICINDE (hizali) + editor otomatik acmaz + cizim-only kart + lightbox kalem + margin kilavuzu + ciktida tam-sayfa + masaustu odak-uste";
+  XE.VERSION = "6f · 2026-11-12 CIZIM Faz1 ZOOM: A4 yakinlastir/uzaklastir (butonlar+tekerlek+pinch) + fit-modu (genislik/yukseklik) + pan; + cizgiler kutu icinde, otomatik acma yok, cizim-only kart, lightbox kalem, margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9919,7 +9919,7 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 /* [GÖRSEL DÜZENLEYİCİ 2026-11-10p] crop + yazı + ok/dikdörtgen/kalem modalı (body'ye eklenir; #editorModal'dan BAĞIMSIZ) */
 .ed-gd-ov{position:fixed;inset:0;z-index:5000;background:rgba(10,15,22,0.72);display:flex;align-items:center;justify-content:center;padding:0;box-sizing:border-box;}
 /* [TAM EKRAN 2026-11-10q] Kullanıcı: düzenleyici tam ekran olsun -> kutu viewport'u KAPLAR. */
-.ed-gd-box{background:#fff;border-radius:0;box-shadow:none;display:flex;flex-direction:column;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;box-sizing:border-box;}
+.ed-gd-box{position:relative;background:#fff;border-radius:0;box-shadow:none;display:flex;flex-direction:column;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;box-sizing:border-box;}
 .ed-gd-ust{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #e3e8ee;background:#f7f9fc;}
 .ed-gd-tools{display:inline-flex;gap:3px;}
 .ed-gd-tool{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;cursor:pointer;}
@@ -9941,8 +9941,15 @@ body:not(.light-theme) .ed-gd-kirpuygula{background:#1e9e5a;border-color:#1e9e5a
 .ed-gd-btn{height:34px;padding:0 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
 .ed-gd-vaz{background:#eef1f5;color:#334;}
 .ed-gd-kaydet{background:#1565c0;color:#fff;}
-.ed-gd-tuval-sar{flex:1;min-height:200px;display:flex;align-items:center;justify-content:center;background:#2b3440;padding:10px;overflow:auto;box-sizing:border-box;}
-.ed-gd-tuval{display:block;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.3);touch-action:none;}
+.ed-gd-tuval-sar{flex:1;min-height:200px;display:flex;background:#2b3440;padding:10px;overflow:auto;box-sizing:border-box;}
+.ed-gd-tuval{display:block;margin:auto;background:#fff;box-shadow:0 2px 12px rgba(0,0,0,0.3);touch-action:none;}
+/* [ÇİZİM ZOOM] sağ-alt kontroller — silik, fare üstüne gelince (kutu hover) belirginleşir */
+.ed-gd-zoom{position:absolute;right:14px;bottom:14px;z-index:6;display:flex;align-items:center;gap:4px;background:rgba(18,26,36,0.74);border-radius:11px;padding:4px 6px;opacity:.26;transition:opacity .15s ease;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);}
+.ed-gd-box:hover .ed-gd-zoom,.ed-gd-zoom:hover{opacity:1;}
+.ed-gd-zbtn{width:30px;height:30px;border:none;border-radius:7px;background:rgba(255,255,255,0.13);color:#fff;font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.ed-gd-zbtn:hover{background:rgba(255,255,255,0.28);}
+.ed-gd-zbtn.aktif{background:#1d9bf0;}
+.ed-gd-zval{min-width:42px;text-align:center;color:#fff;font-size:12px;font-weight:600;user-select:none;}
 .ed-gd-yazi-inp{position:fixed;z-index:5100;border:1px solid #1565c0;border-radius:4px;padding:2px 6px;font-family:Arial;background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,0.25);min-width:120px;}
 html.x-mobile.x-dik .ed-gd-box{width:100%;height:100%;}
 html.x-mobile.x-dik .ed-gd-say input[type=range]{width:60px;}
@@ -11247,20 +11254,39 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    </div>'
       +'  </div>'
       +'  <div class="ed-gd-tuval-sar"><canvas class="ed-gd-tuval"></canvas></div>'
+      +(_cz?('<div class="ed-gd-zoom">'
+        +'<button type="button" class="ed-gd-zbtn ed-gd-zout" title="Uzaklaştır (fare tekeri / pinch)">&minus;</button>'
+        +'<span class="ed-gd-zval">100%</span>'
+        +'<button type="button" class="ed-gd-zbtn ed-gd-zin" title="Yakınlaştır (fare tekeri / pinch)">+</button>'
+        +'<button type="button" class="ed-gd-zbtn ed-gd-zfit" title="Sığdırma: genişliğe ↔ yüksekliğe"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V3h5M17 12v5h-5M3 12v5h5M17 8V3h-5"/></svg></button>'
+        +'</div>'):'')
       +'  <input type="text" class="ed-gd-yazi-inp" placeholder="Yazı..." style="display:none;">'
       +'</div>';
     (document.body||document.documentElement).appendChild(ov);
     var cv=ov.querySelector('.ed-gd-tuval'), ctx=cv.getContext('2d');
     var sar=ov.querySelector('.ed-gd-tuval-sar');
     var yaziInp=ov.querySelector('.ed-gd-yazi-inp');
-    var scale=1;
+    var scale=1, fitMode='height', zoom=1;   // [ÇİZİM ZOOM] fitMode:'height'(contain,varsayılan)|'width'; zoom=kullanıcı çarpanı (yalnız _cz)
 
+    function fitScale(){
+      var maxW=Math.max(100, sar.clientWidth-4), maxH=Math.max(100, sar.clientHeight-4);
+      if(_cz && fitMode==='width') return maxW/baseW;             // genişliğe sığdır (yükseklik taşar -> dikey kaydır)
+      return Math.min(maxW/baseW, maxH/baseH, _cz?99:4);          // yükseklik/contain (şu anki); görselde 4x cap
+    }
     function olcekle(){
-      var maxW=Math.max(200, sar.clientWidth-4), maxH=Math.max(200, sar.clientHeight-4);
-      scale=Math.min(maxW/baseW, maxH/baseH, 4); if(!(scale>0)) scale=1;
+      var fs=fitScale(); scale=Math.min(fs*(_cz?zoom:1), 8); if(!(scale>0)) scale=1;
       cv.width=Math.round(baseW*scale); cv.height=Math.round(baseH*scale);
       cv.style.width=cv.width+'px'; cv.style.height=cv.height+'px';
+      if(_cz) _zoomGoster();
     }
+    function _zoomGoster(){ try{ var el=ov.querySelector('.ed-gd-zval'); if(el) el.textContent=Math.round(zoom*100)+'%'; var fb=ov.querySelector('.ed-gd-zfit'); if(fb) fb.classList.toggle('aktif', fitMode==='width'); }catch(_){} }
+    function _setZoom(z, cx, cy){   // z=yeni zoom; cx,cy=sabit kalacak ekran noktası (yoksa scroll korunur)
+      z=Math.max(0.5, Math.min(z, 6)); if(Math.abs(z-zoom)<0.0005){ _zoomGoster(); return; }
+      var anc=null; if(cx!=null){ var r=cv.getBoundingClientRect(); anc={ sx:U(cx-r.left), sy:U(cy-r.top), cx:cx, cy:cy }; }
+      zoom=z; olcekle(); ciz();
+      if(anc){ var r2=cv.getBoundingClientRect(); sar.scrollLeft += (r2.left+S(anc.sx))-anc.cx; sar.scrollTop += (r2.top+S(anc.sy))-anc.cy; }
+    }
+    function _fitDegis(){ fitMode=(fitMode==='height')?'width':'height'; zoom=1; olcekle(); ciz(); try{ sar.scrollTop=0; sar.scrollLeft=0; }catch(_){} }
     function S(v){ return v*scale; }                       // src -> ekran
     function U(v){ return v/scale; }                       // ekran -> src
     function noktaSrc(e){ var r=cv.getBoundingClientRect(); return { x:U(e.clientX-r.left), y:U(e.clientY-r.top) }; }
@@ -11372,10 +11398,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     }
 
     // ---- pointer ----
-    var drag=null;
+    var drag=null, ptrs={}, pinch=null;   // [ÇİZİM PINCH] aktif parmaklar + pinch durumu (iki parmak = yakınlaştır/pan)
     function pd(e){
       if(e.target===yaziInp) return;
-      cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+      try{ cv.setPointerCapture && cv.setPointerCapture(e.pointerId); }catch(_){}
+      ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+      if(_cz && Object.keys(ptrs).length>=2){   // ikinci parmak indi -> PINCH (çizimi iptal et)
+        if(drag){ if((drag.tip==='ciz'||drag.tip==='kalem') && objs.length){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } } drag=null; }
+        var _id=Object.keys(ptrs), _pa=ptrs[_id[0]], _pb=ptrs[_id[1]];
+        pinch={ d0:Math.max(1,Math.hypot(_pa.x-_pb.x,_pa.y-_pb.y)), z0:zoom }; ciz(); return;
+      }
       var p=noktaSrc(e);
       if(tool==='sec'){ var o=vurus(p);
         if(o){ if(secili.indexOf(o)<0) secili=[o];   // yeni öğeye bas -> tekli seç; zaten seçili öğeye bas -> grubu KORU (grup taşı)
@@ -11389,6 +11421,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(tool==='kalem'){ itUndo(); var o4={t:'kalem', nk:[{x:p.x,y:p.y}], renk:renk, kal:kalinlik}; objs.push(o4); drag={tip:'kalem', o:o4}; return; }
     }
     function pm(e){
+      if(ptrs[e.pointerId]) ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+      if(pinch){ var _id=Object.keys(ptrs); if(_id.length>=2){ var _a=ptrs[_id[0]], _b=ptrs[_id[1]]; var _d=Math.hypot(_a.x-_b.x,_a.y-_b.y), _mx=(_a.x+_b.x)/2, _my=(_a.y+_b.y)/2;
+        var nz=Math.max(0.5,Math.min(pinch.z0*(_d/pinch.d0),6)); var r=cv.getBoundingClientRect(), sx=U(_mx-r.left), sy=U(_my-r.top);
+        zoom=nz; olcekle(); ciz(); var r2=cv.getBoundingClientRect(); sar.scrollLeft+=(r2.left+S(sx))-_mx; sar.scrollTop+=(r2.top+S(sy))-_my; } return; }
       if(!drag) return; var p=noktaSrc(e);
       if(drag.tip==='tasi'){ var dx=p.x-drag.sx, dy=p.y-drag.sy;   // TÜM seçili öğeleri birlikte taşı
         for(var _mi=0;_mi<drag.ogeler.length;_mi++){ var o=drag.ogeler[_mi], b=drag.baslar[_mi];
@@ -11414,6 +11450,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(drag.tip==='kalem'){ drag.o.nk.push({x:p.x,y:p.y}); ciz(); return; }
     }
     function pu(e){
+      if(ptrs[e.pointerId]) delete ptrs[e.pointerId];
+      if(pinch){ if(Object.keys(ptrs).length<2) pinch=null; return; }
       if(!drag){ return; }
       var d=drag; drag=null;
       if(d.tip==='tasi'){ itUndoGrup(d); }
@@ -11535,6 +11573,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }
     }, true);
     ov.tabIndex=-1; try{ ov.focus(); }catch(_){}   // klavye kısayolları için modal odaklı
+    if(_cz){   // [ÇİZİM ZOOM] sağ-alt butonlar + fare tekeri
+      var _zin=ov.querySelector('.ed-gd-zin'), _zout=ov.querySelector('.ed-gd-zout'), _zfit=ov.querySelector('.ed-gd-zfit');
+      function _sarMerkez(){ var r=sar.getBoundingClientRect(); return [r.left+r.width/2, r.top+r.height/2]; }
+      if(_zin) _zin.addEventListener('click', function(){ var c=_sarMerkez(); _setZoom(zoom*1.25, c[0], c[1]); });
+      if(_zout) _zout.addEventListener('click', function(){ var c=_sarMerkez(); _setZoom(zoom/1.25, c[0], c[1]); });
+      if(_zfit) _zfit.addEventListener('click', _fitDegis);
+      sar.addEventListener('wheel', function(e){ e.preventDefault(); _setZoom(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY); }, {passive:false});
+    }
     window.addEventListener('resize', ciz);
 
     function kapat(){ try{ window.removeEventListener('resize', ciz); }catch(_){} try{ ov.remove(); }catch(_){} }
