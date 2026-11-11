@@ -3035,7 +3035,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12i · CIZIM: (A) editor kutusu GENIS (margin 0.05/0.035) + Word/PDF ciktida STANDART A4 kenar boslugu (2.54cm, ortali); (B) metin varsayilan boyutu RAPOR m_size + font dropdown (15 font, yalniz metin aracinda); (C) Arka->Abc 3 kademe (saydam/yari/opak, onizlemeli, yalniz metin aracinda); (E) lightbox carpi KIRMIZI + hover buyume. + onceki (zoom, koyu tema, havuz/galeri).';
+        var X_BUILD = '2026-11-12j · CIZIM ODAK: cizim kagidi ONIZLEMELERI (ana panel galeri + editor galeri + havuz) dolu alana ODAKLANIR -> sayfanin dolu kismi %65 altindaysa dolu kutuya + %8 pay kirpilir (buyuk bos alan gosterilmez). Yalniz onizleme; gercek cizim + Word/PDF ciktisi tam sayfa kalir. + onceki (genis kutu, metin font/boyut, Abc, lightbox, zoom, koyu tema).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -7077,6 +7077,8 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
               html += '</div>';   // .pool-section
             }
             container.innerHTML = html;
+            // [CIZIM ODAK] havuz cizim thumb'larini dolu alana odakla (buyuk bos alan gosterme)
+            try{ if(window.xCkOdakThumb) container.querySelectorAll('.item-thumb-ck').forEach(function(im){ var full=im.getAttribute('src'); window.xCkOdakThumb(full, 110, true).then(function(u){ if(u) im.src=u; }); }); }catch(e){}
             attachItemDnd(container);
         }
         // Bir havuz ogesinin platformu ('x' | 'ig' | 'fb') — bolumleme icin.
@@ -9173,6 +9175,46 @@ X_SAVED_REPORTS_JS = r'''
       }catch(e){ resolve(null); }
     });
   }
+  // [ÇİZİM ODAK] Çizim kağıdı ÖNİZLEMESİ (galeri + havuz): sayfanın dolu (saydam-olmayan) alanı %65'ten AZ ise
+  // dolu kutuya + %8 pay ile KIRP (içeriğe odaklan) -> büyük boş alan gösterilmez. Yalnız önizleme; gerçek çizim/çıktı değişmez.
+  var _ckOdakCache={};
+  function _ckOdakThumb(dataUrl, maxW, keepAlpha){
+    if(!dataUrl) return Promise.resolve(dataUrl);
+    var ck=(keepAlpha?'p':'j')+(maxW||150)+':'+dataUrl.length+':'+dataUrl.slice(-24);
+    if(_ckOdakCache[ck]) return Promise.resolve(_ckOdakCache[ck]);
+    return new Promise(function(resolve){
+      try{
+        var img=new Image();
+        img.onload=function(){ try{
+          var iw=img.naturalWidth||img.width||1, ih=img.naturalHeight||img.height||1;
+          var sx=0, sy=0, sw=iw, sh=ih;
+          try{
+            var cc=document.createElement('canvas'); cc.width=iw; cc.height=ih; var cx=cc.getContext('2d'); cx.drawImage(img,0,0);
+            var d=cx.getImageData(0,0,iw,ih).data;
+            var minX=iw, minY=ih, maxX=-1, maxY=-1, st=Math.max(1, Math.round(Math.min(iw,ih)/420));
+            for(var y=0;y<ih;y+=st){ var ro=y*iw*4; for(var x=0;x<iw;x+=st){ if(d[ro+x*4+3]>16){ if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y; } } }
+            if(maxX>=minX && maxY>=minY){
+              var bw=maxX-minX+1, bh=maxY-minY+1;
+              if((bw*bh)/(iw*ih) < 0.65){   // dolu alan sayfanın %65'inden az -> odaklan (%8 pay)
+                var px=bw*0.08, py=bh*0.08;
+                sx=Math.max(0, minX-px); sy=Math.max(0, minY-py);
+                sw=Math.min(iw, maxX+1+px)-sx; sh=Math.min(ih, maxY+1+py)-sy;
+              }
+            }
+          }catch(_e){}
+          var s=Math.min(1, (maxW||150)/Math.max(1,sw));
+          var tw=Math.max(1,Math.round(sw*s)), th=Math.max(1,Math.round(sh*s));
+          var tc=document.createElement('canvas'); tc.width=tw; tc.height=th;
+          tc.getContext('2d').drawImage(img, sx, sy, sw, sh, 0, 0, tw, th);
+          var t=keepAlpha ? tc.toDataURL('image/png') : tc.toDataURL('image/jpeg',0.72);
+          _ckOdakCache[ck]=t; resolve(t);
+        }catch(e){ resolve(dataUrl); } };
+        img.onerror=function(){ resolve(dataUrl); };
+        img.src=dataUrl;
+      }catch(e){ resolve(dataUrl); }
+    });
+  }
+  try{ window.xCkOdakThumb=_ckOdakThumb; }catch(_){}   // havuz (panel) + editör galeri paylaşsın
   async function _buildPreview(o){
     o = o || {};
     var items = o.items||[]; var images = o.images||{}; var lines=[];
@@ -9192,7 +9234,7 @@ X_SAVED_REPORTS_JS = r'''
       if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<8;p++){ var pc=it.parcalar[p]; if(!pc) continue;
         if(pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } }
         else if(pc.tur==='link' && pc.url){ var lu=(''+pc.url).trim(); if(lu){ lines.push({t:'p', s:lu.slice(0,90)}); } }
-        else if(pc.tur==='gorsel' && pc.b64){ try{ var _ckp=!!pc.cizimKagidi; var pth=await _onizThumb((it.link||'')+':p'+p, 'data:'+(pc.mime||'image/png')+';base64,'+pc.b64, _ckp); if(pth && pth!==_primThumb){ lines.push({t:(_ckp?'ckimg':'img'), s:pth}); } }catch(e){} }
+        else if(pc.tur==='gorsel' && pc.b64){ try{ var _ckp=!!pc.cizimKagidi; var _du='data:'+(pc.mime||'image/png')+';base64,'+pc.b64; var pth=_ckp ? await _ckOdakThumb(_du, 150, true) : await _onizThumb((it.link||'')+':p'+p, _du); if(pth && pth!==_primThumb){ lines.push({t:(_ckp?'ckimg':'img'), s:pth}); } }catch(e){} }   // çizim: dolu alana odaklı (saydam)
       } }
     }
     return lines;
@@ -9341,7 +9383,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6i · 2026-11-12 CIZIM: editor kutusu genis + ciktida standart A4 kenar boslugu (ortali); metin boyutu rapor m_size + font dropdown + Arka->Abc 3 kademe (yalniz metin araci); lightbox carpi kirmizi+hover; + onceki fazlar";
+  XE.VERSION = "6j · 2026-11-12 CIZIM ODAK: onizlemeler (galeri+havuz) dolu alana odaklanir (%65 esik, %8 pay, xCkOdakThumb); gercek cizim+cikti tam sayfa; + genis kutu/standart cikti boslugu, metin font/boyut, Abc, lightbox, zoom, koyu tema";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9911,6 +9953,10 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
 #editorModal .ed-gal-bassiz{color:#94a3b8;font-weight:500;font-style:italic;}
 #editorModal .ed-gal-img{border-radius:7px;overflow:hidden;border:1px solid #eef1f4;background:#f8fafc;}
 #editorModal .ed-gal-img img{display:block;width:100%;max-height:130px;object-fit:cover;pointer-events:none;}
+/* [ÇİZİM ODAK] çizim galeri önizlemesi: dolu alana odaklı + paper zemin (temaya göre) + tam görün (contain) */
+#editorModal .ed-gal-ck{background:#ffffff;}
+#editorModal .ed-gal-ckimg{object-fit:contain !important;max-height:150px !important;}
+body:not(.light-theme) #editorModal .ed-gal-ck{background:#17212e;}
 #editorModal .ed-gal-imgyok{height:58px;display:flex;align-items:center;justify-content:center;color:#b6c0cb;font-size:11px;border-style:dashed;}
 #editorModal .ed-gal-metin{font-size:11px;color:#64748b;line-height:1.5;margin-top:7px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 #editorModal .ed-ik-kapat:hover:not(:disabled){color:#e0245e;}
@@ -11044,19 +11090,21 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     for(var i=0;i<B.length;i++){
       var b=B[i]||{}, it=b.item||{};
       var bas = (b.h2!=null && String(b.h2).trim()!=='') ? String(b.h2) : ((b.h1!=null && String(b.h1).trim()!=='') ? String(b.h1) : (it.title||''));
-      var imgUrl='';   // x-editor.js scope: birincil görsel (item.image_b64) + edGorselHarita (parça-görsel) ikizini kullan
+      var imgUrl='', _ckGal=false;   // x-editor.js scope: birincil görsel (item.image_b64) + edGorselHarita (parça-görsel) ikizini kullan
       if(it.image_b64){ imgUrl='data:'+(it.image_mime||'image/jpeg')+';base64,'+it.image_b64; }
-      else { try{ var gm=edGorselHarita(it); for(var gk in gm){ if(gm[gk] && gm[gk].b64){ imgUrl='data:'+(gm[gk].mime||'image/jpeg')+';base64,'+gm[gk].b64; break; } } }catch(_g){} }
+      else { try{ var gm=edGorselHarita(it); for(var gk in gm){ if(gm[gk] && gm[gk].b64){ imgUrl='data:'+(gm[gk].mime||'image/jpeg')+';base64,'+gm[gk].b64; if(it.parcalar && it.parcalar[gk] && it.parcalar[gk].cizimKagidi) _ckGal=true; break; } } }catch(_g){} }
       var metin='';
       if(!bas && !imgUrl && it.parcalar){ for(var pp=0;pp<it.parcalar.length;pp++){ var pc=it.parcalar[pp]; if(pc && pc.tur==='metin' && pc.metin){ metin=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,100); if(metin) break; } if(pc && pc.tur==='link' && pc.url && !metin){ metin=(''+pc.url).slice(0,100); } } }
       var ust = bas ? ('<div class="ed-gal-bas">'+esc(bas)+'</div>') : '';
-      var gorsel = imgUrl ? ('<div class="ed-gal-img"><img src="'+imgUrl+'" alt=""></div>') : '';
+      var gorsel = imgUrl ? ('<div class="ed-gal-img'+(_ckGal?' ed-gal-ck':'')+'"><img'+(_ckGal?' class="ed-gal-ckimg"':'')+' src="'+imgUrl+'" alt=""></div>') : '';
       var govde = '';
       if(!ust && !gorsel){ govde = metin ? ('<div class="ed-gal-metin">'+esc(metin)+'</div>') : '<div class="ed-gal-bas ed-gal-bassiz">(içeriksiz bölüm)</div>'; }
       h+='<div class="ed-gal-card" draggable="true" data-i="'+i+'" title="Sürükleyerek bölümün sırasını değiştir"><div class="ed-gal-no">'+(i+1)+'</div>'+ust+gorsel+govde+'</div>';
     }
     h+='</div></div>';
     root.innerHTML=h;
+    // [ÇİZİM ODAK] çizim kartı önizlemelerini dolu alana odakla (büyük boş alan gösterme)
+    try{ if(window.xCkOdakThumb) root.querySelectorAll('.ed-gal-ckimg').forEach(function(im){ var full=im.getAttribute('src'); window.xCkOdakThumb(full, 320, true).then(function(u){ if(u) im.src=u; }); }); }catch(_){}
     XE._galeriDndKur(root);
   };
   XE._galeriDndKur = function(root){
