@@ -3032,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12c · CIZIM KAGIDI rotus: (1) cizim karti SADECE cizim (baslik/link/metin/"+" yok); (2) gorsele/cizime cift-tik tam-ekran onizlemede CARPININ YANINA kalem=Duzenle; (3) cizim ekrani Word-sayfasi (margin kilavuzu, ekran-only) + CIKTIDA tam-sayfa (icerik alanina kirpilir, cizgili ASLA ciktida); (4) masaustunde de duzenlenen alan uste odaklanir (x-mobile haric).';
+        var X_BUILD = '2026-11-12d · CIZIM KAGIDI: "+ Cizim Kagidi" ARTIK editoru OTOMATIK ACMIYOR -> cizim karti editorde belirir, kullanici "Duzenle" ile acar (yeni karta kaydirir). + onceki rotuslar (cizim-only kart, lightbox kalem, Word-sayfasi margin kilavuzu + ciktida tam-sayfa, masaustu odak-uste).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9334,7 +9334,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6c · 2026-11-12 CIZIM KAGIDI rotus: cizim-only kart + lightbox kalem(Duzenle) + Word-sayfasi margin kilavuzu(ekran) + ciktida tam-sayfa(icerik-kirpma, cizgili ciktida yok) + masaustu odak-uste";
+  XE.VERSION = "6d · 2026-11-12 CIZIM KAGIDI: + Cizim Kagidi editoru OTOMATIK ACMAZ (kart belirir, Duzenle ile acilir) + rotuslar (cizim-only kart, lightbox kalem, Word-sayfasi margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11605,7 +11605,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     XE._dirty=true;
     try{ await fetch('/api/manual/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); }catch(_){}
     try{ await XE.ac({}); }catch(_){}   // havuzdan + overlay'den yeniden kur -> çizim parçası belge'ye girer
-    setTimeout(function(){ try{ var B2=XE.belge.birimler||[]; for(var j=0;j<B2.length;j++){ if(B2[j].item && B2[j].item.link===link){ XE._cizimKagidiAc(j, 0); return; } } }catch(_){} }, 70);
+    // ÇİZİM EDİTÖRÜNÜ OTOMATİK AÇMA (kullanıcı kararı): çizim kartı editörde belirsin, kullanıcı "Düzenle" ile açar.
+    // Sadece yeni eklenen çizim kartına kaydır (link ile bul -> eklendiği görünsün).
+    setTimeout(function(){ try{ var B2=XE.belge.birimler||[]; for(var j=0;j<B2.length;j++){ if(B2[j].item && B2[j].item.link===link){ var _kart=document.querySelector('#editor-root .ed-card[data-i="'+j+'"]'); if(_kart) _kart.scrollIntoView({block:'center', behavior:'smooth'}); break; } } }catch(_){} }, 80);
   };
   XE._cizimKagidiAc = function(bi, pp){
     if(!_gorselDuzenleAcikMi()) return;
