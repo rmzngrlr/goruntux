@@ -2109,6 +2109,9 @@ HTML_TEMPLATE = """
         .x-gal-pmetin { font-size: 10px; line-height: 1.5; margin: 0 0 4px; color: var(--text-secondary, #8899a6); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .x-gal-pbos { font-size: 11px; color: var(--text-secondary, #8899a6); opacity: .55; font-style: italic; }
         .x-gal-pimg { display: block; width: 100%; max-height: 78px; object-fit: cover; border-radius: 5px; margin: 6px 0; border: 1px solid var(--border-color, rgba(136,153,166,0.28)); }
+        /* [ÇİZİM] galeri önizlemesi: çizim ŞEFFAF -> paper zemin temaya göre (koyu=koyu A4, açık=beyaz); tam sayfa görünsün */
+        .x-gal-pckimg { object-fit: contain !important; background: #17212e; max-height: 96px; }
+        body.light-theme .x-gal-pckimg { background: #ffffff; }
         .x-gal-meta { padding: 9px 2px 2px; display: flex; align-items: baseline; gap: 7px; }
         .x-gal-ad { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary, #e7e9ea); cursor: text; flex: 1; min-width: 0; }
         /* [KART ADI INLINE] çift tıkla düzenleme durumu: akıcı, taşmasız, odak çerçeveli */
@@ -3032,7 +3035,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12g · CIZIM KAGIDI Faz2 KOYU TEMA: cizim ekrani + editor karti KOYU temada koyu A4 (editorle senkron), cizgili/margin renkleri temaya uyar; kaydedilen b64 SEFFAF -> Word/PDF CIKTISI BEYAZ sayfa kalir. + Faz1 zoom (buton+tekerlek+pinch+fit+pan) + onceki rotuslar.';
+        var X_BUILD = '2026-11-12h · CIZIM KAGIDI Faz3 HAVUZ/GALERI: cizim kagidi havuz thumb (item-thumb-ck) + galeri onizleme (x-gal-pckimg) temaya gore A4 zeminli gorunur (bos beyaz degil); bos cizim de SEFFAF taban (koyu temada beyaz gorunmez); galeri thumb PNG (seffaflik korunur). + Faz1 zoom + Faz2 koyu tema/seffaf + onceki rotuslar.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -5123,6 +5126,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             for (var i = 0; i < prev.length && i < 8; i++) {
                 var ln = prev[i] || {};
                 if (ln.t === 'h') { s += '<div class="x-gal-pbaslik">' + escapeHtml(ln.s || '') + '</div>'; }
+                else if (ln.t === 'ckimg') { s += '<img class="x-gal-pimg x-gal-pckimg" src="' + (ln.s || '') + '" alt="Çizim">'; }   // çizim kağıdı: ŞEFFAF -> zemin temadan (paper)
                 else if (ln.t === 'img') { s += '<img class="x-gal-pimg" src="' + (ln.s || '') + '" alt="">'; }
                 else { s += '<div class="x-gal-pmetin">' + escapeHtml(ln.s || '') + '</div>'; }
             }
@@ -6877,6 +6881,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         function poolOverlayFor(link) { try { var ov = (window.__xEditorOverlay && window.__xEditorOverlay.byLink) || {}; return ov[xOvKey(link || '')] || null; } catch (e) { return null; } }
         function poolEffLink(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'link' && p.url != null && p.url !== '') return p.url; } } return x.link || ''; }
         function poolEffThumb(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { var p = ov.parcalar[i]; if (p && p.tur === 'gorsel' && p.b64) return 'data:' + (p.mime || 'image/jpeg') + ';base64,' + p.b64; } } return null; }
+        function poolIsCizim(x) { var ov = poolOverlayFor(x.link); if (ov && ov.parcalar) { for (var i = 0; i < ov.parcalar.length; i++) { if (ov.parcalar[i] && ov.parcalar[i].cizimKagidi) return true; } } return false; }   // [ÇİZİM] havuz kartı çizim kağıdı mı (şeffaf -> paper zemin + contain)
         // [MANUEL HAVUZ] Manuel bölümün efektif başlığı: editör overlay başlığı (h2) -> yoksa ham title -> yoksa ''. "Manuel bölüm" sabiti YOK.
         function poolEffTitle(x) { var ov = poolOverlayFor(x.link); if (ov && ov.h2 != null && String(ov.h2).trim() !== '') return String(ov.h2).trim(); return (x.title || '').trim(); }
         // [MANUEL HAVUZ] Manuel metninden birkaç cümlelik önizleme (overlay parcalar 'metin' -> HTML temizle -> kırp). Metin yoksa ''.
@@ -6940,6 +6945,8 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 '.pool-item.drop-target{border-color:var(--accent-color);border-style:dashed;}' +
                 '.pool-grip{color:var(--text-secondary);font-size:18px;user-select:none;padding:0 4px;}' +
                 '.pool-item .item-thumb{width:56px;height:56px;object-fit:cover;border-radius:6px;flex-shrink:0;}' +
+                '.pool-item .item-thumb-ck{object-fit:contain;background:#17212e;border:1px solid rgba(136,153,166,0.25);}' +   /* [ÇİZİM] şeffaf -> koyu A4 zemin */
+                'body.light-theme .pool-item .item-thumb-ck{background:#ffffff;}' +
                 '.pool-noimg{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-secondary);background:rgba(255,255,255,0.03);}' +
                 '.pool-item .item-text{flex:1;min-width:0;}' +
                 '.pool-item .item-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;}' +
@@ -7042,7 +7049,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     var _ovThumb = poolEffThumb(x);   // [EŞLEŞME] editörde eklenen/değişen görsel havuzda da görünsün
                     var _effLink = poolEffLink(x);    // [EŞLEŞME] editörde değişen link
                     if (_ovThumb) {
-                        thumb = '<img draggable="false" src="' + _ovThumb + '" class="item-thumb" alt="Görsel">';
+                        thumb = '<img draggable="false" src="' + _ovThumb + '" class="item-thumb' + (poolIsCizim(x) ? ' item-thumb-ck' : '') + '" alt="Görsel">';
                     } else if (xLocalImagesEnabled() && window.XLocalImages && window.XLocalImages.hasImage(x.link)) {
                         // Yerel modda goruntu sunucuda degil; tarayicidaki IndexedDB'den (link'e gore).
                         thumb = '<img draggable="false" src="' + window.XLocalImages.getImageUrl(x.link) + '" class="item-thumb" alt="Görsel">';
@@ -9149,7 +9156,7 @@ X_SAVED_REPORTS_JS = r'''
   // [{t:'h'|'img'|'p', s:'...'}]. Görsel: images[normLink(link)].dataUrl'den küçük JPEG thumbnail
   // (canvas) üretilir ve normLink'e göre önbelleklenir (her kayıtta tekrar üretilmesin). ASYNC.
   var _onizThumbCache = {};
-  function _onizThumb(key, dataUrl){
+  function _onizThumb(key, dataUrl, keepAlpha){   // keepAlpha=true -> PNG (şeffaflık korunur; çizim kağıdı için -> galeri zemini temadan)
     if(_onizThumbCache[key]) return Promise.resolve(_onizThumbCache[key]);
     return new Promise(function(resolve){
       try{
@@ -9159,7 +9166,7 @@ X_SAVED_REPORTS_JS = r'''
           var cw=Math.max(1,Math.round(iw*s)), ch=Math.max(1,Math.round(ih*s));
           var c=document.createElement('canvas'); c.width=cw; c.height=ch;
           c.getContext('2d').drawImage(img,0,0,cw,ch);
-          var t=c.toDataURL('image/jpeg',0.62); _onizThumbCache[key]=t; resolve(t);
+          var t=keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg',0.62); _onizThumbCache[key]=t; resolve(t);
         }catch(e){ resolve(null); } };
         img.onerror=function(){ resolve(null); };
         img.src=dataUrl;
@@ -9185,7 +9192,7 @@ X_SAVED_REPORTS_JS = r'''
       if(it.parcalar){ for(var p=0;p<it.parcalar.length && lines.length<8;p++){ var pc=it.parcalar[p]; if(!pc) continue;
         if(pc.tur==='metin' && pc.metin){ var tx=(''+pc.metin).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); if(tx){ lines.push({t:'p', s:tx.slice(0,90)}); } }
         else if(pc.tur==='link' && pc.url){ var lu=(''+pc.url).trim(); if(lu){ lines.push({t:'p', s:lu.slice(0,90)}); } }
-        else if(pc.tur==='gorsel' && pc.b64){ try{ var pth=await _onizThumb((it.link||'')+':p'+p, 'data:'+(pc.mime||'image/jpeg')+';base64,'+pc.b64); if(pth && pth!==_primThumb){ lines.push({t:'img', s:pth}); } }catch(e){} }
+        else if(pc.tur==='gorsel' && pc.b64){ try{ var _ckp=!!pc.cizimKagidi; var pth=await _onizThumb((it.link||'')+':p'+p, 'data:'+(pc.mime||'image/png')+';base64,'+pc.b64, _ckp); if(pth && pth!==_primThumb){ lines.push({t:(_ckp?'ckimg':'img'), s:pth}); } }catch(e){} }
       } }
     }
     return lines;
@@ -9334,7 +9341,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6g · 2026-11-12 CIZIM Faz2 KOYU TEMA: cizim ekrani+kart koyu temada koyu A4 (senkron), b64 SEFFAF -> ciktida beyaz; + Faz1 zoom/fit/pan/pinch + onceki rotuslar";
+  XE.VERSION = "6h · 2026-11-12 CIZIM Faz3 HAVUZ/GALERI: cizim havuz thumb + galeri onizleme temaya gore A4 (bos beyaz degil), bos cizim seffaf taban; + Faz2 koyu tema/seffaf + Faz1 zoom/fit/pan/pinch + onceki rotuslar";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11644,6 +11651,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(cizgili) _ckCizgiCiz(x,w,h);
     var du=c.toDataURL('image/png'); return du.slice(du.indexOf(',')+1);
   }
+  function _ckBosSeffaf(w, h){   // [ÇİZİM TEMA] boş (düzenlenmemiş) çizim b64 = ŞEFFAF -> kart/galeri/havuzda zemin temadan (koyu temada beyaz görünmez)
+    var c=document.createElement('canvas'); c.width=Math.max(1,Math.round(w)); c.height=Math.max(1,Math.round(h));
+    var du=c.toDataURL('image/png'); return du.slice(du.indexOf(',')+1);
+  }
   function _ckUid(){ try{ if(typeof generateUUID==='function') return 'ck-'+generateUUID(); }catch(_){} return 'ck-'+Date.now()+'-'+Math.floor(Math.random()*1e6); }
   XE._cizimKagidiEkle = async function(afterUid){
     if(!_gorselDuzenleAcikMi()) return;
@@ -11654,7 +11665,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var cbW=1240, cbH=1754, uid=yeniManId(), link='xmanual://'+uid;
     var B=XE.belge.birimler||[], afterIndex=(afterUid==='')?0:null;
     if(afterUid){ for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===afterUid && B[i].item.index!=null){ afterIndex=B[i].item.index; break; } } }
-    var cizParca={ tur:'gorsel', b64:_ckBosPng(cbW,cbH,false), mime:'image/png', cizimKagidi:true, cizimObjeleri:[], cizgili:false, cbW:cbW, cbH:cbH };
+    var _mm=_ckMargin(cbW,cbH), _bw=cbW-2*_mm.mx, _bh=cbH-2*_mm.my;   // boş b64 = kaydedilenle AYNI (içerik alanı, ŞEFFAF)
+    var cizParca={ tur:'gorsel', b64:_ckBosSeffaf(_bw,_bh), mime:'image/png', cizimKagidi:true, cizimObjeleri:[], cizgili:false, cbW:cbW, cbH:cbH };
     try{ ovStore().byLink[ovKey(link)] = { parcalar:[cizParca], h2:'', grup:null }; }catch(_){}
     var body={ title:'', link:link, local:true }; if(afterIndex!=null) body.after_index=afterIndex;
     XE._dirty=true;
