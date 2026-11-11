@@ -3032,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12a · MIMARI: Not editoru KALDIRILDI (modul + galeri not kartlari + /not route + menu butonu + CSS). Cizim islevi rapor editorune "Cizim kagidi" olarak tasiniyor (Faz 1+ geliyor).';
+        var X_BUILD = '2026-11-12b · CIZIM KAGIDI: rapor editorunde "+ Cizim Kagidi" butonu -> A4 cizim sayfasi (cizgili defter + metin/dikdortgen/serbest/ok/gorsel-ekle). Kaydet -> raporda GORSEL (Word+PDF goma). Vektor saklanir (yeniden Duzenle). xmanual:// overlay yolu -> reload-dayanikli.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9328,7 +9328,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6a · 2026-11-12 MIMARI: not-editoru kaldirildi (cizim rapor editorune tasiniyor)";
+  XE.VERSION = "6b · 2026-11-12 CIZIM KAGIDI: + Cizim Kagidi butonu -> A4 cizim sayfasi (cizgili+metin+sekil+gorsel), Kaydet->rapor gorseli (Word/PDF), vektor saklanir (yeniden duzenle), xmanual:// reload-dayanikli";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9949,6 +9949,17 @@ body:not(.light-theme) .ed-gd-yazi-inp{background:#1b2735;color:#e7e9ea;border-c
 #editorModal .ed-ekle-zon.hep{justify-content:center;margin:10px 0;}
 #editorModal .ed-ekle-zon.hep .ed-bolum-ekle{font-size:13px;padding:8px 22px;opacity:1;}
 #editorModal .ed-bolum-ekle:hover{background:#1565c0;color:#fff;}
+/* [ÇİZİM KAĞIDI] "+ Çizim" butonu (Bölüm'ün yanında, teal aksan) + çizim görseli üstünde "Düzenle" overlay */
+#editorModal .ed-cizim-ekle{display:inline-block;margin-left:7px;font-size:11px;font-weight:700;color:#0e7c66;background:#e6f7f1;border:1px dashed #6cc;border-radius:13px;padding:3px 10px;cursor:pointer;opacity:.2;transition:opacity .12s,background .12s,color .12s;}
+#editorModal .ed-ekle-zon:hover .ed-cizim-ekle{opacity:.55;}
+#editorModal .ed-ekle-zon:hover .ed-cizim-ekle:hover,#editorModal .ed-ekle-zon.hep .ed-cizim-ekle{opacity:1;}
+#editorModal .ed-ekle-zon.hep .ed-cizim-ekle{font-size:13px;padding:8px 22px;opacity:1;}
+#editorModal .ed-cizim-ekle:hover{background:#0e7c66;color:#fff;}
+body:not(.light-theme) #editorModal .ed-cizim-ekle{background:#0f3b32;color:#5fd3b4;border-color:#2b6b5c;}
+#editorModal .ed-ck-sar{position:relative;display:inline-block;max-width:100%;}
+#editorModal .ed-ck-duzenle{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(21,101,192,.94);color:#fff;border:none;border-radius:16px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.35;transition:opacity .12s,background .12s;}
+#editorModal .ed-ck-sar:hover .ed-ck-duzenle{opacity:1;}
+#editorModal .ed-ck-duzenle:hover{background:#0d4f98;}
 #editorModal .ed-pe-wrap{position:relative;display:inline-block;margin:0 0 10px;}
 #editorModal .ed-pe-btn{font-size:12px;font-weight:600;color:#1565c0;background:#fff;border:1px dashed #9ab;border-radius:7px;padding:5px 12px;cursor:pointer;}
 #editorModal .ed-pe-wrap:hover .ed-pe-btn{background:#eef5ff;}
@@ -11141,6 +11152,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _gorselDuzenleAcikMi(){ try{ return localStorage.getItem('x_gorsel_duzenle')!=='0'; }catch(_){ return true; } }
   XE._gorselDuzenleAc = function(bi, pp){
     if(!_gorselDuzenleAcikMi()) return;
+    try{ var _b=(XE.belge.birimler||[])[bi]; var _pa=_b&&_b.item&&_b.item.parcalar&&_b.item.parcalar[pp]; if(_pa&&_pa.cizimKagidi){ XE._cizimKagidiAc(bi,pp); return; } }catch(_){}   // çizim kağıdı -> çizim editörü
     var dat=null; try{ dat=_gorselClipData(bi,pp); }catch(_){}
     if(!dat || !dat.b64){ try{ if(window.showToast) showToast('Görsel bulunamadı.','warning'); }catch(_){} return; }
     var mime=dat.mime||'image/png';
@@ -11149,9 +11161,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     im.onerror=function(){ try{ if(window.showToast) showToast('Görsel yüklenemedi.','error'); }catch(_){} };
     im.src='data:'+mime+';base64,'+dat.b64;
   };
-  function _gdKur(bi, pp, img0, mime){
+  function _gdKur(bi, pp, img0, mime, opts){
+    opts=opts||{};
+    var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _onKaydet=opts.onKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları + görsel-obje önbelleği
     var base=img0, baseW=img0.naturalWidth||img0.width||1, baseH=img0.naturalHeight||img0.height||1;
-    var objs=[];                 // {t:'yazi'|'ok'|'dikdortgen'|'kalem', ...} src-koordinat
+    var objs=(_cz && opts.objs) ? JSON.parse(JSON.stringify(opts.objs)) : [];   // {t:'yazi'|'ok'|'dikdortgen'|'kalem'|'gorsel', ...} src-koordinat
     var tool='sec', secili=[], marq=null;   // secili=ÇOKLU seçim dizisi; marq=marquee (lasso) dikdörtgeni src
     var renk='#e02020';
     var kalinlik=Math.max(3, Math.round(Math.max(baseW,baseH)/260));
@@ -11162,14 +11176,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var redoHist=[];             // ileri al yığını
     // ---- DOM ----
     var ov=document.createElement('div'); ov.className='ed-gd-ov'; ov.id='ed-gd-ov';
-    var araclar=[
-      ['sec','Seç / Taşı','M4 3l6 14 2.2-5.6L18 9z'],
-      ['kirp','Kırp','M5 2v12a1 1 0 0 0 1 1h12M2 5h12a1 1 0 0 1 1 1v12'],
-      ['yazi','Yazı','M4 5h12M10 5v11'],
-      ['ok','Ok','M4 16L16 4M9 4h7v7'],
-      ['dikdortgen','Dikdörtgen','M3.5 4.5h13v11h-13z'],
-      ['kalem','Kalem','M4 16l1-4 8-8 3 3-8 8z']
-    ];
+    var araclar=[['sec','Seç / Taşı','M4 3l6 14 2.2-5.6L18 9z']];
+    if(!_cz) araclar.push(['kirp','Kırp','M5 2v12a1 1 0 0 0 1 1h12M2 5h12a1 1 0 0 1 1 1v12']);   // kırp: çizim kağıdında yok
+    araclar.push(['yazi','Yazı','M4 5h12M10 5v11'],['ok','Ok','M4 16L16 4M9 4h7v7'],['dikdortgen','Dikdörtgen','M3.5 4.5h13v11h-13z'],['kalem','Kalem','M4 16l1-4 8-8 3 3-8 8z']);
     var tbBtns='';
     for(var ai=0;ai<araclar.length;ai++){ var a=araclar[ai];
       tbBtns+='<button type="button" class="ed-gd-tool'+(a[0]===tool?' aktif':'')+'" data-tool="'+a[0]+'" title="'+a[1]+'"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+a[2]+'"/></svg></button>';
@@ -11178,6 +11187,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'<div class="ed-gd-box">'
       +'  <div class="ed-gd-ust">'
       +'    <div class="ed-gd-tools">'+tbBtns+'</div>'
+      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <label class="ed-gd-say" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
@@ -11249,21 +11259,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       } else if(o.t==='kalem'){
         ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk; ctx.lineCap='round'; ctx.lineJoin='round';
         ctx.beginPath(); for(var i=0;i<o.nk.length;i++){ var pt=o.nk[i]; if(i===0) ctx.moveTo(S(pt.x),S(pt.y)); else ctx.lineTo(S(pt.x),S(pt.y)); } ctx.stroke();
+      } else if(o.t==='gorsel'){   // [ÇİZİM KAĞIDI] yerleştirilmiş görsel (yüklü değilse yüklenince yeniden çiz)
+        var _im=_imgC[(o.b64||'').slice(0,48)];
+        if(_im){ ctx.drawImage(_im, S(o.x), S(o.y), S(o.w), S(o.h)); }
+        else { _ckImgYukle(o, function(){ ciz(); }); ctx.save(); ctx.fillStyle='rgba(180,190,205,.3)'; ctx.fillRect(S(o.x),S(o.y),S(o.w),S(o.h)); ctx.restore(); }
       }
       ctx.restore();
     }
+    function _ckImgYukle(o, cb){ var key=(o.b64||'').slice(0,48); if(_imgC[key]){ cb&&cb(_imgC[key]); return; } var im=new Image(); im.onload=function(){ _imgC[key]=im; cb&&cb(im); }; im.src='data:'+(o.mime||'image/png')+';base64,'+(o.b64||''); }
     function kutuKesisir(a,b){ return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y; }   // dikdörtgen kesişim (marquee seçim)
     function objKutu(o){
       if(o.t==='yazi'){ return yaziKutuSrc(o); }
       if(o.t==='dikdortgen'){ return {x:Math.min(o.x,o.x+o.w), y:Math.min(o.y,o.y+o.h), w:Math.abs(o.w), h:Math.abs(o.h)}; }
       if(o.t==='ok'){ return {x:Math.min(o.x1,o.x2), y:Math.min(o.y1,o.y2), w:Math.abs(o.x2-o.x1), h:Math.abs(o.y2-o.y1)}; }
       if(o.t==='kalem'){ var xs=o.nk.map(function(p){return p.x;}), ys=o.nk.map(function(p){return p.y;}); var x0=Math.min.apply(null,xs), y0=Math.min.apply(null,ys); return {x:x0,y:y0,w:Math.max.apply(null,xs)-x0,h:Math.max.apply(null,ys)-y0}; }
+      if(o.t==='gorsel'){ return {x:o.x, y:o.y, w:o.w, h:o.h}; }
       return {x:0,y:0,w:0,h:0};
     }
     function ciz(){
       olcekleGerek();
       ctx.clearRect(0,0,cv.width,cv.height);
       ctx.drawImage(base,0,0,cv.width,cv.height);
+      if(_cz && _cizgili) _ckCizgiCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] çizgili defter (dinamik, taban beyaz)
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       for(var _si=0;_si<secili.length;_si++){ var k=objKutu(secili[_si]); ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0'; ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); ctx.restore(); }
       if(marq){ ctx.save(); ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle='#1d9bf0'; ctx.fillStyle='rgba(29,155,240,0.14)'; ctx.fillRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.strokeRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.restore(); }
@@ -11439,6 +11456,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelector('.ed-gd-kirpuygula').addEventListener('click', kirpUygula);
     ov.querySelector('.ed-gd-vaz').addEventListener('click', kapat);
     ov.querySelector('.ed-gd-kaydet').addEventListener('click', kaydet);
+    // [ÇİZİM KAĞIDI] Görsel ekle + Çizgili toggle
+    if(_cz){
+      var _ckgBtn=ov.querySelector('.ed-gd-ckgorsel'); if(_ckgBtn) _ckgBtn.addEventListener('click', _ckGorselEkle);
+      var _ckcBtn=ov.querySelector('.ed-gd-ckcizgili'); if(_ckcBtn) _ckcBtn.addEventListener('click', function(){ _cizgili=!_cizgili; this.classList.toggle('aktif',_cizgili); ciz(); });
+    }
+    function _ckGorselEkle(){
+      var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+      inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){ try{
+        var du=String(rd.result||''); var ci=du.indexOf(','); if(ci<0) return; var b64=du.slice(ci+1); var m=(du.slice(5,ci).split(';')[0])||'image/png';
+        var im=new Image(); im.onload=function(){
+          var w=Math.min(baseW*0.6, im.naturalWidth||baseW*0.6), h=w*((im.naturalHeight||1)/(im.naturalWidth||1));
+          if(h>baseH*0.6){ h=baseH*0.6; w=h*((im.naturalWidth||1)/(im.naturalHeight||1)); }
+          itUndo();
+          var o={t:'gorsel', b64:b64, mime:m, x:(baseW-w)/2, y:(baseH-h)/2, w:w, h:h};
+          _imgC[(b64||'').slice(0,48)]=im; objs.push(o); secili=[o]; tool='sec'; _toolYansit(); _selBtn(); ciz();
+        }; im.src=du;
+      }catch(_){} }; rd.readAsDataURL(f); };
+      inp.click();
+    }
     function itUndoYok(){}
 
     cv.addEventListener('pointerdown', pd);
@@ -11462,18 +11498,75 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(yaziInp.style.display!=='none') _yaziBitir();
       var c=document.createElement('canvas'); c.width=baseW; c.height=baseH; var x=c.getContext('2d');
       x.drawImage(base,0,0,baseW,baseH);
+      if(_cz && _cizgili) _ckCizgiCiz(x, baseW, baseH);   // [ÇİZİM KAĞIDI] çizgiyi de rasterle
       // objeleri NATIVE çözünürlükte çiz (scale=1)
       var _os=scale, _oc=ctx; scale=1; ctx=x;
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       scale=_os; ctx=_oc;
       var du=c.toDataURL('image/png'), ci=du.indexOf(',');
       if(ci<0){ kapat(); return; }
-      try{ XE._gorselParcaYaz(bi, pp, du.slice(ci+1), 'image/png'); }catch(_){}
+      if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili); }catch(_){} }   // PNG + vektör sakla
+      else { try{ XE._gorselParcaYaz(bi, pp, du.slice(ci+1), 'image/png'); }catch(_){} }
       kapat();
     }
 
     olcekle(); _toolYansit(); ciz();
   }
+
+  // ===================== ÇİZİM KAĞIDI (rapor öğesi) =====================
+  // A4 çizim sayfası. Raporda bir `gorsel` parça olarak GÖRSEL render edilir (parça.b64 = rasterlenmiş PNG -> editör/_ciz,
+  // Word imageXmlRaw, PDF img.ed-img hepsi SIFIR ek kodla gösterir). Yanında vektör saklanır (parça.cizimObjeleri + cizgili)
+  // -> "Düzenle" ile yeniden açılır. Çizim motoru = _gdKur'un opts.cizim dalı (boş A4 taban + çizgili + görsel-ekle + sakla).
+  function _ckCizgiCiz(x, w, h){   // çizgili defter çizgileri (native px) — taban beyaz, çizgi DİNAMİK
+    var gap=Math.round(h/42); if(gap<8) gap=8;
+    x.save(); x.strokeStyle='rgba(120,140,170,0.55)'; x.lineWidth=Math.max(1,Math.round(w/950));
+    for(var y=gap*2; y<h-gap; y+=gap){ x.beginPath(); x.moveTo(Math.round(w*0.06),y); x.lineTo(Math.round(w*0.94),y); x.stroke(); }
+    x.restore();
+  }
+  function _ckBosPng(w, h, cizgili){
+    var c=document.createElement('canvas'); c.width=w; c.height=h; var x=c.getContext('2d');
+    x.fillStyle='#ffffff'; x.fillRect(0,0,w,h);
+    if(cizgili) _ckCizgiCiz(x,w,h);
+    var du=c.toDataURL('image/png'); return du.slice(du.indexOf(',')+1);
+  }
+  function _ckUid(){ try{ if(typeof generateUUID==='function') return 'ck-'+generateUUID(); }catch(_){} return 'ck-'+Date.now()+'-'+Math.floor(Math.random()*1e6); }
+  XE._cizimKagidiEkle = async function(afterUid){
+    if(!_gorselDuzenleAcikMi()) return;
+    // KALICILIK: çizim kağıdı MODERN manuel öğe (xmanual:// link) olmalı -> overlay'e yazılır (_ovSet), snapshot'ta yaşar.
+    // Eski (link='') yol overlay DIŞI (persist etmez). Birleşme kapalıysa desteklenmez.
+    if(!unifyOn()){ try{ if(window.showToast) showToast('Çizim kağıdı için havuz birleşmesi açık olmalı.','warning'); }catch(_){} return; }
+    try{ XE._pushUndo(); }catch(_){}
+    var cbW=1240, cbH=1754, uid=yeniManId(), link='xmanual://'+uid;
+    var B=XE.belge.birimler||[], afterIndex=(afterUid==='')?0:null;
+    if(afterUid){ for(var i=0;i<B.length;i++){ if(B[i].item && B[i].item.uid===afterUid && B[i].item.index!=null){ afterIndex=B[i].item.index; break; } } }
+    var cizParca={ tur:'gorsel', b64:_ckBosPng(cbW,cbH,false), mime:'image/png', cizimKagidi:true, cizimObjeleri:[], cizgili:false, cbW:cbW, cbH:cbH };
+    try{ ovStore().byLink[ovKey(link)] = { parcalar:[cizParca], h2:'', grup:null }; }catch(_){}
+    var body={ title:'', link:link, local:true }; if(afterIndex!=null) body.after_index=afterIndex;
+    XE._dirty=true;
+    try{ await fetch('/api/manual/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)}); }catch(_){}
+    try{ await XE.ac({}); }catch(_){}   // havuzdan + overlay'den yeniden kur -> çizim parçası belge'ye girer
+    setTimeout(function(){ try{ var B2=XE.belge.birimler||[]; for(var j=0;j<B2.length;j++){ if(B2[j].item && B2[j].item.link===link){ XE._cizimKagidiAc(j, 0); return; } } }catch(_){} }, 70);
+  };
+  XE._cizimKagidiAc = function(bi, pp){
+    if(!_gorselDuzenleAcikMi()) return;
+    var b=(XE.belge.birimler||[])[bi]; if(!b||!b.item) return;
+    var parca=(b.item.parcalar||[])[pp]; if(!parca || !parca.cizimKagidi) return;
+    var cbW=parca.cbW||1240, cbH=parca.cbH||1754;
+    var im=new Image();
+    im.onload=function(){ try{ _gdKur(bi, pp, im, 'image/png', {
+      cizim:true, cizgili:!!parca.cizgili, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH,
+      onKaydet:function(b64, objs2, cizgili2){ try{ XE._pushUndo(); }catch(_){}
+        // Rebuild olmuş olabilir -> çizim parçasını link ile YENİDEN BUL (bayat referans kullanma).
+        var _link=(b&&b.item&&b.item.link)||null, Bn=XE.belge.birimler||[], tgt=null, _bi2=bi;
+        for(var _i=0;_i<Bn.length;_i++){ var _it=Bn[_i].item; if(_it && (_link?_it.link===_link:_i===bi) && _it.parcalar){ for(var _j=0;_j<_it.parcalar.length;_j++){ if(_it.parcalar[_j].cizimKagidi){ tgt=_it.parcalar[_j]; _bi2=_i; break; } } if(tgt) break; } }
+        if(!tgt) tgt=parca;
+        tgt.b64=b64; tgt.mime='image/png'; tgt.cizimObjeleri=objs2; tgt.cizgili=cizgili2;
+        XE._dirty=true; try{ XE._ovSet(_bi2); }catch(_){}   // xmanual:// öğe -> overlay'e yazılır (snapshot'ta yaşar)
+        try{ XE._ciz(); }catch(_){} }
+    }); }catch(e){ try{ if(window.showToast) showToast('Çizim kağıdı açılamadı.','error'); }catch(_){} } };
+    im.src='data:image/png;base64,'+_ckBosPng(cbW,cbH,false);   // beyaz A4 taban; çizgi DİNAMİK (_gdKur ciz)
+  };
+
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
   var _clDrag=null;
   XE._manuelTasi = function(uid, afterUid){
@@ -12124,7 +12217,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // tek-başına (standalone) öğeler. Okunur etiket; ham mc-/xmanual anahtarı ASLA gösterilmez.
     var hedefler=hedeflerHesapla(B);   // #1/#2: başlıksız hedef yok + düzenlenmiş başlık adı (ortak fonksiyon)
     // #2: bölümler-arası "+ Bölüm Ekle" zonu (hover'da çıkar) — boş bir bölüm ekler; içini sonra doldurursun.
-    function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">'+(hep?'+ Bölüm Ekle':'+ Bölüm')+'</button></div>'; }
+    function _ez(after, hep){ var a=esc(after||''); return '<div class="ed-ekle-zon'+(hep?' hep':'')+'" data-after="'+a+'"><button class="ed-bolum-ekle" data-after="'+a+'" title="Buraya yeni bir BÖLÜM ekle (içine başlık/metin/görsel/link koyarsın)">'+(hep?'+ Bölüm Ekle':'+ Bölüm')+'</button><button class="ed-cizim-ekle" data-after="'+a+'" title="Buraya bir ÇİZİM KAĞIDI ekle — A4 çizim/metin/görsel sayfası; raporda ve çıktıda GÖRSEL olur">'+(hep?'+ Çizim Kağıdı':'+ Çizim')+'</button></div>'; }
     // #2: parça-ARASI ekleme — imleç gelince küçük bir "+" çıkar; tıklayınca o konuma eklenecek tür menüsü.
     function _pz(ci, pos, manual){ return '<div class="ed-pz" data-i="'+ci+'" data-pos="'+pos+'"><span class="ed-pz-wrap"><button class="ed-pz-art" title="Buraya içerik ekle — başlık, metin, görsel veya link">+</button><span class="ed-pz-menu">'
       +(manual?'<button class="ed-pe" data-i="'+ci+'" data-pos="'+pos+'" data-t="baslik">Başlık</button>':'')
@@ -12188,7 +12281,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           // [GÖRSEL HİZA] efektif hiza (parça override -> genel) -> margin ile editörde yansıt (sağ-tıkla değiştirilir).
           var _gAl=(_g?gorselEfHiza(_g.align,o):'left');
           var _gSty=(_gAl==='center')?'margin-left:auto;margin-right:auto':(_gAl==='right')?'margin-left:auto;margin-right:0':'';
-          h.push((_g && _g.b64)
+          if(p.cizimKagidi){   // [ÇİZİM KAĞIDI] görsel + üstünde "Düzenle" overlay (tekrar açar)
+            var _imgCk='<img class="ed-img ed-ck-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g&&_g.mime||'image/png')+';base64,'+((_g&&_g.b64)||'')+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>';
+            h.push('<div class="ed-ck-sar"'+(_gAl==='center'?' style="margin-left:auto;margin-right:auto"':_gAl==='right'?' style="margin-left:auto;margin-right:0"':'')+'>'+_imgCk+'<button class="ed-ck-duzenle" type="button" data-i="'+i+'" data-p="'+k+'" title="Çizim kağıdını düzenle">✎ Düzenle</button></div>');
+          }
+          else h.push((_g && _g.b64)
             ? ('<img class="ed-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>')
             : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır"><span class="ed-img-ph">📋 Görseli yapıştır (Ctrl+V)</span><button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Cihazdan görsel seç">📁 '+(document.documentElement.classList.contains('x-mobile')?'Cihazdan':'Bilgisayardan')+' seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
@@ -12358,6 +12455,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     root.querySelectorAll('.ed-bolum-ekle').forEach(function(el){
       el.addEventListener('click', function(){ XE._bolumEkle(el.getAttribute('data-after')); });
     });
+    // [ÇİZİM KAĞIDI] "+ Çizim" -> yeni çizim-kağıdı bölümü + editör; "Düzenle" -> çizim kağıdını yeniden aç.
+    root.querySelectorAll('.ed-cizim-ekle').forEach(function(el){ el.addEventListener('click', function(){ XE._cizimKagidiEkle(el.getAttribute('data-after')); }); });
+    root.querySelectorAll('.ed-ck-duzenle').forEach(function(el){ el.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); XE._cizimKagidiAc(+el.getAttribute('data-i'), +el.getAttribute('data-p')); }); });
     // #2: manuel blok küme-sürükleme -> ekleme zonuna bırakınca o konuma taşınır.
     root.querySelectorAll('.ed-kltut').forEach(function(el){
       el.addEventListener('dragstart', function(e){ _clDrag=el.getAttribute('data-uid'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','x'); }catch(_){} });
