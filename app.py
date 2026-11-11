@@ -2115,14 +2115,6 @@ HTML_TEMPLATE = """
         .x-gal-ad.x-gal-ad-edit { white-space: normal; overflow: visible; text-overflow: clip; outline: 2px solid var(--accent-color, #1d9bf0); background: rgba(29,155,240,0.1); border-radius: 6px; padding: 1px 5px; cursor: text; }
         .x-gal-alt { font-size: 11px; color: var(--text-secondary, #8899a6); white-space: nowrap; flex-shrink: 0; }
         .x-gal-rozet { position: absolute; top: 7px; right: 7px; background: var(--accent-color); color: #fff; font-size: 9.5px; font-weight: 700; padding: 2px 7px; border-radius: 10px; z-index: 2; letter-spacing: .3px; }
-        /* [NOT KAĞIDI Faz4] Not kartı: yeşil "Not" rozeti + beyaz kağıt önizleme */
-        .x-gal-not-rozet { background: #17a34a; display: inline-flex; align-items: center; gap: 3px; }
-        .x-gal-notkart .x-gal-page { background: #fff; }
-        body:not(.light-theme) .x-gal-notkart .x-gal-page { background: var(--bg-card); }   /* koyu temada not kartı da KOYU (rapor kartı gibi) */
-        .x-gal-not-ic { padding: 14px 13px; height: 100%; box-sizing: border-box; overflow: hidden; }
-        .x-gal-not-metin { font-size: 11px; line-height: 1.55; color: #3a4654; overflow: hidden; }
-        body:not(.light-theme) .x-gal-not-metin { color: #aeb9c6; }
-        .x-gal-not-bos { display: flex; align-items: center; justify-content: center; height: 100%; font-size: 12px; color: #9aa6b2; }
         .x-gal-check { position: absolute; bottom: 9px; left: 9px; width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-color); z-index: 3; opacity: 0; transition: opacity .12s ease; }
         .x-gal-card:hover .x-gal-check, .x-gal-check:checked { opacity: 1; }
         .x-gal-ara { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity .12s ease; z-index: 2; }
@@ -2274,6 +2266,8 @@ HTML_TEMPLATE = """
     }catch(e){}})();</script>
     <!-- [PWA] Service worker kaydı (Chrome installability; iOS ana-ekrana-ekle apple-* meta ile çalışır). -->
     <script>(function(){try{ if('serviceWorker' in navigator){ window.addEventListener('load', function(){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }); } }catch(e){}})();</script>
+    <!-- [MIMARI] Not editoru kaldirildi -> orphan x-notlar IndexedDB'sini TEK SEFER temizle (acik baglanti yok, guvenli). -->
+    <script>(function(){try{ if(!localStorage.getItem('x_notlar_silindi')){ try{ indexedDB.deleteDatabase('x-notlar'); }catch(e){} localStorage.setItem('x_notlar_silindi','1'); } }catch(e){}})();</script>
     <!-- [PWA] "Ana ekrana ekle": Chrome/Android yükleme istemini YAKALA (ertele) -> xPwaYukleAc tetikler. iOS'ta bu olay YOK -> yönerge gösterilir. -->
     <script>(function(){try{ window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); window.__pwaPrompt = e; }); window.addEventListener('appinstalled', function(){ window.__pwaPrompt = null; }); }catch(e){}})();</script>
     <!-- [PULL-TO-REFRESH x_pull_refresh 2026-11-08e] Kullanici: mobilde/PWA'da ekrani YOGUN sekilde asagi
@@ -3038,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-11m · NOT KAGIDI: yeni not OTO-ADLI (tarih-saat, adsiz kalmaz) + URL /not/<slug> (rapordan ayri; reload/dogrudan-URL notu acar; bos not kaydedilmez) | 11l cizim-altina-metin+not-karti-koyu | 11k genislige-sigar+galeri-mod';
+        var X_BUILD = '2026-11-12a · MIMARI: Not editoru KALDIRILDI (modul + galeri not kartlari + /not route + menu butonu + CSS). Cizim islevi rapor editorune "Cizim kagidi" olarak tasiniyor (Faz 1+ geliyor).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4888,7 +4882,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             try { e.stopPropagation(); } catch (x) {}
             var menu = btn.closest('.x-gal-menu'); if (menu) menu.classList.remove('acik');
             var sec = btn.getAttribute('data-sec');
-            if (sec === 'cihaz') cihazdanYukle(); else if (sec === 'not') { try { if (window.yeniNotKagidi) window.yeniNotKagidi(); } catch (e) {} } else yeniRaporVeEditor();
+            if (sec === 'cihaz') cihazdanYukle(); else yeniRaporVeEditor();
         }
         window.xRaporMenuSec = xRaporMenuSec;
         try { document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.x-gal-olustur'))) { document.querySelectorAll('.x-gal-menu.acik').forEach(function (m) { m.classList.remove('acik'); }); } }); } catch (e) {}
@@ -5138,8 +5132,6 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             try { await window.XSavedReports.whenReady(); } catch (e) {}
             var metas = [];
             try { metas = await window.XSavedReports.list(); } catch (e) { metas = []; }
-            var notlar = [];   // [NOT KAĞIDI Faz4] notları da galeride göster (ayrı IndexedDB x-notlar)
-            try { if (window.XNotlar) { await window.XNotlar.whenReady(); notlar = await window.XNotlar.list(); } } catch (e) { notlar = []; }
             xUpdateSavedBadge(metas.length);   // sekme adindaki sayaci guncelle (0'da gizli)
             if (section) section.style.display = '';   // galeri HER ZAMAN görünür (boşken bile "Boş Rapor" kartı)
             var aktifId = (typeof xAktifRaporId === 'function') ? xAktifRaporId() : '';
@@ -5152,7 +5144,6 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     '<div class="x-gal-yeni" onclick="xRaporOlusturAc(event,this)"><span class="x-gal-arti">+</span><span style="font-size:13px; font-weight:600;">Rapor Oluştur</span></div>' +
                     '<div class="x-gal-menu">' +
                         '<button type="button" class="x-gal-menu-item" data-sec="yeni" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg> Yeni Rapor</button>' +
-                        '<button type="button" class="x-gal-menu-item" data-sec="not" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5H5.5A1.5 1.5 0 0 0 4 4v12A1.5 1.5 0 0 0 5.5 17.5H11"/><path d="M11 2.5 14.5 6V9.5"/><path d="M6.5 6.5h4.5M6.5 9.5h3.5M6.5 12.5h2"/><path d="M16 10.2l1.6 1.6-4.3 4.3-2 .4.4-2z"/></svg> Yeni Not Kağıdı</button>' +
                         '<button type="button" class="x-gal-menu-item" data-sec="cihaz" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="9.5" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/></svg> Cihazdan Yükle</button>' +
                     '</div>' +
                 '</div>';
@@ -5177,52 +5168,11 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     '</div>' +
                 '</div>';
             }).join('');
-            // [NOT KAĞIDI Faz4] Not kartları (📝 Not rozeti) — raporlardan sonra. Tıkla=aç, Sil.
-            function _notOnizle(n) {
-                try {
-                    var sp = (n.sayfalar && n.sayfalar[0]) || {};
-                    var t = (sp.metinHtml || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
-                    if (t) return '<div class="x-gal-not-metin">' + escapeHtml(t.slice(0, 180)) + '</div>';
-                    var cz = 0; (n.sayfalar || []).forEach(function (s) { cz += (s.cizimObjeleri || []).length; });
-                    return '<div class="x-gal-not-bos">' + (cz ? 'Çizim notu' : 'Boş not') + '</div>';
-                } catch (e) { return ''; }
-            }
-            var _notRozetSvg = '<svg viewBox="0 0 20 20" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h7l3 3v9H5z"/><path d="M7.5 9h5M7.5 12h3"/></svg>';
-            html += notlar.map(function (n) {
-                var ntar = ''; try { ntar = new Date(n.updatedAt || 0).toLocaleDateString('tr-TR'); } catch (e) { ntar = ''; }
-                var nad = escapeHtml(n.ad || '(adsız not)');
-                var nsay = (n.sayfalar ? n.sayfalar.length : 0);
-                return '<div class="x-gal-card x-gal-notkart" data-nid="' + n.id + '" onclick="xNotGalAc(event,this)" title="Notu aç">' +
-                    '<div class="x-gal-page">' +
-                        '<span class="x-gal-rozet x-gal-not-rozet">' + _notRozetSvg + ' Not</span>' +
-                        '<div class="x-gal-pageinner x-gal-not-ic">' + _notOnizle(n) + '</div>' +
-                        '<div class="x-gal-ara">' +
-                            '<button class="x-gal-ikon" data-nid="' + n.id + '" onclick="xNotGalSil(event,this)" title="Sil">' + _SVG_SIL + '</button>' +
-                        '</div>' +
-                    '</div>' +
-                    '<div class="x-gal-meta">' +
-                        '<div class="x-gal-ad" style="cursor:default">' + nad + '</div>' +
-                        '<div class="x-gal-alt">' + nsay + ' sayfa · ' + ntar + '</div>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
             html += '</div>';
             container.innerHTML = html;
             xUpdateMergeBtn();   // liste yeniden cizildi -> secim sifirlandi, çubuğu güncelle
         }
-        window.renderSavedReports = renderSavedReports;   // [NOT KAĞIDI] not editörü kapanınca galeriyi tazeler
-        // [NOT KAĞIDI Faz4] Galeri not kartı: tıkla=aç (kayıtlı dokümanı not editöründe), Sil=kaldır.
-        function xNotGalAc(ev, el) { try { if (ev) ev.stopPropagation(); var id = el.dataset.nid; if (!id || !window.XNotlar) return; window.XNotlar.get(id).then(function (doc) { if (doc && window.XNot && window.XNot.ac) window.XNot.ac(doc); }); } catch (e) {} }
-        function xNotGalSil(ev, el) {
-            if (ev) ev.stopPropagation();
-            try {
-                var id = el.dataset.nid; if (!id) return;
-                Promise.resolve(xConfirm('Bu not silinsin mi? Geri alınamaz.', { title: 'Notu sil', icon: _SVG_SIL, okText: 'Sil', danger: true })).then(function (ok) {
-                    if (ok && window.XNotlar) window.XNotlar.remove(id).then(function () { renderSavedReports(); });
-                });
-            } catch (e) {}
-        }
-        window.xNotGalAc = xNotGalAc; window.xNotGalSil = xNotGalSil;
+        window.renderSavedReports = renderSavedReports;   // galeri yeniden çizme (dışarıdan tetiklenebilir)
         // Kart olay yardımcıları (iç butonlar/kutu stopPropagation ile kart-tıkla=Aç'ı engeller).
         function xGalAc(ev, el) { try { if (el && el.dataset && el.dataset.rid) openSavedReport(el.dataset.rid, { editorBosAc: true }); } catch (e) {} }
         function xGalIndir(ev, el) { if (ev) ev.stopPropagation(); try { xPaylasAc('saved', el, el.dataset.rid); } catch (e) {} }   // [KAYITLI RAPOR] genel indirme sistemi: Paylaş popover'ı karta iliştir (Word=blob / PDF=gizli render); doğrudan indirme yerine
@@ -5604,13 +5554,6 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         // slug yoksa (/) Faz 2 uzlaştırma + URL'i aktif rapora göre düzelt. Slug var ama rapor yoksa uyar + uzlaştır.
         async function xRaporRouterVeyaBagla() {
             try {
-                // [NOT URL] /not/<slug> ise: raporu arkada normal bağla (URL'i /not'ta tutmak için en son notu aç).
-                var _notYolu = (window.location.pathname || '').match(/^\/not\/(.+)$/);
-                if (_notYolu && _notYolu[1]) {
-                    try { await xAktifRaporYenidenBagla(); } catch (e) {}
-                    try { if (window.XNot && window.XNot.acSlug) { await window.XNot.acSlug(decodeURIComponent(_notYolu[1])); } } catch (e) {}
-                    return;
-                }
                 var slug = xUrlSlugOku();
                 if (slug) {
                     var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
@@ -5630,8 +5573,6 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         // Faz 3: popstate (geri/ileri). Yeni URL slug'ı mevcut aktif slug'dan farklıysa o raporu aç.
         async function xPopstateYonet(slug) {
             try {
-                var _np = (window.location.pathname || '').match(/^\/not\/(.+)$/);
-                if (_np && _np[1]) { try { if (window.XNot && window.XNot.acSlug) await window.XNot.acSlug(decodeURIComponent(_np[1])); } catch (e) {} return; }
                 if (slug) {
                     if (slug === (window.__xActiveReportSlug || '')) return;   // zaten o rapordayız
                     var meta = null; try { meta = await window.XSavedReports.getBySlug(slug); } catch (e) {}
@@ -9387,7 +9328,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "5s · 2026-11-11 not-kagidi oto-ad + URL /not/<slug> (reload-acilis, bos-not-kaydetme)";
+  XE.VERSION = "6a · 2026-11-12 MIMARI: not-editoru kaldirildi (cizim rapor editorune tasiniyor)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12556,697 +12497,6 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
   try { console.log('[XEditor] Faz 4c yüklendi (v'+XE.VERSION+').'); } catch(e){}
 })();
-
-/* ============== NOT KAĞIDI (A4 not defteri) — havuzdan BAĞIMSIZ ============== */
-/* Üst bar rapor editörüyle AYNI: geri/ileri + ad + GALERİ (sayfaları sırala/sil ızgarası) + ayarlar(tema/tam-ekran/PWA)
-   + PAYLAŞ (PDF olarak indir = gizli iframe window.print; Word olarak indir = .doc blob; çizim katmanı canvas.toDataURL ile
-   gömülür) + kapat; biçim şeridi (stil/font/boyut/renk/B-I-U/hiza) + not-özel Çizgili + Görsel + Çizim.
-   A4 EKRANA SIĞAR (container-type:size + height:min(100cqh,100cqw*297/210,1123px); tüm sayfa görünür, dikey kaydırma yok;
-   masaüstü=ortalı+yan gri, mobil=tam-genişlik). Kenar boşluğu = Word standart %12.1 (2.54cm) + kesik-çizgi A4 SINIR kılavuzu
-   (yalnız ekran; export'a dahil değil). Çizgili = 28px satır, metin çizgiye oturur. Sayfa ekle = her sayfanın üst/alt-ortasında
-   yarı-saydam overlay buton (× ile aynı hizada). Her sayfanın sağ üstünde silme ×. Çizim motoru = kalem/ok/dikdörtgen/SEÇ:
-   tek tık + KUTU(marquee) ÇOKLU SEÇİM + Shift ekle/çıkar + çoklu taşı/sil + Delete/Backspace tuşuyla sil; çizim ekranı
-   light/dark editör temasına uyumlu. OTO-KAYDET: her düzenlemede debounce + pagehide/beforeunload/visibilitychange flush →
-   × ile kapatmasan da F5'te kaybolmaz. Kapat(×)/Esc = kaydet+kapat. Depo IndexedDB x-notlar. Bayrak x_not_kagidi='0'. */
-(function(){
-  if(window.XNot) return;
-  function notAcikMi(){ try{ return localStorage.getItem('x_not_kagidi')!=='0'; }catch(_){ return true; } }
-  // ---- IndexedDB: x-notlar / notlar ----
-  var _db=null, _ready=null;
-  function _openDb(){ return new Promise(function(res){ try{ var rq=indexedDB.open('x-notlar',1);
-    rq.onupgradeneeded=function(e){ var db=e.target.result; if(!db.objectStoreNames.contains('notlar')) db.createObjectStore('notlar',{keyPath:'id'}); };
-    rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }
-  // [GALERİ YÜKLENME FIX] Panel renderSavedReports'u AÇILIŞTA x-editor.js (XNotlar) hazır olmadan çağırmış olabilir →
-  // notlar "yüklenmiyor/geç". DB açılınca, not VARSA galeriyi bir kez tazele (notlar belirir). Boşsa ekstra render yok.
-  _ready=_openDb().then(function(db){ _db=db;
-    try{ window.XNotlar.list().then(function(a){ if(a && a.length && window.renderSavedReports){ try{ window.renderSavedReports(); }catch(_){} } }); }catch(_){}
-  });
-  function _store(mode){ return _db.transaction('notlar',mode).objectStore('notlar'); }
-  function _reqP(r){ return new Promise(function(res,rej){ r.onsuccess=function(){res(r.result);}; r.onerror=function(){rej(r.error);}; }); }
-  window.XNotlar={
-    whenReady:function(){ return _ready||Promise.resolve(); },
-    save:function(doc){ if(!_db) return Promise.resolve(); return _reqP(_store('readwrite').put(doc)).catch(function(){}); },
-    get:function(id){ if(!_db) return Promise.resolve(null); return _reqP(_store('readonly').get(id)).catch(function(){return null;}); },
-    list:function(){ if(!_db) return Promise.resolve([]); return _reqP(_store('readonly').getAll()).then(function(a){ a=a||[]; a.sort(function(x,y){return (y.updatedAt||0)-(x.updatedAt||0);}); return a; }).catch(function(){return [];}); },
-    remove:function(id){ if(!_db) return Promise.resolve(); return _reqP(_store('readwrite').delete(id)).catch(function(){}); }
-  };
-
-  var XNot=window.XNot={};
-  var _ov=null, _doc=null, _savedRange=null, _savedEl=null;
-  var _cizimModu=false, _aktifCizim=null, _cizStil={tool:'kalem', renk:'#e02020', kalinlik:4};   // [FAZ3] çizim ortak durumu
-  function _uuid(){ try{ return (window.crypto&&crypto.randomUUID&&crypto.randomUUID())||('n-'+Date.now()+'-'+Math.floor(Math.random()*1e6)); }catch(e){ return 'n-'+Date.now()+'-'+Math.floor(Math.random()*1e6); } }
-  function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function _toast(m,t){ try{ if(window.showToast) showToast(m,t||'info'); }catch(_){} }
-
-  var IK={
-    kalem:'<path d="M13.5 3.5l3 3-9 9H4.5v-3z"/><path d="M11.5 5.5l3 3"/>',
-    geri:'<path d="M4.5 7.5h7a4 4 0 1 1 0 8H8.5"/><path d="M7.5 4.5l-3 3 3 3"/>',
-    ileri:'<path d="M15.5 7.5h-7a4 4 0 1 0 0 8h3"/><path d="M12.5 4.5l3 3-3 3"/>',
-    galeri:'<rect x="3" y="3" width="6" height="6" rx="1"/><rect x="11" y="3" width="6" height="6" rx="1"/><rect x="3" y="11" width="6" height="6" rx="1"/><rect x="11" y="11" width="6" height="6" rx="1"/>',
-    ayar:'<path d="M3 6h7M14 6h3"/><path d="M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/>',
-    tema:'<circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/>',
-    fs:'<path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/>',
-    pwa:'<rect x="3.4" y="2.6" width="13.2" height="14.8" rx="2.6"/><path d="M10 7v5.2M7.4 9.6l2.6 2.6 2.6-2.6"/>',
-    paylas:'<path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/>',
-    kapat:'<path d="M5.5 5.5l9 9"/><path d="M14.5 5.5l-9 9"/>',
-    cizgili:'<path d="M3 5h14M3 9h14M3 13h10"/>',
-    gorsel:'<rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/>',
-    cizim:'<path d="M4 16l1-4 8-8 3 3-8 8z"/>',
-    sec:'<path d="M4 3l6 14 2.2-5.6L18 9z"/>',
-    ok:'<path d="M4 16L16 4M9 4h7v7"/>',
-    dikd:'<rect x="3.5" y="4.5" width="13" height="11" rx="1"/>',
-    onay:'<path d="M4 10.5l4 4 8-9"/>'
-  };
-  function _svg(k,w){ w=w||19; return '<svg viewBox="0 0 20 20" width="'+w+'" height="'+w+'" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+IK[k]+'</svg>'; }
-  function _hizaIk(v){ var p=({left:['M3 5h14','M3 10h9','M3 15h12'],center:['M3 5h14','M5 10h10','M4 15h12'],right:['M3 5h14','M8 10h9','M5 15h12'],both:['M3 5h14','M3 10h14','M3 15h14']})[v]; return '<svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="'+p.join('"/><path d="')+'"/></svg>'; }
-
-  function _stilEnjekte(){
-    if(document.getElementById('not-stil')) return;
-    var css=''
-      // [DROPDOWN FIX 2026-11-11] z-index 4200 İKEN, xcs özel-select listesi (.xcs-list z-3600) not modalının ALTINDA kalıp
-      // "dropdown açılmıyor" oluyordu (rapor editörü modalı z-2000 olduğu için orada çalışıyor). 3500 = xcs(3600) altında,
-      // panel üstünde → font/boyut/stil açılır listeleri görünür. İç menüler (galeri z30 vb.) .not-ov'un bağlamında, sıra değişmez.
-      +'.not-ov{position:fixed;inset:0;z-index:3500;display:flex;flex-direction:column;background:var(--bg-modal,#0f1621);}'
-      +'.not-icerik{display:flex;flex-direction:column;width:100%;height:100%;box-sizing:border-box;}'
-      // üst bar (rapor editörü .modal-header ile aynı his)
-      // [ÜST BAR = RAPOR EDİTÖRÜ BİREBİR] .modal-header ile aynı ölçü: padding 20px 24px, h2 20px (rapor editörüyle eşit yükseklik).
-      +'.not-baslik{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:20px 24px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-modal,#0f1621);flex-wrap:wrap;}'
-      +'.not-sol{display:flex;gap:10px;align-items:center;}'
-      +'.not-h2{display:flex;align-items:center;gap:7px;margin:0;font-size:20px;font-weight:700;color:var(--text-primary,#e7edf3);}'
-      +'.not-nav{display:inline-flex;gap:2px;}'
-      +'.not-sag{display:flex;gap:2px;align-items:center;}'
-      +'.not-ik{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:none;background:transparent;color:#9aa4b0;border-radius:8px;cursor:pointer;transition:color .12s,background .12s,opacity .12s;}'
-      +'.not-ik:hover{color:var(--text-primary,#e7edf3);background:rgba(136,153,166,.14);}'
-      +'.not-ik:disabled{opacity:.4;cursor:default;}'
-      +'.not-ik.aktif{color:#1d9bf0;background:rgba(29,155,240,.14);}'
-      +'.not-ad{background:transparent;border:1px solid transparent;border-radius:8px;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;text-align:right;padding:6px 10px;min-width:150px;max-width:300px;margin-right:8px;outline:none;box-sizing:border-box;}'
-      +'.not-ad:hover{border-color:var(--border-color,rgba(136,153,166,.3));}'
-      +'.not-ad:focus{border-color:#1d9bf0;text-align:left;}'
-      +'.not-ayar-wrap{position:relative;}'
-      +'.not-ayar-menu{position:absolute;top:100%;right:0;margin-top:4px;background:var(--bg-card,#161c2a);border:1px solid var(--border-color,rgba(136,153,166,.25));border-radius:10px;padding:4px;display:none;flex-direction:column;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.35);}'
-      +'.not-ayar-wrap.acik .not-ayar-menu{display:flex;}'
-      // biçim şeridi
-      +'.not-serit{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 14px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-input,#161c2a);}'
-      // [ŞERİT EŞİTLİĞİ + TEMA] Kontrol stilleri HER İKİ şeritte de aynı (yazı şeridi + çizim şeridi) → aynı yükseklik, görsel-
-      // düzenleyici toolbar'ıyla aynı his (34px kare ikon butonlar, koyu #1b2735 / aktif #1d9bf0; light override aşağıda).
-      // ESKİDEN sadece `.not-serit` kapsamlıydı → çizim şeridi butonları tarayıcı-varsayılanıyla "düzgün değil" görünüyordu.
-      +'.not-serit select,.not-cizim-serit select{height:34px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;padding:0 6px;font-size:13px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);cursor:pointer;}'
-      +'.not-serit .not-sbtn,.not-cizim-serit .not-sbtn{height:34px;min-width:34px;padding:0 9px;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:var(--bg-card,#1b2735);color:var(--text-primary,#e7e9ea);font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;box-sizing:border-box;}'
-      +'.not-serit .not-sbtn:hover,.not-cizim-serit .not-sbtn:hover{border-color:#1d9bf0;}'
-      +'.not-serit .not-sbtn.aktif,.not-cizim-serit .not-sbtn.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}'
-      +'.not-serit .not-renk,.not-cizim-serit .not-renk{width:36px;height:34px;padding:0;border:1px solid var(--border-color,#2c3a4a);border-radius:7px;background:none;cursor:pointer;}'
-      // çizim araç butonları = görsel-düzenleyici gibi KARE ikon (34×34)
-      +'.not-cz-tool{width:34px;min-width:34px;padding:0;}'
-      +'.not-serit .not-ayr,.not-cizim-serit .not-ayr{width:1px;height:22px;background:var(--border-color,rgba(136,153,166,.3));margin:0 3px;}'
-      +'.not-hgrp{display:inline-flex;gap:2px;}'
-      // sayfalar + A4
-      // [GENİŞLİĞE SIĞDIR 2026-11-11] Kullanıcı: A4 sağdan-soldan ekranı DOLDURSUN (tam genişlik), uzunsa DİKEY kaydır (normal).
-      // Kaydırma çubuğu sağda gri şerit açmasın diye YALNIZ bu kapta gizli (tekerlek/dokunuş çalışır).
-      +'.not-sayfalar{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 0 40px;background:#52606d;scrollbar-width:none;-ms-overflow-style:none;}'
-      +'.not-sayfalar::-webkit-scrollbar{width:0;height:0;display:none;}'
-      // Sayfa = tam genişlik (sağdan-soldan ekrana sığar), yükseklik A4 oranından (aspect-ratio) → uzun olabilir, dikey kaydırılır.
-      +'.not-sayfa{position:relative;aspect-ratio:210/297;width:100%;margin:0 auto 14px;background:#fff;box-shadow:0 3px 16px rgba(0,0,0,.35);}'
-      // [SAYFA EKLE 2026-11-11] Ayrı gri şerit YOK; üst/alt-orta yarı-saydam overlay buton (silme × ile aynı hizada,
-      // imleç üstüne gelince netleşir). ust=önüne ekle, alt=ardına ekle. Çizim modunda gizli (canvas boş kalsın).
-      +'.not-sayfa-ekle{position:absolute;left:50%;transform:translateX(-50%);z-index:6;height:28px;padding:0 14px;border:none;border-radius:14px;background:rgba(40,110,214,.82);color:#fff;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.4;transition:opacity .12s,background .12s;}'
-      +'.not-sayfa-ekle.ust{top:8px;}'
-      +'.not-sayfa-ekle.alt{bottom:8px;}'
-      +'.not-sayfa-ekle:hover{opacity:1;background:#1565c0;}'
-      +'html.x-mobile.x-dik .not-sayfa-ekle{opacity:.82;}'
-      +'.not-ov.cizim .not-sayfa-ekle,.not-ov.cizim .not-sayfa-sil{display:none;}'
-      // [SAYFA SİL 2026-11-11] Her A4'ün sağ üst köşesinde silme butonu (dokunmatikte de görünür; z-index canvas üstünde).
-      +'.not-sayfa-sil{position:absolute;top:8px;right:8px;z-index:6;width:28px;height:28px;border:none;border-radius:50%;background:rgba(214,40,40,.78);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.3);opacity:.5;transition:opacity .12s,background .12s;}'
-      +'.not-sayfa:hover .not-sayfa-sil{opacity:1;}'
-      +'.not-sayfa-sil:hover{background:#c01818;opacity:1;}'
-      +'html.x-mobile.x-dik .not-sayfa-sil{opacity:.92;}'
-      // [FAZ3] çizim overlay + çizim modu + çizim şeridi
-      +'.not-cizim-cv{position:absolute;inset:0;pointer-events:none;z-index:2;}'
-      +'.not-ov.cizim .not-cizim-cv{pointer-events:auto;cursor:crosshair;touch-action:none;}'
-      +'.not-ov.cizim .not-metin{pointer-events:none;user-select:none;}'
-      +'.not-ov.cizim .not-serit{display:none;}'
-      +'.not-cizim-serit{display:none;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 14px;border-bottom:1px solid var(--border-color,rgba(136,153,166,.18));background:var(--bg-input,#161c2a);}'
-      +'.not-ov.cizim .not-cizim-serit{display:flex;}'
-      +'.not-cizim-serit .not-cz-kal{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-secondary,#9aa6b2);}'
-      +'.not-cizim-serit .not-cz-kal input{width:80px;}'
-      +'.not-cz-bitir{color:#17a34a!important;border-color:#17a34a!important;}'
-      +'body.light-theme .not-cizim-serit{background:#f7f9fc;border-bottom-color:#e3e8ee;}'
-      +'body.light-theme .not-cizim-serit select,body.light-theme .not-cizim-serit .not-sbtn{background:#fff;color:#15202b;border-color:#cfd8e3;}'
-      // [WORD A4 BOŞLUK 2026-11-11] Kenar boşlukları Word'ün standart A4 "Normal" marjı 2.54cm; padding-% GENİŞLİĞE
-      // göre olduğundan 2.54/21=%12.1 dört yanda = 2.54cm (oransal; sayfa küçülse de Word görünümü korunur).
-      +'.not-metin{position:relative;z-index:2;width:100%;min-height:100%;box-sizing:border-box;padding:12.1%;outline:none;font-family:Arial,sans-serif;font-size:16px;line-height:1.6;color:#111;word-wrap:break-word;}'
-      +'.not-metin:empty:before{content:"Buraya yazın…";color:#9aa3ad;}'
-      // [ÇİZGİLİ 2026-11-11] Uniform (background-size döşeme, her tile birebir) + metin satırına HİZALI (satır-yüksekliği
-      // sabit + çizgiler content-box'ta her satırın DİBİNE; metin çizgiye oturur). Varsayılan 16px font -> 28px satır.
-      +'.not-metin.cizgili{line-height:1.75em;background-image:linear-gradient(to bottom, transparent calc(1.75em - 1px), #c3ccd6 calc(1.75em - 1px), #c3ccd6 1.75em);background-size:100% 1.75em;background-origin:content-box;background-clip:content-box;background-repeat:repeat-y;}'
-      // [FONT ÖLÇEK] başlık/boyut em cinsinden → taban font (JS'te sayfayla ölçeklenir) ile birlikte küçülür; export 16px'de em gerçek px'e çözülür.
-      +'.not-metin h1{font-size:1.875em;margin:.4em 0 .3em;font-weight:700;}'
-      +'.not-metin h2{font-size:1.5em;margin:.4em 0 .3em;font-weight:700;}'
-      +'.not-metin h3{font-size:1.1875em;margin:.4em 0 .3em;font-weight:700;}'
-      +'.not-metin img{max-width:100%;height:auto;}'
-      // [KOYU TEMA A4 2026-11-11] Koyu temada sayfa da KOYU olsun (rapor editörüyle aynı denge: tuval #0f1621, sayfa #17212e,
-      // metin #e7e9ea — .preview-body/.ed-card/.ed-root). YALNIZ EKRAN; PDF/Word export _sayfalarHtml ile DAİMA beyaz+siyah.
-      +'body:not(.light-theme) .not-sayfalar{background:#0f1621;}'
-      +'body:not(.light-theme) .not-sayfa{background:#17212e;box-shadow:0 3px 18px rgba(0,0,0,.55);}'
-      +'body:not(.light-theme) .not-metin{color:#e7e9ea;}'
-      +'body:not(.light-theme) .not-metin:empty:before{color:#5d6b7a;}'
-      +'body:not(.light-theme) .not-metin.cizgili{background-image:linear-gradient(to bottom,transparent calc(1.75em - 1px),rgba(226,235,244,.15) calc(1.75em - 1px),rgba(226,235,244,.15) 1.75em);}'
-      +'html.x-mobile.x-dik .not-baslik{padding:8px 8px;padding-top:14px;gap:4px;}'
-      +'html.x-mobile.x-dik .not-h2{font-size:15px;}'
-      +'html.x-mobile.x-dik .not-ad{min-width:0;flex:0 1 110px;max-width:none;font-size:12px;margin-right:2px;}'
-      +'html.x-mobile.x-dik .not-serit{padding:6px 8px;gap:4px;}'
-      // [PAYLAŞ 2026-11-11] Paylaş butonuna iliştik açılır menü (PDF / Word indir) — ayar menüsüyle aynı his.
-      +'.not-paylas-wrap{position:relative;}'
-      +'.not-paylas-menu{position:absolute;top:100%;right:0;margin-top:4px;min-width:172px;background:var(--bg-card,#161c2a);border:1px solid var(--border-color,rgba(136,153,166,.25));border-radius:10px;padding:5px;display:none;flex-direction:column;gap:2px;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.35);}'
-      +'.not-paylas-wrap.acik .not-paylas-menu{display:flex;}'
-      +'.not-pay-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:transparent;border:none;color:var(--text-primary,#e7edf3);font-size:14px;font-weight:600;padding:9px 12px;border-radius:7px;cursor:pointer;}'
-      +'.not-pay-item:hover{background:rgba(29,155,240,.14);color:#1d9bf0;}'
-      // [GALERİ = RAPOR EDİTÖRÜ GİBİ 2026-11-11] Ayrı overlay/"Sayfalar/×Kapat" başlığı YOK: galeri butonuyla açılan MOD
-      // (XE._galeriModu deseni). `.not-ov.galeri` → biçim şeridi + sayfa alanı gizlenir, yerine `.not-gal-alan` ızgarası gelir;
-      // üst bar (editör başlığı) AYNI kalır. Kart .ed-gal-card ile aynı (temalı #fff/#17212e, numara rozeti, metin önizleme).
-      +'.not-gal-alan{display:none;flex:1;min-height:0;overflow:auto;flex-direction:column;background:var(--bg-modal,#0f1621);}'
-      +'.not-ov.galeri .not-gal-alan{display:flex;}'
-      +'.not-ov.galeri .not-serit{display:none;}'
-      +'.not-ov.galeri .not-sayfalar{display:none;}'
-      +'.not-gal-ipucu{font-size:12px;color:#5b6b7b;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:9px 13px;margin:16px 20px 0;line-height:1.5;flex:none;}'
-      +'.not-gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:16px;padding:16px 20px 24px;align-content:start;}'
-      +'.not-gal-kart{position:relative;background:#fff;border:1px solid #dfe4ea;border-radius:11px;padding:11px;padding-top:34px;cursor:pointer;transition:box-shadow .12s,transform .12s,border-color .12s;}'
-      +'.not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.10);transform:translateY(-1px);}'
-      +'.not-gal-no{position:absolute;top:9px;left:9px;min-width:21px;height:21px;padding:0 6px;border-radius:11px;background:#1d9bf0;color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;z-index:2;box-shadow:0 1px 3px rgba(0,0,0,.2);}'
-      +'.not-gal-onizle{font-size:11px;color:#64748b;line-height:1.5;min-height:58px;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;}'
-      +'.not-gal-onizle.bos{color:#94a3b8;font-style:italic;}'
-      +'.not-gal-araclar{display:flex;gap:4px;justify-content:center;margin-top:9px;}'
-      +'.not-gal-araclar button{width:32px;height:28px;border:1px solid #dfe4ea;border-radius:6px;background:#f6f8fa;color:#334;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}'
-      +'.not-gal-araclar button:hover{border-color:#1d9bf0;color:#1d9bf0;}'
-      +'.not-gal-araclar button:disabled{opacity:.35;cursor:default;}'
-      +'.not-gal-araclar .not-gal-sil:hover{border-color:#d62828;color:#d62828;}'
-      +'body:not(.light-theme) .not-gal-kart{background:#17212e;border-color:#2c3a4a;}'
-      +'body:not(.light-theme) .not-gal-kart:hover{box-shadow:0 4px 14px rgba(0,0,0,.4);}'
-      +'body:not(.light-theme) .not-gal-onizle{color:#9aa6b2;}'
-      +'body:not(.light-theme) .not-gal-onizle.bos{color:#67748a;}'
-      +'body:not(.light-theme) .not-gal-araclar button{background:#1b2735;color:#e7e9ea;border-color:#2c3a4a;}'
-      +'body:not(.light-theme) .not-gal-ipucu{background:#17212e;border-color:#2c3a4a;color:#9aa6b2;}'
-      +'body.light-theme .not-paylas-menu{background:#fff;border-color:#e3e8ee;}'
-      +'body.light-theme .not-pay-item{color:#15202b;}'
-      +'html.x-mobile.x-dik .not-metin{padding:22px 18px;}'
-      // açık tema
-      +'body.light-theme .not-ov,body.light-theme .not-baslik{background:#fff;}'
-      +'body.light-theme .not-baslik{border-bottom-color:#e3e8ee;}'
-      +'body.light-theme .not-h2,body.light-theme .not-ad{color:#15202b;}'
-      +'body.light-theme .not-ik{color:#5a6673;}'
-      +'body.light-theme .not-ik:hover{background:#eef1f5;color:#15202b;}'
-      +'body.light-theme .not-serit{background:#f7f9fc;border-bottom-color:#e3e8ee;}'
-      +'body.light-theme .not-serit select,body.light-theme .not-serit .not-sbtn{background:#fff;color:#15202b;border-color:#cfd8e3;}'
-      // light temada .aktif, yukarıdaki beyaz-buton kuralından daha özgül olmalı (yoksa seçili araç mavi görünmez)
-      +'body.light-theme .not-serit .not-sbtn.aktif,body.light-theme .not-cizim-serit .not-sbtn.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}'
-      // [TEMA 2026-11-11] Sayfa tepsisi (çizim ekranı arka planı) açık temada koyu şerit gibi durmasın → editör temasına uy.
-      +'body.light-theme .not-sayfalar{background:#d7dde5;}'
-      +'body.light-theme .not-a4-sinir::before{border-color:rgba(120,140,170,.55);}'
-      +'body.light-theme .not-ayar-menu{background:#fff;border-color:#e3e8ee;}';
-    var st=document.createElement('style'); st.id='not-stil'; st.textContent=css; (document.head||document.documentElement).appendChild(st);
-  }
-
-  // [URL /not/<slug>] Not açıkken adres çubuğu /not/<slug> → raporlardan (/<slug>) AYIRT edilir; reload'da acSlug geri açar.
-  function _notSlug(ad, id){ var s=''; try{ s=(window.XSavedReports&&window.XSavedReports.slugify)?window.XSavedReports.slugify(ad||''):String(ad||'').toLowerCase().trim().replace(/[^a-z0-9ğüşıöçâî]+/gi,'-').replace(/^-+|-+$/g,''); }catch(_){} return s || ('n-'+String(id||'').replace(/[^a-z0-9]/gi,'').slice(0,8)); }
-  var _notOncekiPath=null;
-  function _notUrlYaz(replace){ try{ if(!_doc) return; var slug=_notSlug(_doc.ad,_doc.id); var hedef='/not/'+encodeURIComponent(slug); if(window.location.pathname===hedef) return; var tam=hedef+(window.location.search||''); var st={xnot:slug}; if(replace) history.replaceState(st,'',tam); else history.pushState(st,'',tam); }catch(_){} }
-  function _notUrlGeri(){ try{ var p=_notOncekiPath||'/'; history.replaceState(null,'',p); }catch(_){} _notOncekiPath=null; }
-
-  window.yeniNotKagidi=function(){ if(!notAcikMi()) return; XNot.ac(null); };
-  // [URL ROUTER] Sayfa /not/<slug> ile açıldıysa o notu bul-aç (panel router'ı çağırır).
-  XNot.acSlug=function(slug){
-    return (window.XNotlar?window.XNotlar.whenReady():Promise.resolve()).then(function(){ return window.XNotlar?window.XNotlar.list():[]; }).then(function(list){
-      list=list||[]; var hedef=String(slug||''), bulunan=null;
-      for(var i=0;i<list.length;i++){ var n=list[i]; if(_notSlug(n.ad,n.id)===hedef || String(n.id)===hedef){ bulunan=n; break; } }
-      if(bulunan){ try{ XNot.ac(bulunan); }catch(_){} return true; }
-      return false;
-    }).catch(function(){ return false; });
-  };
-
-  XNot.ac=function(doc){
-    if(_ov) return;
-    _stilEnjekte();
-    _doc = doc || { id:_uuid(), ad:'', cizgili:false, sayfalar:[{metinHtml:''}], updatedAt:0, _yeni:true };
-    if(!_doc.sayfalar || !_doc.sayfalar.length) _doc.sayfalar=[{metinHtml:''}];
-    // [OTO-AD] Yeni not rapor gibi oto-adlandırılır (adsız kalmasın) — tarih-saat damgası.
-    if(_doc._yeni && !(_doc.ad||'').trim()){ try{ _doc.ad='Not '+(window.xTarihSaatDamgasi?window.xTarihSaatDamgasi():new Date().toLocaleString()); }catch(_){ _doc.ad='Not'; } }
-    try{ _notOncekiPath=(/^\/not\//.test(window.location.pathname))?'/':(window.location.pathname+window.location.search); }catch(_){ _notOncekiPath='/'; }
-    _notUrlYaz(false);   // adres çubuğu /not/<slug>
-    var fontlar=['Arial','Times New Roman','Georgia','Courier New','Verdana','Tahoma','Trebuchet MS'];
-    var fontOpt=fontlar.map(function(f){return '<option value="'+f+'">'+f+'</option>';}).join('');
-    var boyutlar=[10,12,14,16,18,20,24,28,32,40,48,64];
-    var boyutOpt=boyutlar.map(function(s){return '<option value="'+s+'"'+(s===16?' selected':'')+'>'+s+'</option>';}).join('');
-    var hizaBtn=['left','center','right','both'].map(function(v){ return '<button type="button" class="not-sbtn not-hiza" data-h="'+v+'" title="Hizala">'+_hizaIk(v)+'</button>'; }).join('');
-    _ov=document.createElement('div'); _ov.className='not-ov'; _ov.id='not-ov';
-    _ov.innerHTML=''
-      +'<div class="not-icerik">'
-      +'  <div class="not-baslik">'
-      +'    <div class="not-sol">'
-      +'      <h2 class="not-h2">'+_svg('kalem',18)+'Not Editörü</h2>'
-      +'      <div class="not-nav">'
-      +'        <button type="button" class="not-ik not-geri" title="Geri al (Ctrl+Z)">'+_svg('geri')+'</button>'
-      +'        <button type="button" class="not-ik not-ileri" title="İleri al (Ctrl+Y)">'+_svg('ileri')+'</button>'
-      +'      </div>'
-      +'    </div>'
-      +'    <div class="not-sag">'
-      +'      <input class="not-ad" type="text" placeholder="Not adı" value="'+_esc(_doc.ad||'')+'">'
-      +'      <button type="button" class="not-ik not-galeri" title="Galeri — sayfaları sırala">'+_svg('galeri')+'</button>'
-      +'      <div class="not-ayar-wrap">'
-      +'        <button type="button" class="not-ik not-ayar" title="Ayarlar">'+_svg('ayar')+'</button>'
-      +'        <div class="not-ayar-menu">'
-      +'          <button type="button" class="not-ik not-tema" title="Temayı değiştir">'+_svg('tema')+'</button>'
-      +'          <button type="button" class="not-ik not-fs" title="Tam ekran">'+_svg('fs')+'</button>'
-      +'          <button type="button" class="not-ik not-pwa" title="Ana ekrana ekle">'+_svg('pwa')+'</button>'
-      +'        </div>'
-      +'      </div>'
-      +'      <div class="not-paylas-wrap">'
-      +'        <button type="button" class="not-ik not-paylas" title="Paylaş / indir">'+_svg('paylas')+'</button>'
-      +'        <div class="not-paylas-menu">'
-      +'          <button type="button" class="not-pay-item not-pay-pdf">'+_svg('paylas',16)+'PDF olarak indir</button>'
-      +'          <button type="button" class="not-pay-item not-pay-word">'+_svg('gorsel',16)+'Word olarak indir</button>'
-      +'        </div>'
-      +'      </div>'
-      +'      <button type="button" class="not-ik not-kapat" title="Kaydet ve kapat">'+_svg('kapat')+'</button>'
-      +'    </div>'
-      +'  </div>'
-      +'  <div class="not-serit">'
-      +'    <select class="not-stil" title="Başlık türü"><option value="p">Normal</option><option value="h1">Başlık 1</option><option value="h2">Başlık 2</option><option value="h3">Başlık 3</option></select>'
-      +'    <select class="not-font" title="Yazı tipi">'+fontOpt+'</select>'
-      +'    <select class="not-boyut" title="Boyut">'+boyutOpt+'</select>'
-      +'    <input type="color" class="not-renk" value="#111111" title="Renk">'
-      +'    <button type="button" class="not-sbtn not-b" title="Kalın"><b>B</b></button>'
-      +'    <button type="button" class="not-sbtn not-i" title="İtalik"><i>I</i></button>'
-      +'    <button type="button" class="not-sbtn not-u" title="Altı çizili"><u>U</u></button>'
-      +'    <span class="not-ayr"></span>'
-      +'    <div class="not-hgrp">'+hizaBtn+'</div>'
-      +'    <span class="not-ayr"></span>'
-      +'    <button type="button" class="not-sbtn not-cizgili'+(_doc.cizgili?' aktif':'')+'" title="Çizgili kağıt aç/kapa">'+_svg('cizgili',16)+' Çizgili</button>'
-      +'    <button type="button" class="not-sbtn not-gorsel" title="Görsel ekle">'+_svg('gorsel',16)+' Görsel</button>'
-      +'    <button type="button" class="not-sbtn not-cizim" title="Çizim modu aç/kapa">'+_svg('cizim',16)+' Çizim</button>'
-      +'  </div>'
-      +'  <div class="not-cizim-serit">'
-      +'    <button type="button" class="not-sbtn not-cz-bitir" title="Çizimi bitir">'+_svg('onay',16)+' Bitir</button>'
-      +'    <span class="not-ayr"></span>'
-      +'    <button type="button" class="not-sbtn not-cz-tool aktif" data-ct="kalem" title="Kalem">'+_svg('cizim',16)+'</button>'
-      +'    <button type="button" class="not-sbtn not-cz-tool" data-ct="ok" title="Ok">'+_svg('ok',16)+'</button>'
-      +'    <button type="button" class="not-sbtn not-cz-tool" data-ct="dikdortgen" title="Dikdörtgen">'+_svg('dikd',16)+'</button>'
-      +'    <button type="button" class="not-sbtn not-cz-tool" data-ct="sec" title="Seç / Taşı (boşluğu sürükle = çoklu seç; Shift+tık = ekle/çıkar)">'+_svg('sec',16)+'</button>'
-      +'    <input type="color" class="not-renk not-cz-renk" value="#e02020" title="Renk">'
-      +'    <label class="not-cz-kal" title="Çizgi kalınlığı">Kalınlık<input type="range" min="1" max="30" value="4"></label>'
-      +'    <span class="not-ayr"></span>'
-      +'    <button type="button" class="not-sbtn not-cz-geri" title="Geri al" disabled>'+_svg('geri',16)+'</button>'
-      +'    <button type="button" class="not-sbtn not-cz-ileri" title="İleri al" disabled>'+_svg('ileri',16)+'</button>'
-      +'    <button type="button" class="not-sbtn not-cz-sil" title="Seçilileri sil" disabled>Sil</button>'
-      +'  </div>'
-      +'  <div class="not-sayfalar"></div>'
-      +'  <div class="not-gal-alan"><div class="not-gal-ipucu">◀ ▶ ile sırala · karta dokununca o sayfaya git · × ile sil</div><div class="not-gal-grid"></div></div>'
-      +'</div>';
-    (document.body||document.documentElement).appendChild(_ov);
-    _cizSayfalar();
-
-    // --- üst bar olayları ---
-    _ov.querySelector('.not-kapat').addEventListener('click', function(){ _kapat(true); });
-    _ov.querySelector('.not-geri').addEventListener('mousedown', function(e){ e.preventDefault(); });
-    _ov.querySelector('.not-geri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('undo'); }catch(e){} _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-ileri').addEventListener('mousedown', function(e){ e.preventDefault(); });
-    _ov.querySelector('.not-ileri').addEventListener('click', function(){ _selGeri(); try{ document.execCommand('redo'); }catch(e){} _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-galeri').addEventListener('click', function(){ _galeriToggle(); });
-    var payW=_ov.querySelector('.not-paylas-wrap');
-    _ov.querySelector('.not-paylas').addEventListener('click', function(e){ e.stopPropagation(); payW.classList.toggle('acik'); });
-    _ov.querySelector('.not-pay-pdf').addEventListener('click', function(){ payW.classList.remove('acik'); _pdfIndir(); });
-    _ov.querySelector('.not-pay-word').addEventListener('click', function(){ payW.classList.remove('acik'); _wordIndir(); });
-    var ayarW=_ov.querySelector('.not-ayar-wrap');
-    _ov.querySelector('.not-ayar').addEventListener('click', function(e){ e.stopPropagation(); ayarW.classList.toggle('acik'); });
-    document.addEventListener('click', _ayarDisari, true);
-    _ov.querySelector('.not-tema').addEventListener('click', function(){ try{ window.toggleTheme&&window.toggleTheme(); }catch(e){} });
-    _ov.querySelector('.not-fs').addEventListener('click', function(){ try{ window.toggleFullscreen&&window.toggleFullscreen(); }catch(e){} });
-    _ov.querySelector('.not-pwa').addEventListener('click', function(){ try{ window.xPwaYukleAc&&window.xPwaYukleAc(); }catch(e){} });
-    // [OTO-KAYDET] not adı değişimi + sayfa F5/gizlenmeden önce son flush (× ile kapatmasa da kaybolmasın)
-    _ov.querySelector('.not-ad').addEventListener('input', _planlaKaydet);
-    window.addEventListener('pagehide', _pagehideFlush);
-    window.addEventListener('beforeunload', _pagehideFlush);
-    document.addEventListener('visibilitychange', _gizlenince);
-
-    // --- biçim şeridi olayları ---
-    var serit=_ov.querySelector('.not-serit');
-    serit.addEventListener('mousedown', function(e){ if(e.target.closest('.not-sbtn,.not-hiza')) e.preventDefault(); else _selKaydet(); }, true);
-    serit.addEventListener('touchstart', _selKaydet, true);
-    _ov.querySelector('.not-stil').addEventListener('change', function(){ var v=this.value; _selGeri(); _komut('formatBlock','<'+v+'>'); _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-font').addEventListener('change', function(){ _selGeri(); _komut('fontName', this.value); _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-boyut').addEventListener('change', function(){ _boyutUygula(+this.value); });
-    _ov.querySelector('.not-renk').addEventListener('input', function(){ _selGeri(); _komut('foreColor', this.value); _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-b').addEventListener('click', function(){ _selGeri(); _komut('bold'); _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-i').addEventListener('click', function(){ _selGeri(); _komut('italic'); _aktifSayfaKaydet(); });
-    _ov.querySelector('.not-u').addEventListener('click', function(){ _selGeri(); _komut('underline'); _aktifSayfaKaydet(); });
-    _ov.querySelectorAll('.not-hiza').forEach(function(b){ b.addEventListener('click', function(){ _selGeri(); var h=b.getAttribute('data-h'); _komut(h==='left'?'justifyLeft':h==='center'?'justifyCenter':h==='right'?'justifyRight':'justifyFull'); _aktifSayfaKaydet(); }); });
-    _ov.querySelector('.not-cizgili').addEventListener('click', function(){ _doc.cizgili=!_doc.cizgili; this.classList.toggle('aktif',_doc.cizgili); _ov.querySelectorAll('.not-metin').forEach(function(m){ m.classList.toggle('cizgili',_doc.cizgili); }); _planlaKaydet(); });
-    _ov.querySelector('.not-gorsel').addEventListener('click', function(){ _gorselSec(); });
-    // [FAZ3] çizim modu + çizim şeridi
-    function _cizimModuAyarla(on){ _cizimModu=on; _ov.classList.toggle('cizim',on); _ov.querySelector('.not-cizim').classList.toggle('aktif',on); if(on){ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); }); _cizBtnGuncelle(); } else { _ov.querySelectorAll('.not-sayfa').forEach(function(w){ _metinBoslukAyarla(w); }); } }
-    _ov.querySelector('.not-cizim').addEventListener('click', function(){ _cizimModuAyarla(!_cizimModu); });
-    _ov.querySelector('.not-cz-bitir').addEventListener('click', function(){ _cizimModuAyarla(false); });
-    _ov.querySelectorAll('.not-cz-tool').forEach(function(b){ b.addEventListener('click', function(){ _cizStil.tool=b.getAttribute('data-ct'); _ov.querySelectorAll('.not-cz-tool').forEach(function(x){ x.classList.toggle('aktif',x===b); }); }); });
-    _ov.querySelector('.not-cz-renk').addEventListener('input', function(){ _cizStil.renk=this.value; });
-    _ov.querySelector('.not-cz-kal input').addEventListener('input', function(){ _cizStil.kalinlik=+this.value; });
-    _ov.querySelector('.not-cz-geri').addEventListener('click', function(){ if(_aktifCizim) _aktifCizim.undo(); });
-    _ov.querySelector('.not-cz-ileri').addEventListener('click', function(){ if(_aktifCizim) _aktifCizim.redo(); });
-    _ov.querySelector('.not-cz-sil').addEventListener('click', function(){ if(_aktifCizim) _aktifCizim.sil(); });
-
-    document.addEventListener('keydown', _tusKapat, true);
-    try{ var ilk=_ov.querySelector('.not-metin'); if(ilk) ilk.focus(); }catch(_){}
-  };
-
-  // ---- sayfalar (A4) + ekle barları ----
-  function _cizSayfalar(focusIdx){
-    var cont=_ov.querySelector('.not-sayfalar');
-    cont.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } });
-    _aktifCizim=null;
-    cont.innerHTML='';
-    _doc.sayfalar.forEach(function(sp, i){ cont.appendChild(_sayfaYap(sp, i)); });
-    if(_cizimModu) cont.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__cizim) w.__cizim.resize(); });
-    if(focusIdx!=null){ try{ var sf=cont.querySelectorAll('.not-sayfa')[focusIdx]; if(sf){ var mm=sf.querySelector('.not-metin'); if(!_cizimModu) mm.focus(); sf.scrollIntoView({behavior:'smooth',block:'center'}); } }catch(_){} }
-    _planlaKaydet();   // [OTO-KAYDET] sayfa ekle/sil/sırala yapısal değişikliğini de yaz
-  }
-  function _ekleBtn(konum, hedefIdx){
-    var btn=document.createElement('button'); btn.type='button'; btn.className='not-sayfa-ekle '+konum;
-    btn.innerHTML='<span style="font-size:15px;line-height:1">+</span> Sayfa ekle';
-    btn.title=(konum==='ust'?'Üste sayfa ekle':'Alta sayfa ekle');
-    btn.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); _doc.sayfalar.splice(hedefIdx,0,{metinHtml:''}); _cizSayfalar(hedefIdx); });
-    return btn;
-  }
-  function _sayfaDolu(sp){ return !!(((sp.metinHtml||'').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,'').trim()) || (sp.cizimObjeleri||[]).length || /<img/i.test(sp.metinHtml||'')); }
-  function _flushMetin(){ try{ if(_ov) _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; }); }catch(_){} }
-  function _sayfaSil(sp){
-    var i=_doc.sayfalar.indexOf(sp); if(i<0) return;
-    _flushMetin();
-    if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return;
-    _doc.sayfalar.splice(i,1);
-    if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''});
-    _cizSayfalar(Math.min(i,_doc.sayfalar.length-1));
-  }
-  // [ÇİZİM ALTINA METİN] Sayfada çizim varsa, metnin üst-boşluğunu çizimin EN ALTINA kadar ayır → yazı çizimin altından
-  // akar, üstüne binmez ("çizim resim gibi, alanına metin yazılmaz"). Çizim yoksa varsayılan %12.1 (Word) marjı.
-  function _metinBoslukAyarla(w){
-    try{
-      if(!w || !w.__metin || !w.__cizim) return;
-      var m=w.__metin, ab=w.__cizim.altSinir();   // 0..1000 (yoksa 0)
-      if(!ab){ m.style.paddingTop=''; return; }
-      var ph=w.clientHeight||0, pw=w.clientWidth||0;
-      var reserve=(ab/1000)*ph + Math.max(10, pw*0.02);   // çizimin altı + küçük boşluk
-      m.style.paddingTop=Math.max(pw*0.121, reserve)+'px';   // en az Word üst marjı
-    }catch(_){}
-  }
-  function _sayfaYap(sp, idx){
-    var w=document.createElement('div'); w.className='not-sayfa';
-    var m=document.createElement('div'); m.className='not-metin'+(_doc.cizgili?' cizgili':''); m.contentEditable='true'; m.spellcheck=false; m.innerHTML=sp.metinHtml||'';
-    m.addEventListener('input', function(){ sp.metinHtml=m.innerHTML; _planlaKaydet(); });
-    m.addEventListener('paste', function(e){ try{ var cd=e.clipboardData||window.clipboardData; if(!cd) return; var its=cd.items||[]; for(var i=0;i<its.length;i++){ if(its[i].type&&its[i].type.indexOf('image/')===0){ var f=its[i].getAsFile(); if(f){ e.preventDefault(); var rd=new FileReader(); rd.onload=function(){ try{ document.execCommand('insertImage', false, rd.result); sp.metinHtml=m.innerHTML; }catch(_){} }; rd.readAsDataURL(f); return; } } } }catch(_){} });
-    var cv=document.createElement('canvas'); cv.className='not-cizim-cv';
-    var sil=document.createElement('button'); sil.type='button'; sil.className='not-sayfa-sil'; sil.title='Sayfayı sil'; sil.innerHTML='&times;';
-    sil.addEventListener('click', function(e){ e.stopPropagation(); e.preventDefault(); _sayfaSil(sp); });
-    w.appendChild(m); w.appendChild(cv); w.appendChild(sil);
-    w.appendChild(_ekleBtn('ust', idx));       // önüne sayfa ekle
-    w.appendChild(_ekleBtn('alt', idx+1));     // ardına sayfa ekle
-    w.__sp=sp; w.__metin=m;
-    w.__cizim=_cizKatman(cv, sp);   // [FAZ3] çizim motoru (overlay)
-    // [FONT ÖLÇEK] Taban font sayfanın GERÇEK genişliğiyle ölçeklenir (gerçek A4=794px → 16px): fit edilmiş küçük sayfada
-    // yazı da küçülür → bir sayfaya gerçek A4 kadar yazı sığar. em tabanlı başlık/boyut/çizgili bununla birlikte küçülür.
-    function _fontOlc(){ try{ var pw=w.clientWidth; if(pw>0) m.style.fontSize=Math.max(9,Math.min(16, 16*pw/794)).toFixed(2)+'px'; }catch(_){} }
-    _fontOlc(); _metinBoslukAyarla(w);
-    try{ w.__ro=new ResizeObserver(function(){ _fontOlc(); _metinBoslukAyarla(w); try{ w.__cizim.resize(); }catch(_){} }); w.__ro.observe(w); }catch(_){ setTimeout(function(){ _fontOlc(); _metinBoslukAyarla(w); try{ w.__cizim.resize(); }catch(e){} }, 80); }
-    return w;
-  }
-
-  // [FAZ3] NOT-ÖZEL VEKTÖR ÇİZİM MOTORU (görsel-düzenleyiciden BAĞIMSIZ; kalem/ok/dikdörtgen/seç + geri/ileri).
-  // Koordinatlar LOGW=1000 birimli (çözünürlükten bağımsız; sp.cizimObjeleri'nde saklanır). Canvas sayfa boyutuna
-  // ResizeObserver ile uyar. Ortak durum _cizStil (tool/renk/kalınlık). _aktifCizim = son etkileşilen sayfa.
-  function _cizKatman(cv, sp){
-    var ctx=cv.getContext('2d');
-    var objs=(sp.cizimObjeleri&&sp.cizimObjeleri.length)?JSON.parse(JSON.stringify(sp.cizimObjeleri)):[];
-    var hist=[], redo=[], selSet=[], marquee=null, drag=null, LOGW=1000;   // [ÇOKLU SEÇİM] selSet=seçili nesneler, marquee=kutu-seçim
-    function _sc(){ return (cv.width||1)/LOGW; }
-    function S(v){ return v*_sc(); } function U(v){ return v/_sc(); }
-    function P(e){ var r=cv.getBoundingClientRect(); return {x:U(e.clientX-r.left), y:U(e.clientY-r.top)}; }
-    function _kaydet(){ sp.cizimObjeleri=JSON.parse(JSON.stringify(objs)); try{ _planlaKaydet(); }catch(_){} try{ _metinBoslukAyarla(cv.closest && cv.closest('.not-sayfa')); }catch(_){} }
-    function _snap(){ return JSON.stringify(objs); }
-    function _itUndo(){ hist.push(_snap()); if(hist.length>60) hist.shift(); redo=[]; }
-    function resize(){ var pr=cv.parentNode; if(!pr) return; var w=pr.clientWidth, h=pr.clientHeight; if(w>0&&h>0){ cv.width=w; cv.height=h; cv.style.width=w+'px'; cv.style.height=h+'px'; ciz(); } }
-    function kutu(o){ if(o.t==='dikdortgen') return {x:Math.min(o.x,o.x+o.w),y:Math.min(o.y,o.y+o.h),w:Math.abs(o.w),h:Math.abs(o.h)}; if(o.t==='ok') return {x:Math.min(o.x1,o.x2),y:Math.min(o.y1,o.y2),w:Math.abs(o.x2-o.x1),h:Math.abs(o.y2-o.y1)}; if(o.t==='kalem'){ var xs=o.nk.map(function(p){return p.x;}),ys=o.nk.map(function(p){return p.y;}); var x0=Math.min.apply(null,xs),y0=Math.min.apply(null,ys); return {x:x0,y:y0,w:Math.max.apply(null,xs)-x0,h:Math.max.apply(null,ys)-y0}; } return {x:0,y:0,w:0,h:0}; }
-    function cizObj(o){ ctx.save(); ctx.strokeStyle=o.renk; ctx.fillStyle=o.renk; ctx.lineWidth=Math.max(1,S(o.kal)); ctx.lineCap='round'; ctx.lineJoin='round';
-      if(o.t==='kalem'){ ctx.beginPath(); for(var i=0;i<o.nk.length;i++){ var p=o.nk[i]; if(i===0) ctx.moveTo(S(p.x),S(p.y)); else ctx.lineTo(S(p.x),S(p.y)); } ctx.stroke(); }
-      else if(o.t==='dikdortgen'){ ctx.strokeRect(S(o.x),S(o.y),S(o.w),S(o.h)); }
-      else if(o.t==='ok'){ ctx.beginPath(); ctx.moveTo(S(o.x1),S(o.y1)); ctx.lineTo(S(o.x2),S(o.y2)); ctx.stroke(); var ang=Math.atan2(o.y2-o.y1,o.x2-o.x1), hl=Math.max(S(o.kal)*3.2,10); ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2)); ctx.lineTo(S(o.x2)-hl*Math.cos(ang-0.42),S(o.y2)-hl*Math.sin(ang-0.42)); ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42),S(o.y2)-hl*Math.sin(ang+0.42)); ctx.closePath(); ctx.fill(); }
-      ctx.restore();
-    }
-    // [KUTU-SEÇİM GEOMETRİSİ] Kalem/ok GERÇEK çizgiye dokunmalı (bbox DEĞİL): kalemin sınır-kutusu büyük ama çizgi seyrek →
-    // bbox kullanınca kutu çizgiye dokunmadan seçiyordu. Dikdörtgen bbox=şekil olduğundan bbox örtüşmesi doğru.
-    function _segSeg(ax,ay,bx,by,cx,cy,dx,dy){ function cr(ox,oy,px,py,qx,qy){ return (qx-ox)*(py-oy)-(qy-oy)*(px-ox); }
-      var d1=cr(cx,cy,dx,dy,ax,ay),d2=cr(cx,cy,dx,dy,bx,by),d3=cr(ax,ay,bx,by,cx,cy),d4=cr(ax,ay,bx,by,dx,dy);
-      return ((d1>0)!==(d2>0))&&((d3>0)!==(d4>0)); }
-    function _noktaIc(px,py,r){ return px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h; }
-    function _segKutu(ax,ay,bx,by,r){ if(_noktaIc(ax,ay,r)||_noktaIc(bx,by,r)) return true; var x2=r.x+r.w,y2=r.y+r.h;
-      return _segSeg(ax,ay,bx,by,r.x,r.y,x2,r.y)||_segSeg(ax,ay,bx,by,x2,r.y,x2,y2)||_segSeg(ax,ay,bx,by,x2,y2,r.x,y2)||_segSeg(ax,ay,bx,by,r.x,y2,r.x,r.y); }
-    function _kesisirGeom(o,r){
-      if(o.t==='kalem'){ for(var i=1;i<o.nk.length;i++){ if(_segKutu(o.nk[i-1].x,o.nk[i-1].y,o.nk[i].x,o.nk[i].y,r)) return true; } return false; }
-      if(o.t==='ok'){ return _segKutu(o.x1,o.y1,o.x2,o.y2,r); }
-      var k=kutu(o); return !(k.x>r.x+r.w||k.x+k.w<r.x||k.y>r.y+r.h||k.y+k.h<r.y);   // dikdörtgen: bbox örtüşmesi
-    }
-    function _marqDik(){ if(!marquee) return null; return {x:Math.min(marquee.x0,marquee.x1),y:Math.min(marquee.y0,marquee.y1),w:Math.abs(marquee.x1-marquee.x0),h:Math.abs(marquee.y1-marquee.y0)}; }
-    function _tasiObj(o,b,dx,dy){ if(o.t==='ok'){o.x1=b.x1+dx;o.y1=b.y1+dy;o.x2=b.x2+dx;o.y2=b.y2+dy;} else if(o.t==='kalem'){for(var i=0;i<o.nk.length;i++){o.nk[i].x=b.nk[i].x+dx;o.nk[i].y=b.nk[i].y+dy;}} else {o.x=b.x+dx;o.y=b.y+dy;} }
-    function ciz(){ ctx.clearRect(0,0,cv.width,cv.height); objs.forEach(cizObj);
-      if(selSet.length){ ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0'; selSet.forEach(function(o){ var k=kutu(o); ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); }); ctx.restore(); }
-      var mq=_marqDik(); if(mq){ ctx.save(); ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle='#1d9bf0'; ctx.fillStyle='rgba(29,155,240,.10)'; ctx.fillRect(S(mq.x),S(mq.y),S(mq.w),S(mq.h)); ctx.strokeRect(S(mq.x),S(mq.y),S(mq.w),S(mq.h)); ctx.restore(); }
-    }
-    function nmes(px,py,ax,ay,bx,by){ var dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy; if(!l2) return Math.hypot(px-ax,py-ay); var t=((px-ax)*dx+(py-ay)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+t*dx),py-(ay+t*dy)); }
-    function vurus(p){ for(var i=objs.length-1;i>=0;i--){ var o=objs[i];
-      if(o.t==='ok'){ if(nmes(p.x,p.y,o.x1,o.y1,o.x2,o.y2)<=Math.max(o.kal*1.5,12)) return o; }
-      else if(o.t==='kalem'){ for(var j=1;j<o.nk.length;j++){ if(nmes(p.x,p.y,o.nk[j-1].x,o.nk[j-1].y,o.nk[j].x,o.nk[j].y)<=Math.max(o.kal*1.5,12)) return o; } }
-      else { var k=kutu(o); if(p.x>=k.x-8&&p.x<=k.x+k.w+8&&p.y>=k.y-8&&p.y<=k.y+k.h+8) return o; }
-    } return null; }
-    function pd(e){ _aktifCizim=api; try{ cv.setPointerCapture&&cv.setPointerCapture(e.pointerId); }catch(_){} var p=P(e); var t=_cizStil.tool;
-      if(t==='sec'){ var o=vurus(p);
-        if(o){
-          if(e.shiftKey){ var ix=selSet.indexOf(o); if(ix>=0) selSet.splice(ix,1); else selSet.push(o); }
-          else if(selSet.indexOf(o)<0){ selSet=[o]; }
-          if(selSet.length){ _itUndo(); drag={tip:'tasi', sx:p.x, sy:p.y, items:selSet.slice(), base:selSet.map(function(x){return JSON.parse(JSON.stringify(x));})}; }
-        } else {
-          if(!e.shiftKey) selSet=[];
-          marquee={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; drag={tip:'marquee', add:!!e.shiftKey, taban:selSet.slice()};
-        }
-        _durum(); ciz(); return;
-      }
-      _itUndo();
-      if(t==='kalem'){ var ok={t:'kalem', nk:[{x:p.x,y:p.y}], renk:_cizStil.renk, kal:_cizStil.kalinlik}; objs.push(ok); drag={tip:'kalem', o:ok}; }
-      else if(t==='ok'){ var oo={t:'ok', x1:p.x,y1:p.y,x2:p.x,y2:p.y, renk:_cizStil.renk, kal:_cizStil.kalinlik}; objs.push(oo); drag={tip:'ciz', o:oo}; }
-      else if(t==='dikdortgen'){ var od={t:'dikdortgen', x:p.x,y:p.y,w:0,h:0, renk:_cizStil.renk, kal:_cizStil.kalinlik}; objs.push(od); drag={tip:'ciz', o:od}; }
-      _durum();
-    }
-    function pm(e){ if(!drag) return; var p=P(e);
-      if(drag.tip==='tasi'){ var dx=p.x-drag.sx,dy=p.y-drag.sy; for(var i=0;i<drag.items.length;i++){ _tasiObj(drag.items[i], drag.base[i], dx, dy); } ciz(); return; }
-      if(drag.tip==='marquee'){ marquee.x1=p.x; marquee.y1=p.y; var mq=_marqDik();
-        var yeter=(mq.w>=6||mq.h>=6);   // çok küçük kutu = tıklama gibi → HENÜZ seçim yok (ögeye dokunmadan seçmesin)
-        var sl=yeter?objs.filter(function(o){ return _kesisirGeom(o,mq); }):[];
-        selSet = drag.add ? drag.taban.concat(sl.filter(function(o){return drag.taban.indexOf(o)<0;})) : sl; ciz(); return; }
-      if(drag.tip==='ciz'){ var oc=drag.o; if(oc.t==='ok'){oc.x2=p.x;oc.y2=p.y;} else {oc.w=p.x-oc.x;oc.h=p.y-oc.y;} ciz(); return; }
-      if(drag.tip==='kalem'){ drag.o.nk.push({x:p.x,y:p.y}); ciz(); return; }
-    }
-    function pu(e){ if(!drag) return; var d=drag; drag=null;
-      if(d.tip==='marquee'){ marquee=null; ciz(); _durum(); return; }   // seçim = mutasyon değil, geçmişe yazma
-      if(d.tip==='ciz'){ var o=d.o; if((o.t==='ok'&&Math.hypot(o.x2-o.x1,o.y2-o.y1)<3)||(o.t==='dikdortgen'&&(Math.abs(o.w)<3||Math.abs(o.h)<3))){ objs.pop(); if(hist.length)hist.pop(); ciz(); } }
-      else if(d.tip==='kalem'){ if(d.o.nk.length<2){ objs.pop(); if(hist.length)hist.pop(); ciz(); } }
-      _kaydet(); _durum();
-    }
-    function _durum(){ if(_aktifCizim===api) _cizBtnGuncelle(); }
-    function undo(){ if(!hist.length) return; redo.push(_snap()); objs=JSON.parse(hist.pop()); selSet=[]; marquee=null; _kaydet(); ciz(); _durum(); }
-    function redoF(){ if(!redo.length) return; hist.push(_snap()); objs=JSON.parse(redo.pop()); selSet=[]; marquee=null; _kaydet(); ciz(); _durum(); }
-    function sil(){ if(!selSet.length) return; _itUndo(); selSet.forEach(function(o){ var ix=objs.indexOf(o); if(ix>=0) objs.splice(ix,1); }); selSet=[]; _kaydet(); ciz(); _durum(); }
-    cv.addEventListener('pointerdown', pd); cv.addEventListener('pointermove', pm); cv.addEventListener('pointerup', pu); cv.addEventListener('pointercancel', pu);
-    // [ÇİZİM ALTINA METİN] çizimin EN ALT noktası (LOGW=1000 birimli) → metin bu çizginin altından akar (üstüne binmez).
-    function altSinir(){ if(!objs.length) return 0; var my=0; objs.forEach(function(o){ var k=kutu(o); my=Math.max(my,k.y+k.h); }); return my; }
-    var api={ resize:resize, ciz:ciz, undo:undo, redo:redoF, sil:sil, altSinir:altSinir, hasUndo:function(){return !!hist.length;}, hasRedo:function(){return !!redo.length;}, hasSel:function(){return selSet.length>0;} };
-    return api;
-  }
-  function _cizBtnGuncelle(){ if(!_ov) return; var g=_ov.querySelector('.not-cz-geri'), i=_ov.querySelector('.not-cz-ileri'), s=_ov.querySelector('.not-cz-sil'); if(g) g.disabled=!(_aktifCizim&&_aktifCizim.hasUndo()); if(i) i.disabled=!(_aktifCizim&&_aktifCizim.hasRedo()); if(s) s.disabled=!(_aktifCizim&&_aktifCizim.hasSel()); }
-
-  // ---- biçim yardımcıları ----
-  function _komut(cmd, val){ try{ document.execCommand(cmd, false, (val==null?null:val)); }catch(e){} }
-  function _aktifMetin(){
-    if(_savedEl && document.contains(_savedEl)) return _savedEl;
-    var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')) return a;
-    var s=window.getSelection(); if(s&&s.anchorNode){ var e=s.anchorNode.nodeType===1?s.anchorNode:s.anchorNode.parentNode; if(e&&e.closest){ var me=e.closest('.not-metin'); if(me) return me; } }
-    return _ov?_ov.querySelector('.not-metin'):null;
-  }
-  function _aktifSayfaKaydet(){ try{ var el=_aktifMetin(); if(el){ var w=el.closest('.not-sayfa'); if(w&&w.__sp) w.__sp.metinHtml=el.innerHTML; } _planlaKaydet(); }catch(e){} }
-  function _selKaydet(){ try{ var s=window.getSelection(); if(s&&s.rangeCount){ var r=s.getRangeAt(0); var el=(r.commonAncestorContainer.nodeType===1?r.commonAncestorContainer:r.commonAncestorContainer.parentNode); var me=el&&el.closest?el.closest('.not-metin'):null; if(me){ _savedRange=r.cloneRange(); _savedEl=me; } } }catch(e){} }
-  function _selGeri(){ try{ if(_savedEl) _savedEl.focus(); if(_savedRange){ var s=window.getSelection(); s.removeAllRanges(); s.addRange(_savedRange); } }catch(e){} }
-  function _boyutUygula(px){
-    try{ _selGeri(); var sel=window.getSelection(); if(!sel||!sel.rangeCount||sel.isCollapsed) return;
-      document.execCommand('fontSize', false, '7');
-      var root=_aktifMetin(); if(!root) return;
-      root.querySelectorAll('font[size="7"]').forEach(function(f){ var s=document.createElement('span'); s.style.fontSize=(px/16)+'em'; while(f.firstChild) s.appendChild(f.firstChild); f.parentNode.replaceChild(s,f); });   // em → sayfayla ölçeklenir; export 16px'de px'e çözülür
-      _aktifSayfaKaydet();
-    }catch(e){}
-  }
-  function _gorselSec(){
-    _selKaydet();
-    var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
-    inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f) return; var rd=new FileReader(); rd.onload=function(){ try{ _selGeri(); _komut('insertImage', rd.result); _aktifSayfaKaydet(); _planlaKaydet(); }catch(_){} }; rd.readAsDataURL(f); };
-    inp.click();
-  }
-
-  // ---- OTO-KAYDET (F5/ani kapanışta veri kaybını önler; editör ×/Esc ile kapanmasa da IndexedDB'ye yazar) ----
-  // Rapor editöründeki oto-kayıt deseninin not karşılığı. Her anlamlı düzenlemede DEBOUNCE'lu, ayrıca pagehide/gizlenmede
-  // anında flush. Boş not kaydedilmez (_bosMu). Aynı _doc.id → put üzerine yazar (kopya birikmez).
-  var _otoTimer=null, _galTazeleTimer=null;
-  // [GALERİ GECİKMESİ] Not editörü tam-ekran; galeri eskiden yalnız KAPANINCA yenileniyordu → not, rapor gibi "hemen"
-  // görünmüyordu. Oto-kayıt artık galeriyi de (throttle'lı) tazeler → kapanmadan galeriye yazılır, kapanışta anında görünür.
-  function _galTazele(){ try{ if(window.renderSavedReports) window.renderSavedReports(); }catch(_){} }
-  function _galTazelePlanla(){ try{ if(_galTazeleTimer) return; _galTazeleTimer=setTimeout(function(){ _galTazeleTimer=null; _galTazele(); }, 1200); }catch(_){} }
-  function _otoKaydetSimdi(){
-    try{
-      if(!_ov || !_doc) return;
-      _flushMetin();
-      var adInp=_ov.querySelector('.not-ad'); if(adInp) _doc.ad=(adInp.value||'').trim();
-      if(_bosMu()) return;                       // tamamen boş not: kaydetme
-      _doc.updatedAt=Date.now(); delete _doc._yeni;
-      var kopya=JSON.parse(JSON.stringify(_doc));
-      window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); }).then(_galTazelePlanla);
-      _notUrlYaz(true);   // ad değişmiş olabilir → slug'ı güncelle (replace)
-    }catch(_){}
-  }
-  function _planlaKaydet(){ try{ if(_otoTimer) clearTimeout(_otoTimer); _otoTimer=setTimeout(_otoKaydetSimdi, 600); }catch(_){} }
-  function _pagehideFlush(){ try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } _otoKaydetSimdi(); }catch(_){} }
-  function _gizlenince(){ try{ if(document.visibilityState==='hidden') _pagehideFlush(); }catch(_){} }
-
-  // ---- GALERİ (sayfaları sırala / genel bakış) — RAPOR EDİTÖRÜ GİBİ ----
-  // Ayrı overlay / "Sayfalar / × Kapat" başlığı YOK (XE._galeriModu deseni): galeri butonu bir MOD açar; biçim şeridi
-  // gizlenir, sayfa alanı yerine kart ızgarası gelir, ÜST BAR (editör başlığı) AYNI kalır; galeri butonu tekrar basınca kapanır.
-  var _galeriModu=false;
-  function _galeriToggle(){
-    if(!_ov) return;
-    if(_cizimModu){ _cizimModu=false; _ov.classList.remove('cizim'); var cb=_ov.querySelector('.not-cizim'); if(cb) cb.classList.remove('aktif'); }
-    _galeriModu=!_galeriModu;
-    _ov.classList.toggle('galeri', _galeriModu);
-    var gbtn=_ov.querySelector('.not-galeri'); if(gbtn) gbtn.classList.toggle('aktif', _galeriModu);
-    if(_galeriModu){ _flushMetin(); _galeriCiz(); } else { _cizSayfalar(); }   // çıkışta sayfaları (yeni sırayla) yeniden kur
-  }
-  function _galeriCiz(){
-    if(!_ov) return; var grid=_ov.querySelector('.not-gal-grid'); if(!grid) return;
-    function _tasi(i,dir){ var j=i+dir; if(j<0||j>=_doc.sayfalar.length) return; var t=_doc.sayfalar[i]; _doc.sayfalar[i]=_doc.sayfalar[j]; _doc.sayfalar[j]=t; _planlaKaydet(); _galeriCiz(); }
-    function _gSil(sp){ var i=_doc.sayfalar.indexOf(sp); if(i<0) return; if(_sayfaDolu(sp) && !window.confirm('Bu sayfa silinsin mi? Geri alınamaz.')) return; _doc.sayfalar.splice(i,1); if(!_doc.sayfalar.length) _doc.sayfalar.push({metinHtml:''}); _planlaKaydet(); _galeriCiz(); }
-    function _git(i){ _galeriModu=false; _ov.classList.remove('galeri'); var gb=_ov.querySelector('.not-galeri'); if(gb) gb.classList.remove('aktif'); _cizSayfalar(i); }
-    grid.innerHTML='';
-    _doc.sayfalar.forEach(function(sp,i){
-      var kart=document.createElement('div'); kart.className='not-gal-kart';
-      kart.addEventListener('click', function(){ _git(i); });   // karta tıkla → o sayfaya git (mod kapanır)
-      var no=document.createElement('span'); no.className='not-gal-no'; no.textContent=(i+1);
-      var onizle=document.createElement('div'); onizle.className='not-gal-onizle';
-      var txt=(sp.metinHtml||'').replace(/<br\s*\/?>/gi,' ').replace(/<[^>]*>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
-      if(txt){ onizle.textContent=txt.slice(0,160); }
-      else { onizle.className+=' bos'; onizle.textContent=((sp.cizimObjeleri||[]).length?'Çizim sayfası':'Boş sayfa'); }
-      var ar=document.createElement('div'); ar.className='not-gal-araclar';
-      var sol=document.createElement('button'); sol.type='button'; sol.innerHTML='&#9664;'; sol.title='Geri al'; sol.disabled=(i===0); sol.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,-1); });
-      var sag=document.createElement('button'); sag.type='button'; sag.innerHTML='&#9654;'; sag.title='İleri al'; sag.disabled=(i===_doc.sayfalar.length-1); sag.addEventListener('click', function(e){ e.stopPropagation(); _tasi(i,1); });
-      var sil=document.createElement('button'); sil.type='button'; sil.className='not-gal-sil'; sil.innerHTML='&times;'; sil.title='Sayfayı sil'; sil.addEventListener('click', function(e){ e.stopPropagation(); _gSil(sp); });
-      ar.appendChild(sol); ar.appendChild(sag); ar.appendChild(sil);
-      kart.appendChild(no); kart.appendChild(onizle); kart.appendChild(ar);
-      grid.appendChild(kart);
-    });
-  }
-
-  // ---- PAYLAŞ (PDF / Word indir) — harici kütüphane YOK (vanilla); çizim katmanı canvas.toDataURL ile gömülür ----
-  function _notAd(){ var inp=_ov&&_ov.querySelector('.not-ad'); return ((inp&&inp.value)||_doc.ad||'Not').trim()||'Not'; }
-  function _cizgiStil(){ return _doc.cizgili ? 'background-image:linear-gradient(to bottom,transparent 27px,#c3ccd6 27px,#c3ccd6 28px);background-size:100% 28px;background-repeat:repeat-y;line-height:28px;' : 'line-height:1.6;'; }
-  // forWord: Word position:absolute'ü yok sayar → çizimi metin altına blok görsel olarak ekleriz; PDF'te tam-sayfa overlay.
-  function _sayfalarHtml(forWord){
-    _flushMetin();
-    var out='', sayfalar=_ov.querySelectorAll('.not-sayfa'), cg=_cizgiStil();
-    sayfalar.forEach(function(w,i){
-      var sp=w.__sp||{}, html=(w.__metin?w.__metin.innerHTML:(sp.metinHtml||''))||'';
-      var cv=w.querySelector('.not-cizim-cv'), ov='';
-      try{ if((sp.cizimObjeleri||[]).length && cv){ var du=cv.toDataURL('image/png');
-        ov = forWord ? '<div style="margin-top:14px;text-align:center"><img src="'+du+'" style="max-width:100%"></div>'
-                     : '<img src="'+du+'" style="position:absolute;top:0;left:0;width:100%;height:100%">'; } }catch(_){}
-      var son=(i===sayfalar.length-1), brk=son?'':'page-break-after:always;';
-      if(forWord){
-        out+='<div style="'+brk+'"><div style="font-family:Arial,sans-serif;font-size:16px;color:#111;'+cg+'">'+html+'</div>'+ov+'</div>';
-      } else {
-        out+='<div class="pg" style="'+brk+'"><div class="mt" style="'+cg+'">'+html+'</div>'+ov+'</div>';
-      }
-    });
-    return out;
-  }
-  function _pdfIndir(){
-    try{
-      var css='@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}'
-        +'.pg{position:relative;width:21cm;min-height:29.7cm;box-sizing:border-box;overflow:hidden;background:#fff}'
-        +'.mt{min-height:29.7cm;box-sizing:border-box;padding:2.54cm;font-family:Arial,sans-serif;font-size:16px;color:#111;word-wrap:break-word}'
-        +'.mt h1{font-size:1.875em}.mt h2{font-size:1.5em}.mt h3{font-size:1.1875em}'   // em → 16px tabanda gerçek px (editörle aynı)
-        +'.mt img{max-width:100%;height:auto}';
-      var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title><style>'+css+'</style></head><body>'+_sayfalarHtml(false)+'</body></html>';
-      var ifr=document.createElement('iframe'); ifr.setAttribute('aria-hidden','true');
-      ifr.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;';
-      document.body.appendChild(ifr);
-      var d=ifr.contentWindow.document; d.open(); d.write(html); d.close();
-      var bastir=function(){ try{ ifr.contentWindow.focus(); ifr.contentWindow.print(); }catch(_){} setTimeout(function(){ try{ ifr.remove(); }catch(_){} }, 1500); };
-      setTimeout(bastir, 450);
-      _toast('Yazdır penceresinde "PDF olarak kaydet"i seçin.','info');
-    }catch(e){ _toast('PDF oluşturulamadı.','error'); }
-  }
-  function _wordIndir(){
-    try{
-      var pre='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+_esc(_notAd())+'</title>'
-        +'<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View></w:WordDocument></xml><![endif]-->'
-        +'<style>@page{size:A4;margin:2.54cm}body{font-family:Arial,sans-serif;font-size:16px;color:#111}h1{font-size:1.875em}h2{font-size:1.5em}h3{font-size:1.1875em}img{max-width:100%;height:auto}</style></head><body>';
-      var post='</body></html>';
-      var blob=new Blob(['﻿'+pre+_sayfalarHtml(true)+post], {type:'application/msword'});
-      var url=URL.createObjectURL(blob), a=document.createElement('a');
-      a.href=url; a.download=_notAd().replace(/[\\/:*?"<>|]+/g,'_')+'.doc'; document.body.appendChild(a); a.click();
-      setTimeout(function(){ try{ a.remove(); URL.revokeObjectURL(url); }catch(_){} }, 1500);
-      _toast('Word belgesi indiriliyor.','success');
-    }catch(e){ _toast('Word belgesi oluşturulamadı.','error'); }
-  }
-
-  // ---- kapat / kaydet ----
-  function _bosMu(){
-    // [OTO-AD sonrası] Boşluk YALNIZ İÇERİĞE göre (ad'a göre DEĞİL): oto-ad her notta dolu → ad'a bakılırsa içeriksiz yeni not bile kaydedilir (çöp).
-    var hepBos=(_doc.sayfalar||[]).every(function(sp){ if((sp.cizimObjeleri||[]).length) return false; var h=(sp.metinHtml||''); if(/<img/i.test(h)) return false; var t=h.replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/ /g,' ').trim(); return !t; });
-    return hepBos && !_doc.cizgili;
-  }
-  function _kapat(kaydet){
-    if(!_ov) return;
-    if(kaydet){
-      try{
-        _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__sp&&w.__metin) w.__sp.metinHtml=w.__metin.innerHTML; });
-        var adInp=_ov.querySelector('.not-ad'); _doc.ad=(adInp?adInp.value:'').trim();
-        var _gTazele=function(){ try{ if(window.renderSavedReports) window.renderSavedReports(); }catch(_){} };   // [Faz4] galeriyi tazele
-        if(_bosMu()){ if(!_doc._yeni){ window.XNotlar.remove(_doc.id).then(_gTazele); } }
-        else {
-          _doc.updatedAt=Date.now(); var yd=_doc._yeni; delete _doc._yeni;
-          var kopya=JSON.parse(JSON.stringify(_doc));
-          window.XNotlar.whenReady().then(function(){ return window.XNotlar.save(kopya); }).then(_gTazele);
-          _toast(yd?'Not kaydedildi.':'Not güncellendi.','success');
-        }
-      }catch(e){}
-    }
-    try{ if(_otoTimer){ clearTimeout(_otoTimer); _otoTimer=null; } if(_galTazeleTimer){ clearTimeout(_galTazeleTimer); _galTazeleTimer=null; } }catch(_){}
-    _notUrlGeri();   // [URL] not kapandı → önceki adrese dön
-    try{ _ov.querySelectorAll('.not-sayfa').forEach(function(w){ if(w.__ro){ try{ w.__ro.disconnect(); }catch(_){} } }); }catch(_){}
-    document.removeEventListener('keydown', _tusKapat, true);
-    document.removeEventListener('click', _ayarDisari, true);
-    window.removeEventListener('pagehide', _pagehideFlush);
-    window.removeEventListener('beforeunload', _pagehideFlush);
-    document.removeEventListener('visibilitychange', _gizlenince);
-    try{ _ov.remove(); }catch(e){}
-    _ov=null; _doc=null; _savedRange=null; _savedEl=null; _cizimModu=false; _aktifCizim=null; _galeriModu=false;
-  }
-  function _ayarDisari(e){ try{ if(!_ov) return; ['.not-ayar-wrap','.not-paylas-wrap'].forEach(function(s){ var w=_ov.querySelector(s+'.acik'); if(w && !(e.target.closest&&e.target.closest(s))) w.classList.remove('acik'); }); }catch(_){} }
-  function _tusKapat(e){
-    if(!_ov) return;
-    // [ÇİZİM SİL TUŞU] çizim modunda Delete/Backspace seçili nesneleri siler (metin düzenlemez; mod'da metin pointer-events:none)
-    if(_cizimModu && (e.key==='Delete' || e.key==='Backspace')){ e.preventDefault(); if(_aktifCizim && _aktifCizim.hasSel && _aktifCizim.hasSel()) _aktifCizim.sil(); return; }
-    if(e.key==='Escape'){ var a=document.activeElement; if(a&&a.classList&&a.classList.contains('not-metin')){ return; } e.preventDefault(); _kapat(true); }
-  }
-})();
 '''
 
 
@@ -13297,13 +12547,6 @@ def index():
 # Nokta içeren yollar (favicon.ico vb. asset istekleri) SPA'ya yönlenmez -> 404.
 @app.route('/<slug>', methods=['GET'])
 def spa_slug(slug):
-    if '.' in slug:
-        return ('', 404)
-    return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
-
-# [NOT URL] /not/<slug> -> SPA'yı sun; istemci (XNot.acSlug) o notu açar. Raporun /<slug>'undan AYRI yol.
-@app.route('/not/<slug>', methods=['GET'])
-def spa_not_slug(slug):
     if '.' in slug:
         return ('', 404)
     return render_template_string(HTML_TEMPLATE, fonts=WORD_POPULER_FONTLAR)
