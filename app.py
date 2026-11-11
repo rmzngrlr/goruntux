@@ -3032,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12d · CIZIM KAGIDI: "+ Cizim Kagidi" ARTIK editoru OTOMATIK ACMIYOR -> cizim karti editorde belirir, kullanici "Duzenle" ile acar (yeni karta kaydirir). + onceki rotuslar (cizim-only kart, lightbox kalem, Word-sayfasi margin kilavuzu + ciktida tam-sayfa, masaustu odak-uste).';
+        var X_BUILD = '2026-11-12e · CIZIM KAGIDI: cizgili defter cizgileri ARTIK margin kutusu ICINDE (Word yazi alani ile hizali, tasmaz). + "+ Cizim Kagidi" editoru otomatik acmaz, cizim-only kart, lightbox kalem, margin kilavuzu + ciktida tam-sayfa, masaustu odak-uste.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9334,7 +9334,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6d · 2026-11-12 CIZIM KAGIDI: + Cizim Kagidi editoru OTOMATIK ACMAZ (kart belirir, Duzenle ile acilir) + rotuslar (cizim-only kart, lightbox kalem, Word-sayfasi margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste)";
+  XE.VERSION = "6e · 2026-11-12 CIZIM KAGIDI: cizgili cizgiler margin kutusu ICINDE (hizali) + editor otomatik acmaz + cizim-only kart + lightbox kalem + margin kilavuzu + ciktida tam-sayfa + masaustu odak-uste";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11566,10 +11566,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   // A4 çizim sayfası. Raporda bir `gorsel` parça olarak GÖRSEL render edilir (parça.b64 = rasterlenmiş PNG -> editör/_ciz,
   // Word imageXmlRaw, PDF img.ed-img hepsi SIFIR ek kodla gösterir). Yanında vektör saklanır (parça.cizimObjeleri + cizgili)
   // -> "Düzenle" ile yeniden açılır. Çizim motoru = _gdKur'un opts.cizim dalı (boş A4 taban + çizgili + görsel-ekle + sakla).
-  function _ckCizgiCiz(x, w, h){   // çizgili defter çizgileri (native px) — taban beyaz, çizgi DİNAMİK
+  function _ckCizgiCiz(x, w, h){   // çizgili defter çizgileri — YALNIZ margin kutusu İÇİNDE (Word yazı alanı ile hizalı)
+    var m=_ckMargin(w,h), x0=m.mx, x1=w-m.mx, y1=h-m.my;   // çizgiler kutunun sol/sağ kenarından başlar-biter, üst/alt margin içinde kalır
     var gap=Math.round(h/42); if(gap<8) gap=8;
     x.save(); x.strokeStyle='rgba(120,140,170,0.55)'; x.lineWidth=Math.max(1,Math.round(w/950));
-    for(var y=gap*2; y<h-gap; y+=gap){ x.beginPath(); x.moveTo(Math.round(w*0.06),y); x.lineTo(Math.round(w*0.94),y); x.stroke(); }
+    for(var y=m.my+gap; y<y1; y+=gap){ x.beginPath(); x.moveTo(x0,y); x.lineTo(x1,y); x.stroke(); }
     x.restore();
   }
   // [ÇİZİM KAĞIDI] A4 kenar boşluğu (2.54cm) oranı — Word sayfası birebir (210x297mm). Hem ekran kılavuzu
