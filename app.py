@@ -1933,7 +1933,7 @@ HTML_TEMPLATE = """
         @keyframes paylasSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
         /* [XCS] Özel OPAK dropdown listesi — yerel <select>'in saydam sistem menüsü (macOS) yerine. var(--bg-input) iki temada da OPAK (#111622 / #fff). Editör her zaman açık tema. */
-        .xcs-list { position: fixed; z-index: 3600; min-width: 80px; padding: 4px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 9px; box-shadow: 0 12px 34px rgba(0,0,0,0.45); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        .xcs-list { position: fixed; z-index: 6100; min-width: 80px; padding: 4px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 9px; box-shadow: 0 12px 34px rgba(0,0,0,0.45); overflow-y: auto; -webkit-overflow-scrolling: touch; }   /* [ÇİZİM] z-6100: çizim overlay (5000) + renk paleti (6000) ÜSTÜNDE -> çizim editörü select'leri (font/boyut) açılır */
         .xcs-opt { position: relative; padding: 7px 12px 7px 26px; font-size: 13px; line-height: 1.25; border-radius: 6px; cursor: pointer; white-space: nowrap; color: var(--text-primary); }
         .xcs-opt.xcs-hl, .xcs-opt:hover { background: var(--accent-color, #1d9bf0); color: #fff; }
         .xcs-opt.xcs-sel::before { content: '✓'; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
@@ -1948,7 +1948,7 @@ HTML_TEMPLATE = """
         /* [DİK-MOBİL] XCS dropdown = butona İLİŞİK kompakt liste (kullanıcı tercihi "butona iliştik küçük liste").
            Konum JS'te (_xcsAc dik-mobil dalı): şerit klavye üstünde olduğundan liste YUKARI açılır; dokunuş-dostu
            satır. Şeridin (z-4000) ÜSTÜNE gelir (z-4300). Renk/tema .xcs-list / .xcs-list--ed'den gelir. */
-        html.x-mobile.x-dik .xcs-list.xcs-anc-m { max-width: 76vw; z-index: 4300; border-radius: 12px; box-shadow: 0 10px 30px rgba(16,24,40,0.4); }
+        html.x-mobile.x-dik .xcs-list.xcs-anc-m { max-width: 76vw; z-index: 6100; border-radius: 12px; box-shadow: 0 10px 30px rgba(16,24,40,0.4); }
         html.x-mobile.x-dik .xcs-list.xcs-anc-m .xcs-opt { padding: 11px 15px 11px 30px; font-size: 15px; line-height: 1.25; }
         html.x-mobile.x-dik .xcs-list.xcs-anc-m .xcs-opt.xcs-sel::before { left: 9px; font-size: 12px; }
 
@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12k · RENK PALETI: editordeki TUM renk inputlari (cizim Renk + rapor serit renk + gorsel editor) Google Docs tarzi PALET (10x8 swatch) + OZEL HSV secici (kare+hue slider+hex/RGB+damlalik+Iptal/Tamam) acar; ozel renkler saklanir; bayrak x_renk_palet. + Galeri SIL (cop kutusu) hover KIRMIZI (ikon+cerceve). + onceki cizim isleri.';
+        var X_BUILD = '2026-11-12l · CIZIM ROTUS 8: (1) font/boyut dropdown xcs z-6100 (overlay ustunde ACILIR); (2) Abc aktif MAVI dolu (yari/opak ayirt); (3) cizim butonlarina tooltip; (4) Kalinlik yalniz sekil araci; (5) yazi boyutu DROPDOWN (pt); (6) renk paleti sistematik (gri+gokkusagi+acik->koyu); (7) kutu DISINA cizim yok (clamp); (8) normal bolum yoksa bicim seridi gizli. + renk paleti + onceki.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9384,7 +9384,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6k · 2026-11-12 RENK PALETI: tum editor renk inputlari Google Docs palet (10x8) + ozel HSV secici (hex/RGB/damlalik); galeri Sil hover kirmizi; + cizim odak, genis kutu, metin font/boyut, Abc, lightbox, zoom, koyu tema";
+  XE.VERSION = "6l · 2026-11-12 CIZIM rotus8: font/boyut dropdown acilir(xcs z6100)+Abc mavi+tooltip+Kalinlik sekil-araci+boyut dropdown(pt)+palet sistematik+kutu-disi cizim yok+normal bolum yoksa serit gizli; + renk paleti";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9664,7 +9664,7 @@ X_EDITOR_JS = r'''
     var tip=document.createElement('div'); tip.id='ed-tip'; tip.style.display='none'; (document.body||document.documentElement).appendChild(tip);
     document.addEventListener('mouseover', function(e){
       if(!_edAktifMi()) return;
-      var el=_tipHedef(e.target); if(!el || !_edAktifMi() || !document.getElementById('editorModal').contains(el)) return;
+      var el=_tipHedef(e.target); if(!el || !_edAktifMi() || !(document.getElementById('editorModal').contains(el) || (el.closest && el.closest('.ed-gd-ov')))) return;   // [ÇİZİM] çizim/görsel editör overlay'i de kapsa
       if(el===_tipEl) return; _tipEl=el;
       var t=_tipMetin(el); clearTimeout(_tipTmr); _tipGizle();
       if(!t) return;
@@ -9740,16 +9740,15 @@ X_EDITOR_JS = r'''
   (function(){
     if(window.xRenkPaletiAc) return;
     function _rpAcikMi(){ try{ return localStorage.getItem('x_renk_palet')!=='0'; }catch(_){ return true; } }
-    var PALET=[
-      ['#000000','#434343','#666666','#999999','#b7b7b7','#cccccc','#d9d9d9','#efefef','#f3f3f3','#ffffff'],
-      ['#980000','#ff0000','#ff9900','#ffff00','#00ff00','#00ffff','#4a86e8','#0000ff','#9900ff','#ff00ff'],
-      ['#e6b8af','#f4cccc','#fce5cd','#fff2cc','#d9ead3','#d0e0e3','#c9daf8','#cfe2f3','#d9d2e9','#ead1dc'],
-      ['#dd7e6b','#ea9999','#f9cb9c','#ffe599','#b6d7a8','#a2c4c9','#a4c2f4','#9fc5f8','#b4a7d6','#d5a6bd'],
-      ['#cc4125','#e06666','#f6b26b','#ffd966','#93c47d','#76a5af','#6d9eeb','#6fa8dc','#8e7cc3','#c27ba6'],
-      ['#a61c00','#cc0000','#e69138','#f1c232','#6aa84f','#45818e','#3c78d8','#3d85c6','#674ea7','#a64d79'],
-      ['#85200c','#990000','#b45f06','#bf9000','#38761d','#134f5c','#1155cc','#0b5394','#351c75','#741b47'],
-      ['#5b0f00','#660000','#783f04','#7f6000','#274e13','#0c343d','#1c4587','#073763','#20124d','#4c1130']
-    ];
+    // [PALET] Sistematik ızgara: 1. satır GRİ (siyah->beyaz), sütunlar GÖKKUŞAĞI (36° adım), satırlar AÇIK->KOYU.
+    var PALET=(function(){
+      var rows=[], grays=[]; for(var g=0;g<10;g++){ var vv=Math.round(255*g/9); grays.push(rgb2hex(vv,vv,vv)); } rows.push(grays);
+      var HUES=[0,36,72,108,144,180,216,252,288,324];
+      var MAIN={s:0.85,v:0.97}, VARS=[{s:0.20,v:1.0},{s:0.38,v:0.97},{s:0.56,v:0.90},{s:0.76,v:0.74},{s:0.92,v:0.55},{s:1.0,v:0.37}];
+      rows.push(HUES.map(function(h){ var c=hsv2rgb(h,MAIN.s,MAIN.v); return rgb2hex(c.r,c.g,c.b); }));
+      VARS.forEach(function(vr){ rows.push(HUES.map(function(h){ var c=hsv2rgb(h,vr.s,vr.v); return rgb2hex(c.r,c.g,c.b); })); });
+      return rows;
+    })();
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
     function hex2rgb(h){ h=(h||'').replace('#',''); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; var n=parseInt(h,16); if(isNaN(n)) return {r:0,g:0,b:0}; return {r:(n>>16)&255,g:(n>>8)&255,b:n&255}; }
     function _h2(n){ n=clamp(Math.round(n),0,255).toString(16); return n.length<2?'0'+n:n; }
@@ -9901,7 +9900,7 @@ X_EDITOR_JS = r'''
 #editorModal .ed-grp{display:inline-flex;align-items:center;gap:7px;padding-right:12px;border-right:1px solid #bcc6d1;min-height:30px;}
 #editorModal .ed-grp:last-child{border-right:none;padding-right:0;}
 /* [TOOLTIP] Temaya uygun özel tooltip (native 'title' yerine). Koyu, oklu, yumuşak giriş; body'ye eklenir. */
-#ed-tip{position:fixed;z-index:3000;background:#1f2a37;color:#f2f6f9;font-size:12px;font-weight:600;line-height:1.38;padding:7px 11px;border-radius:9px;max-width:270px;box-shadow:0 8px 22px rgba(10,16,24,0.34);pointer-events:none;letter-spacing:.1px;white-space:normal;animation:edTipIn .12s ease;}
+#ed-tip{position:fixed;z-index:6200;background:#1f2a37;color:#f2f6f9;font-size:12px;font-weight:600;line-height:1.38;padding:7px 11px;border-radius:9px;max-width:270px;box-shadow:0 8px 22px rgba(10,16,24,0.34);pointer-events:none;letter-spacing:.1px;white-space:normal;animation:edTipIn .12s ease;}
 #ed-tip::after{content:'';position:absolute;left:var(--ok,50%);transform:translateX(-50%);border:6px solid transparent;}
 #ed-tip[data-pos="alt"]::after{bottom:100%;border-bottom-color:#1f2a37;}
 #ed-tip[data-pos="ust"]::after{top:100%;border-top-color:#1f2a37;}
@@ -10087,14 +10086,17 @@ body:not(.light-theme) #editorModal .ed-gal-ck{background:#17212e;}
 /* [ÇİZİM METİN] font seçici (rapor editörü gibi) + Abc arka plan önizleme butonu */
 .ed-gd-font{height:30px;max-width:130px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
 body:not(.light-theme) .ed-gd-font{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
+/* [ABC] inaktif=açık buton (saydam Abc); aktif(kademe>0)=MAVİ dolu buton -> yarı/opak arka ayırt edilir */
 .ed-gd-arka{background:#fff !important;color:#15202b !important;border-color:#cfd8e3 !important;padding:0 8px !important;}
-.ed-gd-arka.aktif{background:#fff !important;border-color:#1565c0 !important;}
 .ed-gd-arka .ed-abc{display:inline-block;padding:2px 7px;border-radius:4px;color:#15202b;font-weight:700;line-height:1.1;}
-.ed-gd-arka.ed-arka-s1 .ed-abc{background:rgba(0,0,0,0.42);color:#fff;}
-.ed-gd-arka.ed-arka-s2 .ed-abc{background:rgba(0,0,0,0.85);color:#fff;}
-body:not(.light-theme) .ed-gd-arka{background:#0f1720 !important;color:#e7e9ea !important;border-color:#2c3a4a !important;}
+.ed-gd-arka.aktif{background:#1d9bf0 !important;border-color:#1d9bf0 !important;}
+.ed-gd-arka.aktif .ed-abc{color:#fff;}
+.ed-gd-arka.ed-arka-s1 .ed-abc{background:rgba(0,0,0,0.30);color:#fff;}   /* yarı saydam */
+.ed-gd-arka.ed-arka-s2 .ed-abc{background:rgba(0,0,0,0.80);color:#fff;}   /* tam opak */
+body:not(.light-theme) .ed-gd-arka{background:#1b2735 !important;color:#e7e9ea !important;border-color:#2c3a4a !important;}
 body:not(.light-theme) .ed-gd-arka .ed-abc{color:#e7e9ea;}
-body:not(.light-theme) .ed-gd-arka.aktif{border-color:#1d9bf0 !important;}
+body:not(.light-theme) .ed-gd-arka.aktif{background:#1d9bf0 !important;border-color:#1d9bf0 !important;}
+body:not(.light-theme) .ed-gd-arka.aktif .ed-abc{color:#fff;}
 .ed-gd-mini:disabled{opacity:.4;cursor:default;}
 /* [10s] "Kırp ✓" = kırpmayı UYGULA eylemi -> belirgin yeşil, Kaydet/Vazgeç ile aynı boyda, yazı+ikon ORTALI. */
 .ed-gd-kirpuygula{height:34px;padding:0 16px;gap:6px;background:#17a34a;border-color:#17a34a;color:#fff;font-size:13px;font-weight:700;}
@@ -11429,7 +11431,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var yaziFont='Arial';
     var _repMSize=(function(){ try{ return parseInt((document.getElementById('m_size')||{}).value,10)||12; }catch(_){ return 12; } })();
     var _ckIcerikPx = _cz ? (baseW - 2*_ckMargin(baseW,baseH).mx) : baseW;   // çizim içerik-alanı genişliği (px) -> çıktıda _CK_CIKTI_IN inç
-    var yaziBoyut = _cz ? Math.max(10, Math.round(_repMSize * _ckIcerikPx / (_CK_CIKTI_IN*72))) : Math.max(16, Math.round(Math.max(baseW,baseH)/20));
+    var _ckPtPx = _cz ? (_ckIcerikPx/(_CK_CIKTI_IN*72)) : 1;   // 1 pt = bu kadar canvas px (dropdown pt -> px)
+    var _CK_BOYUTLAR=[8,9,10,11,12,14,16,18,20,24,28,32,36,40,48,56,64,72];   // çizim yazı boyutu dropdown (pt)
+    var yaziBoyut = _cz ? Math.max(10, Math.round(_repMSize * _ckPtPx)) : Math.max(16, Math.round(Math.max(baseW,baseH)/20));
     var yaziArkaSev=0;   // [ÇİZİM METİN ARKA] 0=saydam(yok,okunurluk için kontur) | 1=yarı saydam | 2=tam opak
     var crop=null;               // kırp modunda {x,y,w,h} src
     var hist=[];                 // editör-içi geri al yığını: {objs, b, w, h}
@@ -11452,7 +11456,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
       +(_cz?('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>'):'')
-      +'      <label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'
+      +(_cz?('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu (pt)">Yazı<select class="ed-gd-yzsel">'+_CK_BOYUTLAR.map(function(sz){return '<option value="'+sz+'"'+(sz===_repMSize?' selected':'')+'>'+sz+'</option>';}).join('')+'</select></label>')
+        :('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'))
       +'      <button type="button" class="ed-gd-mini ed-gd-arka ed-gd-metgrp ed-arka-s'+yaziArkaSev+(yaziArkaSev>0?' aktif':'')+'" title="Yazı arka planı: saydam / yarı saydam / opak (tıkla değiştir)"><span class="ed-abc">Abc</span></button>'
       +'    </div>'
       +'    <div class="ed-gd-sag">'
@@ -11500,7 +11505,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _fitDegis(){ fitMode=(fitMode==='height')?'width':'height'; zoom=1; olcekle(); ciz(); try{ sar.scrollTop=0; sar.scrollLeft=0; }catch(_){} }
     function S(v){ return v*scale; }                       // src -> ekran
     function U(v){ return v/scale; }                       // ekran -> src
-    function noktaSrc(e){ var r=cv.getBoundingClientRect(); return { x:U(e.clientX-r.left), y:U(e.clientY-r.top) }; }
+    function noktaSrc(e){ var r=cv.getBoundingClientRect(); var x=U(e.clientX-r.left), y=U(e.clientY-r.top);
+      if(_cz){ var m=_ckMargin(baseW,baseH); x=Math.max(m.mx, Math.min(x, baseW-m.mx)); y=Math.max(m.my, Math.min(y, baseH-m.my)); }   // [ÇİZİM] kesik-çizgili kutu DIŞINA çizim yok (içerik alanına sıkıştır)
+      return { x:x, y:y }; }
 
     // ---- çizim ----
     // [YAZI KUTUSU SIKI 2026-11-10u] Gerçek glif metrikleri (actualBoundingBox) -> kutu/arka metne TAM otursun
@@ -11733,17 +11740,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // ---- stil yansıtma (seçili obje -> toolbar) ----
     function _stilYansit(){ if(secili.length!==1) return; var sel=secili[0];   // yalnız TEK seçili öğenin stilini toolbar'a yansıt
       var ri=ov.querySelector('.ed-gd-renk-inp'); if(ri && sel.renk){ ri.value=sel.renk; renk=sel.renk; }
-      if(sel.t==='yazi'){ var yb=ov.querySelector('.ed-gd-yzb'); if(yb){ yb.value=sel.boyut; yaziBoyut=sel.boyut; }
+      if(sel.t==='yazi'){ var yb=ov.querySelector('.ed-gd-yzb'); if(yb){ yb.value=sel.boyut; } yaziBoyut=sel.boyut;
+        var ys=ov.querySelector('.ed-gd-yzsel'); if(ys){ var _pt=Math.round(sel.boyut/_ckPtPx), _en=_CK_BOYUTLAR[0], _bd=1e9; _CK_BOYUTLAR.forEach(function(sz){ var dd=Math.abs(sz-_pt); if(dd<_bd){_bd=dd;_en=sz;} }); ys.value=String(_en); }
         var fsel=ov.querySelector('.ed-gd-font'); if(fsel && sel.font){ fsel.value=sel.font; yaziFont=sel.font; }
         yaziArkaSev=(typeof sel.arka==='number')?sel.arka:(sel.arka?2:0); _arkaBtnYansit(); }
       else if(sel.kal){ var kb=ov.querySelector('.ed-gd-kal'); if(kb){ kb.value=sel.kal; kalinlik=sel.kal; } }
       _metgrpUygula();
     }
     function _arkaBtnYansit(){ var b=ov.querySelector('.ed-gd-arka'); if(!b) return; b.classList.remove('ed-arka-s0','ed-arka-s1','ed-arka-s2'); b.classList.add('ed-arka-s'+yaziArkaSev); b.classList.toggle('aktif', yaziArkaSev>0); }
-    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM METİN] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; aksi halde Kalınlık
+    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; Kalınlık YALNIZ şekil (ok/dikdörtgen/kalem) aracı/seçimi
       var mm=(tool==='yazi') || (secili.length && secili.some(function(s){return s.t==='yazi';}));
+      var kk=(tool==='ok'||tool==='dikdortgen'||tool==='kalem') || (secili.length && secili.some(function(s){return s.t==='ok'||s.t==='dikdortgen'||s.t==='kalem';}));
       ov.querySelectorAll('.ed-gd-metgrp').forEach(function(e){ e.style.display=mm?'':'none'; });
-      var kg=ov.querySelector('.ed-gd-kalgrp'); if(kg) kg.style.display=mm?'none':'';
+      var kg=ov.querySelector('.ed-gd-kalgrp'); if(kg) kg.style.display=kk?'':'none';
     }
     function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); }); _kirpBtnGoster(); _metgrpUygula(); cv.style.cursor=(tool==='sec'?'default':'crosshair'); }
     function _kirpBtnGoster(){ var b=ov.querySelector('.ed-gd-kirpuygula'); if(b) b.style.display=(tool==='kirp' && crop && crop.w>2 && crop.h>2)?'inline-flex':'none'; }
@@ -11752,7 +11761,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ b.addEventListener('click', function(){ tool=b.getAttribute('data-tool'); if(tool!=='kirp') crop=null; marq=null; if(tool!=='sec'){ secili=[]; _selBtn(); } _toolYansit(); ciz(); }); });
     ov.querySelector('.ed-gd-renk-inp').addEventListener('input', function(){ renk=this.value; if(secili.length){ secili.forEach(function(s){ if(s.renk!=null) s.renk=renk; }); ciz(); } });
     ov.querySelector('.ed-gd-kal').addEventListener('input', function(){ kalinlik=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.kal!=null) s.kal=kalinlik; }); ciz(); } });
-    ov.querySelector('.ed-gd-yzb').addEventListener('input', function(){ yaziBoyut=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); ciz(); } });
+    (function(){ var _yzb=ov.querySelector('.ed-gd-yzb'); if(_yzb) _yzb.addEventListener('input', function(){ yaziBoyut=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); ciz(); } });
+      var _yzs=ov.querySelector('.ed-gd-yzsel'); if(_yzs) _yzs.addEventListener('change', function(){ yaziBoyut=Math.max(4,Math.round((+this.value)*_ckPtPx)); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); } ciz(); }); })();
     (function(){ var fsel=ov.querySelector('.ed-gd-font'); if(fsel) fsel.addEventListener('change', function(){ yaziFont=this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.font=yaziFont; }); } ciz(); }); })();
     ov.querySelector('.ed-gd-arka').addEventListener('click', function(){ yaziArkaSev=(yaziArkaSev+1)%3; _arkaBtnYansit(); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.arka=yaziArkaSev; }); } ciz(); });   // 0 saydam -> 1 yarı -> 2 opak -> 0
     ov.querySelector('.ed-gd-geri').addEventListener('click', geriAl);
@@ -12556,6 +12566,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   XE._ciz = function(){
     var root=document.getElementById('editor-root'); if(!root) return;
     var B=XE.belge.birimler||[];
+    // [ŞERİT GÖRÜNÜRLÜK] normal (çizim-dışı) bölüm yoksa biçim şeridini GİZLE (çizim-only/boş raporda gereksiz; bölüm eklenince çıkar)
+    try{ var _srt=document.getElementById('editor-serit'); if(_srt){ var _normalVar=B.some(function(b){ return !(b.item && b.item.parcalar && b.item.parcalar.length===1 && b.item.parcalar[0] && b.item.parcalar[0].cizimKagidi); }); _srt.style.display=_normalVar?'':'none'; } }catch(_){}
     var o=stilOku(), c1=stilCss(o,'b1'), c2=stilCss(o,'b'), cm=stilCss(o,'m'), cl=stilCss(o,'l');
     // C (istediğin bölüme taşı): TÜM bölümler hedef olabilir — hem çok-üyeli kümeler hem de
     // tek-başına (standalone) öğeler. Okunur etiket; ham mc-/xmanual anahtarı ASLA gösterilmez.
