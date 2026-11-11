@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12m · CIZIM: (9B) dortgen+ok+ELIPS tek "Sekil" dropdown (tikla->asagi menu); (10) geri/ileri-al artik cizgili toggle + secili ogede renk/boyut/font/arka degisimlerini de kapsar (itUndo + anlik.cizgili snapshot). + onceki rotuslar.';
+        var X_BUILD = '2026-11-12n · CIZIM: (11) yazi boyutu dropdown UI stili (font secici gibi); (12) koyu temada EKRANDA koyu renkler (siyah vs) ACIK gorunur, KAYDET/CIKTI gercek renk (siyah) kalir (_gostRenk, yalniz ekran). + onceki rotuslar.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9384,7 +9384,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6m · 2026-11-12 CIZIM: Sekil dropdown (dortgen/yuvarlak/ok) + elips; geri-al cizgili+stil degisimlerini de kapsar; + onceki rotuslar";
+  XE.VERSION = "6n · 2026-11-12 CIZIM: boyut dropdown UI stili + koyu temada ekranda koyu renk ACIK (ciktida gercek siyah); + onceki";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10096,8 +10096,9 @@ body:not(.light-theme) .ed-gd-sekil-opt:hover{background:#243447;}
 .ed-gd-mini svg{display:block;}
 .ed-gd-mini.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}
 /* [ÇİZİM METİN] font seçici (rapor editörü gibi) + Abc arka plan önizleme butonu */
-.ed-gd-font{height:30px;max-width:130px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
-body:not(.light-theme) .ed-gd-font{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
+.ed-gd-font,.ed-gd-yzsel{height:30px;max-width:130px;padding:0 8px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
+.ed-gd-yzsel{max-width:64px;padding:0 6px;}   /* [UI] boyut dropdown: font seçici ile aynı stil, dar */
+body:not(.light-theme) .ed-gd-font,body:not(.light-theme) .ed-gd-yzsel{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
 /* [ABC] inaktif=açık buton (saydam Abc); aktif(kademe>0)=MAVİ dolu buton -> yarı/opak arka ayırt edilir */
 .ed-gd-arka{background:#fff !important;color:#15202b !important;border-color:#cfd8e3 !important;padding:0 8px !important;}
 .ed-gd-arka .ed-abc{display:inline-block;padding:2px 7px;border-radius:4px;color:#15202b;font-weight:700;line-height:1.1;}
@@ -11448,6 +11449,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var yaziBoyut = _cz ? Math.max(10, Math.round(_repMSize * _ckPtPx)) : Math.max(16, Math.round(Math.max(baseW,baseH)/20));
     var yaziArkaSev=0;   // [ÇİZİM METİN ARKA] 0=saydam(yok,okunurluk için kontur) | 1=yarı saydam | 2=tam opak
     var crop=null;               // kırp modunda {x,y,w,h} src
+    var _ekranMod=true;          // [#12] true=EKRAN render (koyu temada koyu renkler AÇIK görünür); kaydet'te false=GERÇEK renk (çıktı/b64 siyah)
+    function _renkKoyuMu(hex){ try{ hex=(''+hex).replace('#',''); if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]; var n=parseInt(hex,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; return (0.299*r+0.587*g+0.114*b)<70; }catch(_){ return false; } }
+    function _renkAc(hex){ try{ hex=(''+hex).replace('#',''); if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]; var n=parseInt(hex,16),r=(n>>16)&255,g=(n>>8)&255,b=n&255; r=Math.round(r+(255-r)*0.82); g=Math.round(g+(255-g)*0.82); b=Math.round(b+(255-b)*0.82); function h2(v){ v=v.toString(16); return v.length<2?'0'+v:v; } return '#'+h2(r)+h2(g)+h2(b); }catch(_){ return '#e7e9ea'; } }
+    function _gostRenk(hex){ return (_cz && _ekranMod && _ckKoyuMu() && _renkKoyuMu(hex)) ? _renkAc(hex) : hex; }   // EKRANDA koyu renk -> açık (çıktıda/gerçekte aynen)
     var hist=[];                 // editör-içi geri al yığını: {objs, b, w, h}
     var redoHist=[];             // ileri al yığını
     // ---- DOM ----
@@ -11550,18 +11555,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         ctx.font=(o.kalin?'bold ':'')+fs+'px '+(o.font||'Arial'); ctx.textBaseline='alphabetic';
         var _as=(typeof o.arka==='number')?o.arka:(o.arka?2:0);   // [ARKA] 0 saydam | 1 yarı saydam | 2 tam opak
         if(_as>0){ ctx.fillStyle=(_as===1?'rgba(0,0,0,0.38)':'rgba(0,0,0,0.82)'); ctx.fillRect(bx-pX, by-pY, mm.w+pX*2, mm.asc+mm.desc+pY*2); }
-        ctx.fillStyle=o.renk;
+        ctx.fillStyle=_gostRenk(o.renk);
         if(_as===0){ ctx.lineWidth=Math.max(2,fs*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', bx, baseY); }
         ctx.fillText(o.metin||'', bx, baseY);
       } else if(o.t==='dikdortgen'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk;
+        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk);
         ctx.strokeRect(S(o.x), S(o.y), S(o.w), S(o.h));
       } else if(o.t==='elips'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk;
+        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk);
         var _ecx=S(o.x+o.w/2), _ecy=S(o.y+o.h/2), _erx=Math.abs(S(o.w)/2), _ery=Math.abs(S(o.h)/2);
         ctx.beginPath(); ctx.ellipse(_ecx,_ecy,_erx,_ery,0,0,Math.PI*2); ctx.stroke();
       } else if(o.t==='ok'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk; ctx.fillStyle=o.renk; ctx.lineCap='round';
+        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); ctx.fillStyle=_gostRenk(o.renk); ctx.lineCap='round';
         ctx.beginPath(); ctx.moveTo(S(o.x1),S(o.y1)); ctx.lineTo(S(o.x2),S(o.y2)); ctx.stroke();
         var ang=Math.atan2(o.y2-o.y1, o.x2-o.x1), hl=Math.max(S(o.kal)*3.2, 10);
         ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2));
@@ -11569,7 +11574,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42), S(o.y2)-hl*Math.sin(ang+0.42));
         ctx.closePath(); ctx.fill();
       } else if(o.t==='kalem'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=o.renk; ctx.lineCap='round'; ctx.lineJoin='round';
+        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); ctx.lineCap='round'; ctx.lineJoin='round';
         ctx.beginPath(); for(var i=0;i<o.nk.length;i++){ var pt=o.nk[i]; if(i===0) ctx.moveTo(S(pt.x),S(pt.y)); else ctx.lineTo(S(pt.x),S(pt.y)); } ctx.stroke();
       } else if(o.t==='gorsel'){   // [ÇİZİM KAĞIDI] yerleştirilmiş görsel (yüklü değilse yüklenince yeniden çiz)
         var _im=_imgC[(o.b64||'').slice(0,48)];
@@ -11858,9 +11863,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(!_cz) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF -> ekran/galeri temadan boyanır, Word/PDF'de beyaz sayfa görünür. Görselde taban çizilir.
       // [ÇİZİM KAĞIDI] çizgili defter + margin kılavuzu ÇIKTIYA GÖMÜLMEZ (yalnız ekran kılavuzu) -> burada çizme.
       // objeleri NATIVE çözünürlükte çiz (scale=1)
-      var _os=scale, _oc=ctx; scale=1; ctx=x;
+      var _os=scale, _oc=ctx; scale=1; ctx=x; _ekranMod=false;   // [#12] KAYDET gerçek renk (koyu->açık ÇEVRİMİ YOK; çıktı/b64 gerçek/siyah)
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
-      scale=_os; ctx=_oc;
+      scale=_os; ctx=_oc; _ekranMod=true;
       var _expC=c;
       if(_cz){   // [ÇİZİM KAĞIDI] Word içerik alanı = margin kılavuzu içi -> KIRP (ŞEFFAF kalır). Çıktıda içerik-alanı TAM sayfayı
         var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // kaplar (kılavuz-içi = Word sayfası, WYSIWYG). Vektör full-canvas saklı -> yeniden düzenleme etkilenmez.
