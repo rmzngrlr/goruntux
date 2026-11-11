@@ -3032,7 +3032,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12f · CIZIM KAGIDI Faz1 ZOOM: cizim editorunde A4 yakinlastir/uzaklastir (sag-alt silik butonlar + fare tekeri + mobil pinch) + fit-modu (genislige/yukseklige sigdir) + pan. + onceki (cizgiler kutu icinde, otomatik acma yok, cizim-only kart, lightbox kalem, margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste).';
+        var X_BUILD = '2026-11-12g · CIZIM KAGIDI Faz2 KOYU TEMA: cizim ekrani + editor karti KOYU temada koyu A4 (editorle senkron), cizgili/margin renkleri temaya uyar; kaydedilen b64 SEFFAF -> Word/PDF CIKTISI BEYAZ sayfa kalir. + Faz1 zoom (buton+tekerlek+pinch+fit+pan) + onceki rotuslar.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9334,7 +9334,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6f · 2026-11-12 CIZIM Faz1 ZOOM: A4 yakinlastir/uzaklastir (butonlar+tekerlek+pinch) + fit-modu (genislik/yukseklik) + pan; + cizgiler kutu icinde, otomatik acma yok, cizim-only kart, lightbox kalem, margin kilavuzu, ciktida tam-sayfa, masaustu odak-uste";
+  XE.VERSION = "6g · 2026-11-12 CIZIM Faz2 KOYU TEMA: cizim ekrani+kart koyu temada koyu A4 (senkron), b64 SEFFAF -> ciktida beyaz; + Faz1 zoom/fit/pan/pinch + onceki rotuslar";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10004,6 +10004,9 @@ body:not(.light-theme) .ed-gd-yazi-inp{background:#1b2735;color:#e7e9ea;border-c
 #editorModal .ed-cizim-ekle:hover{background:#0e7c66;color:#fff;}
 body:not(.light-theme) #editorModal .ed-cizim-ekle{background:#0f3b32;color:#5fd3b4;border-color:#2b6b5c;}
 #editorModal .ed-ck-sar{position:relative;display:inline-block;max-width:100%;}
+/* [ÇİZİM TEMA] çizim görseli ŞEFFAF -> A4 zemini CSS'ten (temaya göre); açık=beyaz sayfa, koyu=koyu sayfa */
+#editorModal .ed-ck-img{background:#ffffff;border:1px solid rgba(136,153,166,0.28);box-shadow:0 1px 6px rgba(0,0,0,0.12);}
+body:not(.light-theme) #editorModal .ed-ck-img{background:#17212e;border-color:rgba(136,153,166,0.3);box-shadow:0 1px 8px rgba(0,0,0,0.45);}
 #editorModal .ed-ck-duzenle{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(21,101,192,.94);color:#fff;border:none;border-radius:16px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.35;transition:opacity .12s,background .12s;}
 #editorModal .ed-ck-sar:hover .ed-ck-duzenle{opacity:1;}
 #editorModal .ed-ck-duzenle:hover{background:#0d4f98;}
@@ -11348,7 +11351,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function ciz(){
       olcekleGerek();
       ctx.clearRect(0,0,cv.width,cv.height);
-      ctx.drawImage(base,0,0,cv.width,cv.height);
+      if(_cz){ ctx.fillStyle=_ckZeminRenk(); ctx.fillRect(0,0,cv.width,cv.height); }   // [ÇİZİM TEMA] A4 zemini EKRANDA temaya göre (koyu/açık); KAYDET'te şeffaf (çıktı beyaz)
+      else ctx.drawImage(base,0,0,cv.width,cv.height);
       if(_cz && _cizgili) _ckCizgiCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] çizgili defter (dinamik, taban beyaz)
       if(_cz) _ckMarginCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] Word-sayfası margin kılavuzu (ekran-only)
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
@@ -11587,16 +11591,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function kaydet(){
       if(yaziInp.style.display!=='none') _yaziBitir();
       var c=document.createElement('canvas'); c.width=baseW; c.height=baseH; var x=c.getContext('2d');
-      x.drawImage(base,0,0,baseW,baseH);
+      if(!_cz) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF -> ekran/galeri temadan boyanır, Word/PDF'de beyaz sayfa görünür. Görselde taban çizilir.
       // [ÇİZİM KAĞIDI] çizgili defter + margin kılavuzu ÇIKTIYA GÖMÜLMEZ (yalnız ekran kılavuzu) -> burada çizme.
       // objeleri NATIVE çözünürlükte çiz (scale=1)
       var _os=scale, _oc=ctx; scale=1; ctx=x;
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       scale=_os; ctx=_oc;
       var _expC=c;
-      if(_cz){   // [ÇİZİM KAĞIDI] Word içerik alanı = margin kılavuzu içi -> KIRP. Çıktıda içerik-alanı TAM sayfayı
+      if(_cz){   // [ÇİZİM KAĞIDI] Word içerik alanı = margin kılavuzu içi -> KIRP (ŞEFFAF kalır). Çıktıda içerik-alanı TAM sayfayı
         var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // kaplar (kılavuz-içi = Word sayfası, WYSIWYG). Vektör full-canvas saklı -> yeniden düzenleme etkilenmez.
-        if(cw>10 && ch>10){ var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d'); x2.fillStyle='#ffffff'; x2.fillRect(0,0,cw,ch); x2.drawImage(c, m.mx, m.my, cw, ch, 0, 0, cw, ch); _expC=c2; }
+        if(cw>10 && ch>10){ var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d'); x2.drawImage(c, m.mx, m.my, cw, ch, 0, 0, cw, ch); _expC=c2; }   // beyaz dolgu YOK -> şeffaf
       }
       var du=_expC.toDataURL('image/png'), ci=du.indexOf(',');
       if(ci<0){ kapat(); return; }
@@ -11612,10 +11616,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   // A4 çizim sayfası. Raporda bir `gorsel` parça olarak GÖRSEL render edilir (parça.b64 = rasterlenmiş PNG -> editör/_ciz,
   // Word imageXmlRaw, PDF img.ed-img hepsi SIFIR ek kodla gösterir). Yanında vektör saklanır (parça.cizimObjeleri + cizgili)
   // -> "Düzenle" ile yeniden açılır. Çizim motoru = _gdKur'un opts.cizim dalı (boş A4 taban + çizgili + görsel-ekle + sakla).
+  // [ÇİZİM KAĞIDI TEMA] Koyu temada A4 ekranı/galerisi KOYU (editör kartlarıyla senkron) ama ÇIKTI (kaydedilen
+  // b64 ŞEFFAF -> Word/PDF beyaz sayfa) hep açık. Ekran zemini + çizgili/margin renkleri temaya uyar.
+  function _ckKoyuMu(){ try{ return !document.body.classList.contains('light-theme'); }catch(_){ return false; } }
+  function _ckZeminRenk(){ return _ckKoyuMu()?'#17212e':'#ffffff'; }   // ekran A4 zemini (editör .ed-card ile aynı)
   function _ckCizgiCiz(x, w, h){   // çizgili defter çizgileri — YALNIZ margin kutusu İÇİNDE (Word yazı alanı ile hizalı)
     var m=_ckMargin(w,h), x0=m.mx, x1=w-m.mx, y1=h-m.my;   // çizgiler kutunun sol/sağ kenarından başlar-biter, üst/alt margin içinde kalır
     var gap=Math.round(h/42); if(gap<8) gap=8;
-    x.save(); x.strokeStyle='rgba(120,140,170,0.55)'; x.lineWidth=Math.max(1,Math.round(w/950));
+    x.save(); x.strokeStyle=_ckKoyuMu()?'rgba(150,170,200,0.38)':'rgba(120,140,170,0.55)'; x.lineWidth=Math.max(1,Math.round(w/950));
     for(var y=m.my+gap; y<y1; y+=gap){ x.beginPath(); x.moveTo(x0,y); x.lineTo(x1,y); x.stroke(); }
     x.restore();
   }
@@ -11626,7 +11634,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _ckMarginCiz(x, w, h){   // Word-sayfası kenar boşluğu kılavuzu (YALNIZ ekran; çıktıya ASLA gömülmez)
     var m=_ckMargin(w,h);
     x.save(); x.setLineDash([Math.max(3,Math.round(w/120)), Math.max(2,Math.round(w/190))]);
-    x.lineWidth=Math.max(1,Math.round(w/820)); x.strokeStyle='rgba(96,125,170,0.5)';
+    x.lineWidth=Math.max(1,Math.round(w/820)); x.strokeStyle=_ckKoyuMu()?'rgba(140,165,205,0.55)':'rgba(96,125,170,0.5)';
     x.strokeRect(m.mx, m.my, w-2*m.mx, h-2*m.my);
     x.restore();
   }
