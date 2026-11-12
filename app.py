@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13e · Editor sag-tik YAPISTIR butonu artik GUVENLI baglamda (HTTPS domain goruntux.rgmedya.tr) OTOMATIK gorunur+aktif (metin/baslik/link; _yapistirGoster->_clipPasteVar). Eskiden HTTP-IP guvensiz baglam oldugundan gizliydi. Gorsel yapistirma zaten calisiyordu. (13d palm rejection korunur)';
+        var X_BUILD = '2026-11-13f · (1) Toast EN FAZLA 2: yeni bildirim gelince en eski NORMAL toast kaldirilir (ilerleme/xyp toast haric). (2) Sag-tik Yapistir da panoda GORSEL varsa Ctrl+V ile ayni "gorsel bu alana yapistirilamaz" uyarisini verir (navigator.clipboard.read ile tespit). (13e yapistir/PWA korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3417,8 +3417,17 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 <button type="button" class="toast-close" onclick="this.parentElement.classList.remove('active'); setTimeout(() => this.parentElement.remove(), 300);">&times;</button>
             `;
             
+            // [EN FAZLA 2] Bildirimler üst üste yığılmasın: yeni gelince en eski NORMAL bildirimi kaldır
+            // (ilerleme/xyp toast'ı = .xyp-pct HARİÇ; o kendi yaşam döngüsüyle kapanır). Yeni eklenince en çok 2 kalır.
+            try {
+                var _norm = [].slice.call(container.querySelectorAll('.custom-toast')).filter(function (t) { return !t.querySelector('.xyp-pct'); });
+                while (_norm.length >= 2) {
+                    var _eski = _norm.shift(); _eski.classList.remove('active');
+                    (function (el) { setTimeout(function () { try { el.remove(); } catch (e) {} }, 300); })(_eski);
+                }
+            } catch (e) {}
             container.appendChild(toast);
-            
+
             // Trigger animation
             setTimeout(() => {
                 toast.classList.add('active');
@@ -9600,7 +9609,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6x · 2026-11-13 Sag-tik YAPISTIR butonu artik GUVENLI baglamda (HTTPS domain) OTOMATIK gorunur+aktif (metin/baslik/link alanlari; _yapistirGoster->_clipPasteVar). Eskiden HTTP-IP'de gizliydi. Gorsel yapistirma zaten calisiyordu. (6w palm rejection korunur)";
+  XE.VERSION = "6y · 2026-11-13 Sag-tik Yapistir: panoda GORSEL varsa metin alanina yapistirmaz, Ctrl+V ile AYNI 'gorsel bu alana yapistirilamaz' uyarisi (navigator.clipboard.read); gorsel yoksa metni yapistirir. (6x yapistir butonu gorunurluk korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12471,8 +12480,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var el=_rtInfo&&_rtInfo.clipEl, rng=_rtInfo&&_rtInfo.clipRange; if(!el||!rng) return;
     var elRef=el, rngRef=rng;   // _sagTikKapat _rtInfo'yu temizler -> önce yakala
     _sagTikKapat();
-    if(!(navigator.clipboard && navigator.clipboard.readText)) return;   // güvensiz bağlam -> sessiz, POPUP YOK
-    navigator.clipboard.readText().then(function(txt){
+    if(!navigator.clipboard) return;   // güvensiz bağlam -> sessiz
+    function _metniYapistir(txt){
       if(txt==null || txt==='') return;
       try{
         elRef.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rngRef);
@@ -12480,7 +12489,17 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         try{ document.execCommand('insertText', false, txt); }catch(e){}   // düz metin ekle (biçim taşımadan)
         _inlineBusy=false; _editableKaydet(elRef);
       }catch(e){ _inlineBusy=false; }
-    }).catch(function(){});   // izin yok / hata -> sessiz, POPUP YOK
+    }
+    function _metinOku(){ if(navigator.clipboard.readText) navigator.clipboard.readText().then(_metniYapistir).catch(function(){}); }
+    // [GÖRSEL UYARISI] Ctrl+V ile AYNI: panoda GÖRSEL varsa metin alanına yapıştırılamaz -> aynı uyarı toast'ı, metin yapıştırma YOK.
+    if(navigator.clipboard.read){
+      navigator.clipboard.read().then(function(items){
+        var hasImg=false;
+        try{ for(var i=0;i<items.length;i++){ var tp=items[i].types||[]; for(var j=0;j<tp.length;j++){ if(String(tp[j]).indexOf('image/')===0){ hasImg=true; break; } } if(hasImg) break; } }catch(_){}
+        if(hasImg){ try{ if(window.showToast) window.showToast('Görsel bu alana yapıştırılamaz — bir görsel kutusuna yapıştırın.','warning'); }catch(_){} return; }
+        _metinOku();
+      }).catch(function(){ _metinOku(); });   // read izni yok/hata -> metne düş (sessiz)
+    } else { _metinOku(); }
   }
   // [GÖRSEL PANO] Görsel sağ-tık menüsü pano işlemleri (metin clip'ten AYRI — görsel execCommand'la kopyalanamaz).
   // Yapıştır: _panoGorsel (güvenli bağlamda doğrudan okur, değilse Ctrl+V modalı) -> HER yerde çalışır, asla silik DEĞİL.
