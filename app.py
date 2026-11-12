@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12n · CIZIM: (11) yazi boyutu dropdown UI stili (font secici gibi); (12) koyu temada EKRANDA koyu renkler (siyah vs) ACIK gorunur, KAYDET/CIKTI gercek renk (siyah) kalir (_gostRenk, yalniz ekran). + onceki rotuslar.';
+        var X_BUILD = '2026-11-12o · CIZIM 9A (Word): cizim WORD CIKTISINDA artik tek gorsel degil, her sekil/metin AYRI YEREL NESNE (DrawingML grubu wpg:wgp): dortgen/elips=prstGeom, ok=custGeom+tailEnd, metin=txbx (duzenlenebilir w:t), kalem=hibrit pic, gorsel=pic. xCkExportPrim ortak cevirici. PDF native SIRADA. + onceki.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8185,6 +8185,54 @@ LOCAL_DOCX_JS = r'''
       if(!rid) return '';
       return _imageXmlFromRid(rid, wIn, hIn, align, keepN, bord, pbBefore);
     }
+    // [ÇİZİM 9A] Çizim vektörlerini Word DrawingML GRUBU (wpg:wgp) -> her şekil/metin/elips AYRI NESNE (Word'de düzenlenebilir). Kalem=pic (hibrit).
+    function _ckEscXml(s){ return (''+(s==null?'':s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function _ckWordGrupXml(er, groupWin, pbBefore, beforeTwip){
+      if(!er || !er.prims) return '';
+      var GW=Math.round(groupWin*914400), GH=Math.round(GW/(er.aspect||0.7));
+      function EX(f){ return Math.round(f*GW); } function EY(f){ return Math.round(f*GH); }
+      var kids='', id=docPrId;
+      er.prims.forEach(function(p){ id++;
+        if(p.t==='rect' || p.t==='ellipse'){
+          kids+='<wps:wsp><wps:cNvPr id="'+id+'" name="s'+id+'"/><wps:cNvSpPr/><wps:spPr>'
+            +'<a:xfrm><a:off x="'+EX(p.x)+'" y="'+EY(p.y)+'"/><a:ext cx="'+Math.max(1,EX(p.w))+'" cy="'+Math.max(1,EY(p.h))+'"/></a:xfrm>'
+            +'<a:prstGeom prst="'+(p.t==='ellipse'?'ellipse':'rect')+'"><a:avLst/></a:prstGeom><a:noFill/>'
+            +'<a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill></a:ln></wps:spPr><wps:bodyPr/></wps:wsp>';
+        } else if(p.t==='line'){
+          var x1=EX(p.x1),y1=EY(p.y1),x2=EX(p.x2),y2=EY(p.y2);
+          var bx=Math.min(x1,x2),by=Math.min(y1,y2),bw=Math.max(1,Math.abs(x2-x1)),bh=Math.max(1,Math.abs(y2-y1));
+          kids+='<wps:wsp><wps:cNvPr id="'+id+'" name="ok'+id+'"/><wps:cNvSpPr/><wps:spPr>'
+            +'<a:xfrm><a:off x="'+bx+'" y="'+by+'"/><a:ext cx="'+bw+'" cy="'+bh+'"/></a:xfrm>'
+            +'<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l="0" t="0" r="'+bw+'" b="'+bh+'"/>'
+            +'<a:pathLst><a:path w="'+bw+'" h="'+bh+'"><a:moveTo><a:pt x="'+(x1-bx)+'" y="'+(y1-by)+'"/></a:moveTo><a:lnTo><a:pt x="'+(x2-bx)+'" y="'+(y2-by)+'"/></a:lnTo></a:path></a:pathLst></a:custGeom>'
+            +'<a:noFill/><a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill>'+(p.ok?'<a:tailEnd type="triangle" w="med" len="med"/>':'')+'</a:ln></wps:spPr><wps:bodyPr/></wps:wsp>';
+        } else if(p.t==='text'){
+          var szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2));
+          var arkaFill='<a:noFill/>';
+          if(p.arka===1) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:solidFill>';
+          else if(p.arka===2) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="82000"/></a:srgbClr></a:solidFill>';
+          kids+='<wps:wsp><wps:cNvPr id="'+id+'" name="t'+id+'"/><wps:cNvSpPr txBox="1"/><wps:spPr>'
+            +'<a:xfrm><a:off x="'+EX(p.x)+'" y="'+EY(p.y)+'"/><a:ext cx="'+Math.max(1,EX(p.w))+'" cy="'+Math.max(1,EY(p.h))+'"/></a:xfrm>'
+            +'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'+arkaFill+'<a:ln><a:noFill/></a:ln></wps:spPr>'
+            +'<wps:txbx><w:txbxContent><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
+            +'<w:r><w:rPr>'+(p.kalin?'<w:b/>':'')+'<w:color w:val="'+p.renk+'"/><w:sz w:val="'+szHalf+'"/><w:szCs w:val="'+szHalf+'"/><w:rFonts w:ascii="'+_ckEscXml(p.font)+'" w:hAnsi="'+_ckEscXml(p.font)+'"/></w:rPr><w:t xml:space="preserve">'+_ckEscXml(p.metin)+'</w:t></w:r>'
+            +'</w:p></w:txbxContent></wps:txbx><wps:bodyPr lIns="0" tIns="0" rIns="0" bIns="0" wrap="none" anchor="t"/></wps:wsp>';
+        } else if(p.t==='image' && p.b64){
+          var rid=addImageRaw(p.b64, p.mime);
+          if(rid) kids+='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="g'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="'+EX(p.x)+'" y="'+EY(p.y)+'"/><a:ext cx="'+Math.max(1,EX(p.w))+'" cy="'+Math.max(1,EY(p.h))+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
+        }
+      });
+      if(er.penImg && er.penBox){ id++; var prid=addImageRaw(er.penImg,'image/png'), pb=er.penBox;
+        if(prid) kids+='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="kalem'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+prid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="'+EX(pb.x)+'" y="'+EY(pb.y)+'"/><a:ext cx="'+Math.max(1,EX(pb.w))+'" cy="'+Math.max(1,EY(pb.h))+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
+      }
+      docPrId=id+1; var gid=docPrId++;
+      var _pbb=pbBefore?'<w:pageBreakBefore/>':'', _bf=beforeTwip?('<w:spacing w:before="'+beforeTwip+'" w:after="120"/>'):'<w:spacing w:after="120"/>';
+      return '<w:p><w:pPr>'+_pbb+'<w:jc w:val="center"/>'+_bf+'</w:pPr><w:r><w:drawing>'
+        +'<wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="'+GW+'" cy="'+GH+'"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="'+gid+'" name="Cizim'+gid+'"/><wp:cNvGraphicFramePr/>'
+        +'<a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup">'
+        +'<wpg:wgp><wpg:cNvGrpSpPr/><wpg:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+GW+'" cy="'+GH+'"/><a:chOff x="0" y="0"/><a:chExt cx="'+GW+'" cy="'+GH+'"/></a:xfrm></wpg:grpSpPr>'
+        +kids+'</wpg:wgp></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>';
+    }
     function imageXml(item, wIn, hIn, align, keepN){
       var rid=addImage(item);
       if(!rid) return '';
@@ -8703,7 +8751,16 @@ LOCAL_DOCX_JS = r'''
           var _cizgiKondu=false;
           for(var _pi=0; _pi<_pc.length; _pi++){
             var _p=_pc[_pi];
-            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){ var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, (_iu.cizim?'center':_iu.align), _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, !!_iu.cizim)); if(_imgBord) _cizgiKondu=true; } }   // çizim ORTALI (standart kenar boşluğu)
+            if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){
+              if(_iu.cizim){   // [9A] çizim -> YEREL NESNELER (DrawingML grubu); boş/hata -> görsel fallback
+                var _grpX='';
+                try{ var _ckParca=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
+                  var _er=(_ckParca && window.xCkExportPrim)?window.xCkExportPrim(_ckParca.cizimObjeleri||[], _ckParca.cbW, _ckParca.cbH):null;
+                  if(_er && _er.prims && _er.prims.length) _grpX=_ckWordGrupXml(_er, _iu.w, true, 720);
+                }catch(_eg){ _grpX=''; }
+                body.push(_grpX || imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true));
+              } else { var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, false)); if(_imgBord) _cizgiKondu=true; }
+            } }   // çizim ORTALI (standart kenar boşluğu)
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh, _KN_FIX ? (_pi!==_lastEmit) : true)); }
             else if(_p.tur==='link'){ var _lu=(_p.url!=null && String(_p.url).trim()!=='')?String(_p.url).trim():((yeniLinkBosAcik() && _pi!==_asilL)?'':u.link);
               if(_lu){ var _bord=(u.cizgi && _pi===_lastEmit); body.push(linkXml(_lu, _bord?360:120, _bord, _KN_FIX ? (_pi!==_lastEmit) : false)); if(_bord) _cizgiKondu=true; } }   // [SAYFALAMA] son değilse (link üstte) link alt-boşluğu 120 = link-altta'daki ortadaki görselin af'ı -> iç boşluk deseni eşit
@@ -8753,7 +8810,9 @@ LOCAL_DOCX_JS = r'''
       + 'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
       + 'xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" '
       + 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
-      + 'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+      + 'xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" '
+      + 'xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup" '
+      + 'xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">'
       + '<w:body>'+body.join('')+sectPr+'</w:body></w:document>';
 
     var relsXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
@@ -9384,7 +9443,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6n · 2026-11-12 CIZIM: boyut dropdown UI stili + koyu temada ekranda koyu renk ACIK (ciktida gercek siyah); + onceki";
+  XE.VERSION = "6o · 2026-11-12 CIZIM 9A Word: cizim Word ciktisinda her sekil/metin AYRI YEREL NESNE (DrawingML grubu); PDF native sirada; + onceki";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
