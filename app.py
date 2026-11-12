@@ -1687,8 +1687,9 @@ HTML_TEMPLATE = """
         .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; min-height: 17px; }
         .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; min-height: 16px; }
         /* [İNDİRME ÖNİZLEME] indirilen dosyanın render önizlemesi (PDF=iframe birebir / Word=mammoth yaklaşık). */
-        .pb-onizleme { display: none; width: 100%; height: min(54vh, 500px); margin: 6px 0 2px; border: 1px solid var(--border-color); border-radius: 10px; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg-input); text-align: left; }
-        .pb-onizleme iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+        .pb-onizleme { display: none; width: 100%; height: min(58vh, 540px); margin: 6px 0 2px; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; background: var(--bg-input); text-align: left; }
+        /* iframe container'dan 16px GENİŞ -> PDF viewer'ın sağ scroll çubuğu kırpılır (gizlenir); sayfa ortalı kalır. Tekerlekle kaydırma çalışır. */
+        .pb-onizleme iframe { width: calc(100% + 16px); height: 100%; border: 0; display: block; background: #fff; }
         .pb-onizleme .pb-word { background: #fff; color: #111; padding: 20px 24px; font: 14px/1.6 Arial, Helvetica, sans-serif; min-height: 100%; box-sizing: border-box; }
         .pb-onizleme .pb-word img { max-width: 100%; height: auto; }
         .pb-onizleme .pb-word h1, .pb-onizleme .pb-word h2, .pb-onizleme .pb-word h3 { color: #111; margin: 0 0 8px; }
@@ -3053,7 +3054,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12w · WORD ONIZLEME artik SAYFA SAYFA RENDER: mammoth HTML (tasan+sayfasiz) BIRAKILDI; Word indirmesinde onizleme = ayni icerikten uretilen PDF iframe (A4 sayfalar, cizimler gorunur). Indirilen dosya yine .docx. (12v placeholder fix + cizim siyah varsayilan korunur)';
+        var X_BUILD = '2026-11-12y · Indirme onizleme TEMIZLENDI: PDF viewer ust cubugu (#toolbar=0) + sag scroll cubugu (iframe 16px genis + container overflow:hidden clip) gizli, sayfa ortali; alt not + "Kapatmak icin..." ipucu KALDIRILDI (gereksiz scroll yoktu). (12w Word=sayfa sayfa PDF render korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4160,9 +4161,12 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             if (mc) mc.classList.add('paylas-onizleme');
             oz.style.display = 'block'; oz.innerHTML = '';
             try { window.__paylasOnizUrl = URL.createObjectURL(blob); } catch (e) {}
-            var fr = document.createElement('iframe'); fr.title = 'Önizleme'; if (window.__paylasOnizUrl) fr.src = window.__paylasOnizUrl;
+            // PDF görüntüleyici çubuğu (indir/yazdır/drive) + nav panes + scroll çubuğu GİZLE; sayfayı genişliğe sığdır (ortalı).
+            var fr = document.createElement('iframe'); fr.title = 'Önizleme'; if (window.__paylasOnizUrl) fr.src = window.__paylasOnizUrl + '#toolbar=0&navpanes=0&scrollbar=0&view=FitH';
             oz.appendChild(fr);
-            if (nt) { nt.textContent = (tur === 'word') ? 'Word içeriğinizin sayfa görünümü (render) — indirilen dosya .docx.' : 'İndirilen PDF dosyasının birebir önizlemesi.'; nt.style.display = 'block'; }
+            // Not + alt-ipucu metinleri GEREKSİZ (ekranı uzatıp scroll yaptırıyor) -> ikisini de kaldır.
+            if (nt) { nt.textContent = ''; nt.style.display = 'none'; }
+            var _sc = document.getElementById('pb-sayac'); if (_sc) _sc.textContent = '';
             // genişleyen popover ekran dışına taşmasın (yalnız masaüstü popover; bottom-sheet tam genişlik zaten)
             try {
                 if (m.classList.contains('paylas-pop') && !m.classList.contains('paylas-sheet')) {
@@ -4186,7 +4190,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             } catch (e) { p = null; }
             if (!p || !p.then) { _paylasOnizlemeTemizle(); _paylas5snKapat(); return; }
             p.then(function (out) {
-                if (out && out.blob) { if (sc) sc.textContent = 'Kapatmak için dışarı tıklayın/dokunun'; _paylasOnizlemeKur('word', out.blob); }
+                if (out && out.blob) { _paylasOnizlemeKur('word', out.blob); }
                 else { _paylasOnizlemeTemizle(); _paylas5snKapat(); }
             }).catch(function () { _paylasOnizlemeTemizle(); _paylas5snKapat(); });
         }
@@ -4202,7 +4206,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var sc = document.getElementById('pb-sayac');
             var onizAcik = true; try { if (localStorage.getItem('x_paylas_onizleme') === '0') onizAcik = false; } catch (e) {}
             if (!onizAcik || !blob) { _paylas5snKapat(); return; }   // bayrak kapalı / blob yok -> eski 5 sn ekranı
-            if (bicim === 'pdf') { if (sc) sc.textContent = 'Kapatmak için dışarı tıklayın/dokunun'; _paylasOnizlemeKur('pdf', blob); return; }
+            if (bicim === 'pdf') { _paylasOnizlemeKur('pdf', blob); return; }
             _paylasWordOnizleme();   // Word: aynı içerikten PDF render (sayfa sayfa); üretilemezse 5 sn
         }
         // [PAYLAŞ WORD AYARLARI] Satır aralığı + Alt boşluk + Sayfa no artık ŞERİTTE DEĞİL; Word seçilince burada.
