@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12o · CIZIM 9A (Word): cizim WORD CIKTISINDA artik tek gorsel degil, her sekil/metin AYRI YEREL NESNE (DrawingML grubu wpg:wgp): dortgen/elips=prstGeom, ok=custGeom+tailEnd, metin=txbx (duzenlenebilir w:t), kalem=hibrit pic, gorsel=pic. xCkExportPrim ortak cevirici. PDF native SIRADA. + onceki.';
+        var X_BUILD = '2026-11-12p · CIZIM 9A TAMAM (Word + PDF): cizim her iki ciktida da artik tek gorsel degil, her sekil/metin AYRI YEREL NESNE. PDF: pdfmake canvas (dortgen/elips/ok-polyline) + native metin (absolutePosition) + pen/gorsel=gorsel. Word: DrawingML grubu. Gorsel konum dogrulugu kullanici testi (ozellikle Word render).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4408,7 +4408,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                     if (h2t && !basliksiz) { hNo++; var _bsz = (parseInt(o.b_size, 10) || 16), _ba = (parseInt(o.b_after, 10) || 6), _ht = numarali ? (hNo + '. ' + h2t) : h2t; u.blocks.push(basBlok(_ht, _bsz, o.b_bold, o.b_italic, o.b_underline, o.b_color, o.b_align, 0, _ba)); u.pay += _txtY(_ht, _bsz, _ba); }
                     var ps = n.querySelectorAll('.ed-parca');
                     [].forEach.call(ps, function (p) {
-                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = nh / nw; u.pay += 6; } return; }
+                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); if (u.cizim) { try { var _bi = +img.getAttribute('data-i'), _pp = +img.getAttribute('data-p'); var _ckp = window.XEditor.belge.birimler[_bi].item.parcalar[_pp]; u.ckEr = (window.xCkExportPrim && _ckp && (_ckp.cizimObjeleri || []).length) ? window.xCkExportPrim(_ckp.cizimObjeleri, _ckp.cbW, _ckp.cbH) : null; } catch (e) { u.ckEr = null; } }   /* [9A] cizim vektorleri -> native */ var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = nh / nw; u.pay += 6; } return; }
                         var mt = p.querySelector('.ed-metin'); if (mt) { var _m = String(mt.textContent || '').trim(); if (_m) { u.blocks.push(mBlok(mt)); u.pay += _txtY(_m, (parseInt(o.m_size, 10) || 11), 6); } return; }
                         var lk = p.querySelector('.ed-link-edit'); if (lk) { var lu = String(lk.textContent || '').trim(); if (lu) { u.blocks.push(lBlok(lu)); u.pay += _txtY(lu, (parseInt(o.l_size, 10) || 10), 8); } return; }
                     });
@@ -4436,6 +4436,22 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             for (var _i2 = 0; _i2 < items.length; _i2++) {
                 var it = items[_i2];
                 if (it.t === 'cizgi') { content.push(cizgiBlok()); continue; }
+                if (it.cizim && it.ckEr && it.ckEr.prims && it.ckEr.prims.length) {   // [9A PDF] cizim -> NATIVE (canvas sekiller + absolutePosition metin/gorsel)
+                    var ckW = it.w || (CW - 36), ckH = ckW / (it.ckEr.aspect || 0.7);
+                    var pL = (595.28 - ckW) / 2, pT = 36;
+                    if (content.length > 0) content.push({ text: ' ', pageBreak: 'before', fontSize: 1, margin: [0, 0, 0, 0] });
+                    var cnv = [];
+                    it.ckEr.prims.forEach(function (p) {
+                        if (p.t === 'rect') cnv.push({ type: 'rect', x: p.x * ckW, y: p.y * ckH, w: p.w * ckW, h: p.h * ckH, lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk });
+                        else if (p.t === 'ellipse') cnv.push({ type: 'ellipse', x: (p.x + p.w / 2) * ckW, y: (p.y + p.h / 2) * ckH, r1: Math.max(0.5, p.w / 2 * ckW), r2: Math.max(0.5, p.h / 2 * ckH), lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk });
+                        else if (p.t === 'line') { var x1 = p.x1 * ckW, y1 = p.y1 * ckH, x2 = p.x2 * ckW, y2 = p.y2 * ckH; cnv.push({ type: 'line', x1: x1, y1: y1, x2: x2, y2: y2, lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk }); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * ckW * 3.2); cnv.push({ type: 'polyline', closePath: true, color: '#' + p.renk, lineColor: '#' + p.renk, points: [{ x: x2, y: y2 }, { x: x2 - hl * Math.cos(ang - 0.42), y: y2 - hl * Math.sin(ang - 0.42) }, { x: x2 - hl * Math.cos(ang + 0.42), y: y2 - hl * Math.sin(ang + 0.42) }] }); } }
+                    });
+                    if (cnv.length) content.push({ canvas: cnv, absolutePosition: { x: pL, y: pT } });
+                    it.ckEr.prims.forEach(function (p) { if (p.t === 'text' && p.metin) content.push({ text: p.metin, fontSize: Math.max(4, p.boyut * ckW), bold: !!p.kalin, color: '#' + p.renk, absolutePosition: { x: pL + p.x * ckW, y: pT + p.y * ckH } }); });
+                    if (it.ckEr.penImg && it.ckEr.penBox) { var pb = it.ckEr.penBox; content.push({ image: 'data:image/png;base64,' + it.ckEr.penImg, width: pb.w * ckW, height: pb.h * ckH, absolutePosition: { x: pL + pb.x * ckW, y: pT + pb.y * ckH } }); }
+                    it.ckEr.prims.forEach(function (p) { if (p.t === 'image' && p.b64) content.push({ image: 'data:' + (p.mime || 'image/png') + ';base64,' + p.b64, width: p.w * ckW, height: p.h * ckH, absolutePosition: { x: pL + p.x * ckW, y: pT + p.y * ckH } }); });
+                    continue;
+                }
                 if (it.imgIdx >= 0 && it.img) { var _w = it.w || CW; var _ib = imgBlok(it.img, _w, _w * it.rh); if (it.cizim) _ib.alignment = 'center'; it.blocks[it.imgIdx] = _ib; }   // çizim ORTALI (standart kenar boşluğu)
                 var _blk = { stack: it.blocks.filter(function (x) { return !!x; }), unbreakable: true, margin: [0, 0, 0, 8] };
                 if (it.cizim && content.length > 0) _blk.pageBreak = 'before';   // [ÇİZİM KAĞIDI] kendi sayfasında (ilk öğeyse boş sayfa açma)
@@ -9443,7 +9459,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6o · 2026-11-12 CIZIM 9A Word: cizim Word ciktisinda her sekil/metin AYRI YEREL NESNE (DrawingML grubu); PDF native sirada; + onceki";
+  XE.VERSION = "6p · 2026-11-12 CIZIM 9A tamam: Word (DrawingML grubu) + PDF (pdfmake canvas+native metin) cizim sekilleri AYRI YEREL NESNE; render dogrulugu kullanici testi";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
