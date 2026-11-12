@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13h · Masaustu KART SABIT: bolumde alan duzenlerken ALAN degil BOLUM KARTI uste sabit (_odakUstKur ed.closest(.ed-card)); ayni kart ici alan gecisinde kart kipirdamaz. iPhone ayri (iOS klavye). (13g PWA iOS korunur)';
+        var X_BUILD = '2026-11-13i · Masaustu ODAK YUMUSAK: kart-pin kaldirildi -> alan zaten gorunuyorsa kaydirma YOK, yoksa gorunur olacak KADAR minimum (_odakUstKur into-view). + Parca basi Metin/Link <select> (.ed-tur) KALDIRILDI (x_parca_tur=1 geri). (13h kart-pin yerine)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6z · 2026-11-13 Masaustu KART SABIT: bir bolumde alan duzenlerken o alanin ALANI degil BOLUM KARTI uste sabitlenir (_odakUstKur -> ed.closest(.ed-card)); ayni kart ici alan gecisinde kart kipirdamaz. (6y yapistir korunur)";
+  XE.VERSION = "7a · 2026-11-13 Masaustu ODAK YUMUSAK: agresif kart-pin kaldirildi -> odaklanan alan zaten gorunuyorsa HIC kaydirma, degilse gorunur olacak KADAR minimum into-view (_odakUstKur). + Parca basina Metin/Link tur <select>u (.ed-tur) KALDIRILDI; Metin/Link yalniz + menusunden (x_parca_tur=1 -> geri). (6z kart-pin yerine)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9949,9 +9949,10 @@ X_EDITOR_JS = r'''
     lb.classList.add('acik');
   }
   function _lightboxKapat(){ var lb=document.getElementById('ed-lightbox'); if(lb){ lb.classList.remove('acik'); lb.innerHTML=''; } }
-  // [ODAK ÜSTTE] Masaüstünde de (Android gibi) düzenlenen alan ÜSTE hizalansın: bir editable alana odaklanınca
-  // o alanı preview-body'nin tepesine (şeridin hemen altına, scroll-padding-top:118) kaydır. Mobil kendi mantığında
-  // (dokunma) -> x-mobile'da DEVRE DIŞI (bkz. [[mobil-responsive]]/[[ios-klavye-vvtop-fixed-modal]] — Android'i bozma).
+  // [ODAK GÖRÜNÜR] Masaüstünde düzenlenen alan RAHAT GÖRÜNÜR olsun: bir editable alana odaklanınca, alan zaten
+  // görünüyorsa dokunma; değilse (şerit altında gizli / alt kenardan taşmış) görünür olacak KADAR MİNİMUM kaydır.
+  // (Eski "kartı/alanı tepeye zıplat" davranışı kullanıcı isteğiyle yumuşatıldı.) Mobil kendi mantığında (dokunma)
+  // -> x-mobile'da DEVRE DIŞI (bkz. [[mobil-responsive]]/[[ios-klavye-vvtop-fixed-modal]] — Android'i bozma).
   // Bayrak x_odak_ust='0' -> kapalı.
   function _odakUstKur(){
     if(window.__edOdakUst) return; window.__edOdakUst=true;
@@ -9964,17 +9965,20 @@ X_EDITOR_JS = r'''
         var lb=document.getElementById('ed-lightbox'); if(lb && lb.classList.contains('acik')) return;   // lightbox açıkken dokunma
         var t=e.target; if(!t || !t.closest) return;
         var ed=t.closest('.ed-h2,.ed-metin,.ed-link-edit,.ed-img-pano,.ed-plat'); if(!ed) return;
-        // [KART SABİT] Odaklanan ALANI değil, o alanın BÖLÜM KARTINI üste sabitle -> aynı kart içinde hangi alana
-        // geçersek geçelim kart aynı yerde kalır (kart zaten hizalı -> aşağıdaki eşik kıpırdatmaz). .ed-plat kart dışıdır.
-        var hedef=ed.closest('.ed-card') || ed;
         var sc=m.querySelector('.preview-body'); if(!sc) return;
-        var sr=sc.getBoundingClientRect(), er=hedef.getBoundingClientRect(), pad=118;
-        // NOT: scrollIntoView KULLANMA -> .ed-card'ın KENDİ scroll-margin-top:118'i, preview-body'nin
-        // scroll-padding-top:118'i ile ÇİFTLENİP kartı 118px AŞAĞI bırakıyor (236 toplam). Hedef scrollTop'u
-        // elle hesapla: kart üstü tam şeridin hemen altına (sr.top+118) gelsin.
-        var fark=er.top-(sr.top+pad);
-        if(Math.abs(fark)<28) return;   // kart zaten üstte hizalı -> kıpırdatma (aynı kart içi alan geçişi stabil)
-        sc.scrollTo({top: sc.scrollTop+fark, behavior:'smooth'});   // kart üstünü şeridin altına TAM hizala
+        var sr=sc.getBoundingClientRect(), pad=118;
+        // [YUMUŞAK HİZALA 13i] Kullanıcı "her tıklamada kartı üste zıplatma" dedi. Odaklanan ALAN zaten rahat
+        // görünüyorsa (şeridin altında + alt kenarın üstünde) HİÇ kaydırma -> gereksiz zıplama yok, aynı kart
+        // içi geçiş sabit. Yalnız alan şeridin altında gizliyse ya da alt kenardan taşmışsa, GÖRÜNÜR olacak
+        // KADAR (minimum) kaydır. Kartı tepeye SABİTLEME YOK (eski agresif pin kaldırıldı).
+        var fr=ed.getBoundingClientRect();
+        var ust=sr.top+pad, alt=sr.bottom-24;
+        if(fr.top>=ust-2 && fr.bottom<=alt+2) return;   // zaten rahat görünür -> dokunma
+        var delta;
+        if(fr.top<ust){ delta=fr.top-ust; }                      // şeridin altında gizli -> content aşağı (alanı indir)
+        else{ delta=fr.bottom-alt; if(fr.top-delta<ust) delta=fr.top-ust; }   // alttan taşmış -> yukarı al; üstü şeridin altına geçirme
+        if(Math.abs(delta)<4) return;
+        sc.scrollTo({top: sc.scrollTop+delta, behavior:'smooth'});   // minimum kaydırma (into-view)
       }catch(_){}
     });
   }
@@ -13101,10 +13105,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           var shown=(p.url!=null && p.url!=='') ? p.url : ((yeniLinkBosAcik() && k!==_asilK) ? '' : lk);
           h.push('<div class="ed-link ed-link-edit" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cl+'">'+esc(shown)+'</div>'); }
         h.push('</div>');
-        // #4: Word Düzenle (ve genel) için parça TÜRÜ değiştirici — hover'da çıkar (metin/link).
-        // [BAŞLIK YALNIZ BÖLÜM BAŞINDA] "Başlık yap" KALDIRILDI: bölüm içindeki bir metin başlık OLAMAZ; başlık
-        // yalnız bölüm başındaki title satırıdır (üstteki .ed-h2'den düzenlenir). Bayrak x_baslik_yap='1' -> geri.
-        if(p.tur==='metin' || p.tur==='link'){
+        // [TÜR SEÇİCİ KALDIRILDI 13i] Parça başına "Metin/Link" <select>'i kullanıcı isteğiyle KALDIRILDI (hem
+        // görsel kalabalık yapıyor hem iOS'ta klavye form-çubuğunu — ^ v ✓ — tetikliyordu). Metin/Link artık
+        // YALNIZ "+" menüsünden eklenir (orada zaten Metin ve Link var). Bayrak x_parca_tur='1' -> eski seçici geri.
+        if((p.tur==='metin' || p.tur==='link') && (function(){ try{ return localStorage.getItem('x_parca_tur')==='1'; }catch(e){ return false; } })()){
           var _byAcik=false; try{ _byAcik=(localStorage.getItem('x_baslik_yap')==='1'); }catch(e){}
           h.push('<select class="ed-tur" data-i="'+i+'" data-p="'+k+'" title="Bu parçanın türünü seç (Metin / Link)">'
             +'<option value="metin"'+(p.tur==='metin'?' selected':'')+'>Metin</option>'
