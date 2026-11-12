@@ -3053,7 +3053,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12t · CIZIM kalem FIRCA TURLERI: Normal + Sprey(airbrush, sabit tohum) + Fosforlu(multiply) + Firca(taper) + Neon(glow) + Kaligrafi. Kalem secilince firca dropdown; ekran+cikti rasteri ORTAK motor (_fircaCiz). (12s) indirme onizleme + Editorde Duzenle korunur.';
+        var X_BUILD = '2026-11-12u · CIZIM kalem FIRCA: fircalar artik KALEM DUGMESININ DROPDOWN menusunde (Sekil/dortgen gibi) — kaleme tiklayinca kalem aktif + fircalar acilir; ayri "Normal" kutusu KALDIRILDI. (12t) 6 firca (Normal/Sprey/Fosforlu/Firca/Neon/Kaligrafi) + ortak motor _fircaCiz korunur.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9607,7 +9607,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6s · 2026-11-12 CIZIM kalem FIRCA TURLERI (Normal/Sprey/Fosforlu/Firca/Neon/Kaligrafi); kalem secilince firca dropdown, ekran+cikti ortak motor _fircaCiz, sprey sabit tohumlu (deterministik)";
+  XE.VERSION = "6t · 2026-11-12 CIZIM kalem FIRCA: fircalar KALEM DUGMESININ dropdown'unda (Sekil gibi) — kaleme tikla->aktif+liste; ayri kutu kaldirildi. 6 firca + ortak motor _fircaCiz, sprey deterministik";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10310,20 +10310,19 @@ body:not(.light-theme) #editorModal .ed-gal-ck{background:#17212e;}
 body:not(.light-theme) .ed-gd-sekil-menu{background:#1b2735;border-color:#2c3a4a;}
 body:not(.light-theme) .ed-gd-sekil-opt{color:#e7e9ea;}
 body:not(.light-theme) .ed-gd-sekil-opt:hover{background:#243447;}
-/* [FIRÇA] kalem fırça türü dropdown (şekil dropdown ile aynı görünüm) */
-.ed-gd-firca-wrap{position:relative;display:inline-flex;}
-.ed-gd-firca-btn{width:auto;min-width:42px;padding:0 7px;gap:4px;font-size:12px;font-weight:600;color:inherit;}
-.ed-gd-firca-ad{font-size:11px;}
-.ed-gd-firca-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid #cfd8e3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.22);padding:5px;min-width:152px;}
-.ed-gd-firca-wrap.acik .ed-gd-firca-menu{display:block;}
-.ed-gd-firca-opt{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;color:#334;font-size:13px;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left;}
-.ed-gd-firca-opt:hover{background:#eef5ff;}
-.ed-gd-firca-opt.aktif{background:#e3effe;color:#1565c0;}
-.ed-gd-firca-opt svg{flex:none;}
-body:not(.light-theme) .ed-gd-firca-menu{background:#1b2735;border-color:#2c3a4a;}
-body:not(.light-theme) .ed-gd-firca-opt{color:#e7e9ea;}
-body:not(.light-theme) .ed-gd-firca-opt:hover{background:#243447;}
-body:not(.light-theme) .ed-gd-firca-opt.aktif{background:#243447;color:#8ecbff;}
+/* [FIRÇA] kalem = dropdown-buton (Şekil butonu ile birebir aynı görünüm); tıkla -> fırça listesi açılır */
+.ed-gd-kalem-wrap{position:relative;display:inline-flex;}
+.ed-gd-kalem-btn{width:auto;min-width:34px;padding:0 4px;gap:1px;}
+.ed-gd-kalem-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid #cfd8e3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.22);padding:5px;min-width:160px;}
+.ed-gd-kalem-wrap.acik .ed-gd-kalem-menu{display:block;}
+.ed-gd-kalem-opt{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;color:#334;font-size:13px;font-weight:600;padding:8px 10px;border-radius:7px;cursor:pointer;text-align:left;}
+.ed-gd-kalem-opt:hover{background:#eef5ff;}
+.ed-gd-kalem-opt.aktif{background:#e3effe;color:#1565c0;}
+.ed-gd-kalem-opt svg{flex:none;}
+body:not(.light-theme) .ed-gd-kalem-menu{background:#1b2735;border-color:#2c3a4a;}
+body:not(.light-theme) .ed-gd-kalem-opt{color:#e7e9ea;}
+body:not(.light-theme) .ed-gd-kalem-opt:hover{background:#243447;}
+body:not(.light-theme) .ed-gd-kalem-opt.aktif{background:#243447;color:#8ecbff;}
 .ed-gd-stil{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .ed-gd-renk{display:inline-flex;align-items:center;cursor:pointer;}
 .ed-gd-renk-inp{width:30px;height:30px;border:1px solid #cfd8e3;border-radius:7px;padding:0;background:none;cursor:pointer;}
@@ -11699,7 +11698,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var ov=document.createElement('div'); ov.className='ed-gd-ov'; ov.id='ed-gd-ov';
     var araclar=[['sec','Seç / Taşı','M4 3l6 14 2.2-5.6L18 9z']];
     if(!_cz) araclar.push(['kirp','Kırp','M5 2v12a1 1 0 0 0 1 1h12M2 5h12a1 1 0 0 1 1 1v12']);   // kırp: çizim kağıdında yok
-    araclar.push(['yazi','Yazı','M4 5h12M10 5v11'],['kalem','Kalem','M4 16l1-4 8-8 3 3-8 8z']);
+    araclar.push(['yazi','Yazı','M4 5h12M10 5v11']);   // [FIRÇA] kalem artık dropdown-buton (Şekil gibi), araç listesinde değil
     // [ŞEKİL] dörtgen + ok + elips TEK dropdown butonda (tıkla -> aşağı açılır menü). İkonlar:
     var _SEKILLER=[['dikdortgen','Dikdörtgen','M3.5 4.5h13v11h-13z'],['elips','Yuvarlak (elips)','M10 4.5c3.6 0 6.5 2.46 6.5 5.5s-2.9 5.5-6.5 5.5S3.5 13.04 3.5 10 6.4 4.5 10 4.5z'],['ok','Ok','M4 16L16 4M9 4h7v7']];
     function _sekilIkon(t){ for(var i=0;i<_SEKILLER.length;i++) if(_SEKILLER[i][0]===t) return _SEKILLER[i][2]; return _SEKILLER[0][2]; }
@@ -11717,7 +11716,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var tbBtns='';
     for(var ai=0;ai<araclar.length;ai++){ var a=araclar[ai];
       tbBtns+='<button type="button" class="ed-gd-tool'+(a[0]===tool?' aktif':'')+'" data-tool="'+a[0]+'" title="'+a[1]+'"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+a[2]+'"/></svg></button>';
-      if(a[0]==='yazi'){   // Yazı'dan sonra Şekil dropdown'u
+      if(a[0]==='yazi'){   // Yazı'dan sonra Kalem(fırça) + Şekil dropdown'ları
+        tbBtns+='<span class="ed-gd-kalem-wrap"><button type="button" class="ed-gd-tool ed-gd-kalem-btn'+(tool==='kalem'?' aktif':'')+'" title="Kalem — fırça türü seç (Normal/Sprey/Fosforlu/Fırça/Neon/Kaligrafi)"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+_fircaIkon(_firca)+'"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
+          +'<span class="ed-gd-kalem-menu">'+_FIRCALAR.map(function(f){return '<button type="button" class="ed-gd-kalem-opt'+(f[0]===_firca?' aktif':'')+'" data-firca="'+f[0]+'" title="'+f[1]+'"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+f[2]+'"/></svg><span>'+f[1]+'</span></button>';}).join('')+'</span></span>';
         var _sa=(tool==='dikdortgen'||tool==='ok'||tool==='elips')?tool:'dikdortgen';
         tbBtns+='<span class="ed-gd-sekil-wrap"><button type="button" class="ed-gd-tool ed-gd-sekil-btn'+((tool==='dikdortgen'||tool==='ok'||tool==='elips')?' aktif':'')+'" data-sekil="'+_sa+'" title="Şekil (dörtgen / yuvarlak / ok)"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+_sekilIkon(_sa)+'"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
           +'<span class="ed-gd-sekil-menu">'+_SEKILLER.map(function(s){return '<button type="button" class="ed-gd-sekil-opt" data-tool="'+s[0]+'" title="'+s[1]+'"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+s[2]+'"/></svg><span>'+s[1]+'</span></button>';}).join('')+'</span></span>';
@@ -11731,7 +11732,6 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
-      +'      <span class="ed-gd-firca-wrap ed-gd-fircagrp" title="Fırça türü"><button type="button" class="ed-gd-mini ed-gd-firca-btn"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+_fircaIkon(_firca)+'"/></svg><span class="ed-gd-firca-ad">'+_fircaAd(_firca)+'</span><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button><span class="ed-gd-firca-menu">'+_FIRCALAR.map(function(f){return '<button type="button" class="ed-gd-firca-opt'+(f[0]===_firca?' aktif':'')+'" data-firca="'+f[0]+'" title="'+f[1]+'"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="'+f[2]+'"/></svg><span>'+f[1]+'</span></button>';}).join('')+'</span></span>'
       +(_cz?('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>'):'')
       +(_cz?('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu (pt)">Yazı<select class="ed-gd-yzsel">'+_CK_BOYUTLAR.map(function(sz){return '<option value="'+sz+'"'+(sz===_repMSize?' selected':'')+'>'+sz+'</option>';}).join('')+'</select></label>')
         :('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'))
@@ -12035,11 +12035,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var kk=(tool==='ok'||tool==='dikdortgen'||tool==='kalem') || (secili.length && secili.some(function(s){return s.t==='ok'||s.t==='dikdortgen'||s.t==='kalem';}));
       ov.querySelectorAll('.ed-gd-metgrp').forEach(function(e){ e.style.display=mm?'':'none'; });
       var kg=ov.querySelector('.ed-gd-kalgrp'); if(kg) kg.style.display=kk?'':'none';
-      var fk=(tool==='kalem') || (secili.length && secili.some(function(s){return s.t==='kalem';}));   // [FIRÇA] fırça türü YALNIZ kalem aracı/seçimi
-      ov.querySelectorAll('.ed-gd-fircagrp').forEach(function(e){ e.style.display=fk?'':'none'; });
     }
-    function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ if(b.classList.contains('ed-gd-sekil-btn')) return; b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); });
+    function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ if(b.classList.contains('ed-gd-sekil-btn')||b.classList.contains('ed-gd-kalem-btn')) return; b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); });
       var sb=ov.querySelector('.ed-gd-sekil-btn'); if(sb){ var _sekilAktif=(tool==='dikdortgen'||tool==='ok'||tool==='elips'); sb.classList.toggle('aktif', _sekilAktif); if(_sekilAktif){ var ic=sb.querySelector('path'); if(ic) ic.setAttribute('d', _sekilIkon(tool)); sb.setAttribute('data-sekil', tool); } }
+      var kb0=ov.querySelector('.ed-gd-kalem-btn'); if(kb0){ kb0.classList.toggle('aktif', tool==='kalem'); var kic=kb0.querySelector('path'); if(kic) kic.setAttribute('d', _fircaIkon(_firca)); ov.querySelectorAll('.ed-gd-kalem-opt').forEach(function(o){ o.classList.toggle('aktif', o.getAttribute('data-firca')===_firca); }); }   // [FIRÇA] kalem dropdown aktiflik + ikon
       _kirpBtnGoster(); _metgrpUygula(); cv.style.cursor=(tool==='sec'?'default':'crosshair'); }
     function _kirpBtnGoster(){ var b=ov.querySelector('.ed-gd-kirpuygula'); if(b) b.style.display=(tool==='kirp' && crop && crop.w>2 && crop.h>2)?'inline-flex':'none'; }
 
@@ -12052,11 +12051,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       ov.querySelectorAll('.ed-gd-sekil-opt').forEach(function(o){ o.addEventListener('click', function(e){ e.stopPropagation(); var t=o.getAttribute('data-tool'); sw.classList.remove('acik'); var ic=ov.querySelector('.ed-gd-sekil-btn path'); if(ic) ic.setAttribute('d', _sekilIkon(t)); sb.setAttribute('data-sekil', t); _aracSec(t); }); });
       document.addEventListener('mousedown', function(e){ if(sw.classList.contains('acik') && !sw.contains(e.target)) sw.classList.remove('acik'); }, true);
     })();
-    // [FIRÇA] fırça türü dropdown
-    function _fircaYansit(){ var b=ov.querySelector('.ed-gd-firca-btn'); if(b){ var ic=b.querySelector('path'); if(ic) ic.setAttribute('d', _fircaIkon(_firca)); var ad=b.querySelector('.ed-gd-firca-ad'); if(ad) ad.textContent=_fircaAd(_firca); } ov.querySelectorAll('.ed-gd-firca-opt').forEach(function(o){ o.classList.toggle('aktif', o.getAttribute('data-firca')===_firca); }); }
-    (function(){ var fb=ov.querySelector('.ed-gd-firca-btn'), fw=ov.querySelector('.ed-gd-firca-wrap'); if(!fb||!fw) return;
-      fb.addEventListener('click', function(e){ e.stopPropagation(); fw.classList.toggle('acik'); });
-      ov.querySelectorAll('.ed-gd-firca-opt').forEach(function(o){ o.addEventListener('click', function(e){ e.stopPropagation(); fw.classList.remove('acik'); if(secili.length) itUndo(); _firca=o.getAttribute('data-firca'); _fircaYansit();
+    // [FIRÇA] kalem dropdown (Şekil gibi): butona basınca kalem aracı aktif + fırça listesi açılır
+    function _fircaYansit(){ var b=ov.querySelector('.ed-gd-kalem-btn'); if(b){ var ic=b.querySelector('path'); if(ic) ic.setAttribute('d', _fircaIkon(_firca)); } ov.querySelectorAll('.ed-gd-kalem-opt').forEach(function(o){ o.classList.toggle('aktif', o.getAttribute('data-firca')===_firca); }); }
+    (function(){ var fb=ov.querySelector('.ed-gd-kalem-btn'), fw=ov.querySelector('.ed-gd-kalem-wrap'); if(!fb||!fw) return;
+      fb.addEventListener('click', function(e){ e.stopPropagation(); if(tool!=='kalem') _aracSec('kalem'); fw.classList.toggle('acik'); });   // kaleme tıkla -> kalem aktif + fırçalar açılır
+      ov.querySelectorAll('.ed-gd-kalem-opt').forEach(function(o){ o.addEventListener('click', function(e){ e.stopPropagation(); fw.classList.remove('acik'); if(secili.length) itUndo(); _firca=o.getAttribute('data-firca'); if(tool!=='kalem') _aracSec('kalem'); _fircaYansit();
         if(secili.length){ secili.forEach(function(s){ if(s.t==='kalem'){ s.firca=_firca; if(_firca==='sprey' && s.seed==null) s.seed=Math.floor(Math.random()*1e9); } }); ciz(); } }); });
       document.addEventListener('mousedown', function(e){ if(fw.classList.contains('acik') && !fw.contains(e.target)) fw.classList.remove('acik'); }, true);
     })();
