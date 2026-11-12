@@ -1686,6 +1686,21 @@ HTML_TEMPLATE = """
         /* [SABİT BOY] dosya + geri sayım satırları ilerlemede BOŞ olsa da yer ayırır -> popup ilerleme<->tamamlanma geçişinde uzayıp kısalmaz. */
         .pb-dosya { font-size: 13px; color: var(--text-secondary); word-break: break-all; margin-bottom: 18px; min-height: 17px; }
         .pb-sayac { font-size: 12px; color: var(--text-secondary); opacity: .85; min-height: 16px; }
+        /* [İNDİRME ÖNİZLEME] indirilen dosyanın render önizlemesi (PDF=iframe birebir / Word=mammoth yaklaşık). */
+        .pb-onizleme { display: none; width: 100%; height: min(54vh, 500px); margin: 6px 0 2px; border: 1px solid var(--border-color); border-radius: 10px; overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg-input); text-align: left; }
+        .pb-onizleme iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+        .pb-onizleme .pb-word { background: #fff; color: #111; padding: 20px 24px; font: 14px/1.6 Arial, Helvetica, sans-serif; min-height: 100%; box-sizing: border-box; }
+        .pb-onizleme .pb-word img { max-width: 100%; height: auto; }
+        .pb-onizleme .pb-word h1, .pb-onizleme .pb-word h2, .pb-onizleme .pb-word h3 { color: #111; margin: 0 0 8px; }
+        .pb-onizleme .pb-word p { margin: 0 0 8px; }
+        .pb-oniz-not { display: none; font-size: 11px; color: var(--text-secondary); opacity: .9; margin: 0 0 10px; line-height: 1.4; }
+        /* önizleme açıkken popover genişler + başlık kompaktlaşır (yer açılır) */
+        #paylasModal.paylas-pop .modal-content.paylas-onizleme { width: min(480px, calc(100vw - 16px)); }
+        .paylas-onizleme #paylas-basari { padding: 16px 16px 16px; }
+        .paylas-onizleme .pb-ikon { margin-bottom: 8px; }
+        .paylas-onizleme .pb-ikon svg { width: 46px !important; height: 46px !important; }
+        .paylas-onizleme .pb-baslik { font-size: 17px; margin-bottom: 3px; }
+        .paylas-onizleme .pb-dosya { margin-bottom: 10px; }
         #pb-ring { stroke: #1a9e4b; }   /* dolan halka: yeşil (tamamlanınca yeşil tike dönüşür) */
         @keyframes pbspin { to { transform: rotate(360deg); } }
         .pb-spin { animation: pbspin .9s linear infinite; transform-origin: center; }   /* Word (yüzdesiz) belirsiz dönen halka */
@@ -2572,7 +2587,7 @@ HTML_TEMPLATE = """
                     <div class="pool-actions">
                         <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
                         <button id="download-btn" class="x-havuz-btn js-paylas-trig" onclick="xPaylasAc('havuz', this)" title="Paylaş — Word/PDF seç ve indir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg> Paylaş</button>
-                        <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici önizlemede aç"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 10S4.8 4.5 10 4.5 18.2 10 18.2 10 15.2 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.4"/></svg> Önizle</button>
+                        <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici editörde aç ve düzenle"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l.9-3.5L13 4.4a1.5 1.5 0 0 1 2.1 0l.5.5a1.5 1.5 0 0 1 0 2.1L7.5 15.1 4 16z"/><path d="M12.3 5.1l2.6 2.6"/></svg> Editörde Düzenle</button>
                         <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
                         <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
                     </div>
@@ -2870,6 +2885,8 @@ HTML_TEMPLATE = """
                     </div>
                     <div class="pb-baslik" id="pb-baslik"></div>
                     <div class="pb-dosya" id="pb-dosya"></div>
+                    <div id="pb-onizleme" class="pb-onizleme"></div>
+                    <div id="pb-oniz-not" class="pb-oniz-not"></div>
                     <div class="pb-sayac" id="pb-sayac"></div>
                 </div>
                 <div class="paylas-not" id="paylas-not"></div>
@@ -3036,7 +3053,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12r · CIZIM kart Duzenle butonu: artik cizim kagidinin TAM ORTASINDA (ustte degil); karta gelince kagit hafif blur + buton sik olcek animasyonuyla belirir (frosted/backdrop-blur). (12q) Word per-shape + panel tema-uyumlu thumbnail korunur.';
+        var X_BUILD = '2026-11-12s · (1) Havuz alt "Onizle" -> "Editorde Duzenle" + kalem ikon. (2) Indirme basari ekrani artik RENDER ONIZLEMESI gosterir: PDF=iframe birebir / Word=mammoth yaklasik; 5 sn kuralı KALKTI (disari-tikla kapat). ISTISNA: Word yalniz cizimse (mammoth bos) eski 5 sn ekrani. Bayrak x_paylas_onizleme.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4085,7 +4102,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 }
             } catch (e) {}
         }
-        function xPaylasKapat() { _paylasSayacTemizle(); var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
+        function xPaylasKapat() { _paylasSayacTemizle(); try { _paylasOnizlemeTemizle(); } catch (e) {} var m = document.getElementById('paylasModal'); if (m) m.classList.remove('active'); }
         window.xPaylasKapat = xPaylasKapat;
         function xPaylasBicim(b) {
             _paylasBicim = b;
@@ -4108,6 +4125,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
         }
         window._pdfIlerlemeGuncelle = _pdfIlerlemeGuncelle;
         function _paylasHazirlaGoster(bicim) {
+            try { _paylasOnizlemeTemizle(); } catch (e) {}   // önceki indirmenin önizlemesini sıfırla
             var ring = document.getElementById('pb-ilerleme'), tik = document.getElementById('pb-tik'), y = document.getElementById('pb-ring-yuzde'), bas = document.getElementById('pb-baslik'), dos = document.getElementById('pb-dosya'), sc = document.getElementById('pb-sayac');
             if (tik) tik.style.display = 'none';
             if (dos) dos.textContent = ''; if (sc) sc.textContent = '';
@@ -4116,8 +4134,86 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             else { if (y) y.style.display = 'none'; _pdfIlerlemeGuncelle(28); if (ring) ring.classList.add('pb-spin'); if (bas) bas.textContent = 'Hazırlanıyor'; }
             _paylasGoster('paylas-basari');
         }
-        // [İNDİRİLDİ EKRANI] tamamlanınca yeşil tik + "İndirildi" (ekran boyu korunur) + dosya + 5 sn geri sayım.
-        function _paylasBasariGoster(filename) {
+        // [İNDİRİLDİ EKRANI] tamamlanınca yeşil tik + "İndirildi" + dosya.
+        // YENİ: indirilen dosyanın RENDER ÖNİZLEMESİ (PDF=iframe birebir / Word=mammoth yaklaşık) + 5 sn YOK (dışarı-tıkla kapat).
+        // İSTİSNA: Word çıktısı yalnız çizimden oluşuyorsa (mammoth görünür metin üretmez) önizleme yararsız -> ESKİ 5 sn ekranı.
+        // Bayrak x_paylas_onizleme='0' -> eski davranış (önizleme yok, 5 sn geri sayım).
+        function _paylas5snKapat() {
+            _paylasSayacTemizle();
+            var kalan = 5, sc = document.getElementById('pb-sayac');
+            function yaz() { if (sc) sc.textContent = 'Bu pencere ' + kalan + ' sn içinde kapanacak…'; }
+            yaz();
+            window.__paylasKapatI = setInterval(function () { kalan--; if (kalan <= 0) { _paylasSayacTemizle(); xPaylasKapat(); } else { yaz(); } }, 1000);
+        }
+        function _paylasOnizlemeTemizle() {
+            try { if (window.__paylasOnizUrl) { URL.revokeObjectURL(window.__paylasOnizUrl); window.__paylasOnizUrl = null; } } catch (e) {}
+            var oz = document.getElementById('pb-onizleme'); if (oz) { oz.innerHTML = ''; oz.style.display = 'none'; }
+            var nt = document.getElementById('pb-oniz-not'); if (nt) { nt.textContent = ''; nt.style.display = 'none'; }
+            var m = document.getElementById('paylasModal'); var mc = m && m.querySelector('.modal-content'); if (mc) mc.classList.remove('paylas-onizleme');
+        }
+        window._paylasOnizlemeTemizle = _paylasOnizlemeTemizle;
+        function _paylasOnizlemeKur(tur, blob, html) {
+            var oz = document.getElementById('pb-onizleme'), nt = document.getElementById('pb-oniz-not');
+            var m = document.getElementById('paylasModal'), mc = m && m.querySelector('.modal-content');
+            if (!oz) return;
+            if (mc) mc.classList.add('paylas-onizleme');
+            oz.style.display = 'block'; oz.innerHTML = '';
+            if (tur === 'pdf') {
+                try { window.__paylasOnizUrl = URL.createObjectURL(blob); } catch (e) {}
+                var fr = document.createElement('iframe'); fr.title = 'PDF önizleme'; if (window.__paylasOnizUrl) fr.src = window.__paylasOnizUrl;
+                oz.appendChild(fr);
+                if (nt) { nt.textContent = 'İndirilen PDF dosyasının birebir önizlemesi.'; nt.style.display = 'block'; }
+            } else {
+                var wd = document.createElement('div'); wd.className = 'pb-word'; wd.innerHTML = html || ''; oz.appendChild(wd);
+                if (nt) { nt.textContent = 'Word önizlemesi (yaklaşık) — çizim şekilleri yalnız Word dosyasında görünür.'; nt.style.display = 'block'; }
+            }
+            // genişleyen popover ekran dışına taşmasın (yalnız masaüstü popover; bottom-sheet tam genişlik zaten)
+            try {
+                if (m.classList.contains('paylas-pop') && !m.classList.contains('paylas-sheet')) {
+                    var vw = window.innerWidth || document.documentElement.clientWidth, w = Math.min(480, vw - 16);
+                    var curLeft = parseFloat(m.style.left); if (isNaN(curLeft)) curLeft = 8;
+                    if (curLeft + w > vw - 8) m.style.left = Math.max(8, vw - 8 - w) + 'px';
+                }
+            } catch (e) {}
+        }
+        // Rapor YAPISAL olarak yalnız çizimden mi oluşuyor? (editör/havuz kaynağında belge günceldir) -> çizim-olmayan
+        // GERÇEK içerik (başlık/metin/link/normal görsel parça) yoksa true. Saved kaynağında belge farklı olabilir -> kullanma.
+        function _raporSadeceCizimMi() {
+            try {
+                var b = window.XEditor && window.XEditor.belge;
+                if (!b || !b.birimler || !b.birimler.length) return false;
+                var cizimVar = false;
+                for (var i = 0; i < b.birimler.length; i++) {
+                    var it = b.birimler[i].item || {}, parts = it.parcalar || [];
+                    for (var j = 0; j < parts.length; j++) {
+                        if (parts[j] && parts[j].cizimKagidi) cizimVar = true;
+                        else if (parts[j]) return false;   // çizim-olmayan parça = gerçek içerik -> çizim-only DEĞİL
+                    }
+                    if (it.h2_override || it.h1_override || it.baslik || (it.metin && String(it.metin).trim())) return false;
+                }
+                return cizimVar;   // çizim var + başka içerik yok -> çizim-only
+            } catch (e) { return false; }
+        }
+        function _paylasWordOnizleme(blob) {
+            var sc = document.getElementById('pb-sayac');
+            // [SADECE ÇİZİM] yapısal tespit YALNIZ editör açıkken güvenilir (belge canlı; havuz kapalıyken belge boş/bayat).
+            var _edAcik = !!(document.getElementById('editorModal') && document.getElementById('editorModal').classList.contains('active'));
+            if (_edAcik && _paylasKaynak !== 'saved' && _raporSadeceCizimMi()) { _paylas5snKapat(); return; }   // editör açık + çizim-only -> 5 sn
+            // Diğer kaynaklarda: mammoth görünür metin VE görsel üretmezse (çizim-only) aşağıda 5 sn'ye düşer.
+            if (!(window.mammoth && blob && blob.arrayBuffer)) { _paylas5snKapat(); return; }   // bileşen yoksa güvenli geri dönüş
+            if (sc) sc.textContent = 'Önizleme hazırlanıyor…';
+            blob.arrayBuffer().then(function (buf) { return window.mammoth.convertToHtml({ arrayBuffer: buf }); })
+                .then(function (res) {
+                    var html = (res && res.value) || '';
+                    var txt = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, '');
+                    var gorselVar = /<img[\s>]/i.test(html);
+                    if (txt.length < 2 && !gorselVar) { _paylasOnizlemeTemizle(); _paylas5snKapat(); return; }   // içerik yok (saved kaynağında çizim-only) -> 5 sn
+                    if (sc) sc.textContent = 'Kapatmak için dışarı tıklayın/dokunun';
+                    _paylasOnizlemeKur('word', null, html);
+                })
+                .catch(function () { _paylasOnizlemeTemizle(); _paylas5snKapat(); });
+        }
+        function _paylasBasariGoster(filename, blob, bicim) {
             var ring = document.getElementById('pb-ilerleme'), tik = document.getElementById('pb-tik'), bas = document.getElementById('pb-baslik');
             if (ring) { ring.style.display = 'none'; ring.classList.remove('pb-spin'); }
             if (tik) tik.style.display = '';
@@ -4125,10 +4221,12 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var fd = document.getElementById('pb-dosya'); if (fd) fd.textContent = filename;
             _paylasGoster('paylas-basari');
             _paylasSayacTemizle();
-            var kalan = 5, sc = document.getElementById('pb-sayac');
-            function yaz() { if (sc) sc.textContent = 'Bu pencere ' + kalan + ' sn içinde kapanacak…'; }
-            yaz();
-            window.__paylasKapatI = setInterval(function () { kalan--; if (kalan <= 0) { _paylasSayacTemizle(); xPaylasKapat(); } else { yaz(); } }, 1000);
+            _paylasOnizlemeTemizle();
+            var sc = document.getElementById('pb-sayac');
+            var onizAcik = true; try { if (localStorage.getItem('x_paylas_onizleme') === '0') onizAcik = false; } catch (e) {}
+            if (!onizAcik || !blob) { _paylas5snKapat(); return; }   // bayrak kapalı / blob yok -> eski 5 sn ekranı
+            if (bicim === 'pdf') { if (sc) sc.textContent = 'Kapatmak için dışarı tıklayın/dokunun'; _paylasOnizlemeKur('pdf', blob, null); return; }
+            _paylasWordOnizleme(blob);   // Word: mammoth; sadece çizimse _paylas5snKapat'a düşer
         }
         // [PAYLAŞ WORD AYARLARI] Satır aralığı + Alt boşluk + Sayfa no artık ŞERİTTE DEĞİL; Word seçilince burada.
         // Kontroller gizli backing input'lara (#m_line/#m_space_*/#b_after/#pn_*) yazar -> xBuildStyleOpts -> docx.
@@ -4552,7 +4650,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
                 var r = await xPaylasBlobUret();
                 xTriggerDownload(r.blob, r.filename);
                 window.__pdfProgCb = null;
-                _paylasBasariGoster(r.filename);   // İndirildi rozeti + dosya + 5 sn geri sayım (sağ-alt toast YOK)
+                _paylasBasariGoster(r.filename, r.blob, _paylasBicim);   // İndirildi rozeti + dosya + render ÖNİZLEME (PDF iframe / Word mammoth); sadece çizim Word -> 5 sn
             } catch (e) {
                 window.__pdfProgCb = null;
                 _paylasGoster((_paylasBicim === 'word' && _paylasKaynak !== 'saved') ? 'paylas-asama2' : 'paylas-asama1');
