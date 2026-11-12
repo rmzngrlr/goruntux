@@ -4,8 +4,9 @@ services:
   goruntux:
     build: .
     container_name: goruntux_sunucu
-    ports:
-      - "3011:3011"
+    # [IP KAPATILDI] Host port eşlemesi (3011:3011) KALDIRILDI -> 188.166.126.244:3011 dışarıdan açılmaz.
+    # Uygulama konteyner içinde 0.0.0.0:3011'de dinler; cloudflared iç ağdan goruntux:3011'e erişir (tünel çalışır).
+    # Sunucuda yerel hata ayıklama gerekirse geçici: ports: ["127.0.0.1:3011:3011"].
     restart: always
 
   # Cloudflare Tunnel: https://goruntux.rgmedya.tr -> goruntux:3011 (aynı compose ağı).
