@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13c · Indirme sonuc/onizleme ekrani editor/havuz/SAVED hepsinde ayni BUYUK boyut: saved card-anchor dar yukseklik veriyordu -> onizleme asamasinda buyuk panel (min(vh-24,720), ekrana sigdirilir, dikey ortali). (13b dis scroll fix korunur)';
+        var X_BUILD = '2026-11-13d · CIZIM PALM REJECTION (tablet, hibrit, bayrak x_ck_palm): kalem/parmak ucu ile yazarken avuc (topuk) degmesi islemez. L1 pen-onceligi, L2 temas-boyutu(avuc), L3 cizim-ici gec/genis 2.dokunus=avuc (pinc degil), L4 pointercancel geri-al. Gercek tablet testi sart. (13c onizleme boyut fix korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9600,7 +9600,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6v · 2026-11-12 WORD ONIZLEME = sayfa sayfa PDF render (mammoth birakildi; Word indirmesinde ayni icerikten pdfmake PDF iframe, cizimler gorunur, indirilen .docx). (6u placeholder + cizim siyah korunur)";
+  XE.VERSION = "6w · 2026-11-13 CIZIM PALM REJECTION (hibrit, bayrak x_ck_palm): L1 kalem aktifken dokunus(avuc+parmak) yok, L2 genis temas(width/height>esik)=avuc yok, L3 cizim surerken gec/genis 2.dokunus=avuc (pinc yok cizim devam), L4 pointercancel=yarim cizimi geri al. Gercek tablet testi sart. (6v onizleme korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11894,11 +11894,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
     // ---- pointer ----
     var drag=null, ptrs={}, pinch=null;   // [ÇİZİM PINCH] aktif parmaklar + pinch durumu (iki parmak = yakınlaştır/pan)
+    // [PALM REJECTION] tablet: parmak ucu / kalem ile yazarken avuç (topuk) değmesi işlememeli (hibrit, bayrak x_ck_palm).
+    var _sonKalemT=0, _kalemDown=false, _dragBaslaT=0;   // kalem (pen) son kullanım + aktif-down + çizim başlangıç zamanı
+    var _palmOn=true; try{ _palmOn=(localStorage.getItem('x_ck_palm')!=='0'); }catch(_){}
+    var _avucEsik=40; try{ var _pe=localStorage.getItem('x_ck_palm_esik'); if(_pe){ var _pn=parseInt(_pe,10); if(_pn>0) _avucEsik=_pn; } }catch(_){}   // temas boyutu eşiği (CSS px); cihaza göre ayarlanır
+    function _kalemAktifMi(){ return _kalemDown || (_now()-_sonKalemT < 700); }   // kalem down ya da son 700ms içinde -> dokunuşları ele
+    function _avucMu(e){ var w=e.width||0, h=e.height||0; return (w>_avucEsik || h>_avucEsik); }   // geniş temas = avuç (cihaz width/height bildirirse)
+    function _now(){ try{ return Date.now(); }catch(_){ return 0; } }
     function pd(e){
       if(e.target===yaziInp) return;
+      if(_cz && _palmOn){   // [PALM L1+L2] kalem aktifken dokunuş (avuç+parmak) YOK; geniş temas (avuç) YOK
+        if(e.pointerType==='pen'){ _kalemDown=true; _sonKalemT=_now(); }
+        else if(e.pointerType==='touch'){ if(_kalemAktifMi() || _avucMu(e)) return; }
+      }
       try{ cv.setPointerCapture && cv.setPointerCapture(e.pointerId); }catch(_){}
       ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+      if(Object.keys(ptrs).length===1) _dragBaslaT=_now();   // ilk temas -> çizim başlangıcı (L3 zamanlama için)
       if(_cz && Object.keys(ptrs).length>=2){   // ikinci parmak indi -> PINCH (çizimi iptal et)
+        // [PALM L3] çizim sürerken gelen GENİŞ ya da GEÇ (>300ms) 2. dokunuş = avuç -> pinç YOK, çizim DEVAM
+        if(_palmOn && e.pointerType==='touch' && (_avucMu(e) || (drag && (_now()-_dragBaslaT)>300))){ delete ptrs[e.pointerId]; try{ cv.releasePointerCapture && cv.releasePointerCapture(e.pointerId); }catch(_){} return; }
         if(drag){ if((drag.tip==='ciz'||drag.tip==='kalem') && objs.length){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } } drag=null; }
         var _id=Object.keys(ptrs), _pa=ptrs[_id[0]], _pb=ptrs[_id[1]];
         pinch={ d0:Math.max(1,Math.hypot(_pa.x-_pb.x,_pa.y-_pb.y)), z0:zoom }; ciz(); return;
@@ -11917,6 +11931,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(tool==='kalem'){ itUndo(); var o4={t:'kalem', nk:[{x:p.x,y:p.y}], renk:renk, kal:kalinlik, firca:_firca}; if(_firca==='sprey') o4.seed=Math.floor(Math.random()*1e9); objs.push(o4); drag={tip:'kalem', o:o4}; return; }   // [FIRÇA] aktif fırça + sprey tohum (deterministik)
     }
     function pm(e){
+      if(_cz && _palmOn && e.pointerType==='pen'){ _sonKalemT=_now(); }   // [PALM] kalem hareketi de "kalem aktif" penceresini canlı tutar
       if(ptrs[e.pointerId]) ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
       if(pinch){ var _id=Object.keys(ptrs); if(_id.length>=2){ var _a=ptrs[_id[0]], _b=ptrs[_id[1]]; var _d=Math.hypot(_a.x-_b.x,_a.y-_b.y), _mx=(_a.x+_b.x)/2, _my=(_a.y+_b.y)/2;
         var nz=Math.max(0.5,Math.min(pinch.z0*(_d/pinch.d0),6)); var r=cv.getBoundingClientRect(), sx=U(_mx-r.left), sy=U(_my-r.top);
@@ -11946,6 +11961,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(drag.tip==='kalem'){ drag.o.nk.push({x:p.x,y:p.y}); ciz(); return; }
     }
     function pu(e){
+      if(_cz && _palmOn && e.pointerType==='pen'){ _kalemDown=false; _sonKalemT=_now(); }   // [PALM] kalem kalktı -> 700ms pencere başlasın
+      // [PALM L4] OS donanım avuç-reddi / iptal -> yarım çizimi GERİ AL (kalıntı iz kalmaz). drag pinç'te zaten null -> çift-pop yok.
+      if(e.type==='pointercancel' && _cz && _palmOn && drag && (drag.tip==='ciz'||drag.tip==='kalem')){ if(objs.length) objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } drag=null; if(ptrs[e.pointerId]) delete ptrs[e.pointerId]; ciz(); return; }
       if(ptrs[e.pointerId]) delete ptrs[e.pointerId];
       if(pinch){ if(Object.keys(ptrs).length<2) pinch=null; return; }
       if(!drag){ return; }
