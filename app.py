@@ -3054,7 +3054,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12y · Indirme onizleme TEMIZLENDI: PDF viewer ust cubugu (#toolbar=0) + sag scroll cubugu (iframe 16px genis + container overflow:hidden clip) gizli, sayfa ortali; alt not + "Kapatmak icin..." ipucu KALDIRILDI (gereksiz scroll yoktu). (12w Word=sayfa sayfa PDF render korunur)';
+        var X_BUILD = '2026-11-12z · Cizim editoru renk kutusu (.ed-gd-renk-inp) rapor editoru seridindeki renk kutusuyla (.ed-panel input[type=color]) BIREBIR ayni stil (border #d0d7de/#2c3a4a, background #fff/#1b2735, koyu tema override eklendi). (12y onizleme temizligi korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -10306,7 +10306,9 @@ body:not(.light-theme) .ed-gd-kalem-opt:hover{background:#243447;}
 body:not(.light-theme) .ed-gd-kalem-opt.aktif{background:#243447;color:#8ecbff;}
 .ed-gd-stil{display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;}
 .ed-gd-renk{display:inline-flex;align-items:center;cursor:pointer;}
-.ed-gd-renk-inp{width:30px;height:30px;border:1px solid #cfd8e3;border-radius:7px;padding:0;background:none;cursor:pointer;}
+/* [RENK KUTUSU] rapor editörü şeridindeki renk kutusuyla (.ed-panel input[type=color]) BİREBİR aynı görünüm */
+.ed-gd-renk-inp{width:30px;height:30px;border:1px solid #d0d7de;border-radius:7px;padding:0;background:#fff;cursor:pointer;}
+body:not(.light-theme) .ed-gd-renk-inp{background:#1b2735;border-color:#2c3a4a;}
 .ed-gd-say{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#475569;}
 .ed-gd-say input[type=range]{width:88px;}
 .ed-gd-mini{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:30px;padding:0 10px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
