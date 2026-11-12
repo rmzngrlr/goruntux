@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13f · (1) Toast EN FAZLA 2: yeni bildirim gelince en eski NORMAL toast kaldirilir (ilerleme/xyp toast haric). (2) Sag-tik Yapistir da panoda GORSEL varsa Ctrl+V ile ayni "gorsel bu alana yapistirilamaz" uyarisini verir (navigator.clipboard.read ile tespit). (13e yapistir/PWA korunur)';
+        var X_BUILD = '2026-11-13g · PWA Ana Ekrana Ekle iOS netlestirme: iPhone/iPad Apple kisiti geregi PROGRAMATIK kurulum YOK (sadece elle Paylas); Safari-disi iOS tarayici (Chrome/Firefox/Edge iOS = crios/fxios/edgios/opios) tespit edilip "Safari de ac" yonergesi, Safari de netlestirilmis adimlar. Android direkt kurulum degismedi. (13f toast/yapistir korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3117,13 +3117,25 @@ HTML_TEMPLATE = """
                 return;
             }
             if (isIOS) {
-                await xConfirm(`GörüntüX'i ana ekranına eklemek için:
+                // iPhone/iPad: Apple PROGRAMATİK kurulumu engeller (beforeinstallprompt YOK) -> tek yol elle Paylaş menüsü.
+                // Ayrıca "Ana Ekrana Ekle" YALNIZCA Safari'de çalışır; Chrome/Firefox/Edge iOS (WKWebView) + uygulama-içi
+                // tarayıcılarda ya hiç yok ya düzgün standalone açmaz -> kullanıcıyı Safari'ye yönlendir.
+                var iosSafariDisi = /crios|fxios|edgios|opios/i.test(ua);
+                if (iosSafariDisi) {
+                    await xConfirm(`iPhone/iPad'de ana ekrana ekleme YALNIZCA Safari'de çalışır (Apple kısıtı).
 
-1) Tarayıcının Paylaş (⬆) simgesine dokun.
+1) Bu adresi Safari'de aç:
+goruntux.rgmedya.tr
+2) Alttaki Paylaş (⬆) -> "Ana Ekrana Ekle" -> "Ekle".`, { title: "Safari'de aç", okText: "Anladım", cancelText: "Kapat" });
+                    return;
+                }
+                await xConfirm(`iPhone'da Apple otomatik eklemeye izin vermez; tek yol bu adımlar:
+
+1) Alttaki/üstteki Paylaş (⬆) simgesine dokun.
 2) "Ana Ekrana Ekle"yi seç.
-3) "Ekle"ye dokun.
+3) Sağ üstte "Ekle"ye dokun.
 
-Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText: "Anladım", cancelText: "Kapat" });
+Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText: "Anladım", cancelText: "Kapat" });
                 return;
             }
             await xConfirm(`GörüntüX'i ana ekranına eklemek için tarayıcının menüsünden "Ana ekrana ekle" / "Uygulamayı yükle" seçeneğini kullanabilirsin.`, { title: "Ana Ekrana Ekle", okText: "Anladım", cancelText: "Kapat" });
