@@ -1697,6 +1697,10 @@ HTML_TEMPLATE = """
         .pb-oniz-not { display: none; font-size: 11px; color: var(--text-secondary); opacity: .9; margin: 0 0 10px; line-height: 1.4; }
         /* önizleme açıkken popover genişler + başlık kompaktlaşır (yer açılır) */
         #paylasModal.paylas-pop .modal-content.paylas-onizleme { width: min(480px, calc(100vw - 16px)); }
+        /* [DIŞ SCROLL YOK] önizleme aşamasında body'yi flex yap -> önizleme KALAN boşluğa sığar, modal-body taşmaz (scroll çubuğu gitmez) */
+        .modal-content.paylas-onizleme .modal-body { display: flex; flex-direction: column; overflow: hidden; }
+        .modal-content.paylas-onizleme #paylas-basari { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        .modal-content.paylas-onizleme .pb-onizleme { flex: 1; height: auto; min-height: 150px; margin-bottom: 0; }
         .paylas-onizleme #paylas-basari { padding: 16px 16px 16px; }
         .paylas-onizleme .pb-ikon { margin-bottom: 8px; }
         .paylas-onizleme .pb-ikon svg { width: 46px !important; height: 46px !important; }
@@ -3054,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13a · Cizim kagidi PC trackpad 2-parmak scroll artik PAN (kaydirma); zoom YALNIZ pinch/Ctrl+tekerlek + sag-alt butonlar (sar overflow:auto native scroll; bayrak x_ck_wheel_pan). (12z renk kutusu stili korunur)';
+        var X_BUILD = '2026-11-13b · Paylas basari/onizleme popup DIS SCROLL giderildi: onizleme asamasinda .modal-body flex-column + #pb-onizleme flex:1 (sabit 540px yerine KALAN bosluga sigar) -> modal-body tasmiyor, sag scroll cubugu yok. (13a cizim pan korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4150,7 +4154,7 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             try { if (window.__paylasOnizUrl) { URL.revokeObjectURL(window.__paylasOnizUrl); window.__paylasOnizUrl = null; } } catch (e) {}
             var oz = document.getElementById('pb-onizleme'); if (oz) { oz.innerHTML = ''; oz.style.display = 'none'; }
             var nt = document.getElementById('pb-oniz-not'); if (nt) { nt.textContent = ''; nt.style.display = 'none'; }
-            var m = document.getElementById('paylasModal'); var mc = m && m.querySelector('.modal-content'); if (mc) mc.classList.remove('paylas-onizleme');
+            var m = document.getElementById('paylasModal'); var mc = m && m.querySelector('.modal-content'); if (mc) { mc.classList.remove('paylas-onizleme'); mc.style.height = ''; }
         }
         window._paylasOnizlemeTemizle = _paylasOnizlemeTemizle;
         function _paylasOnizlemeKur(tur, blob) {
@@ -4159,6 +4163,9 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var m = document.getElementById('paylasModal'), mc = m && m.querySelector('.modal-content');
             if (!oz || !blob) return;
             if (mc) mc.classList.add('paylas-onizleme');
+            // [DIŞ SCROLL YOK + BÜYÜK ÖNİZLEME] modal yüksekliğini _paylasKonumla'nın verdiği maxHeight'e SABİTLE ->
+            // flex:1 önizleme kalan alanı DOLDURUR (sığmazsa kırpar; içerik azsa büyür). Dış scroll çıkmaz.
+            try { if (mc && mc.style.maxHeight) mc.style.height = mc.style.maxHeight; } catch (e) {}
             oz.style.display = 'block'; oz.innerHTML = '';
             try { window.__paylasOnizUrl = URL.createObjectURL(blob); } catch (e) {}
             // PDF görüntüleyici çubuğu (indir/yazdır/drive) + nav panes + scroll çubuğu GİZLE; sayfayı genişliğe sığdır (ortalı).
