@@ -3036,7 +3036,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12q · CIZIM 9A+: (1) Word artik her sekil/metin AYRI FLOATING NESNE (wp:anchor, grup degil -> Word tek tek secer; bayrak x_ck_word_pershape). (2) Cizim b64 thumbnail EKRAN/tema-uyumlu renkle pisirilir -> havuz/galeri/ana panelde koyu temada siyah->acik (editorle uyumlu); CIKTI (Word/PDF) native vektor + GERCEK renk. Word render dogrulugu kullanici testi.';
+        var X_BUILD = '2026-11-12r · CIZIM kart Duzenle butonu: artik cizim kagidinin TAM ORTASINDA (ustte degil); karta gelince kagit hafif blur + buton sik olcek animasyonuyla belirir (frosted/backdrop-blur). (12q) Word per-shape + panel tema-uyumlu thumbnail korunur.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9509,7 +9509,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6q · 2026-11-12 CIZIM 9A+: Word her sekil AYRI FLOATING nesne (wp:anchor, grup degil) + panel/havuz/galeri cizim thumbnail tema-uyumlu renk (koyu temada siyah->acik); CIKTI native+gercek renk; render dogrulugu kullanici testi";
+  XE.VERSION = "6r · 2026-11-12 CIZIM kart Duzenle butonu cizim kagidinin TAM ORTASINDA + hover'da kagit hafif blur + sik olcek animasyonu (9A+ Word per-shape ve tema-uyumlu thumbnail korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10308,11 +10308,13 @@ body:not(.light-theme) .ed-gd-yazi-inp{background:#1b2735;color:#e7e9ea;border-c
 body:not(.light-theme) #editorModal .ed-cizim-ekle{background:#0f3b32;color:#5fd3b4;border-color:#2b6b5c;}
 #editorModal .ed-ck-sar{position:relative;display:inline-block;max-width:100%;}
 /* [ÇİZİM TEMA] çizim görseli ŞEFFAF -> A4 zemini CSS'ten (temaya göre); açık=beyaz sayfa, koyu=koyu sayfa */
-#editorModal .ed-ck-img{background:#ffffff;border:1px solid rgba(136,153,166,0.28);box-shadow:0 1px 6px rgba(0,0,0,0.12);}
+#editorModal .ed-ck-img{background:#ffffff;border:1px solid rgba(136,153,166,0.28);box-shadow:0 1px 6px rgba(0,0,0,0.12);transition:filter .22s ease;}
 body:not(.light-theme) #editorModal .ed-ck-img{background:#17212e;border-color:rgba(136,153,166,0.3);box-shadow:0 1px 8px rgba(0,0,0,0.45);}
-#editorModal .ed-ck-duzenle{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:3;background:rgba(21,101,192,.94);color:#fff;border:none;border-radius:16px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:.35;transition:opacity .12s,background .12s;}
-#editorModal .ed-ck-sar:hover .ed-ck-duzenle{opacity:1;}
-#editorModal .ed-ck-duzenle:hover{background:#0d4f98;}
+/* [ÇİZİM DÜZENLE] buton çizim kağıdının TAM ORTASINDA; kartta gezinince kağıt hafif blur'lanır + buton şık belirir */
+#editorModal .ed-ck-duzenle{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:3;background:rgba(21,101,192,.82);color:#fff;border:none;border-radius:18px;padding:7px 18px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4);opacity:.32;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);transition:opacity .2s ease,background .2s ease,transform .2s ease;}
+#editorModal .ed-ck-sar:hover .ed-ck-img{filter:blur(2px);}
+#editorModal .ed-ck-sar:hover .ed-ck-duzenle{opacity:1;transform:translate(-50%,-50%) scale(1.05);}
+#editorModal .ed-ck-duzenle:hover{background:#0d4f98;transform:translate(-50%,-50%) scale(1.08);}
 #editorModal .ed-pe-wrap{position:relative;display:inline-block;margin:0 0 10px;}
 #editorModal .ed-pe-btn{font-size:12px;font-weight:600;color:#1565c0;background:#fff;border:1px dashed #9ab;border-radius:7px;padding:5px 12px;cursor:pointer;}
 #editorModal .ed-pe-wrap:hover .ed-pe-btn{background:#eef5ff;}
