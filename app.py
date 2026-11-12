@@ -3053,7 +3053,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12u · CIZIM kalem FIRCA: fircalar artik KALEM DUGMESININ DROPDOWN menusunde (Sekil/dortgen gibi) — kaleme tiklayinca kalem aktif + fircalar acilir; ayri "Normal" kutusu KALDIRILDI. (12t) 6 firca (Normal/Sprey/Fosforlu/Firca/Neon/Kaligrafi) + ortak motor _fircaCiz korunur.';
+        var X_BUILD = '2026-11-12v · (1) Bolum input alanlari (baslik/metin/link/gorsel): yaz->sil sonrasi PLACEHOLDER GERI DONER (contenteditable stray <br> temizligi; gorsel placeholder span korunur/contenteditable=false). (2) Cizim kagidinda varsayilan "otonom" renk = ciktida SIYAH olan renk (#000000; ekranda acik). (12u firca dropdown korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9607,7 +9607,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6t · 2026-11-12 CIZIM kalem FIRCA: fircalar KALEM DUGMESININ dropdown'unda (Sekil gibi) — kaleme tikla->aktif+liste; ayri kutu kaldirildi. 6 firca + ortak motor _fircaCiz, sprey deterministik";
+  XE.VERSION = "6u · 2026-11-12 (1) Bolum alanlari (baslik/metin/link/gorsel) PLACEHOLDER yaz->sil sonrasi GERI DONER (stray <br> temizlenir; gorsel span korunur). (2) Cizim varsayilan rengi = cikti-siyahi (#000000). (6t firca korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11675,7 +11675,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var base=img0, baseW=img0.naturalWidth||img0.width||1, baseH=img0.naturalHeight||img0.height||1;
     var objs=(_cz && opts.objs) ? JSON.parse(JSON.stringify(opts.objs)) : [];   // {t:'yazi'|'ok'|'dikdortgen'|'kalem'|'gorsel', ...} src-koordinat
     var tool='sec', secili=[], marq=null;   // secili=ÇOKLU seçim dizisi; marq=marquee (lasso) dikdörtgeni src
-    var renk='#e02020';
+    var renk=_cz?'#000000':'#e02020';   // [ÇİZİM] varsayılan "otonom" renk = ÇIKTIDA SİYAH olan renk (#000000); ekranda _gostRenk ile açık görünür. Görsel editörü kırmızı kalır.
     var kalinlik=Math.max(3, Math.round(Math.max(baseW,baseH)/260));
     var _firca='normal';   // [FIRÇA] aktif kalem fırçası: normal/sprey/fosforlu/firca/neon/kaligrafi
     // [ÇİZİM METİN] font listesi (rapor editörü ile aynı) + varsayılan boyut RAPOR m_size'a göre (pt -> canvas px).
@@ -12903,6 +12903,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var t=e.target; if(!t||!t.closest) return;
       if(t.closest('#ed-rt-panel')) return;
       if(t.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit')){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block') _sagTikKapat(); }
+      // [PLACEHOLDER GERİ DÖN] contenteditable alan tamamen boşaldığında tarayıcı stray <br> bırakır -> :empty bozulur
+      // -> placeholder (:empty:before) DÖNMEZ. Fix: metin yoksa (ve görsel yoksa) innerHTML'i gerçekten boşalt.
+      var _f=t.closest('.ed-h2,.ed-h1,.ed-metin,.ed-link-edit');
+      if(_f){ if(_f.textContent==='' && !_f.querySelector('img') && _f.innerHTML!==''){ _f.innerHTML=''; } return; }
+      // [GÖRSEL PLACEHOLDER] görsel kutusu (.ed-img-pano) salt yapıştırma hedefi; yazı placeholder span'ını bozar
+      // -> görsel yoksa placeholder metnini geri yaz + span/buton dışı stray düğümleri temizle.
+      var _g=t.closest('.ed-img-pano');
+      if(_g && !_g.querySelector('img')){ var _ph=_g.querySelector('.ed-img-ph'), _btn=_g.querySelector('.ed-img-pcsec');
+        if(_ph && _ph.textContent!=='📋 Görseli yapıştır (Ctrl+V)') _ph.textContent='📋 Görseli yapıştır (Ctrl+V)';
+        [].slice.call(_g.childNodes).forEach(function(n){ if(n!==_ph && n!==_btn) _g.removeChild(n); }); }
     });
   }
 
@@ -13022,7 +13032,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           }
           else h.push((_g && _g.b64)
             ? ('<img class="ed-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>')
-            : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır"><span class="ed-img-ph">📋 Görseli yapıştır (Ctrl+V)</span><button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Cihazdan görsel seç">📁 '+(document.documentElement.classList.contains('x-mobile')?'Cihazdan':'Bilgisayardan')+' seç</button></div>')); }
+            : ('<div class="ed-img-pano" contenteditable="true" spellcheck="false" data-i="'+i+'" data-p="'+k+'" title="Panodaki görseli Ctrl+V ile buraya yapıştır"><span class="ed-img-ph" contenteditable="false">📋 Görseli yapıştır (Ctrl+V)</span><button class="ed-img-pcsec" contenteditable="false" type="button" data-i="'+i+'" data-p="'+k+'" title="Cihazdan görsel seç">📁 '+(document.documentElement.classList.contains('x-mobile')?'Cihazdan':'Bilgisayardan')+' seç</button></div>')); }
         else if(p.tur==='metin'){ h.push('<div class="ed-metin" contenteditable="true" data-i="'+i+'" data-p="'+k+'" spellcheck="false" style="'+cm+'">'+renderMetin(p.metin||'')+'</div>'); }
         else if(p.tur==='link'){ var lk=linkGoster(b.item);
           // [SORUN 2] boş url -> item.link YALNIZ ASIL link parçasına düşsün (konumdan bağımsız: görsel üstüne
