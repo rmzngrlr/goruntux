@@ -7,3 +7,13 @@ services:
     ports:
       - "3011:3011"
     restart: always
+
+  # Cloudflare Tunnel: https://goruntux.rgmedya.tr -> goruntux:3011 (aynı compose ağı).
+  # Token .env'de CF_TUNNEL_TOKEN olarak tutulur (gizli, commit edilmez). Hesabını Bil ile aynı yöntem.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: goruntux_tunnel
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - goruntux

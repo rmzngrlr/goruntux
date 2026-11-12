@@ -4,3 +4,4 @@ node_modules/
 temp_uploads/
 *.docx
 .DS_Store
+.env
