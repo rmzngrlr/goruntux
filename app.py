@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13b · Paylas basari/onizleme popup DIS SCROLL giderildi: onizleme asamasinda .modal-body flex-column + #pb-onizleme flex:1 (sabit 540px yerine KALAN bosluga sigar) -> modal-body tasmiyor, sag scroll cubugu yok. (13a cizim pan korunur)';
+        var X_BUILD = '2026-11-13c · Indirme sonuc/onizleme ekrani editor/havuz/SAVED hepsinde ayni BUYUK boyut: saved card-anchor dar yukseklik veriyordu -> onizleme asamasinda buyuk panel (min(vh-24,720), ekrana sigdirilir, dikey ortali). (13b dis scroll fix korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4163,9 +4163,6 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             var m = document.getElementById('paylasModal'), mc = m && m.querySelector('.modal-content');
             if (!oz || !blob) return;
             if (mc) mc.classList.add('paylas-onizleme');
-            // [DIŞ SCROLL YOK + BÜYÜK ÖNİZLEME] modal yüksekliğini _paylasKonumla'nın verdiği maxHeight'e SABİTLE ->
-            // flex:1 önizleme kalan alanı DOLDURUR (sığmazsa kırpar; içerik azsa büyür). Dış scroll çıkmaz.
-            try { if (mc && mc.style.maxHeight) mc.style.height = mc.style.maxHeight; } catch (e) {}
             oz.style.display = 'block'; oz.innerHTML = '';
             try { window.__paylasOnizUrl = URL.createObjectURL(blob); } catch (e) {}
             // PDF görüntüleyici çubuğu (indir/yazdır/drive) + nav panes + scroll çubuğu GİZLE; sayfayı genişliğe sığdır (ortalı).
@@ -4174,13 +4171,21 @@ Böylece uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana Ekle", okText
             // Not + alt-ipucu metinleri GEREKSİZ (ekranı uzatıp scroll yaptırıyor) -> ikisini de kaldır.
             if (nt) { nt.textContent = ''; nt.style.display = 'none'; }
             var _sc = document.getElementById('pb-sayac'); if (_sc) _sc.textContent = '';
-            // genişleyen popover ekran dışına taşmasın (yalnız masaüstü popover; bottom-sheet tam genişlik zaten)
+            // [TUTARLI BÜYÜK PANEL] İndirme sonuç/önizleme ekranı editör / havuz / saved HEPSİNDE aynı BÜYÜK boyut.
+            // Card-anchor (saved) dar yükseklik verip önizlemeyi küçültüyordu -> büyük panel + ekrana sığdır (flex:1 doldurur).
             try {
                 if (m.classList.contains('paylas-pop') && !m.classList.contains('paylas-sheet')) {
-                    var vw = window.innerWidth || document.documentElement.clientWidth, w = Math.min(480, vw - 16);
-                    var curLeft = parseFloat(m.style.left); if (isNaN(curLeft)) curLeft = 8;
-                    if (curLeft + w > vw - 8) m.style.left = Math.max(8, vw - 8 - w) + 'px';
-                }
+                    var vw = window.innerWidth || document.documentElement.clientWidth;
+                    var vh = window.innerHeight || document.documentElement.clientHeight;
+                    var w = Math.min(480, vw - 16), H = Math.min(vh - 24, 720);
+                    mc.style.maxHeight = H + 'px'; mc.style.height = H + 'px';
+                    m.classList.remove('pop-up'); m.style.bottom = 'auto';
+                    var _l = parseFloat(m.style.left); if (isNaN(_l)) _l = Math.round((vw - w) / 2);
+                    if (_l + w > vw - 8) _l = vw - 8 - w; if (_l < 8) _l = 8;
+                    m.style.left = Math.round(_l) + 'px';
+                    var _t = Math.round((vh - H) / 2); if (_t < 12) _t = 12;
+                    m.style.top = _t + 'px';
+                } else if (mc && mc.style.maxHeight) { mc.style.height = mc.style.maxHeight; }   // bottom-sheet: _paylasKonumla maxHeight'i (85vh) doldur
             } catch (e) {}
         }
         // [WORD ÖNİZLEME = SAYFA SAYFA RENDER] Word dosyasının önizlemesi = AYNI içerikten üretilen PDF (pdfmake:
