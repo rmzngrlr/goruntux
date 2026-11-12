@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13d · CIZIM PALM REJECTION (tablet, hibrit, bayrak x_ck_palm): kalem/parmak ucu ile yazarken avuc (topuk) degmesi islemez. L1 pen-onceligi, L2 temas-boyutu(avuc), L3 cizim-ici gec/genis 2.dokunus=avuc (pinc degil), L4 pointercancel geri-al. Gercek tablet testi sart. (13c onizleme boyut fix korunur)';
+        var X_BUILD = '2026-11-13e · Editor sag-tik YAPISTIR butonu artik GUVENLI baglamda (HTTPS domain goruntux.rgmedya.tr) OTOMATIK gorunur+aktif (metin/baslik/link; _yapistirGoster->_clipPasteVar). Eskiden HTTP-IP guvensiz baglam oldugundan gizliydi. Gorsel yapistirma zaten calisiyordu. (13d palm rejection korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -3104,10 +3104,10 @@ HTML_TEMPLATE = """
             var ua = navigator.userAgent || "";
             var isIOS = /iphone|ipad|ipod/i.test(ua);
             if (window.__pwaPrompt) {
-                var onay = await xConfirm(`GörüntüX'i ana ekranına ekleyerek tarayıcı çubuğu olmadan, tam ekran bir uygulama gibi kullanabilirsin.
-
-Ana ekrana eklensin mi?`, { title: "Ana Ekrana Ekle", okText: "Ekle", cancelText: "Vazgeç" });
-                if (!onay) return;
+                // [DOĞRUDAN KURULUM] HTTPS'te beforeinstallprompt yakalanır -> butona basınca ARACI onay YOK,
+                // doğrudan NATIVE "Ana Ekrana Ekle" istemini aç. İstem zaten kendi Ekle/İptal onayını içerir; ayrıca
+                // prompt()'u gesture içinde (await'siz) çağırmak daha güvenilir. Eskiden HTTP-IP'de __pwaPrompt hiç
+                // gelmezdi -> aşağıdaki iOS/menü yönergesine düşerdi; artık HTTPS'te direkt kurar.
                 try {
                     window.__pwaPrompt.prompt();
                     var sec = await window.__pwaPrompt.userChoice;
@@ -9600,7 +9600,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6w · 2026-11-13 CIZIM PALM REJECTION (hibrit, bayrak x_ck_palm): L1 kalem aktifken dokunus(avuc+parmak) yok, L2 genis temas(width/height>esik)=avuc yok, L3 cizim surerken gec/genis 2.dokunus=avuc (pinc yok cizim devam), L4 pointercancel=yarim cizimi geri al. Gercek tablet testi sart. (6v onizleme korunur)";
+  XE.VERSION = "6x · 2026-11-13 Sag-tik YAPISTIR butonu artik GUVENLI baglamda (HTTPS domain) OTOMATIK gorunur+aktif (metin/baslik/link alanlari; _yapistirGoster->_clipPasteVar). Eskiden HTTP-IP'de gizliydi. Gorsel yapistirma zaten calisiyordu. (6w palm rejection korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12415,9 +12415,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   // Bayrak x_kes_kopyala='0' -> davranış kapanır, tarayıcının yerel menüsü geri gelir.
   function clipAcik(){ try{ return localStorage.getItem('x_kes_kopyala')!=='0'; }catch(_){ return true; } }
   function _clipPasteVar(){ return !!(navigator.clipboard && navigator.clipboard.readText); }   // pano OKUMA yalnız güvenli bağlamda (localhost evet, IP+HTTP hayır)
-  // [YAPIŞTIR BUTONU] Kullanıcı isteğiyle menüdeki Yapıştır butonu ŞİMDİLİK GİZLİ (Ctrl+V ile yapıştırılır).
-  // İleride göstermek için: localStorage x_yapistir_btn='1'. Varsayılan GİZLİ.
-  function _yapistirGoster(){ try{ return localStorage.getItem('x_yapistir_btn')==='1'; }catch(_){ return false; } }
+  // [YAPIŞTIR BUTONU] Pano OKUMA yalnız GÜVENLİ bağlamda (HTTPS/localhost) çalışır. Eskiden panel HTTP-IP'de
+  // sunulduğu için pano okunamıyordu -> buton GİZLENMİŞTİ. Artık domain (goruntux.rgmedya.tr) HTTPS ->
+  // güvenli bağlamda buton OTOMATİK GÖSTERİLİR+aktif (metin/başlık/link alanlarında sağ-tık Yapıştır). Görsel
+  // yapıştırma ayrı (.rt-gclip) ve zaten çalışıyor. Güvensiz bağlamda (eski IP+HTTP) gizli kalır. Zorla
+  // gizlemek için localStorage x_yapistir_btn='0'.
+  function _yapistirGoster(){ try{ if(localStorage.getItem('x_yapistir_btn')==='0') return false; }catch(_){} return _clipPasteVar(); }
   var _CLIP_SVG={
     kes:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.1"/><circle cx="6" cy="14" r="2.1"/><path d="M7.7 7.3L16 15.2"/><path d="M7.7 12.7L16 4.8"/></svg>',
     kopya:'<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="7.5" y="7.5" width="8.5" height="8.5" rx="1.6"/><path d="M12.5 7.5V5.5A1.5 1.5 0 0 0 11 4H5.5A1.5 1.5 0 0 0 4 5.5V11A1.5 1.5 0 0 0 5.5 12.5H7.5"/></svg>',
