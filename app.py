@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13g · PWA Ana Ekrana Ekle iOS netlestirme: iPhone/iPad Apple kisiti geregi PROGRAMATIK kurulum YOK (sadece elle Paylas); Safari-disi iOS tarayici (Chrome/Firefox/Edge iOS = crios/fxios/edgios/opios) tespit edilip "Safari de ac" yonergesi, Safari de netlestirilmis adimlar. Android direkt kurulum degismedi. (13f toast/yapistir korunur)';
+        var X_BUILD = '2026-11-13h · Masaustu KART SABIT: bolumde alan duzenlerken ALAN degil BOLUM KARTI uste sabit (_odakUstKur ed.closest(.ed-card)); ayni kart ici alan gecisinde kart kipirdamaz. iPhone ayri (iOS klavye). (13g PWA iOS korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "6y · 2026-11-13 Sag-tik Yapistir: panoda GORSEL varsa metin alanina yapistirmaz, Ctrl+V ile AYNI 'gorsel bu alana yapistirilamaz' uyarisi (navigator.clipboard.read); gorsel yoksa metni yapistirir. (6x yapistir butonu gorunurluk korunur)";
+  XE.VERSION = "6z · 2026-11-13 Masaustu KART SABIT: bir bolumde alan duzenlerken o alanin ALANI degil BOLUM KARTI uste sabitlenir (_odakUstKur -> ed.closest(.ed-card)); ayni kart ici alan gecisinde kart kipirdamaz. (6y yapistir korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9964,10 +9964,17 @@ X_EDITOR_JS = r'''
         var lb=document.getElementById('ed-lightbox'); if(lb && lb.classList.contains('acik')) return;   // lightbox açıkken dokunma
         var t=e.target; if(!t || !t.closest) return;
         var ed=t.closest('.ed-h2,.ed-metin,.ed-link-edit,.ed-img-pano,.ed-plat'); if(!ed) return;
+        // [KART SABİT] Odaklanan ALANI değil, o alanın BÖLÜM KARTINI üste sabitle -> aynı kart içinde hangi alana
+        // geçersek geçelim kart aynı yerde kalır (kart zaten hizalı -> aşağıdaki eşik kıpırdatmaz). .ed-plat kart dışıdır.
+        var hedef=ed.closest('.ed-card') || ed;
         var sc=m.querySelector('.preview-body'); if(!sc) return;
-        var sr=sc.getBoundingClientRect(), er=ed.getBoundingClientRect(), pad=118;
-        if(Math.abs(er.top-(sr.top+pad))<28) return;   // zaten hizalı -> kıpırdatma (jank önle)
-        ed.scrollIntoView({block:'start', behavior:'smooth'});   // scroll-padding-top:118 şeridin altına hizalar
+        var sr=sc.getBoundingClientRect(), er=hedef.getBoundingClientRect(), pad=118;
+        // NOT: scrollIntoView KULLANMA -> .ed-card'ın KENDİ scroll-margin-top:118'i, preview-body'nin
+        // scroll-padding-top:118'i ile ÇİFTLENİP kartı 118px AŞAĞI bırakıyor (236 toplam). Hedef scrollTop'u
+        // elle hesapla: kart üstü tam şeridin hemen altına (sr.top+118) gelsin.
+        var fark=er.top-(sr.top+pad);
+        if(Math.abs(fark)<28) return;   // kart zaten üstte hizalı -> kıpırdatma (aynı kart içi alan geçişi stabil)
+        sc.scrollTo({top: sc.scrollTop+fark, behavior:'smooth'});   // kart üstünü şeridin altına TAM hizala
       }catch(_){}
     });
   }
