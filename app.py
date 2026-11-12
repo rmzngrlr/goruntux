@@ -3054,7 +3054,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-12z · Cizim editoru renk kutusu (.ed-gd-renk-inp) rapor editoru seridindeki renk kutusuyla (.ed-panel input[type=color]) BIREBIR ayni stil (border #d0d7de/#2c3a4a, background #fff/#1b2735, koyu tema override eklendi). (12y onizleme temizligi korunur)';
+        var X_BUILD = '2026-11-13a · Cizim kagidi PC trackpad 2-parmak scroll artik PAN (kaydirma); zoom YALNIZ pinch/Ctrl+tekerlek + sag-alt butonlar (sar overflow:auto native scroll; bayrak x_ck_wheel_pan). (12z renk kutusu stili korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -12096,7 +12096,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(_zin) _zin.addEventListener('click', function(){ var c=_sarMerkez(); _setZoom(zoom*1.25, c[0], c[1]); });
       if(_zout) _zout.addEventListener('click', function(){ var c=_sarMerkez(); _setZoom(zoom/1.25, c[0], c[1]); });
       if(_zfit) _zfit.addEventListener('click', _fitDegis);
-      sar.addEventListener('wheel', function(e){ e.preventDefault(); _setZoom(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY); }, {passive:false});
+      // [ÇİZİM PAN/ZOOM] PC'de trackpad 2-parmak scroll (ctrl YOK) -> sar NATIVE kaydırma (pan). Zoom YALNIZ
+      // pinch / Ctrl+tekerlek (ctrlKey) ile (+ sağ-alt zoom butonları). Bayrak x_ck_wheel_pan='0' -> eski (tekerlek=zoom).
+      sar.addEventListener('wheel', function(e){
+        var _panMod=true; try{ if(localStorage.getItem('x_ck_wheel_pan')==='0') _panMod=false; }catch(_){}
+        if(!_panMod || e.ctrlKey){ e.preventDefault(); _setZoom(zoom*(e.deltaY<0?1.12:1/1.12), e.clientX, e.clientY); return; }
+        // 2 parmak scroll / fare tekeri -> native pan (sar overflow:auto; deltaMode/momentum tarayıcıya bırakılır)
+      }, {passive:false});
     }
     window.addEventListener('resize', ciz);
 
