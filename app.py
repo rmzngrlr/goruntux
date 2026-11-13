@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ab · [KONTUR STILI] Araç cubugunda IKON buton (tooltip Kontur stili) -> acilir panel: stil butonlari (Cizgisiz/Duz/Kesikli/Kesikli-dar/Noktali) + kalinlik slider + sayisal kutu. Sekiller+duz cizgi/ok (kalem haric); o.stil; ekran setLineDash + Word prstDash + PDF dash + yatay-raster. Yok=cizgisiz (dolgu gelince anlamli). Bayrak x_ck_stil. Sonraki plan: sekil dolgu rengi + opaklik.';
+        var X_BUILD = '2026-11-13ac · [BOYUT ROTUS] Duz cizgi/ok tek secimde kesikli KUTU YOK -> yalniz 2 uc noktasi. Dikdortgen/elips X-Y olcu menusu artik CIFT-TIK degil, SEC + SAG TIK (cift-tik iptal). + [KONTUR STILI] ikon buton (tooltip Kontur stili) -> panel: Cizgisiz/Duz/Kesikli/Kesikli-dar/Noktali + kalinlik slider + sayisal. o.stil; ekran setLineDash + Word prstDash + PDF dash. Bayrak x_ck_stil/x_ck_boyut. Sonraki plan: sekil dolgu rengi + opaklik.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9722,7 +9722,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7r · 2026-11-13 [CIZGI STILI PANELI] Kalinlik acilir panel: stil butonlari (yok/duz/kesikli/kesikliDar/noktali) + slider + sayisal. Sekil+ok (kalem haric); o.stil; cizObj setLineDash + export stil; yok=cizgisiz. Bayrak x_ck_stil. (7q korunur)";
+  XE.VERSION = "7s · 2026-11-13 [BOYUT ROTUS] cizgi/ok tek secim: kutu YOK, yalniz 2 uc; dikdortgen/elips X-Y menu CIFT-TIK yerine SEC+SAG TIK (imlece). + [KONTUR STILI] ikon buton panel (yok/duz/kesikli/kesikliDar/noktali)+slider+sayisal; o.stil; setLineDash+prstDash+dash. Bayrak x_ck_stil/x_ck_boyut. (7r korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12084,7 +12084,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _ckPxPerMm(){ var mmW=(_yatay?297:210); return (baseW||1240)/mmW; }   // A4 fiziksel ölçü: dikey 210mm / yatay 297mm genişlik
     var _boyutPop=null;
     function _boyutMenuKapat(){ if(_boyutPop && _boyutPop.parentNode) _boyutPop.parentNode.removeChild(_boyutPop); _boyutPop=null; }
-    function _boyutMenuAc(o){
+    function _boyutMenuAc(o, ev){
       if(!(o && (o.t==='dikdortgen'||o.t==='elips'))) return;
       _boyutMenuKapat();
       var ppm=_ckPxPerMm(), k0=objKutu(o);
@@ -12096,7 +12096,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         '<div class="ed-gd-bp-alt"><button type="button" class="ed-gd-bp-iptal">İptal</button><button type="button" class="ed-gd-bp-uygula">Uygula</button></div>';
       ov.appendChild(pop); _boyutPop=pop;
       var cvR=cv.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
-      var sx=cvR.left+S(k0.x), sy=cvR.top+S(k0.y+k0.h)+8;
+      var sx, sy;
+      if(ev && ev.clientX!=null){ sx=ev.clientX+4; sy=ev.clientY+4; }   // sağ-tık konumuna (imlece) yerleştir
+      else { sx=cvR.left+S(k0.x); sy=cvR.top+S(k0.y+k0.h)+8; }
       sx=Math.max(8, Math.min(sx, window.innerWidth-pw-8)); sy=Math.max(8, Math.min(sy, window.innerHeight-ph-8));
       pop.style.left=sx+'px'; pop.style.top=sy+'px';
       var wi=pop.querySelector('.ed-gd-bp-w'), hi=pop.querySelector('.ed-gd-bp-h');
@@ -12120,7 +12122,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(_cz && _cizgili) _ckCizgiCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] çizgili defter (dinamik, taban beyaz)
       if(_cz) _ckMarginCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] Word-sayfası margin kılavuzu (ekran-only)
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
-      for(var _si=0;_si<secili.length;_si++){ var k=objKutu(secili[_si]); ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0'; ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); ctx.restore(); }
+      for(var _si=0;_si<secili.length;_si++){ var _so=secili[_si]; if(_so.t==='ok' && secili.length===1) continue;   // [BOYUTLANDIR] tek seçili çizgi/ok: kesikli kutu YOK (yalnız 2 uç noktası)
+        var k=objKutu(_so); ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0'; ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); ctx.restore(); }
       if(_boyutAcik() && secili.length===1 && _resizableMi(secili[0])){ var _hh=_sekilTutamaclari(secili[0]); ctx.save(); ctx.fillStyle='#fff'; ctx.strokeStyle='#1d9bf0'; ctx.lineWidth=1.5; for(var _hj=0;_hj<_hh.length;_hj++){ var _hx=S(_hh[_hj].x), _hy=S(_hh[_hj].y); ctx.beginPath(); if(_hh[_hj].yuvarlak){ ctx.arc(_hx,_hy,5.5,0,6.2832); } else { ctx.rect(_hx-5,_hy-5,10,10); } ctx.fill(); ctx.stroke(); } ctx.restore(); }   // [BOYUTLANDIR] tek seçili şekil -> tutamaçlar
       if(marq){ ctx.save(); ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle='#1d9bf0'; ctx.fillStyle='rgba(29,155,240,0.14)'; ctx.fillRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.strokeRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.restore(); }
       if(tool==='kirp' && crop){
@@ -12177,6 +12180,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function _now(){ try{ return Date.now(); }catch(_){ return 0; } }
     function pd(e){
       if(e.target===yaziInp) return;
+      if(e.button===2) return;   // [BOYUTLANDIR] sağ tık -> contextmenu ele alır (pd çizim/seçim yapmaz)
       if(_boyutPop) _boyutMenuKapat();   // [BOYUTLANDIR] tuvale dokun -> açık ölçü menüsü kapansın
       if(_cz && _palmOn){   // [PALM L1+L2] kalem aktifken dokunuş (avuç+parmak) YOK; geniş temas (avuç) YOK
         if(e.pointerType==='pen'){ _kalemDown=true; _sonKalemT=_now(); }
@@ -12430,8 +12434,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cv.addEventListener('pointerup', pu);
     cv.addEventListener('pointercancel', pu);
     cv.addEventListener('dblclick', function(e){ var p=noktaSrc(e); var o=vurus(p);
-      if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); itUndo(); _yaziDuzenle(o,false); return; }   // yeniden düzenleme de geri-al'a dahil
-      if(_boyutAcik() && o && (o.t==='dikdortgen'||o.t==='elips')){ tool='sec'; secili=[o]; _toolYansit(); _selBtn(); _stilYansit(); ciz(); _boyutMenuAc(o); }   // [BOYUTLANDIR] çift-tık -> X-Y ölçü menüsü
+      if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); itUndo(); _yaziDuzenle(o,false); }   // yeniden düzenleme de geri-al'a dahil
+    });
+    cv.addEventListener('contextmenu', function(e){   // [BOYUTLANDIR] dikdörtgen/elips: SEÇ + SAĞ TIK -> X-Y ölçü menüsü (çift-tık KALDIRILDI)
+      if(!_cz) return;   // yalnız çizim kağıdı; görsel düzenleyicide eski davranış
+      e.preventDefault(); e.stopPropagation();   // tarayıcı menüsü + rapor-editör rt-panel çizim tuvalinde YOK
+      if(!_boyutAcik()) return; var p=noktaSrc(e); var o=vurus(p);
+      if(o && (o.t==='dikdortgen'||o.t==='elips')){ tool='sec'; secili=[o]; _toolYansit(); _selBtn(); _stilYansit(); ciz(); _boyutMenuAc(o, e); }
     });
     ov.addEventListener('keydown', function(e){
       if(e.key==='Escape' && yaziInp.style.display==='none'){ e.preventDefault(); kapat(); return; }
