@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ac · [BOYUT ROTUS] Duz cizgi/ok tek secimde kesikli KUTU YOK -> yalniz 2 uc noktasi. Dikdortgen/elips X-Y olcu menusu artik CIFT-TIK degil, SEC + SAG TIK (cift-tik iptal). + [KONTUR STILI] ikon buton (tooltip Kontur stili) -> panel: Cizgisiz/Duz/Kesikli/Kesikli-dar/Noktali + kalinlik slider + sayisal. o.stil; ekran setLineDash + Word prstDash + PDF dash. Bayrak x_ck_stil/x_ck_boyut. Sonraki plan: sekil dolgu rengi + opaklik.';
+        var X_BUILD = '2026-11-13ad · [ORAN KILIDI] X-Y olcu menusune "En-boy oranini koru" onay kutusu (isaretli -> bir alan degisince digeri orantili) + Shift + KOSE tutamac surukle de orani korur. + [BOYUT ROTUS] cizgi/ok tek secimde kutu YOK (yalniz 2 uc); dikdortgen/elips X-Y menu SEC+SAG TIK. + [KONTUR STILI] ikon buton panel (Cizgisiz/Duz/Kesikli/Kesikli-dar/Noktali)+slider+sayisal. Bayrak x_ck_stil/x_ck_boyut. Sonraki plan: sekil dolgu rengi + opaklik.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9722,7 +9722,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7s · 2026-11-13 [BOYUT ROTUS] cizgi/ok tek secim: kutu YOK, yalniz 2 uc; dikdortgen/elips X-Y menu CIFT-TIK yerine SEC+SAG TIK (imlece). + [KONTUR STILI] ikon buton panel (yok/duz/kesikli/kesikliDar/noktali)+slider+sayisal; o.stil; setLineDash+prstDash+dash. Bayrak x_ck_stil/x_ck_boyut. (7r korunur)";
+  XE.VERSION = "7t · 2026-11-13 [ORAN KILIDI] X-Y menu onay kutusu 'En-boy oranini koru' (alan degisince digeri orantili) + Shift+kose tutamac surukle orani korur (_boyutMenuAc _ar + pm resize). + cizgi/ok tek secim kutu YOK; X-Y menu SEC+SAG TIK; kontur-stili panel. Bayrak x_ck_stil/x_ck_boyut. (7s korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10535,6 +10535,9 @@ body:not(.light-theme) .ed-gd-yazi-inp{background:#1b2735;color:#e7e9ea;border-c
 .ed-gd-bp-baslik{font-weight:700;font-size:12px;margin-bottom:8px;color:#536471;}
 .ed-gd-bp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px;}
 .ed-gd-bp-row input{width:74px;padding:6px 7px;border:1px solid #d0d7de;border-radius:7px;font-size:13px;text-align:right;background:#fff;color:#0f1419;}
+.ed-gd-bp-oran{display:flex;align-items:center;gap:7px;margin:2px 0 9px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;user-select:none;}
+.ed-gd-bp-oran input{width:15px;height:15px;flex:none;cursor:pointer;accent-color:#1d9bf0;}
+body:not(.light-theme) .ed-gd-bp-oran{color:#9aa6b2;}
 .ed-gd-bp-alt{display:flex;justify-content:flex-end;gap:7px;margin-top:4px;}
 .ed-gd-bp-alt button{border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;}
 .ed-gd-bp-iptal{background:#eff3f4;color:#0f1419;}
@@ -12093,6 +12096,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         '<div class="ed-gd-bp-baslik">Boyut (mm)</div>'+
         '<label class="ed-gd-bp-row"><span>Genişlik (X)</span><input type="number" class="ed-gd-bp-w" min="1" step="1" value="'+Math.round(k0.w/ppm)+'"></label>'+
         '<label class="ed-gd-bp-row"><span>Yükseklik (Y)</span><input type="number" class="ed-gd-bp-h" min="1" step="1" value="'+Math.round(k0.h/ppm)+'"></label>'+
+        '<label class="ed-gd-bp-oran"><input type="checkbox" class="ed-gd-bp-kilit"><span>En-boy oranını koru</span></label>'+
         '<div class="ed-gd-bp-alt"><button type="button" class="ed-gd-bp-iptal">İptal</button><button type="button" class="ed-gd-bp-uygula">Uygula</button></div>';
       ov.appendChild(pop); _boyutPop=pop;
       var cvR=cv.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
@@ -12102,6 +12106,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       sx=Math.max(8, Math.min(sx, window.innerWidth-pw-8)); sy=Math.max(8, Math.min(sy, window.innerHeight-ph-8));
       pop.style.left=sx+'px'; pop.style.top=sy+'px';
       var wi=pop.querySelector('.ed-gd-bp-w'), hi=pop.querySelector('.ed-gd-bp-h');
+      var kilit=pop.querySelector('.ed-gd-bp-kilit'), _ar=(k0.h>0)?(k0.w/k0.h):1;   // [ORAN KİLİDİ] en/boy; işaretlenince mevcut oranı kilitler, bir alan değişince diğeri orantılı
+      kilit.addEventListener('change', function(){ if(kilit.checked){ var wv0=parseFloat(wi.value), hv0=parseFloat(hi.value); if(wv0>0 && hv0>0) _ar=wv0/hv0; } });
+      wi.addEventListener('input', function(){ if(kilit.checked){ var wv0=parseFloat(wi.value); if(wv0>0) hi.value=Math.max(1,Math.round(wv0/_ar)); } });
+      hi.addEventListener('input', function(){ if(kilit.checked){ var hv0=parseFloat(hi.value); if(hv0>0) wi.value=Math.max(1,Math.round(hv0*_ar)); } });
       function _uygula(){ var wv=parseFloat(wi.value), hv=parseFloat(hi.value);
         if(!(wv>0)||!(hv>0)){ _boyutMenuKapat(); return; }
         var kk=objKutu(o), m2=_ckMargin(baseW,baseH);
@@ -12229,8 +12237,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(drag.tip==='resize'){ var ro=drag.o, hk=drag.h;   // [BOYUTLANDIR] tutamacı sürükle (p zaten margin'e kıstırılmış)
         if(ro.t==='ok'){ if(hk==='p1'){ ro.x1=p.x; ro.y1=p.y; } else { ro.x2=p.x; ro.y2=p.y; } }
         else { var bk=objKutu(drag.b), L=bk.x, R=bk.x+bk.w, T=bk.y, B=bk.y+bk.h;
-          if(hk==='nw'||hk==='sw'||hk==='w') L=p.x; if(hk==='ne'||hk==='se'||hk==='e') R=p.x;
-          if(hk==='nw'||hk==='ne'||hk==='n') T=p.y; if(hk==='sw'||hk==='se'||hk==='s') B=p.y;
+          var _kose=(hk==='nw'||hk==='ne'||hk==='sw'||hk==='se');
+          if(e.shiftKey && _kose && bk.h>0){   // [ORAN KİLİDİ] Shift + KÖŞE tutamaç -> en/boy oranını koru (karşı köşe sabit)
+            var _bar=bk.w/bk.h, _ax=(hk==='nw'||hk==='sw')?(bk.x+bk.w):bk.x, _ay=(hk==='nw'||hk==='ne')?(bk.y+bk.h):bk.y;
+            var _rw=Math.abs(p.x-_ax), _rh=Math.abs(p.y-_ay), _nw, _nh;
+            if(_rw/_bar >= _rh){ _nw=_rw; _nh=_rw/_bar; } else { _nh=_rh; _nw=_rh*_bar; }
+            var _sx2=(p.x>=_ax)?1:-1, _sy2=(p.y>=_ay)?1:-1;
+            var _mm3=_ckMargin(baseW,baseH), _mxw=(_sx2>0)?(baseW-_mm3.mx-_ax):(_ax-_mm3.mx), _mxh=(_sy2>0)?(baseH-_mm3.my-_ay):(_ay-_mm3.my);
+            var _sc=Math.min(1, (_nw>0?_mxw/_nw:1), (_nh>0?_mxh/_nh:1)); if(_sc>0 && _sc<1){ _nw*=_sc; _nh*=_sc; }   // margin dışına taşmasın (orantılı küçült)
+            L=Math.min(_ax,_ax+_sx2*_nw); R=Math.max(_ax,_ax+_sx2*_nw); T=Math.min(_ay,_ay+_sy2*_nh); B=Math.max(_ay,_ay+_sy2*_nh);
+          } else {
+            if(hk==='nw'||hk==='sw'||hk==='w') L=p.x; if(hk==='ne'||hk==='se'||hk==='e') R=p.x;
+            if(hk==='nw'||hk==='ne'||hk==='n') T=p.y; if(hk==='sw'||hk==='se'||hk==='s') B=p.y;
+          }
           ro.x=Math.min(L,R); ro.y=Math.min(T,B); ro.w=Math.max(5,Math.abs(R-L)); ro.h=Math.max(5,Math.abs(T-B)); }
         ciz(); return;
       }
