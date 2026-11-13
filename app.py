@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13r · Cizim FOSFORLU kalem koyu ekranda GORUNUR: multiply (karartan) koyu temada fosforluyu gizliyordu -> ekranda screen (aydinlatan ikiz), CIKTI (beyaz) yine multiply (_fircaCiz ekranKoyu param). + secili metin renk-gercek (13q korunur).';
+        var X_BUILD = '2026-11-13s · Rapor editoru: sag-tik Kes/Sil sonrasi alan bosaldiginda PLACEHOLDER geri geliyor (eskiden gelmiyordu). _clipKes/_clipSil _inlineBusy ile input dinleyicisini atliyordu -> stray <br> temizlenmiyordu; _phDuzelt yardimcisi cikarilip Kes/Sil + input dinleyicisinde ortak kullaniliyor.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7j · 2026-11-13 Cizim FOSFORLU koyu ekranda gorunur: multiply koyu temada gizliyordu -> ekranda screen, cikti multiply (_fircaCiz ekranKoyu). + secili-metin renk-gercek (7i korunur).";
+  XE.VERSION = "7k · 2026-11-13 Rapor editoru sag-tik KES/SIL sonrasi placeholder geri gelir: _clipKes/_clipSil _inlineBusy ile input dinleyicisini atliyordu -> stray <br> kaliyordu; _phDuzelt ortak yardimci Kes/Sil + input-te. (7j korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12615,6 +12615,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     try{ el.focus(); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); return {el:el,sel:sel}; }catch(e){ return null; }
   }
   // Editable türüne göre kaydet (metin=innerHTML; başlık/link=textContent) -> mevcut input handler yollarıyla aynı.
+  // [PLACEHOLDER GERİ DÖN] Alanı GERÇEKTEN boşalt ki :empty:before placeholder dönsün. Tarayıcı boş contenteditable'da
+  // stray <br> bırakır -> :empty bozulur. Hem input dinleyicisi hem sağ-tık Kes/Sil bunu çağırır (Kes/Sil _inlineBusy
+  // ile input dinleyicisini atlar -> placeholder dönmüyordu).
+  function _phDuzelt(el){ try{
+    if(!el || !el.closest) return;
+    var _f=el.closest('.ed-h2,.ed-h1,.ed-metin,.ed-link-edit');
+    if(_f){ if(_f.textContent==='' && !_f.querySelector('img') && _f.innerHTML!==''){ _f.innerHTML=''; } return; }
+    var _g=el.closest('.ed-img-pano');
+    if(_g && !_g.querySelector('img')){ var _ph=_g.querySelector('.ed-img-ph'), _btn=_g.querySelector('.ed-img-pcsec');
+      if(_ph && _ph.textContent!=='📋 Görseli yapıştır (Ctrl+V)') _ph.textContent='📋 Görseli yapıştır (Ctrl+V)';
+      [].slice.call(_g.childNodes).forEach(function(n){ if(n!==_ph && n!==_btn) _g.removeChild(n); }); }
+  }catch(_){} }
   function _editableKaydet(el){
     if(!el) return;
     if(el.classList.contains('ed-metin')){ _metinKaydet(el); return; }
@@ -12624,8 +12636,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     else if(el.classList.contains('ed-link-edit')){ var pk=+el.getAttribute('data-p'); if(b.item.parcalar[pk]){ b.item.parcalar[pk].url=el.textContent; XE._ovSet(bi); } }
   }
   function _clipKopyala(){ var r=_clipGeri(); if(!r) return; try{ document.execCommand('copy'); }catch(e){} _sagTikKapat(); }
-  function _clipKes(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ document.execCommand('cut'); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
-  function _clipSil(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ var rng=r.sel.getRangeAt(0); if(!rng.collapsed) rng.deleteContents(); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _sagTikKapat(); }
+  function _clipKes(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ document.execCommand('cut'); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _phDuzelt(r.el); _sagTikKapat(); }   // [PLACEHOLDER] Kes sonrası boş alanda placeholder geri gelsin (_inlineBusy input dinleyicisini atladı)
+  function _clipSil(){ var r=_clipGeri(); if(!r) return; XE._alanBlur(); XE._pushUndo(); _inlineBusy=true; try{ var rng=r.sel.getRangeAt(0); if(!rng.collapsed) rng.deleteContents(); }catch(e){} _inlineBusy=false; _editableKaydet(r.el); _phDuzelt(r.el); _sagTikKapat(); }   // [PLACEHOLDER] Sil sonrası da placeholder geri gelsin
   // [METİN YAPIŞTIR] Panoyu YALNIZCA doğrudan oku (navigator.clipboard.readText) -> POPUP ASLA YOK (kullanıcı net).
   // Güvenli bağlamda (localhost/https) çalışır (ilk çağrıda tarayıcı kendi iznini sorabilir). Güvensiz bağlamda
   // (IP+HTTP) API HİÇ yok -> buton SİLİK (_clipPasteVar); kullanıcı alana klavyeyle Ctrl+V yapar.
@@ -13102,15 +13114,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(t.closest('#ed-rt-panel')) return;
       if(t.closest('.ed-metin,.ed-h2,.ed-plat,.ed-link-edit')){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block') _sagTikKapat(); }
       // [PLACEHOLDER GERİ DÖN] contenteditable alan tamamen boşaldığında tarayıcı stray <br> bırakır -> :empty bozulur
-      // -> placeholder (:empty:before) DÖNMEZ. Fix: metin yoksa (ve görsel yoksa) innerHTML'i gerçekten boşalt.
-      var _f=t.closest('.ed-h2,.ed-h1,.ed-metin,.ed-link-edit');
-      if(_f){ if(_f.textContent==='' && !_f.querySelector('img') && _f.innerHTML!==''){ _f.innerHTML=''; } return; }
-      // [GÖRSEL PLACEHOLDER] görsel kutusu (.ed-img-pano) salt yapıştırma hedefi; yazı placeholder span'ını bozar
-      // -> görsel yoksa placeholder metnini geri yaz + span/buton dışı stray düğümleri temizle.
-      var _g=t.closest('.ed-img-pano');
-      if(_g && !_g.querySelector('img')){ var _ph=_g.querySelector('.ed-img-ph'), _btn=_g.querySelector('.ed-img-pcsec');
-        if(_ph && _ph.textContent!=='📋 Görseli yapıştır (Ctrl+V)') _ph.textContent='📋 Görseli yapıştır (Ctrl+V)';
-        [].slice.call(_g.childNodes).forEach(function(n){ if(n!==_ph && n!==_btn) _g.removeChild(n); }); }
+      // -> placeholder (:empty:before) DÖNMEZ. Fix: _phDuzelt (metin/link/başlık innerHTML boşalt; görsel kutusu span geri).
+      // Aynı yardımcı sağ-tık Kes/Sil'de de çağrılır (tek kaynak).
+      _phDuzelt(t);
     });
   }
 
