@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13m · [FAZ1] Cizim kagidi YATAY modu: cizim editorune Yatay/Dikey (90 derece dondur) dugmesi -> tuval A4 landscape (cbW/cbH swap), icerik konumlari 90 derece doner (metin/gorsel editorde dik kalir), parca.yatay+cbW/cbH saklanir. Word 90 derece dondurme FAZ2 (henuz yok).';
+        var X_BUILD = '2026-11-13n · [FAZ2] YATAY cizim WORD 90 derece dondurme: xCkRotateEr90 (dikdortgen/elips/cizgi koordinat donusur; metin/gorsel/kalem rot=5400000+merkez konum); Word kutu ar TERS (portre); native yol yatay-da zorlanir (b64 ezilmesin). PDF FAZ3. Gercek Word testi bekliyor.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -8359,24 +8359,35 @@ LOCAL_DOCX_JS = r'''
             +'<a:noFill/><a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill>'+(p.ok?'<a:tailEnd type="triangle" w="med" len="med"/>':'')+'</a:ln></wps:spPr><wps:bodyPr/></wps:wsp>';
           nm='ok'; aX=bx; aY=by; aW=bw; aH=bh; uri=WPS;
         } else if(p.t==='text'){
-          var W=Math.max(1,EX(p.w)), H=Math.max(1,EY(p.h));
-          var szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2));
+          var W, H, szHalf, _rotA='';
+          if(p.rot){   // [YATAY] 90° döndürülmüş metin: doğal kutu (p.w*GH × p.h*GW) + MERKEZ konumlama + rot=90°
+            W=Math.max(1,Math.round(p.w*GH)); H=Math.max(1,Math.round(p.h*GW));
+            aX=Math.round((1-(p.y+p.h/2))*GW - W/2); aY=Math.round((p.x+p.w/2)*GH - H/2);
+            szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2/(er.aspect||0.7)));   // yatay: font = *groupWin / portre-oran
+            _rotA=' rot="5400000"';
+          } else {
+            W=Math.max(1,EX(p.w)); H=Math.max(1,EY(p.h));
+            szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2));
+            aX=EX(p.x); aY=EY(p.y);
+          }
           var arkaFill='<a:noFill/>';
           if(p.arka===1) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:solidFill>';
           else if(p.arka===2) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="82000"/></a:srgbClr></a:solidFill>';
           inner='<wps:wsp><wps:cNvPr id="'+id+'" name="t'+id+'"/><wps:cNvSpPr txBox="1"/><wps:spPr>'
-            +'<a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm>'
+            +'<a:xfrm'+_rotA+'><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm>'
             +'<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>'+arkaFill+'<a:ln><a:noFill/></a:ln></wps:spPr>'
             +'<wps:txbx><w:txbxContent><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>'
             +'<w:r><w:rPr>'+(p.kalin?'<w:b/>':'')+'<w:color w:val="'+p.renk+'"/><w:sz w:val="'+szHalf+'"/><w:szCs w:val="'+szHalf+'"/><w:rFonts w:ascii="'+_ckEscXml(p.font)+'" w:hAnsi="'+_ckEscXml(p.font)+'"/></w:rPr><w:t xml:space="preserve">'+_ckEscXml(p.metin)+'</w:t></w:r>'
             +'</w:p></w:txbxContent></wps:txbx><wps:bodyPr lIns="0" tIns="0" rIns="0" bIns="0" wrap="none" anchor="t"/></wps:wsp>';
-          nm='t'; aX=EX(p.x); aY=EY(p.y); aW=W; aH=H; uri=WPS;
+          nm='t'; aW=W; aH=H; uri=WPS;
         } else if(p.t==='image' && p.b64){
           var rid=addImageRaw(p.b64, p.mime);
           if(rid){
-            var W=Math.max(1,EX(p.w)), H=Math.max(1,EY(p.h));
-            inner='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="g'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
-            nm='g'; aX=EX(p.x); aY=EY(p.y); aW=W; aH=H; uri=PIC;
+            var W, H, _rotAi='';
+            if(p.rot){ W=Math.max(1,Math.round(p.w*GH)); H=Math.max(1,Math.round(p.h*GW)); aX=Math.round((1-(p.y+p.h/2))*GW - W/2); aY=Math.round((p.x+p.w/2)*GH - H/2); _rotAi=' rot="5400000"'; }   // [YATAY] görsel 90° döner, merkez konum
+            else { W=Math.max(1,EX(p.w)); H=Math.max(1,EY(p.h)); aX=EX(p.x); aY=EY(p.y); }
+            inner='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="g'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm'+_rotAi+'><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
+            nm='g'; aW=W; aH=H; uri=PIC;
           } else return;
         } else return;
         runs+=anc(nm, aX, aY, aW, aH, uri, inner);
@@ -8388,8 +8399,10 @@ LOCAL_DOCX_JS = r'''
       });
       if(er.penImg && er.penBox){ id++; var prid=addImageRaw(er.penImg,'image/png'), pb=er.penBox;
         if(prid){
-          var W=Math.max(1,EX(pb.w)), H=Math.max(1,EY(pb.h)), aX=EX(pb.x), aY=EY(pb.y);
-          var inner='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="kalem'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+prid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
+          var W, H, aX, aY, _rotAp='';
+          if(er.penRot){ W=Math.max(1,Math.round(pb.w*GH)); H=Math.max(1,Math.round(pb.h*GW)); aX=Math.round((1-(pb.y+pb.h/2))*GW - W/2); aY=Math.round((pb.x+pb.w/2)*GH - H/2); _rotAp=' rot="5400000"'; }   // [YATAY] kalem rasteri 90° döner
+          else { W=Math.max(1,EX(pb.w)); H=Math.max(1,EY(pb.h)); aX=EX(pb.x); aY=EY(pb.y); }
+          var inner='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="kalem'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+prid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm'+_rotAp+'><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
           runs+=anc('kalem', aX, aY, W, H, PIC, inner);
           if(!_perShape) kids+=inner.replace('<a:off x="0" y="0"/>','<a:off x="'+aX+'" y="'+aY+'"/>');
         }
@@ -8836,10 +8849,11 @@ LOCAL_DOCX_JS = r'''
       var _gs=birimGorselleri(bu.item);
       for(var _gg=0; _gg<_gs.length; _gg++){
         if(!_gs[_gg].b64) continue;
-        var _pidx0=_gs[_gg].k, _cizim0=!!(bu.item && bu.item.parcalar && _pidx0>=0 && bu.item.parcalar[_pidx0] && bu.item.parcalar[_pidx0].cizimKagidi);
-        var _u={bi:bi2, k:_gs[_gg].k, b64:_gs[_gg].b64, mime:_gs[_gg].mime, align:(_gs[_gg].align||''), ar:null, w:0, h:0, cizim:_cizim0};
+        var _pidx0=_gs[_gg].k, _p0=(bu.item && bu.item.parcalar && _pidx0>=0)?bu.item.parcalar[_pidx0]:null, _cizim0=!!(_p0 && _p0.cizimKagidi), _yatay0=!!(_p0 && _p0.yatay);
+        var _u={bi:bi2, k:_gs[_gg].k, b64:_gs[_gg].b64, mime:_gs[_gg].mime, align:(_gs[_gg].align||''), ar:null, w:0, h:0, cizim:_cizim0, yatay:_yatay0};
         var _sz=await loadImageSize('data:'+(_u.mime||'image/jpeg')+';base64,'+_u.b64);
-        _u.ar=(_sz.w>0 && _sz.h>0)?(_sz.w/_sz.h):(4.5/3.8);   // bozuk veri -> eski yedek oran
+        var _ar0=(_sz.w>0 && _sz.h>0)?(_sz.w/_sz.h):(4.5/3.8);   // bozuk veri -> eski yedek oran
+        _u.ar=(_cizim0 && _yatay0 && _ar0>0)?(1/_ar0):_ar0;   // [YATAY] çıktıda 90° döner -> kutu PORTRE (b64 yatay oranının TERSİ)
         bu._imgUnits.push(_u); _imgUnits.push(_u);
       }
     }
@@ -8934,7 +8948,9 @@ LOCAL_DOCX_JS = r'''
                 var _grpX='';
                 try{ var _ckParca=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
                   var _er=(_ckParca && window.xCkExportPrim)?window.xCkExportPrim(_ckParca.cizimObjeleri||[], _ckParca.cbW, _ckParca.cbH):null;
-                  if(_er && _er.prims && _er.prims.length) _grpX=_ckWordGrupXml(_er, _iu.w, true, 720);
+                  if(_er && _ckParca && _ckParca.yatay && window.xCkRotateEr90) _er=window.xCkRotateEr90(_er);   // [YATAY] yatay çizim -> 90° döndür (dikey sayfaya oturur)
+                  // [YATAY] yatay çizimde b64 FALLBACK yok (b64 yatay -> portre kutuda EZİLİR); native yolu zorla (boş olsa bile).
+                  if(_er && (((_er.prims && _er.prims.length) || _er.penImg) || (_ckParca && _ckParca.yatay))) _grpX=_ckWordGrupXml(_er, _iu.w, true, 720);
                 }catch(_eg){ _grpX=''; }
                 body.push(_grpX || imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true));
               } else { var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, false)); if(_imgBord) _cizgiKondu=true; }
@@ -9621,7 +9637,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7e · 2026-11-13 [FAZ1] Cizim kagidi YATAY: editorde Yatay/Dikey dugmesi (90 derece dondur, cbW/cbH swap, icerik konumu doner), parca.yatay saklanir. Word cikti dondurme FAZ2.";
+  XE.VERSION = "7f · 2026-11-13 [FAZ2] YATAY cizim WORD 90 derece dondurme: xCkRotateEr90 + _ckWordGrupXml rot (metin/gorsel/kalem rot=5400000 merkez konum; dikdortgen/elips/cizgi koordinat); kutu ar ters portre. PDF FAZ3. Gercek Word testi bekliyor.";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12344,6 +12360,26 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }
     }
     return { prims:prims, cw:cw, ch:ch, aspect:cw/ch, penImg:penImg, penBox:penBox };
+  };
+  // [ÇİZİM YATAY] Export sonucunu (er) 90° SAAT YÖNÜ döndür: yatay A4 içeriği dikey sayfaya BOZULMASIZ oturur
+  // (A4 yatay 90° = A4 dikey, oran birebir). Kesirsel koordinat dönüşümü: (u,v) -> (1-v, u).
+  //   • Dikdörtgen/elips/çizgi/ok: koordinat dönüşür, eksen-hizalı kalır (rot GEREKMEZ). Kalınlık oranı *asp.
+  //   • Metin/görsel/kalem: ORİJİNAL koordinat korunur + rot bayrağı -> Word DrawingML rot="5400000" (90°) +
+  //     MERKEZ konumlama (_ckWordGrupXml halleder; metin glyph'i yana döner = yatay düzlemin doğal sonucu).
+  //   • aspect PORTRE olur (1/asp); kutu boyutlaması da buna göre (çağıran taraf ar'ı ters alır).
+  window.xCkRotateEr90 = function(er){
+    if(!er || !er.prims) return er;
+    var asp = er.aspect || 1.4;   // yatay (>1)
+    var out = { prims:[], cw:er.ch, ch:er.cw, aspect:(asp?1/asp:0.714), penImg:er.penImg, penBox:null, penRot:false, yatayRot:true };
+    for(var i=0;i<er.prims.length;i++){ var p=er.prims[i];
+      if(p.t==='rect' || p.t==='ellipse'){ out.prims.push({ t:p.t, x:1-(p.y+p.h), y:p.x, w:p.h, h:p.w, renk:p.renk, kal:(p.kal||0)*asp }); }
+      else if(p.t==='line'){ out.prims.push({ t:'line', x1:1-p.y1, y1:p.x1, x2:1-p.y2, y2:p.x2, renk:p.renk, kal:(p.kal||0)*asp, ok:p.ok }); }
+      else if(p.t==='text'){ var q=JSON.parse(JSON.stringify(p)); q.rot=true; out.prims.push(q); }   // orijinal koordinat + rot (Word merkez+90°)
+      else if(p.t==='image'){ var q2=JSON.parse(JSON.stringify(p)); q2.rot=true; out.prims.push(q2); }
+      else out.prims.push(p);
+    }
+    if(er.penImg && er.penBox){ out.penBox={ x:er.penBox.x, y:er.penBox.y, w:er.penBox.w, h:er.penBox.h }; out.penRot=true; }
+    return out;
   };
   function _ckUid(){ try{ if(typeof generateUUID==='function') return 'ck-'+generateUUID(); }catch(_){} return 'ck-'+Date.now()+'-'+Math.floor(Math.random()*1e6); }
   XE._cizimKagidiEkle = async function(afterUid){
