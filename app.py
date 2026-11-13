@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13af · [DOLGU UI] dropdown ilk satir: "Dolgu yok" IKON-ONLY (tooltip) + hizli renk ornekleri (basta siyah) + en sagda palet-ikonu (daha fazla renk); eslesen ornek vurgulanir. + [KONTUR IKON] buton 3 cizgi esit bas/bitis; "Kesikli" secenek sondaki fazla nokta kalkti (6 3 = 2 temiz cizgi). + DOLGU (o.dolgu/dolguA ekran+Word+PDF), oran-kilidi, kontur-stili, boyut-rotus. Bayrak x_ck_dolgu/x_ck_stil/x_ck_boyut.';
+        var X_BUILD = '2026-11-13ag · [CIZIM GORSEL DUZENLE] Cizim kagidina eklenen gorsele CIFT-TIK -> normal gorsel duzenleyici (kirp/yazi/ok/dikdortgen/kalem) ic-ice acilir, Kaydet b64i geri yazar + yeni orana gore yukseklik. + [DOLGU UI] dropdown: Dolgu-yok ikon-only + hizli renk ornekleri (basta siyah) + palet-ikonu. + kontur-ikon (3 esit cizgi, Kesikli 2 temiz). + dolgu/oran-kilidi/kontur-stili/boyut. Bayrak x_gorsel_duzenle/x_ck_dolgu.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9727,7 +9727,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7v · 2026-11-13 [DOLGU UI] dropdown: Dolgu-yok IKON-ONLY + hizli renk ornekleri (_DOLGU_RENKLER, basta siyah) + palet-ikonu (daha fazla); _dolguYansit eslesen ornek vurgu. [KONTUR IKON] buton 3 cizgi esit bas/bitis + Kesikli 6 3 (nokta kalkti). + dolgu(o.dolgu/dolguA ekran+Word+PDF)/oran-kilidi/kontur-stili. Bayrak x_ck_dolgu. (7u korunur)";
+  XE.VERSION = "7w · 2026-11-13 [CIZIM GORSEL DUZENLE] cizim-gomulu gorsele cift-tik -> _gdKur gorsel-modu ic-ice (opts.gorselKaydet), kaydet o.b64 geri yazar + o.h yeni orana. (_ckGorselDuzenle, dblclick t==gorsel). + DOLGU UI (ikon-only Dolgu-yok + renk ornekleri + palet) + kontur-ikon + dolgu/oran-kilidi. Bayrak x_gorsel_duzenle. (7v korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11887,7 +11887,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   };
   function _gdKur(bi, pp, img0, mime, opts){
     opts=opts||{};
-    var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _onKaydet=opts.onKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları + görsel-obje önbelleği
+    var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _onKaydet=opts.onKaydet, _gorselKaydet=opts.gorselKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları + görsel-obje önbelleği; _gorselKaydet = çizim-gömülü görseli düzenleme kaydet geri-çağrısı
     var _yatay=!!opts.yatay;   // [ÇİZİM YATAY] A4 landscape modu (tuval geniş); çıktıda 90° döndürülüp dikey sayfaya oturur
     function _dondurObjs90(arr, W, H){   // [YATAY] içerik KONUMLARINI 90° saat yönü döndür: (x,y)->(H-y,x). Dikdörtgen/elips: en<->boy swap (döner). Görsel/metin: YALNIZ konum (editörde dik kalır; çıktıda döner). Kalem: tüm noktalar.
       function P(x,y){ return {x:H-y, y:x}; }
@@ -12511,6 +12511,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }catch(_){} }; rd.readAsDataURL(f); };
       inp.click();
     }
+    function _ckGorselDuzenle(o){   // [ÇİZİM GÖRSEL DÜZENLE] çizim-gömülü görseli görsel düzenleyicide (kırp/yazı/ok/dikdörtgen/kalem) düzenle -> b64 geri yaz
+      if(!o || o.t!=='gorsel' || !o.b64 || !_gorselDuzenleAcikMi()) return;
+      var im=new Image();
+      im.onload=function(){ try{
+        _gdKur(bi, pp, im, o.mime||'image/png', { gorselKaydet:function(b64, mime, nw, nh){
+          itUndo(); o.b64=b64; o.mime=mime||'image/png';
+          if(nw>0 && nh>0 && o.w>0){ o.h=o.w*(nh/nw); }   // yeni (kırpılmış) görselin oranına göre yükseklik; genişlik korunur
+          secili=[o]; _selBtn(); ciz();   // yeni b64 önbellekte yok -> cizObj yükler
+        }});
+      }catch(_){ try{ if(window.showToast) showToast('Düzenleyici açılamadı.','error'); }catch(_){} } };
+      im.src='data:'+(o.mime||'image/png')+';base64,'+o.b64;
+    }
     function itUndoYok(){}
 
     cv.addEventListener('pointerdown', pd);
@@ -12518,7 +12530,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cv.addEventListener('pointerup', pu);
     cv.addEventListener('pointercancel', pu);
     cv.addEventListener('dblclick', function(e){ var p=noktaSrc(e); var o=vurus(p);
-      if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); itUndo(); _yaziDuzenle(o,false); }   // yeniden düzenleme de geri-al'a dahil
+      if(o && o.t==='yazi'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); itUndo(); _yaziDuzenle(o,false); return; }   // yeniden düzenleme de geri-al'a dahil
+      if(_cz && o && o.t==='gorsel'){ secili=[o]; tool='sec'; _toolYansit(); _selBtn(); _ckGorselDuzenle(o); }   // [ÇİZİM GÖRSEL DÜZENLE] çizim görseline çift-tık -> görsel düzenleyici
     });
     cv.addEventListener('contextmenu', function(e){   // [BOYUTLANDIR] dikdörtgen/elips: SEÇ + SAĞ TIK -> X-Y ölçü menüsü (çift-tık KALDIRILDI)
       if(!_cz) return;   // yalnız çizim kağıdı; görsel düzenleyicide eski davranış
@@ -12569,6 +12582,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var du=_expC.toDataURL('image/png'), ci=du.indexOf(',');
       if(ci<0){ kapat(); return; }
       if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili, _yatay, baseW, baseH); }catch(_){} }   // PNG (kırpılmış, çizgisiz) + vektör (full-canvas) + yönelim(yatay)+boyut sakla
+      else if(_gorselKaydet){ try{ _gorselKaydet(du.slice(ci+1), 'image/png', baseW, baseH); }catch(_){} }   // [ÇİZİM GÖRSEL DÜZENLE] çizim-gömülü görsele yaz (b64 + yeni boyut)
       else { try{ XE._gorselParcaYaz(bi, pp, du.slice(ci+1), 'image/png'); }catch(_){} }
       kapat();
     }
