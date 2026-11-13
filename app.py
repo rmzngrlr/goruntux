@@ -1605,7 +1605,12 @@ HTML_TEMPLATE = """
             outline: none;
         }
         .theme-toggle-btn svg { width: 18px; height: 18px; display: block; }
-        
+        /* [AYARLAR DİŞLİ] Mavi GörüntüX logosu (30×30) BAZ: dişli de HER YERDE (PWA dışı dahil) aynı boyut+hiza.
+           38→30 küçülünce top-anchored merkez 4px yukarı kayar -> margin-top:4px ile logo merkezine hizalanır (masaüstü+mobil ikisinde de offset 4px). */
+        .js-ayar-gear { width: 30px; height: 30px; min-width: 30px; padding: 0; border-radius: 8px; margin-top: 0; }   /* masaüstü/tarayıcı: logo merkeziyle hizalı */
+        html.x-mobile.x-dik .js-ayar-gear { margin-top: 4px; }   /* dik-mobil: offset 4px (header-controls konumu farklı) */
+        .js-ayar-gear svg { width: 17px; height: 17px; }
+
         .theme-toggle-btn:hover {
             background: var(--accent-glow);
             transform: translateY(-2px);
@@ -3066,7 +3071,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-14al · [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-14am · [AYARLAR DISLI=LOGO] Dislieme HER YERDE (PWA disi dahil) mavi logo (30x30) ile ayni boyut+hiza: .js-ayar-gear 30x30 radius8, masaustu margin-top:0 / dik-mobil margin-top:4 (header-controls konum offseti farkli). + [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
