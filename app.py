@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13u · KRITIK FIX: 13t X_BUILD damgasinda apostrof (_hedefMi + ye) tek-tirnakli stringi kirip TUM inline scripti coketiyordu (sayfa bos aciliyordu) -> apostrof kaldirildi. Sag-tik RENK kutusu ANA palet + Kes/Sil placeholder korunur. DAMGALARDA ASLA apostrof kullanma.';
+        var X_BUILD = '2026-11-13v · Metin alani Kes/Sil + yeniden-ac sonrasi PLACEHOLDER kalici: sanitizeMetin gorsel-bos icerigi (yalniz stray br) artik boş string dondurur (eskiden br saklanip modele yaziliyordu -> editor yeniden acilinca renderMetin br basip :empty bozuyordu). Hem Kes/Sil hem klavye-sil ortak.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7l · 2026-11-13 Sag-tik RENK kutusu ANA paleti acar (native degil): _hedefMi #ed-rt-panel; rt-panel kapatma .xrp-pop haric. + Kes/Sil placeholder (7k korunur).";
+  XE.VERSION = "7m · 2026-11-13 Metin alani Kes/Sil + yeniden-ac sonrasi placeholder KALICI: sanitizeMetin gorsel-bos (yalniz br) -> boş string (modele br yazilmaz; renderMetin br basmaz). Hem Kes/Sil hem klavye-sil. (7l korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9780,6 +9780,10 @@ X_EDITOR_JS = r'''
           } else if(c.nodeType!==3){ n.removeChild(c); }
         });
       })(d);
+      // [PLACEHOLDER] İçerik GÖRSEL OLARAK boş (metin yok; yalnız stray <br> / boşluk) -> '' döndür ki MODELE '<br>'
+      // yazılmasın. Yoksa alan ekranda boş görünse de (DOM temizlense de) model '<br>' tutar; editör yeniden
+      // açılınca renderMetin('<br>') onu HTML sayip basar -> :empty bozulur -> placeholder DÖNMEZ. Kes/Sil + klavye-sil ortak.
+      if((d.textContent||'')==='' && !d.querySelector('img')) return '';
       return d.innerHTML;
     }catch(e){ return esc(String(html==null?'':html)); }
   }
