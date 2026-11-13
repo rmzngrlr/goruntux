@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13j · Masaustu BOLUM PIN (geri+saglam): bir bolumde alana ilk dokunusta bolum 1 KERE uste gelir (kart ustu seridin altina, elle scrollTop), ayni bolum ici alan gecisinde KIPIRDAMAZ (esik<12); native odak-kaydirmasi overflow:hidden ile kilitlenir (cift-siçrama/jank yok). .ed-tur kaldirma korunur. (13i soften yerine)';
+        var X_BUILD = '2026-11-13k · BOLUM PIN her cihaza: MOBIL de (iOS+Android) artik ilk dokunusta bolum 1 KERE uste gelir (_hizalaBolum + _odakKilit, konum-tabanli guard esik<12 -> ayni bolum ici gecis stabil); bayrak x_bolum_pin=0 -> eski (iOS alan-hizala). iOS klavye -> CIHAZDA TEST. (13j masaustu korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7b · 2026-11-13 Masaustu BOLUM PIN (geri+saglam): bir bolumde alana ILK dokunusta bolum 1 kere uste gelir (kart ustu seridin altina), AYNI bolum ici alan gecisinde kipirdamaz (esik<12); native odak-kaydirmasi overflow:hidden ile kilitli -> cift-siçrama yok. .ed-tur kaldirma korunur. (7a soften yerine)";
+  XE.VERSION = "7c · 2026-11-13 BOLUM PIN her cihaza: MOBIL (iOS+Android) focusin artik _hizalaBolum+_odakKilit ile bolumu 1 kere uste alir (konum-tabanli guard esik<12 -> ayni bolum ici gecis stabil); x_bolum_pin=0 -> eski iOS alan-hizala. Masaustu 7b korunur. iOS klavye -> cihazda test.";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10825,11 +10825,25 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [TEŞHİS KUTULARI KALDIRILDI 10l] #x-cm (yeşil) + #x-td (sarı) geçici ölçüm kutuları ve _titreDebug kaldırıldı.
     m.addEventListener('focusin', function(e){ if(dikMobil() && alanMi(e.target)){ de.classList.add('x-ed-yaz');
       var _odakEl=e.target, _card=_edKart(_odakEl);
-      // [ANDROID FİX 10l] iOS'un klavye-kaçınma viewport itişine (vvTop) karşı yazılan odak-hizalama YALNIZ iOS'ta çalışır.
-      // Android'de bu sorun HİÇ yok (native klavye yönetimi sorunsuz) -> müdahale Android'i bozuyordu -> Android'de HİÇBİR
-      // scroll-müdahalesi YOK (native). iOS'ta: odaklanan ALANI üst bara hizala (10i: vvTop=0, kayma/titreme yok).
-      if(iOS()){
-        XE.__odakKart=_card; XE.__odakKartH=_card?_card.offsetHeight:0;
+      XE.__odakKart=_card; XE.__odakKartH=_card?_card.offsetHeight:0;
+      // [BÖLÜM PIN — her cihaz, 13k] Kullanıcı: bir bölümde HERHANGİ alana İLK dokunuşta o bölüm 1 KERE üste gelsin;
+      // AYNI bölüm içinde başka alana geçince GEREKSİZ scroll olmasın. KONUM-TABANLI guard: kart üstü bara yakınsa
+      // (zaten pinli) DOKUNMA -> aynı bölüm içi geçiş stabil; değilse (ilk dokunuş / kaydırıp geri gelme) bölümü
+      // _hizalaBolum ile üste al + native odak-kaydırmasını _odakKilit (overflow:hidden) ile blokla (sarsıntı/çift-
+      // sıçrama yok). Yazarken imleç _odakKart('input') ile görünür tutulur. Bayrak x_bolum_pin='0' -> ESKİ davranış
+      // (iOS alan-hizala / Android native). DİKKAT: iOS klavye bölgesi -> gerçek cihazda test ŞART.
+      var _bpAcik=true; try{ _bpAcik=(localStorage.getItem('x_bolum_pin')!=='0'); }catch(_){}
+      if(_bpAcik && _card){
+        var _ct=_card.getBoundingClientRect().top, _ht=_barAlti()+8;
+        if(Math.abs(_ct-_ht)>12){                 // bölüm üstte DEĞİL -> 1 kere pinle
+          XE.__pinnedKart=_card;
+          try{ _odakKilit(); }catch(_){}          // native focus-scroll'u kilitle (iOS+Android çekişme önle)
+          try{ _hizalaBolum(_card, _odakEl); }catch(_){}
+          if(iOS()){ try{ [140,340,620].forEach(function(ms){ setTimeout(function(){ try{ if(document.activeElement===_odakEl){ var _c2=_card.getBoundingClientRect().top; if(Math.abs(_c2-(_barAlti()+8))>12) _hizalaBolum(_card,_odakEl); } }catch(_){} }, ms); }); }catch(_){} }
+        }
+        // zaten pinli -> dokunma (aynı bölüm içi alan geçişi stabil)
+      } else if(iOS()){
+        // [ESKİ — flag kapalı] iOS odaklanan ALANI üst bara hizala (10i: vvTop=0). Android native (müdahale yok).
         try{ _hizalaAlan(_odakEl); }catch(_){}
         try{ [140,340,620].forEach(function(ms){ setTimeout(function(){ try{ if(document.activeElement===_odakEl) _hizalaAlan(_odakEl); }catch(_){} }, ms); }); }catch(_){}
       }
