@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13k · BOLUM PIN her cihaza: MOBIL de (iOS+Android) artik ilk dokunusta bolum 1 KERE uste gelir (_hizalaBolum + _odakKilit, konum-tabanli guard esik<12 -> ayni bolum ici gecis stabil); bayrak x_bolum_pin=0 -> eski (iOS alan-hizala). iOS klavye -> CIHAZDA TEST. (13j masaustu korunur)';
+        var X_BUILD = '2026-11-13l · Masaustu bolum-pin hedefi SERIDIN HEMEN ALTINA cekildi: sabit 118 yerine editor-serit.bottom+8 (aradaki ~65px kopuk bosluk gitti, kart seride yapisik). Mobil degismedi (zaten preview-body ustune hizali). (13k pin korunur)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7c · 2026-11-13 BOLUM PIN her cihaza: MOBIL (iOS+Android) focusin artik _hizalaBolum+_odakKilit ile bolumu 1 kere uste alir (konum-tabanli guard esik<12 -> ayni bolum ici gecis stabil); x_bolum_pin=0 -> eski iOS alan-hizala. Masaustu 7b korunur. iOS klavye -> cihazda test.";
+  XE.VERSION = "7d · 2026-11-13 Masaustu bolum-pin hedefi SERIDIN HEMEN ALTINA: sabit 118 yerine editor-serit.bottom+8 (kopuk ~65px bosluk gitti, kart serit altina yapisik). Mobil degismedi. (7c pin korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9967,9 +9967,13 @@ X_EDITOR_JS = r'''
         var ed=t.closest('.ed-h2,.ed-metin,.ed-link-edit,.ed-img-pano,.ed-plat'); if(!ed) return;
         var hedef=ed.closest('.ed-card') || ed;   // bölüm kartı (yoksa .ed-plat gibi alanın kendisi)
         var sc=m.querySelector('.preview-body'); if(!sc) return;
-        var sr=sc.getBoundingClientRect(), er=hedef.getBoundingClientRect(), pad=118;
-        // NOT: scrollIntoView KULLANMA -> .ed-card scroll-margin-top:118 + preview-body scroll-padding-top:118
-        // ÇİFTLENİP kartı 118px fazla indiriyor. Hedef scrollTop ELLE: kart üstü tam şeridin altına (sr.top+118).
+        var sr=sc.getBoundingClientRect(), er=hedef.getBoundingClientRect();
+        // [ŞERİT ALTINA 13l] Pin hedefi = ayar şeridinin HEMEN ALTI + 8px (sabit 118 YERİNE -> aradaki ~65px kopuk
+        // boşluk gitti, kart şeride yapışık/şık). Şerit preview-body'nin üstünü kaplar; alt kenarını ölç. Şerit
+        // yoksa 118'e düş. (scrollIntoView yok -> .ed-card scroll-margin-top:118 çiftlenmesin diye elle scrollTop.)
+        var _srEl=document.getElementById('editor-serit');
+        var pad = _srEl ? Math.round(_srEl.getBoundingClientRect().bottom - sr.top + 8) : 118;
+        if(pad<8) pad=8;
         var fark=er.top-(sr.top+pad);
         if(Math.abs(fark)<12) return;   // bölüm zaten üstte hizalı -> AYNI bölüm içi alan geçişinde KIPIRDAMA (stabil)
         // [NATIVE KİLİT] Tarayıcının odak-sonrası "alanı görünür yap" kendi kaydırması bizim bölüm-pin'imizle
