@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13l · Masaustu bolum-pin hedefi SERIDIN HEMEN ALTINA cekildi: sabit 118 yerine editor-serit.bottom+8 (aradaki ~65px kopuk bosluk gitti, kart seride yapisik). Mobil degismedi (zaten preview-body ustune hizali). (13k pin korunur)';
+        var X_BUILD = '2026-11-13m · [FAZ1] Cizim kagidi YATAY modu: cizim editorune Yatay/Dikey (90 derece dondur) dugmesi -> tuval A4 landscape (cbW/cbH swap), icerik konumlari 90 derece doner (metin/gorsel editorde dik kalir), parca.yatay+cbW/cbH saklanir. Word 90 derece dondurme FAZ2 (henuz yok).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7d · 2026-11-13 Masaustu bolum-pin hedefi SERIDIN HEMEN ALTINA: sabit 118 yerine editor-serit.bottom+8 (kopuk ~65px bosluk gitti, kart serit altina yapisik). Mobil degismedi. (7c pin korunur)";
+  XE.VERSION = "7e · 2026-11-13 [FAZ1] Cizim kagidi YATAY: editorde Yatay/Dikey dugmesi (90 derece dondur, cbW/cbH swap, icerik konumu doner), parca.yatay saklanir. Word cikti dondurme FAZ2.";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11717,6 +11717,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _gdKur(bi, pp, img0, mime, opts){
     opts=opts||{};
     var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _onKaydet=opts.onKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları + görsel-obje önbelleği
+    var _yatay=!!opts.yatay;   // [ÇİZİM YATAY] A4 landscape modu (tuval geniş); çıktıda 90° döndürülüp dikey sayfaya oturur
+    function _dondurObjs90(arr, W, H){   // [YATAY] içerik KONUMLARINI 90° saat yönü döndür: (x,y)->(H-y,x). Dikdörtgen/elips: en<->boy swap (döner). Görsel/metin: YALNIZ konum (editörde dik kalır; çıktıda döner). Kalem: tüm noktalar.
+      function P(x,y){ return {x:H-y, y:x}; }
+      return (arr||[]).map(function(o){ o=JSON.parse(JSON.stringify(o)); var t=o.t;
+        if(t==='dikdortgen'||t==='elips'){ var a=P(o.x,o.y), b=P(o.x+o.w,o.y+o.h); o.x=Math.min(a.x,b.x); o.y=Math.min(a.y,b.y); o.w=Math.abs(a.x-b.x); o.h=Math.abs(a.y-b.y); }
+        else if(t==='ok'){ var p1=P(o.x1,o.y1), p2=P(o.x2,o.y2); o.x1=p1.x; o.y1=p1.y; o.x2=p2.x; o.y2=p2.y; }
+        else if(t==='gorsel'){ var cx=o.x+(o.w||0)/2, cy=o.y+(o.h||0)/2, c=P(cx,cy); o.x=c.x-(o.w||0)/2; o.y=c.y-(o.h||0)/2; }
+        else if(t==='yazi'){ var q=P(o.x,o.y); o.x=q.x; o.y=q.y; }
+        else if(t==='kalem'){ o.nk=(o.nk||[]).map(function(p){ return P(p.x,p.y); }); }
+        return o;
+      });
+    }
     var base=img0, baseW=img0.naturalWidth||img0.width||1, baseH=img0.naturalHeight||img0.height||1;
     var objs=(_cz && opts.objs) ? JSON.parse(JSON.stringify(opts.objs)) : [];   // {t:'yazi'|'ok'|'dikdortgen'|'kalem'|'gorsel', ...} src-koordinat
     var tool='sec', secili=[], marq=null;   // secili=ÇOKLU seçim dizisi; marq=marquee (lasso) dikdörtgeni src
@@ -11773,7 +11785,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'<div class="ed-gd-box">'
       +'  <div class="ed-gd-ust">'
       +'    <div class="ed-gd-tools">'+tbBtns+'</div>'
-      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
+      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button><button type="button" class="ed-gd-mini ed-gd-ckyatay'+(_yatay?' aktif':'')+'" title="Yatay / Dikey — yatay A4 (çıktıda 90° döndürülüp dikey sayfaya BOZULMASIZ oturur)"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="1"/><path d="M12.5 8l2.5 2-2.5 2"/></svg> Yatay</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
@@ -11916,9 +11928,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function olcekleGerek(){ if(sar.clientWidth!==_olW||sar.clientHeight!==_olH){ _olW=sar.clientWidth; _olH=sar.clientHeight; olcekle(); } }
 
     // ---- geri al (editör-içi) ----
-    function anlik(){ return { objs:JSON.parse(JSON.stringify(objs)), b:base.src, w:baseW, h:baseH, cizgili:_cizgili }; }
+    function anlik(){ return { objs:JSON.parse(JSON.stringify(objs)), b:base.src, w:baseW, h:baseH, cizgili:_cizgili, yatay:_yatay }; }
     function itUndo(){ hist.push(anlik()); if(hist.length>40) hist.shift(); redoHist=[]; _geriBtn(); }   // YENİ değişiklik -> ileri yığını geçersiz
-    function _uygula(s){ objs=JSON.parse(JSON.stringify(s.objs)); if(s.cizgili!==undefined){ _cizgili=!!s.cizgili; var _cb=ov.querySelector('.ed-gd-ckcizgili'); if(_cb) _cb.classList.toggle('aktif',_cizgili); } if(base.src!==s.b){ var ni=new Image(); ni.onload=function(){ base=ni; baseW=s.w; baseH=s.h; olcekle(); ciz(); }; ni.src=s.b; } else { baseW=s.w; baseH=s.h; } secili=[]; _selBtn(); ciz(); }
+    function _uygula(s){ objs=JSON.parse(JSON.stringify(s.objs)); if(s.cizgili!==undefined){ _cizgili=!!s.cizgili; var _cb=ov.querySelector('.ed-gd-ckcizgili'); if(_cb) _cb.classList.toggle('aktif',_cizgili); } if(s.yatay!==undefined){ _yatay=!!s.yatay; var _yb=ov.querySelector('.ed-gd-ckyatay'); if(_yb) _yb.classList.toggle('aktif',_yatay); } if(base.src!==s.b){ var ni=new Image(); ni.onload=function(){ base=ni; baseW=s.w; baseH=s.h; olcekle(); ciz(); }; ni.src=s.b; } else { baseW=s.w; baseH=s.h; } secili=[]; _selBtn(); ciz(); }
     function geriAl(){ if(!hist.length) return; redoHist.push(anlik()); _uygula(hist.pop()); _geriBtn(); }
     function ileriAl(){ if(!redoHist.length) return; hist.push(anlik()); _uygula(redoHist.pop()); _geriBtn(); }
     function _geriBtn(){ var g=ov.querySelector('.ed-gd-geri'); if(g) g.disabled=!hist.length; var f=ov.querySelector('.ed-gd-ileri'); if(f) f.disabled=!redoHist.length; }
@@ -12139,6 +12151,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     if(_cz){
       var _ckgBtn=ov.querySelector('.ed-gd-ckgorsel'); if(_ckgBtn) _ckgBtn.addEventListener('click', _ckGorselEkle);
       var _ckcBtn=ov.querySelector('.ed-gd-ckcizgili'); if(_ckcBtn) _ckcBtn.addEventListener('click', function(){ itUndo(); _cizgili=!_cizgili; this.classList.toggle('aktif',_cizgili); ciz(); });   // [GERİ-AL] çizgili toggle da geri alınır
+      // [ÇİZİM YATAY] Yatay/Dikey toggle: tuvali 90° döndür (en<->boy swap + içerik KONUMLARINI 90° döndür; editörde
+      // metin YATAY kalır -> doğal düzenleme). Çıktıda (Word) bu yatay düzlem 90° döndürülüp dikey sayfaya oturur.
+      var _ckyBtn=ov.querySelector('.ed-gd-ckyatay'); if(_ckyBtn) _ckyBtn.addEventListener('click', function(){
+        if(yaziInp.style.display!=='none') _yaziBitir();
+        itUndo();
+        objs=_dondurObjs90(objs, baseW, baseH);   // içerik konumlarını yeni yönelime taşı (metin glyph'i dönmez)
+        var _nW=baseH, _nH=baseW; _yatay=!_yatay; this.classList.toggle('aktif',_yatay);
+        var ni=new Image(); ni.onload=function(){ base=ni; baseW=_nW; baseH=_nH; secili=[]; _selBtn(); olcekle(); ciz(); };
+        ni.src='data:image/png;base64,'+_ckBosPng(_nW,_nH,false);   // yeni yönelimde boş beyaz taban
+      });
     }
     function _ckGorselEkle(){
       var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
@@ -12203,7 +12225,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }
       var du=_expC.toDataURL('image/png'), ci=du.indexOf(',');
       if(ci<0){ kapat(); return; }
-      if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili); }catch(_){} }   // PNG (kırpılmış, çizgisiz) + vektör (full-canvas) sakla
+      if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili, _yatay, baseW, baseH); }catch(_){} }   // PNG (kırpılmış, çizgisiz) + vektör (full-canvas) + yönelim(yatay)+boyut sakla
       else { try{ XE._gorselParcaYaz(bi, pp, du.slice(ci+1), 'image/png'); }catch(_){} }
       kapat();
     }
@@ -12351,13 +12373,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var cbW=parca.cbW||1240, cbH=parca.cbH||1754;
     var im=new Image();
     im.onload=function(){ try{ _gdKur(bi, pp, im, 'image/png', {
-      cizim:true, cizgili:!!parca.cizgili, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH,
-      onKaydet:function(b64, objs2, cizgili2){ try{ XE._pushUndo(); }catch(_){}
+      cizim:true, cizgili:!!parca.cizgili, yatay:!!parca.yatay, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH,
+      onKaydet:function(b64, objs2, cizgili2, yatay2, cbW2, cbH2){ try{ XE._pushUndo(); }catch(_){}
         // Rebuild olmuş olabilir -> çizim parçasını link ile YENİDEN BUL (bayat referans kullanma).
         var _link=(b&&b.item&&b.item.link)||null, Bn=XE.belge.birimler||[], tgt=null, _bi2=bi;
         for(var _i=0;_i<Bn.length;_i++){ var _it=Bn[_i].item; if(_it && (_link?_it.link===_link:_i===bi) && _it.parcalar){ for(var _j=0;_j<_it.parcalar.length;_j++){ if(_it.parcalar[_j].cizimKagidi){ tgt=_it.parcalar[_j]; _bi2=_i; break; } } if(tgt) break; } }
         if(!tgt) tgt=parca;
         tgt.b64=b64; tgt.mime='image/png'; tgt.cizimObjeleri=objs2; tgt.cizgili=cizgili2;
+        tgt.yatay=!!yatay2; if(cbW2) tgt.cbW=cbW2; if(cbH2) tgt.cbH=cbH2;   // [YATAY] yönelim + yeni boyut (yatay'da cbW/cbH swap) sakla
         XE._dirty=true; try{ XE._ovSet(_bi2); }catch(_){}   // xmanual:// öğe -> overlay'e yazılır (snapshot'ta yaşar)
         try{ XE._ciz(); }catch(_){} }
     }); }catch(e){ try{ if(window.showToast) showToast('Çizim kağıdı açılamadı.','error'); }catch(_){} } };
