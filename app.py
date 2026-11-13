@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13i · Masaustu ODAK YUMUSAK: kart-pin kaldirildi -> alan zaten gorunuyorsa kaydirma YOK, yoksa gorunur olacak KADAR minimum (_odakUstKur into-view). + Parca basi Metin/Link <select> (.ed-tur) KALDIRILDI (x_parca_tur=1 geri). (13h kart-pin yerine)';
+        var X_BUILD = '2026-11-13j · Masaustu BOLUM PIN (geri+saglam): bir bolumde alana ilk dokunusta bolum 1 KERE uste gelir (kart ustu seridin altina, elle scrollTop), ayni bolum ici alan gecisinde KIPIRDAMAZ (esik<12); native odak-kaydirmasi overflow:hidden ile kilitlenir (cift-siçrama/jank yok). .ed-tur kaldirma korunur. (13i soften yerine)';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9621,7 +9621,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7a · 2026-11-13 Masaustu ODAK YUMUSAK: agresif kart-pin kaldirildi -> odaklanan alan zaten gorunuyorsa HIC kaydirma, degilse gorunur olacak KADAR minimum into-view (_odakUstKur). + Parca basina Metin/Link tur <select>u (.ed-tur) KALDIRILDI; Metin/Link yalniz + menusunden (x_parca_tur=1 -> geri). (6z kart-pin yerine)";
+  XE.VERSION = "7b · 2026-11-13 Masaustu BOLUM PIN (geri+saglam): bir bolumde alana ILK dokunusta bolum 1 kere uste gelir (kart ustu seridin altina), AYNI bolum ici alan gecisinde kipirdamaz (esik<12); native odak-kaydirmasi overflow:hidden ile kilitli -> cift-siçrama yok. .ed-tur kaldirma korunur. (7a soften yerine)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -9949,10 +9949,10 @@ X_EDITOR_JS = r'''
     lb.classList.add('acik');
   }
   function _lightboxKapat(){ var lb=document.getElementById('ed-lightbox'); if(lb){ lb.classList.remove('acik'); lb.innerHTML=''; } }
-  // [ODAK GÖRÜNÜR] Masaüstünde düzenlenen alan RAHAT GÖRÜNÜR olsun: bir editable alana odaklanınca, alan zaten
-  // görünüyorsa dokunma; değilse (şerit altında gizli / alt kenardan taşmış) görünür olacak KADAR MİNİMUM kaydır.
-  // (Eski "kartı/alanı tepeye zıplat" davranışı kullanıcı isteğiyle yumuşatıldı.) Mobil kendi mantığında (dokunma)
-  // -> x-mobile'da DEVRE DIŞI (bkz. [[mobil-responsive]]/[[ios-klavye-vvtop-fixed-modal]] — Android'i bozma).
+  // [BÖLÜM PIN] Kullanıcı isteği: bir bölümde HERHANGİ bir alana ilk dokunuşta o BÖLÜM 1 KERE üste gelsin
+  // (şeridin hemen altına); sonra aynı bölüm içinde başka alana geçince GEREKSİZ scroll olmasın (stabil).
+  // -> odaklanan alanın .ed-card'ını şeridin altına hizala; kart zaten hizalıysa dokunma. Mobil kendi mantığında
+  // (dokunma) -> x-mobile'da DEVRE DIŞI (bkz. [[mobil-responsive]]/[[ios-klavye-vvtop-fixed-modal]] — Android'i bozma).
   // Bayrak x_odak_ust='0' -> kapalı.
   function _odakUstKur(){
     if(window.__edOdakUst) return; window.__edOdakUst=true;
@@ -9965,20 +9965,20 @@ X_EDITOR_JS = r'''
         var lb=document.getElementById('ed-lightbox'); if(lb && lb.classList.contains('acik')) return;   // lightbox açıkken dokunma
         var t=e.target; if(!t || !t.closest) return;
         var ed=t.closest('.ed-h2,.ed-metin,.ed-link-edit,.ed-img-pano,.ed-plat'); if(!ed) return;
+        var hedef=ed.closest('.ed-card') || ed;   // bölüm kartı (yoksa .ed-plat gibi alanın kendisi)
         var sc=m.querySelector('.preview-body'); if(!sc) return;
-        var sr=sc.getBoundingClientRect(), pad=118;
-        // [YUMUŞAK HİZALA 13i] Kullanıcı "her tıklamada kartı üste zıplatma" dedi. Odaklanan ALAN zaten rahat
-        // görünüyorsa (şeridin altında + alt kenarın üstünde) HİÇ kaydırma -> gereksiz zıplama yok, aynı kart
-        // içi geçiş sabit. Yalnız alan şeridin altında gizliyse ya da alt kenardan taşmışsa, GÖRÜNÜR olacak
-        // KADAR (minimum) kaydır. Kartı tepeye SABİTLEME YOK (eski agresif pin kaldırıldı).
-        var fr=ed.getBoundingClientRect();
-        var ust=sr.top+pad, alt=sr.bottom-24;
-        if(fr.top>=ust-2 && fr.bottom<=alt+2) return;   // zaten rahat görünür -> dokunma
-        var delta;
-        if(fr.top<ust){ delta=fr.top-ust; }                      // şeridin altında gizli -> content aşağı (alanı indir)
-        else{ delta=fr.bottom-alt; if(fr.top-delta<ust) delta=fr.top-ust; }   // alttan taşmış -> yukarı al; üstü şeridin altına geçirme
-        if(Math.abs(delta)<4) return;
-        sc.scrollTo({top: sc.scrollTop+delta, behavior:'smooth'});   // minimum kaydırma (into-view)
+        var sr=sc.getBoundingClientRect(), er=hedef.getBoundingClientRect(), pad=118;
+        // NOT: scrollIntoView KULLANMA -> .ed-card scroll-margin-top:118 + preview-body scroll-padding-top:118
+        // ÇİFTLENİP kartı 118px fazla indiriyor. Hedef scrollTop ELLE: kart üstü tam şeridin altına (sr.top+118).
+        var fark=er.top-(sr.top+pad);
+        if(Math.abs(fark)<12) return;   // bölüm zaten üstte hizalı -> AYNI bölüm içi alan geçişinde KIPIRDAMA (stabil)
+        // [NATIVE KİLİT] Tarayıcının odak-sonrası "alanı görünür yap" kendi kaydırması bizim bölüm-pin'imizle
+        // ÇARPIŞIP çift-sıçrama (jank) yapabiliyor (özellikle alt alanlar: link/metin). preview-body'yi kısa süre
+        // overflow:hidden yap -> native kaydıramaz, pin'i YALNIZ biz yaparız; ~500ms sonra aç + hedefe sabitle.
+        var _ht=sc.scrollTop+fark; if(_ht<0) _ht=0;
+        try{ sc.style.overflowY='hidden'; }catch(_){}
+        sc.scrollTo({top: _ht, behavior:'smooth'});   // bölüm üstünü şeridin altına TAM hizala
+        clearTimeout(window.__odakKilitT); window.__odakKilitT=setTimeout(function(){ try{ sc.style.overflowY=''; }catch(_){} }, 500);
       }catch(_){}
     });
   }
