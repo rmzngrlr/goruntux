@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13aa · [CIZIM BOYUTLANDIR] Sekle tek-tik secim + tutamaclarla yeniden boyut (dikdortgen/elips 2D kose+kenar, ok/cizgi uc noktalari 1D). Dikdortgen/elips cift-tik -> X-Y olcu menusu (mm). Tutamaclar tuvalde beyaz, margin icine kistirilir. Sonraki: kalinlik/cizgi-stili paneli.';
+        var X_BUILD = '2026-11-13ab · [KONTUR STILI] Araç cubugunda IKON buton (tooltip Kontur stili) -> acilir panel: stil butonlari (Cizgisiz/Duz/Kesikli/Kesikli-dar/Noktali) + kalinlik slider + sayisal kutu. Sekiller+duz cizgi/ok (kalem haric); o.stil; ekran setLineDash + Word prstDash + PDF dash + yatay-raster. Yok=cizgisiz (dolgu gelince anlamli). Bayrak x_ck_stil. Sonraki plan: sekil dolgu rengi + opaklik.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4480,6 +4480,14 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             if (!out.length) { var e0 = {}; for (var kk in base) e0[kk] = base[kk]; e0.text = ''; out.push(e0); }
             return out;
         }
+        // [ÇİZGİ STİLİ] PDF raster (canvas setLineDash) + pdfmake (dash) ortak dash deseni (px). duz/yok -> [].
+        window._ckStilDash = function (stil, lw) {
+            lw = Math.max(0.5, lw || 1);
+            if (stil === 'kesikli') return [lw * 2.6, lw * 2.0];
+            if (stil === 'kesikliDar') return [lw * 1.3, lw * 1.3];
+            if (stil === 'noktali') return [Math.max(0.3, lw * 0.12), lw * 1.8];
+            return [];
+        };
         // [YATAY ÇİZİM PDF — Faz3] pdfmake METNİ döndüremediği için yatay çizimi, prim'leri (GERÇEK renk) bir tuvale
         // çizip 90° çevirerek döndürülmüş tek GÖRSEL üretir (A4 yatay 90° = A4 dikey, sıfır bozulma). er = YATAY
         // (döndürülmemiş) xCkExportPrim sonucu; tuval çizilip sonra 90° saat yönü çevrilir -> portre b64.
@@ -4493,9 +4501,9 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
                     x.lineJoin = 'round'; x.lineCap = 'round';
                     er.prims.forEach(function (p) {
-                        if (p.t === 'rect') { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.strokeRect(p.x * W, p.y * H, p.w * W, p.h * H); }
-                        else if (p.t === 'ellipse') { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.beginPath(); x.ellipse((p.x + p.w / 2) * W, (p.y + p.h / 2) * H, Math.max(0.5, p.w / 2 * W), Math.max(0.5, p.h / 2 * H), 0, 0, 6.2832); x.stroke(); }
-                        else if (p.t === 'line') { var x1 = p.x1 * W, y1 = p.y1 * H, x2 = p.x2 * W, y2 = p.y2 * H; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * W * 3.2); x.beginPath(); x.moveTo(x2, y2); x.lineTo(x2 - hl * Math.cos(ang - 0.42), y2 - hl * Math.sin(ang - 0.42)); x.lineTo(x2 - hl * Math.cos(ang + 0.42), y2 - hl * Math.sin(ang + 0.42)); x.closePath(); x.fillStyle = '#' + p.renk; x.fill(); } }
+                        if (p.t === 'rect') { if ((p.stil || 'duz') === 'yok') return; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.strokeRect(p.x * W, p.y * H, p.w * W, p.h * H); x.setLineDash([]); }
+                        else if (p.t === 'ellipse') { if ((p.stil || 'duz') === 'yok') return; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.beginPath(); x.ellipse((p.x + p.w / 2) * W, (p.y + p.h / 2) * H, Math.max(0.5, p.w / 2 * W), Math.max(0.5, p.h / 2 * H), 0, 0, 6.2832); x.stroke(); x.setLineDash([]); }
+                        else if (p.t === 'line') { if ((p.stil || 'duz') === 'yok') return; var x1 = p.x1 * W, y1 = p.y1 * H, x2 = p.x2 * W, y2 = p.y2 * H; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); x.setLineDash([]); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * W * 3.2); x.beginPath(); x.moveTo(x2, y2); x.lineTo(x2 - hl * Math.cos(ang - 0.42), y2 - hl * Math.sin(ang - 0.42)); x.lineTo(x2 - hl * Math.cos(ang + 0.42), y2 - hl * Math.sin(ang + 0.42)); x.closePath(); x.fillStyle = '#' + p.renk; x.fill(); } }
                     });
                     er.prims.forEach(function (p) {
                         if (p.t === 'text' && p.metin != null) {
@@ -4601,9 +4609,9 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     if (content.length > 0) content.push({ text: ' ', pageBreak: 'before', fontSize: 1, margin: [0, 0, 0, 0] });
                     var cnv = [];
                     it.ckEr.prims.forEach(function (p) {
-                        if (p.t === 'rect') cnv.push({ type: 'rect', x: p.x * ckW, y: p.y * ckH, w: p.w * ckW, h: p.h * ckH, lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk });
-                        else if (p.t === 'ellipse') cnv.push({ type: 'ellipse', x: (p.x + p.w / 2) * ckW, y: (p.y + p.h / 2) * ckH, r1: Math.max(0.5, p.w / 2 * ckW), r2: Math.max(0.5, p.h / 2 * ckH), lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk });
-                        else if (p.t === 'line') { var x1 = p.x1 * ckW, y1 = p.y1 * ckH, x2 = p.x2 * ckW, y2 = p.y2 * ckH; cnv.push({ type: 'line', x1: x1, y1: y1, x2: x2, y2: y2, lineWidth: Math.max(0.5, p.kal * ckW), lineColor: '#' + p.renk }); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * ckW * 3.2); cnv.push({ type: 'polyline', closePath: true, color: '#' + p.renk, lineColor: '#' + p.renk, points: [{ x: x2, y: y2 }, { x: x2 - hl * Math.cos(ang - 0.42), y: y2 - hl * Math.sin(ang - 0.42) }, { x: x2 - hl * Math.cos(ang + 0.42), y: y2 - hl * Math.sin(ang + 0.42) }] }); } }
+                        if (p.t === 'rect') { if ((p.stil || 'duz') === 'yok') return; var _lw = Math.max(0.5, p.kal * ckW), _o = { type: 'rect', x: p.x * ckW, y: p.y * ckH, w: p.w * ckW, h: p.h * ckH, lineWidth: _lw, lineColor: '#' + p.renk }, _d = window._ckStilDash(p.stil, _lw); if (_d.length) _o.dash = { length: _d[0], space: _d[1] }; cnv.push(_o); }
+                        else if (p.t === 'ellipse') { if ((p.stil || 'duz') === 'yok') return; var _lw2 = Math.max(0.5, p.kal * ckW), _o2 = { type: 'ellipse', x: (p.x + p.w / 2) * ckW, y: (p.y + p.h / 2) * ckH, r1: Math.max(0.5, p.w / 2 * ckW), r2: Math.max(0.5, p.h / 2 * ckH), lineWidth: _lw2, lineColor: '#' + p.renk }, _d2 = window._ckStilDash(p.stil, _lw2); if (_d2.length) _o2.dash = { length: _d2[0], space: _d2[1] }; cnv.push(_o2); }
+                        else if (p.t === 'line') { if ((p.stil || 'duz') === 'yok') return; var x1 = p.x1 * ckW, y1 = p.y1 * ckH, x2 = p.x2 * ckW, y2 = p.y2 * ckH, _lw3 = Math.max(0.5, p.kal * ckW), _o3 = { type: 'line', x1: x1, y1: y1, x2: x2, y2: y2, lineWidth: _lw3, lineColor: '#' + p.renk }, _d3 = window._ckStilDash(p.stil, _lw3); if (_d3.length) _o3.dash = { length: _d3[0], space: _d3[1] }; cnv.push(_o3); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * ckW * 3.2); cnv.push({ type: 'polyline', closePath: true, color: '#' + p.renk, lineColor: '#' + p.renk, points: [{ x: x2, y: y2 }, { x: x2 - hl * Math.cos(ang - 0.42), y: y2 - hl * Math.sin(ang - 0.42) }, { x: x2 - hl * Math.cos(ang + 0.42), y: y2 - hl * Math.sin(ang + 0.42) }] }); } }
                     });
                     if (cnv.length) content.push({ canvas: cnv, absolutePosition: { x: pL, y: pT } });
                     it.ckEr.prims.forEach(function (p) { if (p.t === 'text' && p.metin) content.push({ text: p.metin, fontSize: Math.max(4, p.boyut * ckW), bold: !!p.kalin, color: '#' + p.renk, absolutePosition: { x: pL + p.x * ckW, y: pT + p.y * ckH } }); });
@@ -8411,6 +8419,12 @@ LOCAL_DOCX_JS = r'''
           +inner+'</a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>';
       }
       var runs='', kids='';
+      function _ckWordLn(p){   // [ÇİZGİ STİLİ] <a:ln> içeriği: prstDash (kesikli/noktalı) + yok=noFill(çizgisiz)
+        var st=p.stil||'duz';
+        if(st==='yok') return '<a:ln><a:noFill/></a:ln>';
+        var dash=(st==='kesikli')?'<a:prstDash val="dash"/>':(st==='kesikliDar')?'<a:prstDash val="sysDash"/>':(st==='noktali')?'<a:prstDash val="sysDot"/>':'';
+        return '<a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill>'+dash+(p.ok?'<a:tailEnd type="triangle" w="med" len="med"/>':'')+'</a:ln>';
+      }
       er.prims.forEach(function(p){ id++;
         var inner='', nm='', aX=0, aY=0, aW=0, aH=0, uri=WPS;
         if(p.t==='rect' || p.t==='ellipse'){
@@ -8418,7 +8432,7 @@ LOCAL_DOCX_JS = r'''
           inner='<wps:wsp><wps:cNvPr id="'+id+'" name="s'+id+'"/><wps:cNvSpPr/><wps:spPr>'
             +'<a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm>'
             +'<a:prstGeom prst="'+(p.t==='ellipse'?'ellipse':'rect')+'"><a:avLst/></a:prstGeom><a:noFill/>'
-            +'<a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill></a:ln></wps:spPr><wps:bodyPr/></wps:wsp>';
+            +_ckWordLn(p)+'</wps:spPr><wps:bodyPr/></wps:wsp>';
           nm='s'; aX=EX(p.x); aY=EY(p.y); aW=W; aH=H; uri=WPS;
         } else if(p.t==='line'){
           var x1=EX(p.x1),y1=EY(p.y1),x2=EX(p.x2),y2=EY(p.y2);
@@ -8427,7 +8441,7 @@ LOCAL_DOCX_JS = r'''
             +'<a:xfrm><a:off x="0" y="0"/><a:ext cx="'+bw+'" cy="'+bh+'"/></a:xfrm>'
             +'<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l="0" t="0" r="'+bw+'" b="'+bh+'"/>'
             +'<a:pathLst><a:path w="'+bw+'" h="'+bh+'"><a:moveTo><a:pt x="'+(x1-bx)+'" y="'+(y1-by)+'"/></a:moveTo><a:lnTo><a:pt x="'+(x2-bx)+'" y="'+(y2-by)+'"/></a:lnTo></a:path></a:pathLst></a:custGeom>'
-            +'<a:noFill/><a:ln w="'+Math.max(3175,EX(p.kal))+'"><a:solidFill><a:srgbClr val="'+p.renk+'"/></a:solidFill>'+(p.ok?'<a:tailEnd type="triangle" w="med" len="med"/>':'')+'</a:ln></wps:spPr><wps:bodyPr/></wps:wsp>';
+            +'<a:noFill/>'+_ckWordLn(p)+'</wps:spPr><wps:bodyPr/></wps:wsp>';
           nm='ok'; aX=bx; aY=by; aW=bw; aH=bh; uri=WPS;
         } else if(p.t==='text'){
           var W, H, szHalf, _rotA='';
@@ -9708,7 +9722,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7q · 2026-11-13 [CIZIM BOYUTLANDIR] tek-tik secili sekle tutamaclar (dikdortgen/elips kose+kenar 2D, ok uc 1D) surukle=boyut; dikdortgen/elips cift-tik -> X-Y mm olcu menusu. Margin kistirma. (7p korunur)";
+  XE.VERSION = "7r · 2026-11-13 [CIZGI STILI PANELI] Kalinlik acilir panel: stil butonlari (yok/duz/kesikli/kesikliDar/noktali) + slider + sayisal. Sekil+ok (kalem haric); o.stil; cizObj setLineDash + export stil; yok=cizgisiz. Bayrak x_ck_stil. (7q korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10449,6 +10463,24 @@ body:not(.light-theme) .ed-gd-kalem-opt.aktif{background:#243447;color:#8ecbff;}
 .ed-gd-renk-inp{width:30px;height:30px;border:1px solid #d0d7de;border-radius:7px;padding:0;background:#fff;cursor:pointer;}
 body:not(.light-theme) .ed-gd-renk-inp{background:#1b2735;border-color:#2c3a4a;}
 .ed-gd-say{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#475569;}
+/* [ÇİZGİ STİLİ 2026-11-13] Kalınlık = açılır panel (stil butonları + kalınlık slider + sayısal) */
+.ed-gd-kal-wrap{position:relative;display:inline-flex;}
+.ed-gd-kal-btn{width:auto;min-width:34px;padding:0 4px;gap:1px;}
+.ed-gd-kal-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid #cfd8e3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.22);padding:9px;min-width:200px;}
+.ed-gd-kal-wrap.acik .ed-gd-kal-menu{display:block;}
+.ed-gd-kal-stiller{display:flex;gap:4px;margin-bottom:9px;}
+.ed-gd-stil-opt{flex:1 1 0;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:7px;cursor:pointer;padding:0;}
+.ed-gd-stil-opt:hover{background:#eef5ff;}
+.ed-gd-stil-opt.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}
+.ed-gd-kal-say{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#475569;}
+.ed-gd-kal-say input[type=range]{flex:1 1 auto;min-width:88px;}
+.ed-gd-kal-num{width:48px;flex:none;border:1px solid #d0d7de;border-radius:6px;padding:4px 6px;font-size:12px;text-align:right;background:#fff;color:#0f1419;}
+body:not(.light-theme) .ed-gd-kal-menu{background:#1b2735;border-color:#2c3a4a;}
+body:not(.light-theme) .ed-gd-stil-opt{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
+body:not(.light-theme) .ed-gd-stil-opt:hover{background:#243447;}
+body:not(.light-theme) .ed-gd-stil-opt.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}
+body:not(.light-theme) .ed-gd-kal-say{color:#9aa6b2;}
+body:not(.light-theme) .ed-gd-kal-num{background:#0f1720;border-color:#2c3a4a;color:#e7e9ea;}
 .ed-gd-say input[type=range]{width:88px;}
 .ed-gd-mini{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:30px;padding:0 10px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
 .ed-gd-mini svg{display:block;}
@@ -11840,6 +11872,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var renk=_cz?'#000000':'#e02020';   // [ÇİZİM] varsayılan "otonom" renk = ÇIKTIDA SİYAH olan renk (#000000); ekranda _gostRenk ile açık görünür. Görsel editörü kırmızı kalır.
     var kalinlik=Math.max(3, Math.round(Math.max(baseW,baseH)/260));
     var _firca='normal';   // [FIRÇA] aktif kalem fırçası: normal/sprey/fosforlu/firca/neon/kaligrafi
+    var _stil='duz';   // [ÇİZGİ STİLİ] aktif şekil çizgi stili: duz/kesikli/kesikliDar/noktali/yok (yalnız dikdörtgen/elips/ok; bayrak x_ck_stil)
     // [ÇİZİM METİN] font listesi (rapor editörü ile aynı) + varsayılan boyut RAPOR m_size'a göre (pt -> canvas px).
     var _CK_FONTLAR=['Arial','Calibri','Cambria','Century Gothic','Comic Sans MS','Consolas','Courier New','Georgia','Helvetica','Impact','Segoe UI','Tahoma','Times New Roman','Trebuchet MS','Verdana'];
     var yaziFont='Arial';
@@ -11863,6 +11896,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     araclar.push(['yazi','Yazı','M4 5h12M10 5v11']);   // [FIRÇA] kalem artık dropdown-buton (Şekil gibi), araç listesinde değil
     // [ŞEKİL] dörtgen + ok + elips TEK dropdown butonda (tıkla -> aşağı açılır menü). İkonlar:
     var _SEKILLER=[['dikdortgen','Dikdörtgen','M3.5 4.5h13v11h-13z'],['elips','Yuvarlak (elips)','M10 4.5c3.6 0 6.5 2.46 6.5 5.5s-2.9 5.5-6.5 5.5S3.5 13.04 3.5 10 6.4 4.5 10 4.5z'],['ok','Ok','M4 16L16 4M9 4h7v7']];
+    var _STILLER=[   // [ÇİZGİ STİLİ] panel seçenekleri (ekran görüntüsü sırası): yok / düz / kesikli / kesikli-dar / noktalı
+      ['yok','Çizgisiz','<circle cx="10" cy="10" r="7.2"/><line x1="5" y1="15" x2="15" y2="5"/>'],
+      ['duz','Düz','<line x1="2.5" y1="10" x2="17.5" y2="10"/>'],
+      ['kesikli','Kesikli','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="4 3"/>'],
+      ['kesikliDar','Kesikli (dar)','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="2 2"/>'],
+      ['noktali','Noktalı','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="0.4 3" stroke-linecap="round"/>']
+    ];
     function _sekilIkon(t){ for(var i=0;i<_SEKILLER.length;i++) if(_SEKILLER[i][0]===t) return _SEKILLER[i][2]; return _SEKILLER[0][2]; }
     // [FIRÇA] kalem fırça türleri: [anahtar, ad, ikon-path]
     var _FIRCALAR=[
@@ -11893,7 +11933,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
-      +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
+      +'      <div class="ed-gd-kalgrp ed-gd-kal-wrap" title="Çizgi stili ve kalınlığı">'
+      +'        <button type="button" class="ed-gd-tool ed-gd-kal-btn" title="Kontur stili"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="3" y1="5.5" x2="17" y2="5.5"/><line x1="3" y1="10" x2="17" y2="10" stroke-dasharray="3.5 2.5"/><line x1="3" y1="14.5" x2="17" y2="14.5" stroke-dasharray="1 2.6"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
+      +'        <div class="ed-gd-kal-menu">'
+      +'          <div class="ed-gd-kal-stiller">'+_STILLER.map(function(s){return '<button type="button" class="ed-gd-stil-opt'+(s[0]===_stil?' aktif':'')+'" data-stil="'+s[0]+'" title="'+s[1]+'"><svg viewBox="0 0 20 20" width="22" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="round">'+s[2]+'</svg></button>';}).join('')+'</div>'
+      +'          <div class="ed-gd-kal-say"><span>Kalınlık</span><input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"><input type="number" class="ed-gd-kal-num" min="1" max="40" value="'+kalinlik+'"></div>'
+      +'        </div>'
+      +'      </div>'
       +(_cz?('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>'):'')
       +(_cz?('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu (pt)">Yazı<select class="ed-gd-yzsel">'+_CK_BOYUTLAR.map(function(sz){return '<option value="'+sz+'"'+(sz===_repMSize?' selected':'')+'>'+sz+'</option>';}).join('')+'</select></label>')
         :('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'))
@@ -11963,6 +12009,18 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var pX=o.boyut*0.14, pY=o.boyut*0.1, mm=yaziMetrikPx(o, o.boyut);
       return { x:o.x-pX, y:o.y-pY, w:mm.w+pX*2, h:mm.asc+mm.desc+pY*2 };
     }
+    function _stilAcik(){ try{ return localStorage.getItem('x_ck_stil')!=='0'; }catch(_){ return true; } }
+    function _stilDash(stil, w){   // [ÇİZGİ STİLİ] ekran setLineDash deseni (px; kalınlıkla ölçekli). duz/yok -> []
+      w=Math.max(1,w);
+      if(stil==='kesikli') return [w*2.6, w*2.0];
+      if(stil==='kesikliDar') return [w*1.3, w*1.3];
+      if(stil==='noktali') return [Math.max(0.3,w*0.12), w*1.8];
+      return [];
+    }
+    function _stilCtxUygula(cx, o, wpx){   // şekil stroke'u öncesi dash+cap kur
+      if(!_stilAcik()){ cx.setLineDash([]); return; }
+      var st=o.stil||'duz'; cx.setLineDash(_stilDash(st, wpx)); if(st==='noktali') cx.lineCap='round';
+    }
     function cizObj(o){
       ctx.save();
       if(o.t==='yazi'){
@@ -11975,21 +12033,24 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         if(_as===0){ ctx.lineWidth=Math.max(2,fs*0.08); ctx.strokeStyle='rgba(0,0,0,0.55)'; ctx.strokeText(o.metin||'', bx, baseY); }
         ctx.fillText(o.metin||'', bx, baseY);
       } else if(o.t==='dikdortgen'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk);
-        ctx.strokeRect(S(o.x), S(o.y), S(o.w), S(o.h));
+        if(!(_stilAcik() && (o.stil||'duz')==='yok')){ ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); _stilCtxUygula(ctx,o,S(o.kal));
+          ctx.strokeRect(S(o.x), S(o.y), S(o.w), S(o.h)); }
       } else if(o.t==='elips'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk);
-        var _ecx=S(o.x+o.w/2), _ecy=S(o.y+o.h/2), _erx=Math.abs(S(o.w)/2), _ery=Math.abs(S(o.h)/2);
-        ctx.beginPath(); ctx.ellipse(_ecx,_ecy,_erx,_ery,0,0,Math.PI*2); ctx.stroke();
+        if(!(_stilAcik() && (o.stil||'duz')==='yok')){ ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); _stilCtxUygula(ctx,o,S(o.kal));
+          var _ecx=S(o.x+o.w/2), _ecy=S(o.y+o.h/2), _erx=Math.abs(S(o.w)/2), _ery=Math.abs(S(o.h)/2);
+          ctx.beginPath(); ctx.ellipse(_ecx,_ecy,_erx,_ery,0,0,Math.PI*2); ctx.stroke(); }
       } else if(o.t==='ok'){
-        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); ctx.fillStyle=_gostRenk(o.renk); ctx.lineCap='round';
+        if(!(_stilAcik() && (o.stil||'duz')==='yok')){
+        ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); ctx.fillStyle=_gostRenk(o.renk); ctx.lineCap='round'; _stilCtxUygula(ctx,o,S(o.kal));
         ctx.beginPath(); ctx.moveTo(S(o.x1),S(o.y1)); ctx.lineTo(S(o.x2),S(o.y2)); ctx.stroke();
+        ctx.setLineDash([]);   // başlık (ok ucu) KESİKSİZ dolu üçgen
         if(!o.basliksiz){   // [ÇİZGİ] basliksiz = düz çizgi (ok başlığı YOK); normal ok'ta başlık çizilir
           var ang=Math.atan2(o.y2-o.y1, o.x2-o.x1), hl=Math.max(S(o.kal)*3.2, 10);
           ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2));
           ctx.lineTo(S(o.x2)-hl*Math.cos(ang-0.42), S(o.y2)-hl*Math.sin(ang-0.42));
           ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42), S(o.y2)-hl*Math.sin(ang+0.42));
           ctx.closePath(); ctx.fill();
+        }
         }
       } else if(o.t==='kalem'){
         window._fircaCiz(ctx, o.nk||[], o.firca, _gostRenk(o.renk), o.kal, o.seed, scale, 0, 0, (_ekranMod && _ckKoyuMu()));   // [FIRÇA] fırça türüne göre (ekran: sc=scale, offset=0); fosforlu koyu ekranda screen
@@ -12141,9 +12202,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         _selBtn(); ciz(); return; }
       if(tool==='kirp'){ var ct=cropTut(p); if(ct){ drag={tip:'crop', mod:ct, sx:p.x, sy:p.y, o:JSON.parse(JSON.stringify(crop))}; } else { crop={x:p.x,y:p.y,w:0,h:0}; drag={tip:'crop', mod:{kose:'xw_yh'}, sx:p.x, sy:p.y, o:JSON.parse(JSON.stringify(crop))}; } ciz(); return; }
       if(tool==='yazi'){ _yaziEkle(p); return; }
-      if(tool==='ok'){ itUndo(); var o2={t:'ok', x1:p.x, y1:p.y, x2:p.x, y2:p.y, renk:renk, kal:kalinlik}; objs.push(o2); drag={tip:'ciz', o:o2}; return; }   // snapshot MUTASYONDAN ÖNCE (geri-al gerçekten silsin + buton hemen aktif)
-      if(tool==='dikdortgen'){ itUndo(); var o3={t:'dikdortgen', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik}; objs.push(o3); drag={tip:'ciz', o:o3}; return; }
-      if(tool==='elips'){ itUndo(); var oe={t:'elips', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik}; objs.push(oe); drag={tip:'ciz', o:oe}; return; }
+      if(tool==='ok'){ itUndo(); var o2={t:'ok', x1:p.x, y1:p.y, x2:p.x, y2:p.y, renk:renk, kal:kalinlik, stil:_stil}; objs.push(o2); drag={tip:'ciz', o:o2}; return; }   // snapshot MUTASYONDAN ÖNCE (geri-al gerçekten silsin + buton hemen aktif)
+      if(tool==='dikdortgen'){ itUndo(); var o3={t:'dikdortgen', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik, stil:_stil}; objs.push(o3); drag={tip:'ciz', o:o3}; return; }
+      if(tool==='elips'){ itUndo(); var oe={t:'elips', x:p.x, y:p.y, w:0, h:0, renk:renk, kal:kalinlik, stil:_stil}; objs.push(oe); drag={tip:'ciz', o:oe}; return; }
       if(tool==='kalem'){ itUndo(); var o4={t:'kalem', nk:[{x:p.x,y:p.y}], renk:renk, kal:kalinlik, firca:_firca}; if(_firca==='sprey') o4.seed=Math.floor(Math.random()*1e9); objs.push(o4); drag={tip:'kalem', o:o4}; return; }   // [FIRÇA] aktif fırça + sprey tohum (deterministik)
     }
     function pm(e){
@@ -12273,16 +12334,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         var ys=ov.querySelector('.ed-gd-yzsel'); if(ys){ var _pt=Math.round(sel.boyut/_ckPtPx), _en=_CK_BOYUTLAR[0], _bd=1e9; _CK_BOYUTLAR.forEach(function(sz){ var dd=Math.abs(sz-_pt); if(dd<_bd){_bd=dd;_en=sz;} }); ys.value=String(_en); }
         var fsel=ov.querySelector('.ed-gd-font'); if(fsel && sel.font){ fsel.value=sel.font; yaziFont=sel.font; }
         yaziArkaSev=(typeof sel.arka==='number')?sel.arka:(sel.arka?2:0); _arkaBtnYansit(); }
-      else if(sel.kal){ var kb=ov.querySelector('.ed-gd-kal'); if(kb){ kb.value=sel.kal; kalinlik=sel.kal; } }
+      else if(sel.kal){ var kb=ov.querySelector('.ed-gd-kal'); if(kb){ kb.value=sel.kal; kalinlik=sel.kal; } var kn=ov.querySelector('.ed-gd-kal-num'); if(kn) kn.value=sel.kal; }
+      if(sel.t==='dikdortgen'||sel.t==='elips'||sel.t==='ok'){ _stil=sel.stil||'duz'; _stilBtnYansit(); }   // [ÇİZGİ STİLİ] seçili şeklin stilini şeride yansıt
       if(sel.t==='kalem' && sel.firca){ _firca=sel.firca; try{ _fircaYansit(); }catch(_){} }   // [FIRÇA] seçili kalemin fırçasını şeride yansıt
       _metgrpUygula();
     }
     function _arkaBtnYansit(){ var b=ov.querySelector('.ed-gd-arka'); if(!b) return; b.classList.remove('ed-arka-s0','ed-arka-s1','ed-arka-s2'); b.classList.add('ed-arka-s'+yaziArkaSev); b.classList.toggle('aktif', yaziArkaSev>0); }
-    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; Kalınlık YALNIZ şekil (ok/dikdörtgen/kalem) aracı/seçimi
+    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; Kalınlık şekil+kalem; çizgi stili YALNIZ şekil
       var mm=(tool==='yazi') || (secili.length && secili.some(function(s){return s.t==='yazi';}));
-      var kk=(tool==='ok'||tool==='dikdortgen'||tool==='kalem') || (secili.length && secili.some(function(s){return s.t==='ok'||s.t==='dikdortgen'||s.t==='kalem';}));
+      var sk=(tool==='ok'||tool==='dikdortgen'||tool==='elips') || (secili.length && secili.some(function(s){return s.t==='ok'||s.t==='dikdortgen'||s.t==='elips';}));   // ŞEKİL (çizgi stili uygulanır)
+      var kk=sk || tool==='kalem' || (secili.length && secili.some(function(s){return s.t==='kalem';}));   // şekil + kalem -> Kalınlık paneli
       ov.querySelectorAll('.ed-gd-metgrp').forEach(function(e){ e.style.display=mm?'':'none'; });
       var kg=ov.querySelector('.ed-gd-kalgrp'); if(kg) kg.style.display=kk?'':'none';
+      var kst=ov.querySelector('.ed-gd-kal-stiller'); if(kst) kst.style.display=(sk && _stilAcik())?'':'none';   // çizgi stili satırı YALNIZ şekil + bayrak açık
     }
     function _toolYansit(){ ov.querySelectorAll('.ed-gd-tool').forEach(function(b){ if(b.classList.contains('ed-gd-sekil-btn')||b.classList.contains('ed-gd-kalem-btn')) return; b.classList.toggle('aktif', b.getAttribute('data-tool')===tool); });
       var sb=ov.querySelector('.ed-gd-sekil-btn'); if(sb){ var _sekilAktif=(tool==='dikdortgen'||tool==='ok'||tool==='elips'); sb.classList.toggle('aktif', _sekilAktif); if(_sekilAktif){ var ic=sb.querySelector('path'); if(ic) ic.setAttribute('d', _sekilIkon(tool)); sb.setAttribute('data-sekil', tool); } }
@@ -12309,7 +12373,17 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     })();
     // [GERİ-AL] seçili öğede stil değişimi de geri alınır. Kaydırıcılar (renk/kalınlık): sürük BAŞINDA 1 kez snapshot (mousedown); değişim input'ta uygulanır (spam yok).
     (function(){ var _ri=ov.querySelector('.ed-gd-renk-inp'); if(_ri){ _ri.addEventListener('mousedown', function(){ if(secili.length) itUndo(); }); _ri.addEventListener('input', function(){ renk=this.value; if(secili.length){ secili.forEach(function(s){ if(s.renk!=null) s.renk=renk; }); ciz(); } }); } })();
-    (function(){ var _kl=ov.querySelector('.ed-gd-kal'); if(_kl){ _kl.addEventListener('mousedown', function(){ if(secili.length) itUndo(); }); _kl.addEventListener('input', function(){ kalinlik=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.kal!=null) s.kal=kalinlik; }); ciz(); } }); } })();
+    function _stilBtnYansit(){ ov.querySelectorAll('.ed-gd-stil-opt').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-stil')===_stil); }); }
+    (function(){   // [KALINLIK/ÇİZGİ STİLİ PANELİ] slider + sayısal kutu + stil butonları + dropdown aç/kapa
+      var _kl=ov.querySelector('.ed-gd-kal'), _kn=ov.querySelector('.ed-gd-kal-num');
+      function _kalUygula(v, snap){ v=Math.max(1,Math.min(40,Math.round(v||1))); if(snap && secili.length) itUndo(); kalinlik=v; if(_kl) _kl.value=v; if(_kn) _kn.value=v; if(secili.length){ secili.forEach(function(s){ if(s.kal!=null) s.kal=kalinlik; }); ciz(); } }
+      if(_kl){ _kl.addEventListener('mousedown', function(){ if(secili.length) itUndo(); }); _kl.addEventListener('input', function(){ _kalUygula(+this.value, false); }); }
+      if(_kn){ _kn.addEventListener('change', function(){ _kalUygula(+this.value, true); }); _kn.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); _kalUygula(+this.value, true); try{ this.blur(); }catch(_){} } }); }
+      var kb=ov.querySelector('.ed-gd-kal-btn'), kw=ov.querySelector('.ed-gd-kal-wrap');
+      if(kb&&kw){ kb.addEventListener('click', function(e){ e.stopPropagation(); kw.classList.toggle('acik'); }); document.addEventListener('mousedown', function(e){ if(kw.classList.contains('acik') && !kw.contains(e.target)) kw.classList.remove('acik'); }, true); }
+      ov.querySelectorAll('.ed-gd-stil-opt').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); if(secili.length) itUndo(); _stil=b.getAttribute('data-stil'); _stilBtnYansit();
+        if(secili.length){ secili.forEach(function(s){ if(s.t==='dikdortgen'||s.t==='elips'||s.t==='ok') s.stil=_stil; }); ciz(); } }); });
+    })();
     (function(){ var _yzb=ov.querySelector('.ed-gd-yzb'); if(_yzb){ _yzb.addEventListener('mousedown', function(){ if(secili.length) itUndo(); }); _yzb.addEventListener('input', function(){ yaziBoyut=+this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); ciz(); } }); }
       var _yzs=ov.querySelector('.ed-gd-yzsel'); if(_yzs) _yzs.addEventListener('change', function(){ if(secili.length) itUndo(); yaziBoyut=Math.max(4,Math.round((+this.value)*_ckPtPx)); if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.boyut=yaziBoyut; }); } ciz(); }); })();
     (function(){ var fsel=ov.querySelector('.ed-gd-font'); if(fsel) fsel.addEventListener('change', function(){ if(secili.length) itUndo(); yaziFont=this.value; if(secili.length){ secili.forEach(function(s){ if(s.t==='yazi') s.font=yaziFont; }); } ciz(); }); })();
@@ -12562,9 +12636,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function HX(c){ var h=(''+(c||'#000000')).replace('#',''); if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; return /^[0-9a-fA-F]{6}$/.test(h)?h.toUpperCase():'000000'; }
     var prims=[], kalemler=[], _mc=null;
     for(var i=0;i<objs.length;i++){ var o=objs[i]; if(!o) continue;
-      if(o.t==='dikdortgen'){ prims.push({t:'rect', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw}); }
-      else if(o.t==='elips'){ prims.push({t:'ellipse', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw}); }
-      else if(o.t==='ok'){ prims.push({t:'line', x1:FX(o.x1), y1:FY(o.y1), x2:FX(o.x2), y2:FY(o.y2), renk:HX(o.renk), kal:o.kal/cw, ok:!o.basliksiz}); }   // [ÇİZGİ] basliksiz -> ok:false (düz çizgi, Word/PDF başlıksız)
+      if(o.t==='dikdortgen'){ prims.push({t:'rect', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz')}); }
+      else if(o.t==='elips'){ prims.push({t:'ellipse', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz')}); }
+      else if(o.t==='ok'){ prims.push({t:'line', x1:FX(o.x1), y1:FY(o.y1), x2:FX(o.x2), y2:FY(o.y2), renk:HX(o.renk), kal:o.kal/cw, ok:!o.basliksiz, stil:(o.stil||'duz')}); }   // [ÇİZGİ] basliksiz -> ok:false (düz çizgi, Word/PDF başlıksız)
       else if(o.t==='yazi'){ if(!_mc){ try{ _mc=document.createElement('canvas').getContext('2d'); }catch(_){} } var tw=0; try{ _mc.font=(o.kalin?'bold ':'')+o.boyut+'px '+(o.font||'Arial'); tw=_mc.measureText(o.metin||' ').width; }catch(_){ tw=(o.metin||'').length*o.boyut*0.55; }
         prims.push({t:'text', x:FX(o.x-o.boyut*0.14), y:FY(o.y-o.boyut*0.1), w:(tw+o.boyut*0.3)/cw, h:(o.boyut*1.42)/ch, boyut:o.boyut/cw, renk:HX(o.renk), metin:o.metin||'', font:(o.font||'Arial'), kalin:!!o.kalin, arka:(typeof o.arka==='number'?o.arka:(o.arka?2:0))}); }
       else if(o.t==='gorsel'){ prims.push({t:'image', x:FX(o.x), y:FY(o.y), w:o.w/cw, h:o.h/ch, b64:o.b64, mime:o.mime||'image/png'}); }
@@ -12598,8 +12672,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var asp = er.aspect || 1.4;   // yatay (>1)
     var out = { prims:[], cw:er.ch, ch:er.cw, aspect:(asp?1/asp:0.714), penImg:er.penImg, penBox:null, penRot:false, yatayRot:true };
     for(var i=0;i<er.prims.length;i++){ var p=er.prims[i];
-      if(p.t==='rect' || p.t==='ellipse'){ out.prims.push({ t:p.t, x:1-(p.y+p.h), y:p.x, w:p.h, h:p.w, renk:p.renk, kal:(p.kal||0)*asp }); }
-      else if(p.t==='line'){ out.prims.push({ t:'line', x1:1-p.y1, y1:p.x1, x2:1-p.y2, y2:p.x2, renk:p.renk, kal:(p.kal||0)*asp, ok:p.ok }); }
+      if(p.t==='rect' || p.t==='ellipse'){ out.prims.push({ t:p.t, x:1-(p.y+p.h), y:p.x, w:p.h, h:p.w, renk:p.renk, kal:(p.kal||0)*asp, stil:p.stil }); }
+      else if(p.t==='line'){ out.prims.push({ t:'line', x1:1-p.y1, y1:p.x1, x2:1-p.y2, y2:p.x2, renk:p.renk, kal:(p.kal||0)*asp, ok:p.ok, stil:p.stil }); }
       else if(p.t==='text'){ var q=JSON.parse(JSON.stringify(p)); q.rot=true; out.prims.push(q); }   // orijinal koordinat + rot (Word merkez+90°)
       else if(p.t==='image'){ var q2=JSON.parse(JSON.stringify(p)); q2.rot=true; out.prims.push(q2); }
       else out.prims.push(p);
