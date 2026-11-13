@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13v · Metin alani Kes/Sil + yeniden-ac sonrasi PLACEHOLDER kalici: sanitizeMetin gorsel-bos icerigi (yalniz stray br) artik boş string dondurur (eskiden br saklanip modele yaziliyordu -> editor yeniden acilinca renderMetin br basip :empty bozuyordu). Hem Kes/Sil hem klavye-sil ortak.';
+        var X_BUILD = '2026-11-13w · SEKME-KAPAT = RAPOR-KAPAT: yeni sekmede (sekme kapanip tekrar acilinca) son aktif rapor OTOMATIK ACILMAZ; Raporlarim listesi gelir. F5 (ayni sekme) raporu ACIK tutar (sessionStorage: F5te kalir, sekme-kapatta silinir). Veri XSavedReports-ta (boş ile ezme guard korur). Bayrak x_sekme_kapat=0 -> eski. + placeholder (13v korunur).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4835,7 +4835,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
         }
         window.xUrlRaporaGuncelle = xUrlRaporaGuncelle;
         function xAktifRaporKur(id, ad, slug, urlReplace) {
-            try { if (id) { localStorage.setItem('x_active_report_id', id); } else { localStorage.removeItem('x_active_report_id'); } } catch (e) {}
+            try { if (id) { localStorage.setItem('x_active_report_id', id); sessionStorage.setItem('x_active_report_id', id); } else { localStorage.removeItem('x_active_report_id'); sessionStorage.removeItem('x_active_report_id'); } } catch (e) {}   // [SEKME-KAPAT] sessionStorage = bu SEKMENIN oturumu (F5'te kalir, sekme kapanınca silinir)
             try { window.__xYukluRaporId = id || ''; } catch (e) {}   // [VERİ KAYBI FİX K3/#18] bu SEKMENİN yüklediği rapor (in-memory; çok-sekme guard'ı)
             if (ad != null) { window.__xActiveReportName = String(ad); }
             if (slug != null) { window.__xActiveReportSlug = String(slug); }
@@ -4845,7 +4845,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             if (id) { xUrlRaporaGuncelle(window.__xActiveReportSlug || '', !!urlReplace); }   // Faz 3: adres çubuğu /<slug>
         }
         function xAktifRaporTemizle(urlReplace) {
-            try { localStorage.removeItem('x_active_report_id'); } catch (e) {}
+            try { localStorage.removeItem('x_active_report_id'); sessionStorage.removeItem('x_active_report_id'); } catch (e) {}
             try { window.__xYukluRaporId = ''; } catch (e) {}   // [VERİ KAYBI FİX K3/#18]
             window.__xActiveReportName = ''; window.__xActiveReportSlug = ''; window.__openReportName = '';
             xAktifRaporCizgiCiz();
@@ -5139,6 +5139,25 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             return xSiraya(_raporuKapatImpl);
         }
         window.raporuKapat = raporuKapat;
+        // [SEKME-KAPAT = RAPOR-KAPAT] Bu SEKMEDE aktif rapor oturumu var mı? sessionStorage F5'te (aynı sekme)
+        // kalır, sekme kapanınca silinir -> F5 ile yeni-sekme ayrımı. Dolu -> F5/devam; boş -> yeni sekme.
+        function xSekmeOturumuVar() { try { return !!sessionStorage.getItem('x_active_report_id'); } catch (e) { return false; } }
+        window.xSekmeOturumuVar = xSekmeOturumuVar;
+        // Yeni sekmede (sekme-kapat sonrası) son aktif raporu AÇMADAN hafif kapat: Raporlarım listesi görünür.
+        // FLUSH YOK (overlay henüz yüklenmedi -> flush iyi kaydı bozardı). Veri XSavedReports'ta (oto-kayıt +
+        // unload-flush); havuz temizlenir ama saklı rapor kaydı "boş ile ezme" guard'ıyla korunur -> re-açınca döner.
+        async function xYeniSekmeHafifKapat() {
+            try {
+                xAktifRaporTemizle();
+                try { await fetch('/api/manual/clear', { method: 'POST' }); } catch (e) {}
+                window.__xEditorOverlay = { byLink: {}, style: null }; window.__xManualClusters = [];
+                window.lastManuelListJson = null; window.__xPoolDirty = false;
+                try { xStandartStiliUygula(); } catch (e) {}
+                refreshStatus();
+                await renderSavedReports();
+            } catch (e) { console.error('Yeni sekme hafif kapatma hatası:', e); }
+        }
+        window.xYeniSekmeHafifKapat = xYeniSekmeHafifKapat;
         async function _raporuKapatImpl() {
             try {
                 await _xOtoKayitYapImpl();   // flush: son düzenlemeyi aktif rapora yaz (kuyruktayız -> doğrudan)
@@ -5749,7 +5768,12 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     }
                     if (window.showToast) showToast('Bu adreste rapor yok; mevcut rapora dönüldü.', 'warning');
                 }
-                await xAktifRaporYenidenBagla();   // aktif rapor kurulursa URL'i de kendi slug'ına replace eder
+                // [SEKME-KAPAT = RAPOR-KAPAT] Slug yok (ana sayfa). Bu sekmede oturum VARSA (F5) normal yeniden-bağla;
+                // YOKSA (yeni sekme / sekme-kapat sonrası) son raporu OTOMATIK AÇMA -> hafif kapat (Raporlarım listesi).
+                // Aktif rapor yoksa zaten yeniden-bağla no-op. Bayrak x_sekme_kapat='0' -> eski davranış (hep aç).
+                var _skAcik = true; try { _skAcik = localStorage.getItem('x_sekme_kapat') !== '0'; } catch (e) {}
+                if (!_skAcik || xSekmeOturumuVar() || !xAktifRaporId()) { await xAktifRaporYenidenBagla(); }
+                else { await xYeniSekmeHafifKapat(); }
             } catch (e) { console.error('Router hatası:', e); }
         }
         window.xRaporRouterVeyaBagla = xRaporRouterVeyaBagla;
