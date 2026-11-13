@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13n · [FAZ2] YATAY cizim WORD 90 derece dondurme: xCkRotateEr90 (dikdortgen/elips/cizgi koordinat donusur; metin/gorsel/kalem rot=5400000+merkez konum); Word kutu ar TERS (portre); native yol yatay-da zorlanir (b64 ezilmesin). PDF FAZ3. Gercek Word testi bekliyor.';
+        var X_BUILD = '2026-11-13o · [FAZ3] YATAY cizim PDF 90 derece: pdfmake metni donduremedigi icin xCkRenderRot90 (prim-leri GERCEK renkle tuvale ciz -> 90 derece cevir -> dondurulmus tek gorsel, bozulmasiz). PDF kutu ar ters portre. Word native (Faz2) korunur. TUM FAZLAR tamam.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4480,6 +4480,45 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             if (!out.length) { var e0 = {}; for (var kk in base) e0[kk] = base[kk]; e0.text = ''; out.push(e0); }
             return out;
         }
+        // [YATAY ÇİZİM PDF — Faz3] pdfmake METNİ döndüremediği için yatay çizimi, prim'leri (GERÇEK renk) bir tuvale
+        // çizip 90° çevirerek döndürülmüş tek GÖRSEL üretir (A4 yatay 90° = A4 dikey, sıfır bozulma). er = YATAY
+        // (döndürülmemiş) xCkExportPrim sonucu; tuval çizilip sonra 90° saat yönü çevrilir -> portre b64.
+        window.xCkRenderRot90 = function (er, pxW) {
+            return new Promise(function (resolve) {
+                try {
+                    if (!er || !er.prims) { resolve(null); return; }
+                    pxW = pxW || 1800;
+                    var asp = er.aspect || 1.37;   // yatay (>1)
+                    var W = Math.max(1, Math.round(pxW)), H = Math.max(1, Math.round(pxW / asp));
+                    var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
+                    x.lineJoin = 'round'; x.lineCap = 'round';
+                    er.prims.forEach(function (p) {
+                        if (p.t === 'rect') { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.strokeRect(p.x * W, p.y * H, p.w * W, p.h * H); }
+                        else if (p.t === 'ellipse') { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.beginPath(); x.ellipse((p.x + p.w / 2) * W, (p.y + p.h / 2) * H, Math.max(0.5, p.w / 2 * W), Math.max(0.5, p.h / 2 * H), 0, 0, 6.2832); x.stroke(); }
+                        else if (p.t === 'line') { var x1 = p.x1 * W, y1 = p.y1 * H, x2 = p.x2 * W, y2 = p.y2 * H; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * W * 3.2); x.beginPath(); x.moveTo(x2, y2); x.lineTo(x2 - hl * Math.cos(ang - 0.42), y2 - hl * Math.sin(ang - 0.42)); x.lineTo(x2 - hl * Math.cos(ang + 0.42), y2 - hl * Math.sin(ang + 0.42)); x.closePath(); x.fillStyle = '#' + p.renk; x.fill(); } }
+                    });
+                    er.prims.forEach(function (p) {
+                        if (p.t === 'text' && p.metin != null) {
+                            var fpx = Math.max(4, p.boyut * W); x.font = (p.kalin ? 'bold ' : '') + fpx + 'px ' + (p.font || 'Arial'); x.textBaseline = 'top';
+                            var tx = p.x * W, ty = p.y * H;
+                            if (p.arka >= 1) { var tw = x.measureText(p.metin).width; x.save(); x.globalAlpha = (p.arka === 2 ? 0.82 : 0.38); x.fillStyle = '#000000'; x.fillRect(tx - 2, ty - 2, tw + 4, fpx * 1.25 + 4); x.restore(); }
+                            x.fillStyle = '#' + p.renk; x.fillText(p.metin, tx, ty);
+                        }
+                    });
+                    var jobs = [];
+                    if (er.penImg && er.penBox) jobs.push({ b64: er.penImg, mime: 'image/png', box: er.penBox });
+                    er.prims.forEach(function (p) { if (p.t === 'image' && p.b64) jobs.push({ b64: p.b64, mime: p.mime, box: { x: p.x, y: p.y, w: p.w, h: p.h } }); });
+                    function finish() {
+                        var r = document.createElement('canvas'); r.width = H; r.height = W; var rx = r.getContext('2d');
+                        rx.translate(H, 0); rx.rotate(Math.PI / 2); rx.drawImage(c, 0, 0);
+                        var du = r.toDataURL('image/png'); resolve(du.slice(du.indexOf(',') + 1));
+                    }
+                    if (!jobs.length) { finish(); return; }
+                    var done = 0;
+                    jobs.forEach(function (j) { var im = new Image(); im.onload = function () { try { x.drawImage(im, j.box.x * W, j.box.y * H, j.box.w * W, j.box.h * H); } catch (_e) { } if (++done === jobs.length) finish(); }; im.onerror = function () { if (++done === jobs.length) finish(); }; im.src = 'data:' + (j.mime || 'image/png') + ';base64,' + j.b64; });
+                } catch (e) { resolve(null); }
+            });
+        };
         async function xPdfUretPdfmake() {
             await xPdfmakeYukle();
             var root = document.querySelector('#editorModal .ed-root');
@@ -4520,7 +4559,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     if (h2t && !basliksiz) { hNo++; var _bsz = (parseInt(o.b_size, 10) || 16), _ba = (parseInt(o.b_after, 10) || 6), _ht = numarali ? (hNo + '. ' + h2t) : h2t; u.blocks.push(basBlok(_ht, _bsz, o.b_bold, o.b_italic, o.b_underline, o.b_color, o.b_align, 0, _ba)); u.pay += _txtY(_ht, _bsz, _ba); }
                     var ps = n.querySelectorAll('.ed-parca');
                     [].forEach.call(ps, function (p) {
-                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); if (u.cizim) { try { var _bi = +img.getAttribute('data-i'), _pp = +img.getAttribute('data-p'); var _ckp = window.XEditor.belge.birimler[_bi].item.parcalar[_pp]; u.ckEr = (window.xCkExportPrim && _ckp && (_ckp.cizimObjeleri || []).length) ? window.xCkExportPrim(_ckp.cizimObjeleri, _ckp.cbW, _ckp.cbH) : null; } catch (e) { u.ckEr = null; } }   /* [9A] cizim vektorleri -> native */ var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = nh / nw; u.pay += 6; } return; }
+                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); if (u.cizim) { try { var _bi = +img.getAttribute('data-i'), _pp = +img.getAttribute('data-p'); var _ckp = window.XEditor.belge.birimler[_bi].item.parcalar[_pp]; u.yatay = !!(_ckp && _ckp.yatay); u.ckEr = (window.xCkExportPrim && _ckp && (_ckp.cizimObjeleri || []).length) ? window.xCkExportPrim(_ckp.cizimObjeleri, _ckp.cbW, _ckp.cbH) : null; } catch (e) { u.ckEr = null; } }   /* [9A] cizim vektorleri -> native */ var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = (u.cizim && u.yatay && nh > 0) ? (nw / nh) : (nh / nw); u.pay += 6; } return; }   /* [YATAY] yatay cizim -> kutu PORTRE (rh ters: cikti 90 derece doner) */
                         var mt = p.querySelector('.ed-metin'); if (mt) { var _m = String(mt.textContent || '').trim(); if (_m) { u.blocks.push(mBlok(mt)); u.pay += _txtY(_m, (parseInt(o.m_size, 10) || 11), 6); } return; }
                         var lk = p.querySelector('.ed-link-edit'); if (lk) { var lu = String(lk.textContent || '').trim(); if (lu) { u.blocks.push(lBlok(lu)); u.pay += _txtY(lu, (parseInt(o.l_size, 10) || 10), 8); } return; }
                     });
@@ -4543,11 +4582,19 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     if (!_cift) { var _k1 = PAGE_H - _a.pay - (_a.aramPay || 0) - GUV; _a.w = (_a.rh > 0) ? Math.min(CW, Math.max(10, _k1) / _a.rh) : CW; _pz += 1; }
                 }
             } else { for (var _gs = 0; _gs < _gu.length; _gs++) { _gu[_gs].w = CW; } }
+            // [YATAY ÇİZİM PDF — Faz3] PASS3'ten ÖNCE: yatay çizimlerin 90° döndürülmüş rasterini (gerçek renk) üret (async).
+            for (var _yp = 0; _yp < items.length; _yp++) { var _yu = items[_yp]; if (_yu.cizim && _yu.yatay && _yu.ckEr && _yu.ckEr.prims && window.xCkRenderRot90) { try { _yu.rotImg = await window.xCkRenderRot90(_yu.ckEr, 1800); } catch (_er) { _yu.rotImg = null; } } }
             // PASS 3: içeriği kur (görsel placeholder'ını boyutlanmış imgBlok ile doldur)
             var content = [];
             for (var _i2 = 0; _i2 < items.length; _i2++) {
                 var it = items[_i2];
                 if (it.t === 'cizgi') { content.push(cizgiBlok()); continue; }
+                if (it.cizim && it.yatay && it.rotImg) {   // [YATAY ÇİZİM PDF] 90° döndürülmüş tam-sayfa GÖRSEL (metin dahil; bozulmasız)
+                    var _ckWy = it.w || (CW - 36), _ckHy = _ckWy * (it.rh || 1.37);
+                    if (content.length > 0) content.push({ text: ' ', pageBreak: 'before', fontSize: 1, margin: [0, 0, 0, 0] });
+                    content.push({ image: 'data:image/png;base64,' + it.rotImg, width: _ckWy, height: _ckHy, alignment: 'center' });
+                    continue;
+                }
                 if (it.cizim && it.ckEr && it.ckEr.prims && it.ckEr.prims.length) {   // [9A PDF] cizim -> NATIVE (canvas sekiller + absolutePosition metin/gorsel)
                     var ckW = it.w || (CW - 36), ckH = ckW / (it.ckEr.aspect || 0.7);
                     var pL = (595.28 - ckW) / 2, pT = 36;
@@ -9637,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7f · 2026-11-13 [FAZ2] YATAY cizim WORD 90 derece dondurme: xCkRotateEr90 + _ckWordGrupXml rot (metin/gorsel/kalem rot=5400000 merkez konum; dikdortgen/elips/cizgi koordinat); kutu ar ters portre. PDF FAZ3. Gercek Word testi bekliyor.";
+  XE.VERSION = "7g · 2026-11-13 [FAZ3] YATAY cizim TUM FAZLAR: Word native 90 derece (xCkRotateEr90, Faz2) + PDF dondurulmus raster (xCkRenderRot90, prim->gercek renk tuval->90 derece cevir). Dikey cizimler etkilenmez.";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
