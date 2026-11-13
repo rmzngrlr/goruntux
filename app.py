@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ai · [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-14aj · [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -12420,7 +12420,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       _metgrpUygula();
     }
     function _arkaBtnYansit(){ var b=ov.querySelector('.ed-gd-arka'); if(!b) return; b.classList.remove('ed-arka-s0','ed-arka-s1','ed-arka-s2'); b.classList.add('ed-arka-s'+yaziArkaSev); b.classList.toggle('aktif', yaziArkaSev>0); }
-    function _metgrpUygula(){ if(!_cz) return;   // [ÇİZİM] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; Kalınlık şekil+kalem; çizgi stili YALNIZ şekil
+    function _metgrpUygula(){   // [ÇİZİM+GÖRSEL] metin kontrolleri (font/boyut/Abc) YALNIZ metin aracı/seçimi; Kalınlık şekil+kalem; çizgi stili+dolgu YALNIZ şekil — HER İKİ MODDA (bağlamsal)
       var mm=(tool==='yazi') || (secili.length && secili.some(function(s){return s.t==='yazi';}));
       var sk=(tool==='ok'||tool==='dikdortgen'||tool==='elips') || (secili.length && secili.some(function(s){return s.t==='ok'||s.t==='dikdortgen'||s.t==='elips';}));   // ŞEKİL (çizgi stili uygulanır)
       var kk=sk || tool==='kalem' || (secili.length && secili.some(function(s){return s.t==='kalem';}));   // şekil + kalem -> Kalınlık paneli
