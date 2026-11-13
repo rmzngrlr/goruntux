@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13t · Sag-tik menusundeki RENK kutusu artik ANA paleti acar (native picker degil): _hedefMi'ye #ed-rt-panel eklendi; rt-panel kapatma dinleyicileri .xrp-pop (palet) tiklamasini HARIC tutar (yoksa secim kaybolur). + Kes/Sil placeholder (13s korunur).';
+        var X_BUILD = '2026-11-13u · KRITIK FIX: 13t X_BUILD damgasinda apostrof (_hedefMi + ye) tek-tirnakli stringi kirip TUM inline scripti coketiyordu (sayfa bos aciliyordu) -> apostrof kaldirildi. Sag-tik RENK kutusu ANA palet + Kes/Sil placeholder korunur. DAMGALARDA ASLA apostrof kullanma.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
