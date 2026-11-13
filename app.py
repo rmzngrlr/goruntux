@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13s · Rapor editoru: sag-tik Kes/Sil sonrasi alan bosaldiginda PLACEHOLDER geri geliyor (eskiden gelmiyordu). _clipKes/_clipSil _inlineBusy ile input dinleyicisini atliyordu -> stray <br> temizlenmiyordu; _phDuzelt yardimcisi cikarilip Kes/Sil + input dinleyicisinde ortak kullaniliyor.';
+        var X_BUILD = '2026-11-13t · Sag-tik menusundeki RENK kutusu artik ANA paleti acar (native picker degil): _hedefMi'ye #ed-rt-panel eklendi; rt-panel kapatma dinleyicileri .xrp-pop (palet) tiklamasini HARIC tutar (yoksa secim kaybolur). + Kes/Sil placeholder (13s korunur).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7k · 2026-11-13 Rapor editoru sag-tik KES/SIL sonrasi placeholder geri gelir: _clipKes/_clipSil _inlineBusy ile input dinleyicisini atliyordu -> stray <br> kaliyordu; _phDuzelt ortak yardimci Kes/Sil + input-te. (7j korunur)";
+  XE.VERSION = "7l · 2026-11-13 Sag-tik RENK kutusu ANA paleti acar (native degil): _hedefMi #ed-rt-panel; rt-panel kapatma .xrp-pop haric. + Kes/Sil placeholder (7k korunur).";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10132,7 +10132,7 @@ X_EDITOR_JS = r'''
       uygula(); konumla(anchorEl);
       setTimeout(function(){ document.addEventListener('mousedown', _dis, true); document.addEventListener('keydown', _esc, true); try{hexI.focus();hexI.select();}catch(_){} }, 0);
     }
-    function _hedefMi(inp){ try{ return inp && inp.tagName==='INPUT' && inp.type==='color' && (inp.closest('#editorModal')||inp.closest('.ed-gd-ov')); }catch(_){ return false; } }
+    function _hedefMi(inp){ try{ return inp && inp.tagName==='INPUT' && inp.type==='color' && (inp.closest('#editorModal')||inp.closest('.ed-gd-ov')||inp.closest('#ed-rt-panel')); }catch(_){ return false; } }   // [RENK PALETİ] sağ-tık menüsü (#ed-rt-panel body'de, editorModal dışı) de ana paleti açsın
     document.addEventListener('mousedown', function(e){
       if(!_rpAcikMi()) return;
       var inp=e.target && e.target.closest ? e.target.closest('input[type=color]') : null;
@@ -13047,7 +13047,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     document.addEventListener('mouseup', function(e){
       try{ if(localStorage.getItem('x_secim_toolbar')==='0') return; }catch(_){}
       var modal=document.getElementById('editorModal'); if(!modal||!modal.classList.contains('active')) return;
-      if(e.target && e.target.closest && e.target.closest('#ed-rt-panel')) return;
+      if(e.target && e.target.closest && (e.target.closest('#ed-rt-panel')||e.target.closest('.xrp-pop'))) return;   // [RENK PALETİ] palet üstünde mouseup -> toolbar yeniden-render etme
       setTimeout(function(){ try{
         var sel=window.getSelection(); if(!sel || sel.isCollapsed || !sel.rangeCount) return;
         if(String(sel).trim().length<1) return;
@@ -13088,7 +13088,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         var _nsg=true; try{ _nsg=(localStorage.getItem('x_native_sel_gizle')!=='0'); }catch(e){} if(_nsg){ try{ _mobSelCollapsing=true; sel.collapseToEnd(); setTimeout(function(){ _mobSelCollapsing=false; }, 90); }catch(e){ _mobSelCollapsing=false; } }
       }catch(_){} }, 450);
     });
-    document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && e.target.closest('#ed-rt-panel'))) _sagTikKapat(); });
+    document.addEventListener('mousedown', function(e){ var pp=document.getElementById('ed-rt-panel'); if(pp && pp.style.display==='block' && !(e.target.closest && (e.target.closest('#ed-rt-panel')||e.target.closest('.xrp-pop')))) _sagTikKapat(); });   // [RENK PALETİ] palet (.xrp-pop) tıklaması rt-panel'i KAPATMASIN (yoksa seçim kaybolur, renk uygulanmaz)
     document.addEventListener('keydown', function(e){ if(e.key==='Escape') _sagTikKapat(); });
     // [CTRL+A] Klavyeden tümünü seç -> editable içeriğini seç + seçim menüsünü aç (mouse-seçimi/sağ-tık gibi).
     document.addEventListener('keydown', function(e){
