@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13y · [SEKIL TANIMA Faz2] Elips/cember tanima eklendi: kapali + KOSESIZ + noktalar elips sinirina oturur (norm.yaricap t~1) + tam tur (>=7/8 sektor) -> temiz elips; cember ise tam yuvarlaga yuvarlanir. Dikdortgen/kare (Faz1) korunur; daire artik ELIPSE cevrilir (eskiden serbest kaliyordu). Faz3 cizgi/ok kaldi.';
+        var X_BUILD = '2026-11-13z · [SEKIL TANIMA Faz3] ACIK iz tanima: DUZ CIZGI (tum iz duz -> ok basliksiz) + OK (govde duz + uctan sonra baslik-kuyrugu -> ok). Duz cizgi = ok+basliksiz (cizObj basligi atlar, xCkExportPrim ok:false -> Word/PDF basliksiz). Kapali (dikdortgen/elips Faz1-2) korunur. SEKIL TANIMA TAMAM; sonraki: kalinlik/cizgi-stili paneli.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9708,7 +9708,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7o · 2026-11-13 [SEKIL TANIMA Faz2] ELIPS/CEMBER tanima (kosesiz+t~1+tam tur); dikdortgen/kare Faz1 korunur. Faz3 cizgi/ok kaldi. (7n korunur)";
+  XE.VERSION = "7p · 2026-11-13 [SEKIL TANIMA Faz3] ACIK iz: DUZ CIZGI (ok+basliksiz) + OK (govde duz+baslik-kuyrugu). basliksiz -> cizObj+export basliksiz. Dikdortgen/elips (Faz1-2) korunur. Tanima TAMAM. (7o korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11971,11 +11971,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       } else if(o.t==='ok'){
         ctx.lineWidth=S(o.kal); ctx.strokeStyle=_gostRenk(o.renk); ctx.fillStyle=_gostRenk(o.renk); ctx.lineCap='round';
         ctx.beginPath(); ctx.moveTo(S(o.x1),S(o.y1)); ctx.lineTo(S(o.x2),S(o.y2)); ctx.stroke();
-        var ang=Math.atan2(o.y2-o.y1, o.x2-o.x1), hl=Math.max(S(o.kal)*3.2, 10);
-        ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2));
-        ctx.lineTo(S(o.x2)-hl*Math.cos(ang-0.42), S(o.y2)-hl*Math.sin(ang-0.42));
-        ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42), S(o.y2)-hl*Math.sin(ang+0.42));
-        ctx.closePath(); ctx.fill();
+        if(!o.basliksiz){   // [ÇİZGİ] basliksiz = düz çizgi (ok başlığı YOK); normal ok'ta başlık çizilir
+          var ang=Math.atan2(o.y2-o.y1, o.x2-o.x1), hl=Math.max(S(o.kal)*3.2, 10);
+          ctx.beginPath(); ctx.moveTo(S(o.x2),S(o.y2));
+          ctx.lineTo(S(o.x2)-hl*Math.cos(ang-0.42), S(o.y2)-hl*Math.sin(ang-0.42));
+          ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42), S(o.y2)-hl*Math.sin(ang+0.42));
+          ctx.closePath(); ctx.fill();
+        }
       } else if(o.t==='kalem'){
         window._fircaCiz(ctx, o.nk||[], o.firca, _gostRenk(o.renk), o.kal, o.seed, scale, 0, 0, (_ekranMod && _ckKoyuMu()));   // [FIRÇA] fırça türüne göre (ekran: sc=scale, offset=0); fosforlu koyu ekranda screen
       } else if(o.t==='gorsel'){   // [ÇİZİM KAĞIDI] yerleştirilmiş görsel (yüklü değilse yüklenince yeniden çiz)
@@ -12420,19 +12422,38 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cx.restore();
   }
   window._fircaCiz=_fircaCiz;
-  // [ŞEKİL TANIMA — Faz 1-2: dikdörtgen/kare + elips/çember] Serbest kalem izini (nk) analiz eder; benziyorsa
-  // {t:'dikdortgen'|'elips', x,y,w,h} döndürür, değilse null (serbest iz kalır). SAF fonksiyon: renk/kalınlık + undo
-  // ÇAĞRI tarafında (pu). KAPALI şekiller; dikdörtgen=4 köşe+kenar bandı, elips=köşesiz+t≈1+tam tur. Faz 3 çizgi/ok ekler.
+  // [ŞEKİL TANIMA — Faz 1-2-3] Serbest kalem izini (nk) analiz eder; benziyorsa temiz şekil döndürür, değilse null.
+  // KAPALI iz: dikdörtgen/kare (4 köşe+kenar bandı) | elips/çember (köşesiz+t≈1+tam tur). AÇIK iz: ok (gövde düz + uçta
+  // başlık-kuyruğu -> {t:'ok'}) | düz çizgi (tüm iz düz -> {t:'ok', basliksiz:true}). SAF fonksiyon: renk/kal + undo ÇAĞRI (pu).
   window.xSekilTani = function(nk){
     try{
       if(!nk || nk.length<8) return null;
       var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9, i;
       for(i=0;i<nk.length;i++){ var p=nk[i]; if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
       var w=maxX-minX, h=maxY-minY;
+      var s=nk[0], e=nk[nk.length-1], _cap=(w+h)/2;
+      var _kapali = _cap>0 && Math.hypot(e.x-s.x, e.y-s.y) <= 0.35*_cap;   // başlangıç≈bitiş -> kapalı şekil
+      function _perpMax(a0,a1,fromI,toI){ var dx=a1.x-a0.x, dy=a1.y-a0.y, len=Math.hypot(dx,dy)||1, mx=0,k; for(k=fromI;k<=toI;k++){ var pd=Math.abs((nk[k].x-a0.x)*dy-(nk[k].y-a0.y)*dx)/len; if(pd>mx)mx=pd; } return mx; }   // a0-a1 doğrusuna max dik sapma
+      if(!_kapali){
+        // --- AÇIK İZ: DÜZ ÇİZGİ / OK (Faz 3) ---
+        var _uzun=Math.hypot(e.x-s.x, e.y-s.y);
+        if(_uzun<30) return null;                     // çok kısa
+        var _L=0; for(i=1;i<nk.length;i++) _L+=Math.hypot(nk[i].x-nk[i-1].x, nk[i].y-nk[i-1].y);   // yol uzunluğu
+        var _ti=0,_tmax=0; for(i=0;i<nk.length;i++){ var _dd=Math.hypot(nk[i].x-s.x, nk[i].y-s.y); if(_dd>_tmax){_tmax=_dd;_ti=i;} }   // başlangıçtan EN UZAK = ok ucu adayı
+        var _T=nk[_ti], _kuyruk=nk.length-1-_ti, _kMax=0; for(i=_ti;i<nk.length;i++){ var _kd=Math.hypot(nk[i].x-_T.x, nk[i].y-_T.y); if(_kd>_kMax)_kMax=_kd; }   // uçtan sonraki kuyruk (ok başlığı barbs)
+        // OK: gövde (s..uç) DÜZ + uçtan sonra anlamlı geri-dönen kuyruk (başlık) + aşırı kıvrılma yok
+        if(_perpMax(s,_T,0,_ti)/(_tmax||1) < 0.12 && _kuyruk>=2 && _kMax>0.12*_tmax && _kMax<0.55*_tmax && _L<2.4*_tmax && _tmax>=35){
+          return {t:'ok', x1:s.x, y1:s.y, x2:_T.x, y2:_T.y};
+        }
+        // DÜZ ÇİZGİ: tüm iz s-e doğrusuna yakın + yol ~ düz mesafe (kıvrılmıyor)
+        if(_perpMax(s,e,0,nk.length-1)/_uzun < 0.08 && _L < 1.3*_uzun){
+          return {t:'ok', x1:s.x, y1:s.y, x2:e.x, y2:e.y, basliksiz:true};
+        }
+        return null;
+      }
+      // --- KAPALI İZ: DİKDÖRTGEN/KARE + ELİPS/ÇEMBER ---
       if(w<18 || h<18) return null;                 // çok küçük
-      if(w/h>6 || h/w>6) return null;               // çok ince -> (Faz3 çizgi/ok), eler
-      var s=nk[0], e=nk[nk.length-1];
-      if(Math.hypot(e.x-s.x, e.y-s.y) > 0.35*(w+h)/2) return null;   // KAPALI değil (Faz1-2 yalnız kapalı; çizgi/ok Faz3)
+      if(w/h>6 || h/w>6) return null;               // çok ince kapalı -> belirsiz, eler
       var tol=Math.max(8, Math.min(w,h)*0.12);      // kenar bandı toleransı
       var kt=Math.max(10, Math.min(w,h)*0.18);      // köşe toleransı (daireyi eler: dairenin köşeye en yakını ~0.41r)
       var bandaYakin=0, kUst=0,kAlt=0,kSol=0,kSag=0;
@@ -12473,7 +12494,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     for(var i=0;i<objs.length;i++){ var o=objs[i]; if(!o) continue;
       if(o.t==='dikdortgen'){ prims.push({t:'rect', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw}); }
       else if(o.t==='elips'){ prims.push({t:'ellipse', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw}); }
-      else if(o.t==='ok'){ prims.push({t:'line', x1:FX(o.x1), y1:FY(o.y1), x2:FX(o.x2), y2:FY(o.y2), renk:HX(o.renk), kal:o.kal/cw, ok:true}); }
+      else if(o.t==='ok'){ prims.push({t:'line', x1:FX(o.x1), y1:FY(o.y1), x2:FX(o.x2), y2:FY(o.y2), renk:HX(o.renk), kal:o.kal/cw, ok:!o.basliksiz}); }   // [ÇİZGİ] basliksiz -> ok:false (düz çizgi, Word/PDF başlıksız)
       else if(o.t==='yazi'){ if(!_mc){ try{ _mc=document.createElement('canvas').getContext('2d'); }catch(_){} } var tw=0; try{ _mc.font=(o.kalin?'bold ':'')+o.boyut+'px '+(o.font||'Arial'); tw=_mc.measureText(o.metin||' ').width; }catch(_){ tw=(o.metin||'').length*o.boyut*0.55; }
         prims.push({t:'text', x:FX(o.x-o.boyut*0.14), y:FY(o.y-o.boyut*0.1), w:(tw+o.boyut*0.3)/cw, h:(o.boyut*1.42)/ch, boyut:o.boyut/cw, renk:HX(o.renk), metin:o.metin||'', font:(o.font||'Arial'), kalin:!!o.kalin, arka:(typeof o.arka==='number'?o.arka:(o.arka?2:0))}); }
       else if(o.t==='gorsel'){ prims.push({t:'image', x:FX(o.x), y:FY(o.y), w:o.w/cw, h:o.h/ch, b64:o.b64, mime:o.mime||'image/png'}); }
