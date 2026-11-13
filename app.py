@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13x · [SEKIL TANIMA Faz1] Cizim editorunde normal kalemle cizilen DIKDORTGEN/KARE otomatik temiz sekle cevrilir (xSekilTani: kapali + kenar-bandi orani + 4 kose -> daire/cizgi/karalama elenir; kare ise tam kareye yuvarlanir). Tek geri-al serbest cizime doner. Bayrak x_sekil_tani=0 -> kapali. Faz2/3 elips/cizgi/ok.';
+        var X_BUILD = '2026-11-13y · [SEKIL TANIMA Faz2] Elips/cember tanima eklendi: kapali + KOSESIZ + noktalar elips sinirina oturur (norm.yaricap t~1) + tam tur (>=7/8 sektor) -> temiz elips; cember ise tam yuvarlaga yuvarlanir. Dikdortgen/kare (Faz1) korunur; daire artik ELIPSE cevrilir (eskiden serbest kaliyordu). Faz3 cizgi/ok kaldi.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9708,7 +9708,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7n · 2026-11-13 [SEKIL TANIMA Faz1] normal kalemle DIKDORTGEN/KARE -> temiz sekil (xSekilTani, pu hook; tek geri-al serbest cizim; x_sekil_tani=0 kapali). Faz2/3 elips/cizgi/ok. (7m korunur)";
+  XE.VERSION = "7o · 2026-11-13 [SEKIL TANIMA Faz2] ELIPS/CEMBER tanima (kosesiz+t~1+tam tur); dikdortgen/kare Faz1 korunur. Faz3 cizgi/ok kaldi. (7n korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12420,9 +12420,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cx.restore();
   }
   window._fircaCiz=_fircaCiz;
-  // [ŞEKİL TANIMA — Faz 1: dikdörtgen/kare] Serbest kalem izini (nk noktaları) analiz eder; dikdörtgene benziyorsa
-  // {t:'dikdortgen', x,y,w,h} döndürür, değilse null (serbest iz kalır). SAF fonksiyon: renk/kalınlık + undo ÇAĞRI
-  // tarafında (pu). Daire/çizgi/karalama elenir (kenar-bandı oranı + 4 köşe ziyareti + en-boy). Faz 2/3 elips/çizgi/ok ekler.
+  // [ŞEKİL TANIMA — Faz 1-2: dikdörtgen/kare + elips/çember] Serbest kalem izini (nk) analiz eder; benziyorsa
+  // {t:'dikdortgen'|'elips', x,y,w,h} döndürür, değilse null (serbest iz kalır). SAF fonksiyon: renk/kalınlık + undo
+  // ÇAĞRI tarafında (pu). KAPALI şekiller; dikdörtgen=4 köşe+kenar bandı, elips=köşesiz+t≈1+tam tur. Faz 3 çizgi/ok ekler.
   window.xSekilTani = function(nk){
     try{
       if(!nk || nk.length<8) return null;
@@ -12430,9 +12430,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       for(i=0;i<nk.length;i++){ var p=nk[i]; if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
       var w=maxX-minX, h=maxY-minY;
       if(w<18 || h<18) return null;                 // çok küçük
-      if(w/h>5 || h/w>5) return null;               // çok ince -> çizgi, dikdörtgen değil
+      if(w/h>6 || h/w>6) return null;               // çok ince -> (Faz3 çizgi/ok), eler
       var s=nk[0], e=nk[nk.length-1];
-      if(Math.hypot(e.x-s.x, e.y-s.y) > 0.35*(w+h)/2) return null;   // KAPALI değil (dikdörtgen kapalı iz)
+      if(Math.hypot(e.x-s.x, e.y-s.y) > 0.35*(w+h)/2) return null;   // KAPALI değil (Faz1-2 yalnız kapalı; çizgi/ok Faz3)
       var tol=Math.max(8, Math.min(w,h)*0.12);      // kenar bandı toleransı
       var kt=Math.max(10, Math.min(w,h)*0.18);      // köşe toleransı (daireyi eler: dairenin köşeye en yakını ~0.41r)
       var bandaYakin=0, kUst=0,kAlt=0,kSol=0,kSag=0;
@@ -12440,12 +12440,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         var dUst=Math.abs(q.y-minY), dAlt=Math.abs(q.y-maxY), dSol=Math.abs(q.x-minX), dSag=Math.abs(q.x-maxX);
         if(Math.min(dUst,dAlt,dSol,dSag)<=tol){ bandaYakin++; if(dUst<=tol)kUst++; if(dAlt<=tol)kAlt++; if(dSol<=tol)kSol++; if(dSag<=tol)kSag++; }
       }
-      if(bandaYakin/nk.length < 0.78) return null;  // noktaların çoğu kenarlarda değil -> dikdörtgen değil
-      if(!(kUst>=2 && kAlt>=2 && kSol>=2 && kSag>=2)) return null;   // 4 kenar da ziyaret edilmeli
-      function koseVar(cx,cy){ for(var k=0;k<nk.length;k++){ if(Math.hypot(nk[k].x-cx,nk[k].y-cy)<=kt) return true; } return false; }
-      if(!(koseVar(minX,minY)&&koseVar(maxX,minY)&&koseVar(minX,maxY)&&koseVar(maxX,maxY))) return null;   // 4 köşe (daire/oval burada ELENİR)
-      if(Math.abs(w-h) < 0.12*Math.max(w,h)){ var cx=minX+w/2, cy=minY+h/2, sq=(w+h)/2; return {t:'dikdortgen', x:cx-sq/2, y:cy-sq/2, w:sq, h:sq}; }   // kare -> tam kareye yuvarla (merkez korunur)
-      return {t:'dikdortgen', x:minX, y:minY, w:w, h:h};
+      function koseVar(cx0,cy0){ for(var k=0;k<nk.length;k++){ if(Math.hypot(nk[k].x-cx0,nk[k].y-cy0)<=kt) return true; } return false; }
+      var dortKose = koseVar(minX,minY)&&koseVar(maxX,minY)&&koseVar(minX,maxY)&&koseVar(maxX,maxY);
+      // --- DİKDÖRTGEN/KARE: noktalar kenar bandında (≥%78) + 4 kenar ziyareti + 4 köşe ---
+      if(bandaYakin/nk.length>=0.78 && kUst>=2 && kAlt>=2 && kSol>=2 && kSag>=2 && dortKose){
+        if(Math.abs(w-h) < 0.12*Math.max(w,h)){ var cx=minX+w/2, cy=minY+h/2, sq=(w+h)/2; return {t:'dikdortgen', x:cx-sq/2, y:cy-sq/2, w:sq, h:sq}; }   // kare -> tam kareye
+        return {t:'dikdortgen', x:minX, y:minY, w:w, h:h};
+      }
+      // --- ELİPS/ÇEMBER (Faz2): KÖŞE YOK + noktalar elips sınırına oturur (t=norm.yarıçap ≈1, düşük sapma) + TAM TUR (≥7/8 sektör) ---
+      var ecx=minX+w/2, ecy=minY+h/2, ea=w/2, eb=h/2;
+      if(ea>0 && eb>0 && !dortKose){
+        var eIyi=0, eTop=0, eSek={};
+        for(i=0;i<nk.length;i++){ var pp=nk[i]; var ex=(pp.x-ecx)/ea, ey=(pp.y-ecy)/eb, et=Math.sqrt(ex*ex+ey*ey);
+          eTop+=et; if(Math.abs(et-1)<=0.28) eIyi++;
+          eSek[Math.floor((Math.atan2(pp.y-ecy, pp.x-ecx)+Math.PI)/0.7853981)]=1;   // 8 sektör (π/4): tam tur mu, yoksa yay mı
+        }
+        var eMean=eTop/nk.length, eSekS=0; for(var _sk in eSek) eSekS++;
+        if(eIyi/nk.length>=0.80 && eMean>0.78 && eMean<1.22 && eSekS>=7){
+          if(Math.abs(w-h) < 0.12*Math.max(w,h)){ var sq2=(w+h)/2; return {t:'elips', x:ecx-sq2/2, y:ecy-sq2/2, w:sq2, h:sq2}; }   // çember -> tam yuvarlak
+          return {t:'elips', x:minX, y:minY, w:w, h:h};
+        }
+      }
+      return null;
     }catch(_){ return null; }
   };
   window.xCkExportPrim = function(objs, cbW, cbH){
