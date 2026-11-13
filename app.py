@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13w · SEKME-KAPAT = RAPOR-KAPAT: yeni sekmede (sekme kapanip tekrar acilinca) son aktif rapor OTOMATIK ACILMAZ; Raporlarim listesi gelir. F5 (ayni sekme) raporu ACIK tutar (sessionStorage: F5te kalir, sekme-kapatta silinir). Veri XSavedReports-ta (boş ile ezme guard korur). Bayrak x_sekme_kapat=0 -> eski. + placeholder (13v korunur).';
+        var X_BUILD = '2026-11-13x · [SEKIL TANIMA Faz1] Cizim editorunde normal kalemle cizilen DIKDORTGEN/KARE otomatik temiz sekle cevrilir (xSekilTani: kapali + kenar-bandi orani + 4 kose -> daire/cizgi/karalama elenir; kare ise tam kareye yuvarlanir). Tek geri-al serbest cizime doner. Bayrak x_sekil_tani=0 -> kapali. Faz2/3 elips/cizgi/ok.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9708,7 +9708,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7m · 2026-11-13 Metin alani Kes/Sil + yeniden-ac sonrasi placeholder KALICI: sanitizeMetin gorsel-bos (yalniz br) -> boş string (modele br yazilmaz; renderMetin br basmaz). Hem Kes/Sil hem klavye-sil. (7l korunur)";
+  XE.VERSION = "7n · 2026-11-13 [SEKIL TANIMA Faz1] normal kalemle DIKDORTGEN/KARE -> temiz sekil (xSekilTani, pu hook; tek geri-al serbest cizim; x_sekil_tani=0 kapali). Faz2/3 elips/cizgi/ok. (7m korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12128,7 +12128,17 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       else if(d.tip==='marquee'){ if(marq && (marq.w>3||marq.h>3)){ secili=objs.filter(function(o){ return kutuKesisir(objKutu(o), marq); }); if(secili.length===1) _stilYansit(); } marq=null; _selBtn(); ciz(); }
       else if(d.tip==='crop'){ /* kırp uygula butonuyla */ }
       else if(d.tip==='ciz'){ var o=d.o; if((o.t==='ok' && Math.hypot(o.x2-o.x1,o.y2-o.y1)<4) || ((o.t==='dikdortgen'||o.t==='elips') && (Math.abs(o.w)<4||Math.abs(o.h)<4))){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); } }   // iptal -> snapshot'ı da geri al
-      else if(d.tip==='kalem'){ if(d.o.nk.length<2){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); } }
+      else if(d.tip==='kalem'){ if(d.o.nk.length<2){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); }
+        else {
+          // [ŞEKİL TANIMA] Normal kalem + bayrak açık -> serbest izi tanınan temiz şekle çevir. itUndo() ile serbest iz
+          // undo'ya işlenir -> TEK geri-al serbest çizime döndürür, ikinci geri-al çizim-öncesine. Bayrak x_sekil_tani='0' -> kapalı.
+          var _stAcik=true; try{ _stAcik=localStorage.getItem('x_sekil_tani')!=='0'; }catch(_){}
+          if(_cz && _stAcik && _firca==='normal' && window.xSekilTani){
+            var _sek=null; try{ _sek=window.xSekilTani(d.o.nk); }catch(_){}
+            if(_sek){ itUndo(); _sek.renk=d.o.renk; _sek.kal=d.o.kal; var _ix=objs.indexOf(d.o); if(_ix>=0) objs[_ix]=_sek; secili=[]; _selBtn(); ciz(); }
+          }
+        }
+      }
       _kirpBtnGoster();
     }
     function itUndoGrup(d){ // GRUP taşıma geri-al: öğeleri taşımadan ÖNCEKİ hale koy -> itUndo (o anı yakalar) -> sonra taşınmış hale geri koy.
@@ -12410,6 +12420,34 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     cx.restore();
   }
   window._fircaCiz=_fircaCiz;
+  // [ŞEKİL TANIMA — Faz 1: dikdörtgen/kare] Serbest kalem izini (nk noktaları) analiz eder; dikdörtgene benziyorsa
+  // {t:'dikdortgen', x,y,w,h} döndürür, değilse null (serbest iz kalır). SAF fonksiyon: renk/kalınlık + undo ÇAĞRI
+  // tarafında (pu). Daire/çizgi/karalama elenir (kenar-bandı oranı + 4 köşe ziyareti + en-boy). Faz 2/3 elips/çizgi/ok ekler.
+  window.xSekilTani = function(nk){
+    try{
+      if(!nk || nk.length<8) return null;
+      var minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9, i;
+      for(i=0;i<nk.length;i++){ var p=nk[i]; if(p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
+      var w=maxX-minX, h=maxY-minY;
+      if(w<18 || h<18) return null;                 // çok küçük
+      if(w/h>5 || h/w>5) return null;               // çok ince -> çizgi, dikdörtgen değil
+      var s=nk[0], e=nk[nk.length-1];
+      if(Math.hypot(e.x-s.x, e.y-s.y) > 0.35*(w+h)/2) return null;   // KAPALI değil (dikdörtgen kapalı iz)
+      var tol=Math.max(8, Math.min(w,h)*0.12);      // kenar bandı toleransı
+      var kt=Math.max(10, Math.min(w,h)*0.18);      // köşe toleransı (daireyi eler: dairenin köşeye en yakını ~0.41r)
+      var bandaYakin=0, kUst=0,kAlt=0,kSol=0,kSag=0;
+      for(i=0;i<nk.length;i++){ var q=nk[i];
+        var dUst=Math.abs(q.y-minY), dAlt=Math.abs(q.y-maxY), dSol=Math.abs(q.x-minX), dSag=Math.abs(q.x-maxX);
+        if(Math.min(dUst,dAlt,dSol,dSag)<=tol){ bandaYakin++; if(dUst<=tol)kUst++; if(dAlt<=tol)kAlt++; if(dSol<=tol)kSol++; if(dSag<=tol)kSag++; }
+      }
+      if(bandaYakin/nk.length < 0.78) return null;  // noktaların çoğu kenarlarda değil -> dikdörtgen değil
+      if(!(kUst>=2 && kAlt>=2 && kSol>=2 && kSag>=2)) return null;   // 4 kenar da ziyaret edilmeli
+      function koseVar(cx,cy){ for(var k=0;k<nk.length;k++){ if(Math.hypot(nk[k].x-cx,nk[k].y-cy)<=kt) return true; } return false; }
+      if(!(koseVar(minX,minY)&&koseVar(maxX,minY)&&koseVar(minX,maxY)&&koseVar(maxX,maxY))) return null;   // 4 köşe (daire/oval burada ELENİR)
+      if(Math.abs(w-h) < 0.12*Math.max(w,h)){ var cx=minX+w/2, cy=minY+h/2, sq=(w+h)/2; return {t:'dikdortgen', x:cx-sq/2, y:cy-sq/2, w:sq, h:sq}; }   // kare -> tam kareye yuvarla (merkez korunur)
+      return {t:'dikdortgen', x:minX, y:minY, w:w, h:h};
+    }catch(_){ return null; }
+  };
   window.xCkExportPrim = function(objs, cbW, cbH){
     objs=objs||[]; cbW=cbW||1240; cbH=cbH||1754;
     var m=_ckMargin(cbW,cbH), cw=Math.max(1,cbW-2*m.mx), ch=Math.max(1,cbH-2*m.my);
