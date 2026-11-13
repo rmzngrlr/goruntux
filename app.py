@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ae · [DOLGU] Kapali sekil (dikdortgen/elips) secince serit "Dolgu" IKON buton -> dropdown: renk swatch (ana palet) + "Dolgu yok" + opaklik slider. o.dolgu/o.dolguA; ekran globalAlpha+fill, Word solidFill+alpha, PDF pdfmake color+fillOpacity + yatay-raster. Kontur "yok" + dolgu = kontursuz dolgu (artik prim atlamiyor). Ilk renk %100 opak. Bayrak x_ck_dolgu. + oran-kilidi/kontur-stili/boyut-rotus.';
+        var X_BUILD = '2026-11-13af · [DOLGU UI] dropdown ilk satir: "Dolgu yok" IKON-ONLY (tooltip) + hizli renk ornekleri (basta siyah) + en sagda palet-ikonu (daha fazla renk); eslesen ornek vurgulanir. + [KONTUR IKON] buton 3 cizgi esit bas/bitis; "Kesikli" secenek sondaki fazla nokta kalkti (6 3 = 2 temiz cizgi). + DOLGU (o.dolgu/dolguA ekran+Word+PDF), oran-kilidi, kontur-stili, boyut-rotus. Bayrak x_ck_dolgu/x_ck_stil/x_ck_boyut.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9727,7 +9727,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7u · 2026-11-13 [DOLGU] kapali sekil secince 'Dolgu' ikon buton dropdown: renk swatch (xRenkPaletiAc) + Dolgu yok + opaklik slider; o.dolgu/dolguA; cizObj fill + export (Word solidFill+alpha, PDF color+fillOpacity+raster); kontur yok+dolgu=kontursuz dolgu. Bayrak x_ck_dolgu. + oran-kilidi/kontur-stili/boyut-rotus. (7t korunur)";
+  XE.VERSION = "7v · 2026-11-13 [DOLGU UI] dropdown: Dolgu-yok IKON-ONLY + hizli renk ornekleri (_DOLGU_RENKLER, basta siyah) + palet-ikonu (daha fazla); _dolguYansit eslesen ornek vurgu. [KONTUR IKON] buton 3 cizgi esit bas/bitis + Kesikli 6 3 (nokta kalkti). + dolgu(o.dolgu/dolguA ekran+Word+PDF)/oran-kilidi/kontur-stili. Bayrak x_ck_dolgu. (7u korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10489,24 +10489,28 @@ body:not(.light-theme) .ed-gd-kal-num{background:#0f1720;border-color:#2c3a4a;co
 /* [DOLGU 2026-11-13] tek buton -> dropdown: renk swatch + Dolgu yok + opaklık */
 .ed-gd-dolgu-wrap{position:relative;display:inline-flex;}
 .ed-gd-dolgu-btn{width:auto;min-width:34px;padding:0 4px;gap:1px;}
-.ed-gd-dolgu-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid #cfd8e3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.22);padding:9px;min-width:210px;}
+.ed-gd-dolgu-menu{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:30;background:#fff;border:1px solid #cfd8e3;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.22);padding:10px;min-width:300px;}
 .ed-gd-dolgu-wrap.acik .ed-gd-dolgu-menu{display:block;}
-.ed-gd-dolgu-r1{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
-.ed-gd-dolgu-sw{width:30px;height:30px;flex:none;border:1px solid #d0d7de;border-radius:7px;cursor:pointer;padding:0;background:#fff;}
-.ed-gd-dolgu-sw.yok{background:linear-gradient(to top right, transparent 46%, #e53935 46%, #e53935 54%, transparent 54%), #fff;}
-.ed-gd-dolgu-yok{flex:1 1 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:30px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;}
+.ed-gd-dolgu-r1{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.ed-gd-dolgu-yok{flex:none;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:7px;cursor:pointer;padding:0;}
 .ed-gd-dolgu-yok:hover{background:#eef5ff;}
 .ed-gd-dolgu-yok.aktif{background:#1565c0;border-color:#1565c0;color:#fff;}
+.ed-gd-dolgu-renkler{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.ed-gd-dolgu-renk{width:24px;height:24px;flex:none;border:1px solid #d0d7de;border-radius:6px;cursor:pointer;padding:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.06);}
+.ed-gd-dolgu-renk:hover{transform:scale(1.08);}
+.ed-gd-dolgu-renk.sec{outline:2px solid #1d9bf0;outline-offset:1px;border-color:#1d9bf0;}
+.ed-gd-dolgu-pal{width:26px;height:26px;flex:none;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;border-radius:6px;cursor:pointer;padding:0;}
+.ed-gd-dolgu-pal:hover{background:#eef5ff;}
 .ed-gd-dolgu-r2{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#475569;}
 .ed-gd-dolgu-r2 input[type=range]{flex:1 1 auto;min-width:80px;}
 .ed-gd-dolgu-opakv{min-width:34px;text-align:right;}
 body:not(.light-theme) .ed-gd-dolgu-menu{background:#1b2735;border-color:#2c3a4a;}
-.ed-gd-dolgu-sw{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.05);}
-body:not(.light-theme) .ed-gd-dolgu-sw{border-color:#2c3a4a;}
-body:not(.light-theme) .ed-gd-dolgu-sw.yok{background:linear-gradient(to top right, transparent 46%, #e53935 46%, #e53935 54%, transparent 54%), #0f1720;}
 body:not(.light-theme) .ed-gd-dolgu-yok{background:#1b2735;border-color:#2c3a4a;color:#e7e9ea;}
 body:not(.light-theme) .ed-gd-dolgu-yok:hover{background:#243447;}
 body:not(.light-theme) .ed-gd-dolgu-yok.aktif{background:#1d9bf0;border-color:#1d9bf0;color:#fff;}
+body:not(.light-theme) .ed-gd-dolgu-renk{border-color:#2c3a4a;}
+body:not(.light-theme) .ed-gd-dolgu-pal{background:#1b2735;border-color:#2c3a4a;}
+body:not(.light-theme) .ed-gd-dolgu-pal:hover{background:#243447;}
 body:not(.light-theme) .ed-gd-dolgu-r2{color:#9aa6b2;}
 .ed-gd-say input[type=range]{width:88px;}
 .ed-gd-mini{display:inline-flex;align-items:center;justify-content:center;gap:4px;height:30px;padding:0 10px;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;line-height:1;}
@@ -11930,10 +11934,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var _STILLER=[   // [ÇİZGİ STİLİ] panel seçenekleri (ekran görüntüsü sırası): yok / düz / kesikli / kesikli-dar / noktalı
       ['yok','Çizgisiz','<circle cx="10" cy="10" r="7.2"/><line x1="5" y1="15" x2="15" y2="5"/>'],
       ['duz','Düz','<line x1="2.5" y1="10" x2="17.5" y2="10"/>'],
-      ['kesikli','Kesikli','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="4 3"/>'],
+      ['kesikli','Kesikli','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="6 3"/>'],
       ['kesikliDar','Kesikli (dar)','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="2 2"/>'],
       ['noktali','Noktalı','<line x1="2.5" y1="10" x2="17.5" y2="10" stroke-dasharray="0.4 3" stroke-linecap="round"/>']
     ];
+    var _DOLGU_RENKLER=['#000000','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#1e88e5','#8e24aa'];   // [DOLGU] hızlı renk örnekleri (en başta SİYAH); en sağda palet ikonu = daha fazla renk
     function _sekilIkon(t){ for(var i=0;i<_SEKILLER.length;i++) if(_SEKILLER[i][0]===t) return _SEKILLER[i][2]; return _SEKILLER[0][2]; }
     // [FIRÇA] kalem fırça türleri: [anahtar, ad, ikon-path]
     var _FIRCALAR=[
@@ -11965,7 +11970,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <div class="ed-gd-kalgrp ed-gd-kal-wrap" title="Çizgi stili ve kalınlığı">'
-      +'        <button type="button" class="ed-gd-tool ed-gd-kal-btn" title="Kontur stili"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><line x1="3" y1="5.5" x2="17" y2="5.5"/><line x1="3" y1="10" x2="17" y2="10" stroke-dasharray="3.5 2.5"/><line x1="3" y1="14.5" x2="17" y2="14.5" stroke-dasharray="1 2.6"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
+      +'        <button type="button" class="ed-gd-tool ed-gd-kal-btn" title="Kontur stili"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="butt"><line x1="3" y1="5.5" x2="17" y2="5.5"/><line x1="3" y1="10" x2="17" y2="10" stroke-dasharray="3 2.5"/><line x1="3" y1="14.5" x2="17" y2="14.5" stroke-dasharray="0.5 2.875" stroke-linecap="round"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
       +'        <div class="ed-gd-kal-menu">'
       +'          <div class="ed-gd-kal-stiller">'+_STILLER.map(function(s){return '<button type="button" class="ed-gd-stil-opt'+(s[0]===_stil?' aktif':'')+'" data-stil="'+s[0]+'" title="'+s[1]+'"><svg viewBox="0 0 20 20" width="22" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="round">'+s[2]+'</svg></button>';}).join('')+'</div>'
       +'          <div class="ed-gd-kal-say"><span>Kalınlık</span><input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"><input type="number" class="ed-gd-kal-num" min="1" max="40" value="'+kalinlik+'"></div>'
@@ -11974,7 +11979,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'      <div class="ed-gd-dolgugrp ed-gd-dolgu-wrap" title="Dolgu rengi ve opaklığı">'
       +'        <button type="button" class="ed-gd-tool ed-gd-dolgu-btn" title="Dolgu"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 2.8l6.7 6.7-5.2 5.2a1.8 1.8 0 0 1-2.5 0L3.3 10.5a1.8 1.8 0 0 1 0-2.5z"/><path d="M8.5 2.8L7 1.3"/><path d="M16.7 12c.7.9.7 2.1 0 2.9a1.9 1.9 0 0 1-2.7 0c-.7-.8-.7-2 0-2.9.4-.6 1.3-1.4 1.3-1.4s.9.8 1.4 1.4z"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
       +'        <div class="ed-gd-dolgu-menu">'
-      +'          <div class="ed-gd-dolgu-r1"><button type="button" class="ed-gd-dolgu-sw'+(_dolgu?'':' yok')+'" title="Dolgu rengi seç"'+(_dolgu?(' style="background:'+_dolgu+'"'):'')+'></button><button type="button" class="ed-gd-dolgu-yok" title="Dolgu yok (şeffaf)"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.2"/><line x1="5" y1="15" x2="15" y2="5"/></svg>Dolgu yok</button></div>'
+      +'          <div class="ed-gd-dolgu-r1"><button type="button" class="ed-gd-dolgu-yok'+(_dolgu?'':' aktif')+'" title="Dolgu yok"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="10" cy="10" r="7.2"/><line x1="5" y1="15" x2="15" y2="5"/></svg></button>'
+      +'            <div class="ed-gd-dolgu-renkler">'+_DOLGU_RENKLER.map(function(c){return '<button type="button" class="ed-gd-dolgu-renk'+((_dolgu&&_dolgu.toLowerCase()===c.toLowerCase())?' sec':'')+'" data-c="'+c+'" style="background:'+c+'" title="'+c+'"></button>';}).join('')+'<button type="button" class="ed-gd-dolgu-pal" title="Daha fazla renk"><svg viewBox="0 0 20 20" width="16" height="16"><circle cx="7.3" cy="7.3" r="3.1" fill="#e53935"/><circle cx="12.7" cy="8.2" r="3.1" fill="#43a047"/><circle cx="9.6" cy="12.8" r="3.1" fill="#1e88e5"/></svg></button></div></div>'
       +'          <div class="ed-gd-dolgu-r2"><span>Opaklık</span><input type="range" class="ed-gd-dolgu-opak" min="0" max="100" value="'+Math.round(_dolguA*100)+'"><span class="ed-gd-dolgu-opakv">'+Math.round(_dolguA*100)+'%</span></div>'
       +'        </div>'
       +'      </div>'
@@ -12438,9 +12444,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [GERİ-AL] seçili öğede stil değişimi de geri alınır. Kaydırıcılar (renk/kalınlık): sürük BAŞINDA 1 kez snapshot (mousedown); değişim input'ta uygulanır (spam yok).
     (function(){ var _ri=ov.querySelector('.ed-gd-renk-inp'); if(_ri){ _ri.addEventListener('mousedown', function(){ if(secili.length) itUndo(); }); _ri.addEventListener('input', function(){ renk=this.value; if(secili.length){ secili.forEach(function(s){ if(s.renk!=null) s.renk=renk; }); ciz(); } }); } })();
     function _stilBtnYansit(){ ov.querySelectorAll('.ed-gd-stil-opt').forEach(function(b){ b.classList.toggle('aktif', b.getAttribute('data-stil')===_stil); }); }
-    function _dolguYansit(){   // [DOLGU] swatch rengi/yok + opaklık slider + "Dolgu yok" aktiflik
-      var sw=ov.querySelector('.ed-gd-dolgu-sw'), op=ov.querySelector('.ed-gd-dolgu-opak'), opv=ov.querySelector('.ed-gd-dolgu-opakv'), yb=ov.querySelector('.ed-gd-dolgu-yok');
-      if(sw){ if(_dolgu){ sw.classList.remove('yok'); sw.style.background=_dolgu; } else { sw.classList.add('yok'); sw.style.background=''; } }
+    function _dolguYansit(){   // [DOLGU] eşleşen renk örneğini vurgula + opaklık slider + "Dolgu yok" aktiflik
+      var op=ov.querySelector('.ed-gd-dolgu-opak'), opv=ov.querySelector('.ed-gd-dolgu-opakv'), yb=ov.querySelector('.ed-gd-dolgu-yok');
+      ov.querySelectorAll('.ed-gd-dolgu-renk').forEach(function(b){ b.classList.toggle('sec', !!_dolgu && b.getAttribute('data-c').toLowerCase()===(''+_dolgu).toLowerCase()); });
       if(op) op.value=Math.round(_dolguA*100); if(opv) opv.textContent=Math.round(_dolguA*100)+'%';
       if(yb) yb.classList.toggle('aktif', !_dolgu);
     }
@@ -12458,8 +12464,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var db=ov.querySelector('.ed-gd-dolgu-btn'), dw=ov.querySelector('.ed-gd-dolgu-wrap');
       function _dolguUygula(){ _dolguYansit(); if(secili.length){ secili.forEach(function(s){ if(s.t==='dikdortgen'||s.t==='elips'){ s.dolgu=_dolgu; s.dolguA=_dolguA; } }); ciz(); } }
       if(db&&dw){ db.addEventListener('click', function(e){ e.stopPropagation(); dw.classList.toggle('acik'); }); document.addEventListener('mousedown', function(e){ if(dw.classList.contains('acik') && !dw.contains(e.target) && !(e.target.closest && e.target.closest('.xrp-pop'))) dw.classList.remove('acik'); }, true); }
-      var sw=ov.querySelector('.ed-gd-dolgu-sw');
-      if(sw){ sw.addEventListener('click', function(e){ e.stopPropagation(); if(window.xRenkPaletiAc){ window.xRenkPaletiAc(sw, _dolgu||'#ff0000', function(hex){ if(secili.length) itUndo(); _dolgu=hex; if(!(_dolguA>0)) _dolguA=1; _dolguUygula(); }); } }); }   // renk seçince dolgu; opaklık 0'sa %100'e getir (görünür)
+      ov.querySelectorAll('.ed-gd-dolgu-renk').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); if(secili.length) itUndo(); _dolgu=b.getAttribute('data-c'); if(!(_dolguA>0)) _dolguA=1; _dolguUygula(); }); });   // hızlı renk örneği -> dolgu
+      var pal=ov.querySelector('.ed-gd-dolgu-pal');
+      if(pal){ pal.addEventListener('click', function(e){ e.stopPropagation(); if(window.xRenkPaletiAc){ window.xRenkPaletiAc(pal, _dolgu||'#ff0000', function(hex){ if(secili.length) itUndo(); _dolgu=hex; if(!(_dolguA>0)) _dolguA=1; _dolguUygula(); }); } }); }   // daha fazla renk -> ana palet
       var yb=ov.querySelector('.ed-gd-dolgu-yok');
       if(yb){ yb.addEventListener('click', function(e){ e.stopPropagation(); if(secili.length) itUndo(); _dolgu=null; _dolguUygula(); }); }
       var op=ov.querySelector('.ed-gd-dolgu-opak');
