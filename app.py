@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ag · [CIZIM GORSEL DUZENLE] Cizim kagidina eklenen gorsele CIFT-TIK -> normal gorsel duzenleyici (kirp/yazi/ok/dikdortgen/kalem) ic-ice acilir, Kaydet b64i geri yazar + yeni orana gore yukseklik. + [DOLGU UI] dropdown: Dolgu-yok ikon-only + hizli renk ornekleri (basta siyah) + palet-ikonu. + kontur-ikon (3 esit cizgi, Kesikli 2 temiz). + dolgu/oran-kilidi/kontur-stili/boyut. Bayrak x_gorsel_duzenle/x_ck_dolgu.';
+        var X_BUILD = '2026-11-13ah · [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9727,7 +9727,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7w · 2026-11-13 [CIZIM GORSEL DUZENLE] cizim-gomulu gorsele cift-tik -> _gdKur gorsel-modu ic-ice (opts.gorselKaydet), kaydet o.b64 geri yazar + o.h yeni orana. (_ckGorselDuzenle, dblclick t==gorsel). + DOLGU UI (ikon-only Dolgu-yok + renk ornekleri + palet) + kontur-ikon + dolgu/oran-kilidi. Bayrak x_gorsel_duzenle. (7v korunur)";
+  XE.VERSION = "7x · 2026-11-13 [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10047,6 +10047,7 @@ X_EDITOR_JS = r'''
     // [DÜZENLE] sağ-üstte çarpının YANINA kalem: çizim kağıdı -> çizim editörü; normal görsel -> görsel düzenleyici (kırp/yazı).
     try{
       var _ck=!!(srcImg && srcImg.classList && srcImg.classList.contains('ed-ck-img'));
+      if(_ck){ try{ im.style.background=_ckZeminRenk(); }catch(_){ im.style.background='#fff'; } }   // [ÇİZİM LIGHTBOX] şeffaf çizim b64 -> opak A4 zemin (tema; arkadaki blur görünmesin)
       var _bi=srcImg?parseInt(srcImg.getAttribute('data-i'),10):NaN, _pp=srcImg?parseInt(srcImg.getAttribute('data-p'),10):NaN;
       if(srcImg && !isNaN(_bi) && !isNaN(_pp) && (_ck || _gorselDuzenleAcikMi())){
         var dz=document.createElement('button'); dz.className='ed-lb-duzenle'; dz.type='button'; dz.title=_ck?'Çizim kağıdını düzenle':'Görseli düzenle (Kırp / Yazı)';
@@ -11962,6 +11963,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           +'<span class="ed-gd-sekil-menu">'+_SEKILLER.map(function(s){return '<button type="button" class="ed-gd-sekil-opt" data-tool="'+s[0]+'" title="'+s[1]+'"><svg viewBox="0 0 20 20" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="'+s[2]+'"/></svg><span>'+s[1]+'</span></button>';}).join('')+'</span></span>';
       }
     }
+    var _yzSelPt=Math.round(yaziBoyut/_ckPtPx), _yzSel=_CK_BOYUTLAR[0], _yzBd=1e9; _CK_BOYUTLAR.forEach(function(sz){ var dd=Math.abs(sz-_yzSelPt); if(dd<_yzBd){ _yzBd=dd; _yzSel=sz; } });   // [YAZI BOYUT] dropdown varsayılan seçimi = mevcut boyuta en yakın
     ov.innerHTML=''
       +'<div class="ed-gd-box">'
       +'  <div class="ed-gd-ust">'
@@ -11969,6 +11971,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
+      +(_cz?('<button type="button" class="ed-gd-tool ed-gd-gorseldz" title="Görseli düzenle (kırp/yazı/ok/dikdörtgen/kalem)" style="display:none;"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3.5l4 4M4 16l.9-3.6 8.6-8.6 3.1 3.1-8.6 8.6z"/></svg></button>'):'')   // [ÇİZİM GÖRSEL DÜZENLE] renk paletinin hemen sağında, ikon-only; gömülü görsel seçiliyken görünür
       +'      <div class="ed-gd-kalgrp ed-gd-kal-wrap" title="Çizgi stili ve kalınlığı">'
       +'        <button type="button" class="ed-gd-tool ed-gd-kal-btn" title="Kontur stili"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="butt"><line x1="3" y1="5.5" x2="17" y2="5.5"/><line x1="3" y1="10" x2="17" y2="10" stroke-dasharray="3 2.5"/><line x1="3" y1="14.5" x2="17" y2="14.5" stroke-dasharray="0.5 2.875" stroke-linecap="round"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
       +'        <div class="ed-gd-kal-menu">'
@@ -11984,9 +11987,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'          <div class="ed-gd-dolgu-r2"><span>Opaklık</span><input type="range" class="ed-gd-dolgu-opak" min="0" max="100" value="'+Math.round(_dolguA*100)+'"><span class="ed-gd-dolgu-opakv">'+Math.round(_dolguA*100)+'%</span></div>'
       +'        </div>'
       +'      </div>'
-      +(_cz?('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>'):'')
-      +(_cz?('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu (pt)">Yazı<select class="ed-gd-yzsel">'+_CK_BOYUTLAR.map(function(sz){return '<option value="'+sz+'"'+(sz===_repMSize?' selected':'')+'>'+sz+'</option>';}).join('')+'</select></label>')
-        :('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<input type="range" class="ed-gd-yzb" min="10" max="200" value="'+yaziBoyut+'"></label>'))
+      +('<select class="ed-gd-font ed-gd-metgrp" title="Yazı tipi (font)">'+_CK_FONTLAR.map(function(f){return '<option value="'+f+'"'+(f===yaziFont?' selected':'')+'>'+f+'</option>';}).join('')+'</select>')   // [GÖRSEL=ÇİZİM] font dropdown her iki modda
+      +('<label class="ed-gd-say ed-gd-yzgrp ed-gd-metgrp" title="Yazı boyutu">Yazı<select class="ed-gd-yzsel">'+_CK_BOYUTLAR.map(function(sz){return '<option value="'+sz+'"'+(sz===_yzSel?' selected':'')+'>'+sz+'</option>';}).join('')+'</select></label>')   // [GÖRSEL=ÇİZİM] boyut dropdown her iki modda (görselde _ckPtPx=1 -> pt=px)
       +'      <button type="button" class="ed-gd-mini ed-gd-arka ed-gd-metgrp ed-arka-s'+yaziArkaSev+(yaziArkaSev>0?' aktif':'')+'" title="Yazı arka planı: saydam / yarı saydam / opak (tıkla değiştir)"><span class="ed-abc">Abc</span></button>'
       +'    </div>'
       +'    <div class="ed-gd-sag">'
@@ -12201,7 +12203,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function geriAl(){ if(!hist.length) return; redoHist.push(anlik()); _uygula(hist.pop()); _geriBtn(); }
     function ileriAl(){ if(!redoHist.length) return; hist.push(anlik()); _uygula(redoHist.pop()); _geriBtn(); }
     function _geriBtn(){ var g=ov.querySelector('.ed-gd-geri'); if(g) g.disabled=!hist.length; var f=ov.querySelector('.ed-gd-ileri'); if(f) f.disabled=!redoHist.length; }
-    function _selBtn(){ var b=ov.querySelector('.ed-gd-sil'); if(b) b.disabled=!secili.length; try{ _metgrpUygula(); }catch(_){} }
+    function _selBtn(){ var b=ov.querySelector('.ed-gd-sil'); if(b) b.disabled=!secili.length; var gd=ov.querySelector('.ed-gd-gorseldz'); if(gd) gd.style.display=(_cz && secili.length===1 && secili[0] && secili[0].t==='gorsel')?'inline-flex':'none'; try{ _metgrpUygula(); }catch(_){} }
 
     // ---- hit test ----
     function noktaMesafe(px,py,ax,ay,bx,by){ var dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy; if(l2===0) return Math.hypot(px-ax,py-ay); var t=((px-ax)*dx+(py-ay)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+t*dx),py-(ay+t*dy)); }
@@ -12479,6 +12481,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelector('.ed-gd-geri').addEventListener('click', geriAl);
     ov.querySelector('.ed-gd-ileri').addEventListener('click', ileriAl);
     ov.querySelector('.ed-gd-sil').addEventListener('click', function(){ if(!secili.length) return; itUndo(); objs=objs.filter(function(o){ return secili.indexOf(o)<0; }); secili=[]; _selBtn(); ciz(); });
+    (function(){ var _gdz=ov.querySelector('.ed-gd-gorseldz'); if(_gdz) _gdz.addEventListener('click', function(){ if(secili.length===1 && secili[0] && secili[0].t==='gorsel') _ckGorselDuzenle(secili[0]); }); })();   // [ÇİZİM GÖRSEL DÜZENLE] üst şerit Düzenle butonu
     ov.querySelector('.ed-gd-kirpuygula').addEventListener('click', kirpUygula);
     ov.querySelector('.ed-gd-vaz').addEventListener('click', kapat);
     ov.querySelector('.ed-gd-kaydet').addEventListener('click', kaydet);
