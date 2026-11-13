@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13p · Cizim editoru YATAY butonu ust arac cubugundan SAG-ALT zoom paneline tasindi (sadece ikon + kisa tooltip, .ed-gd-zbtn.ed-gd-ckyatay; aktifte mavi; .ed-gd-zsep ayraci). Islev ayni.';
+        var X_BUILD = '2026-11-13q · Secili metin biciminde RENK kutusu GERCEK (cikti) rengi gosterir: koyu temada SIYAH metin ekranda acik gorunup computed yaniltiyordu -> _gercekMetinRenk inline style.color okur (yoksa siyah). Baslik zaten _rtEff (gercek) kullaniyor.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7h · 2026-11-13 Cizim editoru YATAY butonu ust arac cubugundan SAG-ALT zoom paneline tasindi (ikon-only + tooltip, .ed-gd-ckyatay zoom paneinde; islev ayni). (7g yatay fazlar korunur)";
+  XE.VERSION = "7i · 2026-11-13 Secili metin biciminde RENK kutusu GERCEK renk: koyu temada siyah metin ekranda acik -> computed yaniltici; _gercekMetinRenk inline style.color (gercek/cikti) okur, yoksa siyah. (7h yatay buton korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -12794,7 +12794,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var cs=pe?window.getComputedStyle(pe):null;
       var curFont=cs?(cs.fontFamily||'').split(',')[0].replace(/['"]/g,'').trim():'';
       var curSize=cs?Math.round(parseFloat(cs.fontSize)/1.3333):'';   // px->pt (kaba)
-      var curColor=cs?_rgbToHex(cs.color):'#000000';
+      var curColor=_gercekMetinRenk(pe);   // [RENK GERÇEK] koyu temada SİYAH metin ekranda AÇIK gösterilir (CSS) -> computed yanıltıcı. İNLINE (gerçek/çıktı) rengi oku; yoksa siyah.
       h+=_clipHtml;
       h+='<div class="rt-title">Seçili metin</div>';
       h+='<label class="rt-row">Font <select class="rt-font"><option value="">(değiştirme)</option>'+fontOpts+'</select></label>';
@@ -12843,6 +12843,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   }
   function _sagTikKapat(){ var p=document.getElementById('ed-rt-panel'); if(p){ p.style.display='none'; p.innerHTML=''; } _rtInfo=null; }
   function _rgbToHex(c){ try{ var m=String(c).match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i); if(!m) return /^#[0-9a-fA-F]{6}$/.test(c)?c:'#000000'; function h(n){ n=(parseInt(n,10)||0).toString(16); return n.length<2?'0'+n:n; } return '#'+h(m[1])+h(m[2])+h(m[3]); }catch(e){ return '#000000'; } }
+  // [RENK GERÇEK] Metnin GERÇEK (çıktı) rengini bul: koyu temada SİYAH metin ekranda AÇIK gösterildiğinden (CSS override)
+  // getComputedStyle YANILTICI. Bunun yerine seçimdeki öğeden yukarı doğru İNLİNE style.color ara (gerçek değer saklanır);
+  // açıkça renk belirtilmemişse varsayılan ÇIKTI = SİYAH. Hem koyu hem açık temada doğru (inline renk tema-bağımsız).
+  function _gercekMetinRenk(el){ try{ var n=el; while(n && n.nodeType===1){ if(n.classList && n.classList.contains('ed-root')) break; var ic=n.style && n.style.color; if(ic && String(ic).trim()){ return _rgbToHex(ic); } n=n.parentNode; } }catch(_){} return '#000000'; }
   function _spanSar(styleObj){
     var sel=window.getSelection(); if(!sel.rangeCount) return; var range=sel.getRangeAt(0); if(range.collapsed) return;
     var span=document.createElement('span'); for(var k in styleObj){ if(styleObj.hasOwnProperty(k)) span.style[k]=styleObj[k]; }
