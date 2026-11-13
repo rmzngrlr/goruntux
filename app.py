@@ -2592,7 +2592,7 @@ HTML_TEMPLATE = """
                     <div class="pool-actions">
                         <button id="save-btn" class="x-havuz-btn" style="display: none;" onclick="savePoolReport()" title="Raporu isimle panele kaydet (havuz commit edilir ve sıfırlanır). İndirmez."><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3.5h8l3 3v9.5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-11.5a1 1 0 0 1 1-1z"/><path d="M7 3.5v4h5v-4"/><path d="M7 17v-5h6v5"/></svg> Kaydet</button>
                         <button id="download-btn" class="x-havuz-btn js-paylas-trig" onclick="xPaylasAc('havuz', this)" title="Paylaş — Word/PDF seç ve indir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8.4"/><path d="M6.3 6.7L10 3l3.7 3.7"/><path d="M4.5 11.4v3.7a1.3 1.3 0 0 0 1.3 1.3h8.4a1.3 1.3 0 0 0 1.3-1.3v-3.7"/></svg> Paylaş</button>
-                        <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici editörde aç ve düzenle"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16l.9-3.5L13 4.4a1.5 1.5 0 0 1 2.1 0l.5.5a1.5 1.5 0 0 1 0 2.1L7.5 15.1 4 16z"/><path d="M12.3 5.1l2.6 2.6"/></svg> Editörde Düzenle</button>
+                        <button class="x-havuz-btn" onclick="generateManualWord(true)" title="Raporu düzenleyici editörde aç ve düzenle"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(20 0) scale(-1 1)"><path d="M4 16l.9-3.5L13 4.4a1.5 1.5 0 0 1 2.1 0l.5.5a1.5 1.5 0 0 1 0 2.1L7.5 15.1 4 16z"/><path d="M12.3 5.1l2.6 2.6"/></g></svg> Editörde Düzenle</button>
                         <button class="x-havuz-btn danger" onclick="clearManualList()" title="Havuzdaki tüm içeriği sil (sıfırla)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg> Sıfırla</button>
                         <button class="x-havuz-btn" onclick="raporuKapat()" title="Açık raporu silmeden kapat (Raporlarım'da durur)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M6.8 10.2l2.2 2.2 4.2-4.6"/></svg> Kapat</button>
                     </div>
@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13ah · [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-13ai · [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9727,7 +9727,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7x · 2026-11-13 [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
+  XE.VERSION = "7y · 2026-11-13 [CTRL+TIK LINK] rapor editoru Ctrl/Cmd+tik link acar (.ed-link-edit metni + .ed-metin <a> href; x_ctrl_link). + [DUZENLE KALEM SAGA] tum edit-kalem ikonlari saga (mirror); cizme-kalemi sola. + [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10035,6 +10035,16 @@ X_EDITOR_JS = r'''
       var img=(e.target && e.target.closest) ? e.target.closest('.ed-img') : null;
       if(img && img.getAttribute('src')){ e.preventDefault(); _lightboxAc(img.getAttribute('src'), img); }
     });
+    document.addEventListener('click', function(e){   // [CTRL+TIK LİNK] Ctrl/Cmd+tık -> linki yeni sekmede aç (link alanı + metin içi <a>); bayrak x_ctrl_link
+      if(!(e.ctrlKey||e.metaKey)) return;
+      var _acik=true; try{ _acik=localStorage.getItem('x_ctrl_link')!=='0'; }catch(_){} if(!_acik) return;
+      var m=document.getElementById('editorModal'); if(!m || !m.classList.contains('active')) return;
+      var t=e.target; if(!t || !t.closest) return;
+      var url=null, a=t.closest('a');
+      if(a && a.getAttribute('href') && a.closest('.ed-metin')){ url=a.getAttribute('href'); }   // metin içi link
+      else { var le=t.closest('.ed-link-edit'); if(le){ url=(le.textContent||'').trim(); } }   // link alanı (URL metni)
+      if(url){ if(!/^(https?:|mailto:|tel:)/i.test(url)) url='https://'+url.replace(/^\/+/,''); e.preventDefault(); e.stopPropagation(); try{ window.open(url,'_blank','noopener'); }catch(_){} }
+    }, true);
     document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ var lb=document.getElementById('ed-lightbox'); if(lb && lb.classList.contains('acik')){ e.preventDefault(); _lightboxKapat(); } } });
   }
   function _lightboxAc(src, srcImg){
@@ -10051,7 +10061,7 @@ X_EDITOR_JS = r'''
       var _bi=srcImg?parseInt(srcImg.getAttribute('data-i'),10):NaN, _pp=srcImg?parseInt(srcImg.getAttribute('data-p'),10):NaN;
       if(srcImg && !isNaN(_bi) && !isNaN(_pp) && (_ck || _gorselDuzenleAcikMi())){
         var dz=document.createElement('button'); dz.className='ed-lb-duzenle'; dz.type='button'; dz.title=_ck?'Çizim kağıdını düzenle':'Görseli düzenle (Kırp / Yazı)';
-        dz.innerHTML='<svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5l3 3M4 16l.9-3.4 8.1-8.1 3 3-8.1 8.1L4 16z"/></svg>';
+        dz.innerHTML='<svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5l-3 3M16 16l-.9-3.4-8.1-8.1-3 3 8.1 8.1L16 16z"/></svg>';
         dz.addEventListener('click', function(e){ e.stopPropagation(); _lightboxKapat(); setTimeout(function(){ try{ if(_ck) XE._cizimKagidiAc(_bi,_pp); else XE._gorselDuzenleAc(_bi,_pp); }catch(_){} }, 40); });
         lb.appendChild(dz);
       }
@@ -11971,7 +11981,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
-      +(_cz?('<button type="button" class="ed-gd-tool ed-gd-gorseldz" title="Görseli düzenle (kırp/yazı/ok/dikdörtgen/kalem)" style="display:none;"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 3.5l4 4M4 16l.9-3.6 8.6-8.6 3.1 3.1-8.6 8.6z"/></svg></button>'):'')   // [ÇİZİM GÖRSEL DÜZENLE] renk paletinin hemen sağında, ikon-only; gömülü görsel seçiliyken görünür
+      +(_cz?('<button type="button" class="ed-gd-tool ed-gd-gorseldz" title="Görseli düzenle (kırp/yazı/ok/dikdörtgen/kalem)" style="display:none;"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5l-4 4M16 16l-.9-3.6-8.6-8.6-3.1 3.1 8.6 8.6z"/></svg></button>'):'')   // [ÇİZİM GÖRSEL DÜZENLE] renk paletinin hemen sağında, ikon-only; gömülü görsel seçiliyken görünür
       +'      <div class="ed-gd-kalgrp ed-gd-kal-wrap" title="Çizgi stili ve kalınlığı">'
       +'        <button type="button" class="ed-gd-tool ed-gd-kal-btn" title="Kontur stili"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="butt"><line x1="3" y1="5.5" x2="17" y2="5.5"/><line x1="3" y1="10" x2="17" y2="10" stroke-dasharray="3 2.5"/><line x1="3" y1="14.5" x2="17" y2="14.5" stroke-dasharray="0.5 2.875" stroke-linecap="round"/></svg><svg class="ed-gd-sekil-kar" viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg></button>'
       +'        <div class="ed-gd-kal-menu">'
@@ -13100,7 +13110,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       // [GÖRSEL PANO] üst ikon satırı: dolu görselde Kes/Kopyala/Yapıştır, boş slotta yalnız Yapıştır
       if(clipAcik()) h+=_gorselClipSatiri(_bos, _gorselKopyaVar());
       // [GÖRSEL DÜZENLE 2026-11-10p] Dolu görselde "Düzenle" (kırp + yazı + ok/dikdörtgen/kalem). Boş slotta yok.
-      if(!_bos && _gorselDuzenleAcikMi()) h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-duzen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px;"><path d="M12.5 4.5l3 3M4 16l.9-3.4 8.1-8.1 3 3-8.1 8.1L4 16z"/></svg>Düzenle (Kırp / Yazı)</button></div>';
+      if(!_bos && _gorselDuzenleAcikMi()) h+='<div class="rt-row"><button type="button" class="rt-reset rt-img-duzen"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px;"><path d="M7.5 4.5l-3 3M16 16l-.9-3.4-8.1-8.1-3 3 8.1 8.1L16 16z"/></svg>Düzenle (Kırp / Yazı)</button></div>';
       if(_bos){
         h+='<div class="rt-title">Görsel</div>';
         p.innerHTML=h;
@@ -13559,7 +13569,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           var _km='';
           for(var _kj=0;_kj<_diger.length;_kj++){ _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="'+esc(_diger[_kj].key)+'">'+esc(_diger[_kj].ad)+'</button>'; }
           if(_ayir) _km+='<button class="ed-kume-opt" data-i="'+i+'" data-k="__yeni">➕ Kendi başlığı (ayır)</button>';
-          if(_km) _kalemHtml='<span class="ed-pz-wrap ed-kume-wrap"><button class="ed-kume-kalem" title="Bu öğeyi başka bölüme taşı / kendi başlığına ayır"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3"/><path d="M9 4L2.5 10.5V13H5L11.5 6.5z"/></svg></button><span class="ed-pz-menu ed-kume-menu">'+_km+'</span></span>';
+          if(_km) _kalemHtml='<span class="ed-pz-wrap ed-kume-wrap"><button class="ed-kume-kalem" title="Bu öğeyi başka bölüme taşı / kendi başlığına ayır"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2.5l-3 3"/><path d="M7 4L13.5 10.5V13H11L4.5 6.5z"/></svg></button><span class="ed-pz-menu ed-kume-menu">'+_km+'</span></span>';
         }
       }
       // Başlık (h2) inline-block -> text-align tek başına KONUMLANDIRMAZ. Blok SARMALAYICIYA hizalamayı koy
@@ -13589,7 +13599,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
           var _gSty=(_gAl==='center')?'margin-left:auto;margin-right:auto':(_gAl==='right')?'margin-left:auto;margin-right:0':'';
           if(p.cizimKagidi){   // [ÇİZİM KAĞIDI] görsel + üstünde "Düzenle" overlay (tekrar açar)
             var _imgCk='<img class="ed-img ed-ck-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g&&_g.mime||'image/png')+';base64,'+((_g&&_g.b64)||'')+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>';
-            h.push('<div class="ed-ck-sar"'+(_gAl==='center'?' style="margin-left:auto;margin-right:auto"':_gAl==='right'?' style="margin-left:auto;margin-right:0"':'')+'>'+_imgCk+'<button class="ed-ck-duzenle" type="button" data-i="'+i+'" data-p="'+k+'" title="Çizim kağıdını düzenle">✎ Düzenle</button></div>');
+            h.push('<div class="ed-ck-sar"'+(_gAl==='center'?' style="margin-left:auto;margin-right:auto"':_gAl==='right'?' style="margin-left:auto;margin-right:0"':'')+'>'+_imgCk+'<button class="ed-ck-duzenle" type="button" data-i="'+i+'" data-p="'+k+'" title="Çizim kağıdını düzenle"><svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px"><path d="M7.5 4.5l-3 3M16 16l-.9-3.4-8.1-8.1-3 3 8.1 8.1L16 16z"/></svg>Düzenle</button></div>');
           }
           else h.push((_g && _g.b64)
             ? ('<img class="ed-img" data-i="'+i+'" data-p="'+k+'" src="data:'+(_g.mime||'image/jpeg')+';base64,'+_g.b64+'" alt=""'+(_gSty?(' style="'+_gSty+'"'):'')+'>')
