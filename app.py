@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13o · [FAZ3] YATAY cizim PDF 90 derece: pdfmake metni donduremedigi icin xCkRenderRot90 (prim-leri GERCEK renkle tuvale ciz -> 90 derece cevir -> dondurulmus tek gorsel, bozulmasiz). PDF kutu ar ters portre. Word native (Faz2) korunur. TUM FAZLAR tamam.';
+        var X_BUILD = '2026-11-13p · Cizim editoru YATAY butonu ust arac cubugundan SAG-ALT zoom paneline tasindi (sadece ikon + kisa tooltip, .ed-gd-zbtn.ed-gd-ckyatay; aktifte mavi; .ed-gd-zsep ayraci). Islev ayni.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7g · 2026-11-13 [FAZ3] YATAY cizim TUM FAZLAR: Word native 90 derece (xCkRotateEr90, Faz2) + PDF dondurulmus raster (xCkRenderRot90, prim->gercek renk tuval->90 derece cevir). Dikey cizimler etkilenmez.";
+  XE.VERSION = "7h · 2026-11-13 Cizim editoru YATAY butonu ust arac cubugundan SAG-ALT zoom paneline tasindi (ikon-only + tooltip, .ed-gd-ckyatay zoom paneinde; islev ayni). (7g yatay fazlar korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10458,6 +10458,7 @@ body:not(.light-theme) .ed-gd-kirpuygula{background:#1e9e5a;border-color:#1e9e5a
 .ed-gd-zbtn:hover{background:rgba(255,255,255,0.28);}
 .ed-gd-zbtn.aktif{background:#1d9bf0;}
 .ed-gd-zval{min-width:42px;text-align:center;color:#fff;font-size:12px;font-weight:600;user-select:none;}
+.ed-gd-zsep{width:1px;align-self:stretch;margin:2px 2px;background:rgba(255,255,255,0.22);}
 .ed-gd-yazi-inp{position:fixed;z-index:5100;border:1px solid #1565c0;border-radius:4px;padding:2px 6px;font-family:Arial;background:#fff;color:#111;box-shadow:0 2px 10px rgba(0,0,0,0.25);min-width:120px;}
 html.x-mobile.x-dik .ed-gd-box{width:100%;height:100%;}
 html.x-mobile.x-dik .ed-gd-say input[type=range]{width:60px;}
@@ -11848,7 +11849,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'<div class="ed-gd-box">'
       +'  <div class="ed-gd-ust">'
       +'    <div class="ed-gd-tools">'+tbBtns+'</div>'
-      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button><button type="button" class="ed-gd-mini ed-gd-ckyatay'+(_yatay?' aktif':'')+'" title="Yatay / Dikey — yatay A4 (çıktıda 90° döndürülüp dikey sayfaya BOZULMASIZ oturur)"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="1"/><path d="M12.5 8l2.5 2-2.5 2"/></svg> Yatay</button></div>'):'')
+      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg> Görsel</button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa">Çizgili</button></div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +'      <label class="ed-gd-say ed-gd-kalgrp" title="Çizgi kalınlığı">Kalınlık<input type="range" class="ed-gd-kal" min="1" max="40" value="'+kalinlik+'"></label>'
@@ -11872,6 +11873,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         +'<span class="ed-gd-zval">100%</span>'
         +'<button type="button" class="ed-gd-zbtn ed-gd-zin" title="Yakınlaştır (fare tekeri / pinch)">+</button>'
         +'<button type="button" class="ed-gd-zbtn ed-gd-zfit" title="Sığdırma: genişliğe ↔ yüksekliğe"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8V3h5M17 12v5h-5M3 12v5h5M17 8V3h-5"/></svg></button>'
+        +'<span class="ed-gd-zsep"></span>'
+        +'<button type="button" class="ed-gd-zbtn ed-gd-ckyatay'+(_yatay?' aktif':'')+'" title="Yatay / Dikey (90° döndür)"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="15" height="9" rx="1"/><path d="M12.5 8l2.5 2-2.5 2"/></svg></button>'
         +'</div>'):'')
       +'  <input type="text" class="ed-gd-yazi-inp" placeholder="Yazı..." style="display:none;">'
       +'</div>';
