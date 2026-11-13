@@ -3058,7 +3058,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-13q · Secili metin biciminde RENK kutusu GERCEK (cikti) rengi gosterir: koyu temada SIYAH metin ekranda acik gorunup computed yaniltiyordu -> _gercekMetinRenk inline style.color okur (yoksa siyah). Baslik zaten _rtEff (gercek) kullaniyor.';
+        var X_BUILD = '2026-11-13r · Cizim FOSFORLU kalem koyu ekranda GORUNUR: multiply (karartan) koyu temada fosforluyu gizliyordu -> ekranda screen (aydinlatan ikiz), CIKTI (beyaz) yine multiply (_fircaCiz ekranKoyu param). + secili metin renk-gercek (13q korunur).';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9684,7 +9684,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "7i · 2026-11-13 Secili metin biciminde RENK kutusu GERCEK renk: koyu temada siyah metin ekranda acik -> computed yaniltici; _gercekMetinRenk inline style.color (gercek/cikti) okur, yoksa siyah. (7h yatay buton korunur)";
+  XE.VERSION = "7j · 2026-11-13 Cizim FOSFORLU koyu ekranda gorunur: multiply koyu temada gizliyordu -> ekranda screen, cikti multiply (_fircaCiz ekranKoyu). + secili-metin renk-gercek (7i korunur).";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11949,7 +11949,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         ctx.lineTo(S(o.x2)-hl*Math.cos(ang+0.42), S(o.y2)-hl*Math.sin(ang+0.42));
         ctx.closePath(); ctx.fill();
       } else if(o.t==='kalem'){
-        window._fircaCiz(ctx, o.nk||[], o.firca, _gostRenk(o.renk), o.kal, o.seed, scale, 0, 0);   // [FIRÇA] fırça türüne göre (ekran: sc=scale, offset=0)
+        window._fircaCiz(ctx, o.nk||[], o.firca, _gostRenk(o.renk), o.kal, o.seed, scale, 0, 0, (_ekranMod && _ckKoyuMu()));   // [FIRÇA] fırça türüne göre (ekran: sc=scale, offset=0); fosforlu koyu ekranda screen
       } else if(o.t==='gorsel'){   // [ÇİZİM KAĞIDI] yerleştirilmiş görsel (yüklü değilse yüklenince yeniden çiz)
         var _im=_imgC[(o.b64||'').slice(0,48)];
         if(_im){ ctx.drawImage(_im, S(o.x), S(o.y), S(o.w), S(o.h)); }
@@ -12345,7 +12345,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   // Sprey SABİT TOHUMLU (seed) -> her render (editör/thumbnail/çıktı) BİREBİR aynı dokuyu üretir.
   function _fircaTohum(seed){ var s=(seed>>>0)||1; return function(){ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
   function _fircaPoly(cx, nk, ox, oy, sc){ cx.beginPath(); for(var j=0;j<nk.length;j++){ var X=(nk[j].x-ox)*sc, Y=(nk[j].y-oy)*sc; if(j===0)cx.moveTo(X,Y); else cx.lineTo(X,Y);} cx.stroke(); }
-  function _fircaCiz(cx, nk, firca, renk, kal, seed, sc, ox, oy){
+  function _fircaCiz(cx, nk, firca, renk, kal, seed, sc, ox, oy, ekranKoyu){
     if(!nk || !nk.length) return; firca=firca||'normal'; ox=ox||0; oy=oy||0; sc=sc||1; kal=kal||3;
     cx.save(); cx.lineCap='round'; cx.lineJoin='round';
     if(firca==='sprey'){
@@ -12356,7 +12356,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         for(var s2=0;s2<st;s2++){ var t=s2/st, bx=nk[i-1].x+dx*t, by=nk[i-1].y+dy*t;
           for(var q=0;q<dens;q++){ var a=rnd()*6.2832, rr=Math.sqrt(rnd())*rad; cx.beginPath(); cx.arc((bx+Math.cos(a)*rr-ox)*sc,(by+Math.sin(a)*rr-oy)*sc,dot*sc,0,6.2832); cx.fill(); } } }
     } else if(firca==='fosforlu'){
-      cx.globalAlpha=0.38; cx.globalCompositeOperation='multiply'; cx.strokeStyle=renk; cx.lineWidth=kal*2.6*sc; cx.lineCap='butt';
+      // [FOSFORLU KOYU] Fosforlu 'multiply' (karartan) ile çalışır -> BEYAZ çıktıda doğru (highlighter karartır).
+      // KOYU EKRANDA (editör/kart, _gostRenk ile renk açılsa bile) multiply karartıp fosforluyu GİZLİYOR -> ekranda
+      // 'screen' (aydınlatan ikiz) kullan; ÇIKTI (beyaz, ekranKoyu yok) yine multiply.
+      cx.globalAlpha=0.38; cx.globalCompositeOperation=(ekranKoyu?'screen':'multiply'); cx.strokeStyle=renk; cx.lineWidth=kal*2.6*sc; cx.lineCap='butt';
       _fircaPoly(cx,nk,ox,oy,sc);
     } else if(firca==='neon'){
       cx.strokeStyle=renk; cx.shadowColor=renk; cx.shadowBlur=kal*2.4*sc; cx.lineWidth=kal*0.85*sc; cx.globalAlpha=0.95;
