@@ -1637,6 +1637,10 @@ HTML_TEMPLATE = """
         /* [TAM EKRAN / PWA] Masaüstü: menüde "Tam ekran" butonu. Mobil: onun yerine "Ana ekrana ekle" (PWA yükle). */
         .js-pwa-btn { display: none; }
         html.x-mobile .js-fs-btn { display: none; }
+        /* [MOBİL PWA] Standalone'da (ana ekrana eklenmiş) dişli+menü yerine DOĞRUDAN tema ikonu; "Ana ekrana ekle" gereksiz, tek seçenek tema. Yalnız panel başlığı (editör menüsü dokunulmaz). */
+        html.x-pwa-tektema .header-controls .js-ayar-gear { display: none; }
+        html.x-pwa-tektema .header-controls .ayar-menu { display: none !important; }
+        html.x-pwa-tektema .header-controls .js-pwa-tema { display: inline-flex !important; }
         html.x-mobile .js-pwa-btn { display: inline-flex; }
 
         /* [PAYLAŞ] 2 aşamalı modal: biçim/işlem kartları */
@@ -2218,6 +2222,7 @@ HTML_TEMPLATE = """
           else { var _vp = document.querySelector('meta[name=viewport]'); if (_vp) { _vp.setAttribute('content', (_vp.getAttribute('content')||'').replace(/,?\s*viewport-fit=cover/i, '')); } }
         } catch(e){}
         if(!de.classList.contains('x-mobile')) return;
+        try{ if(_pwa){ var _pt=true; try{ _pt=localStorage.getItem('x_pwa_tema')!=='0'; }catch(_){} if(_pt) de.classList.add('x-pwa-tektema'); } }catch(e){}   // [MOBİL PWA] standalone'da dişli-menü yerine doğrudan tema ikonu (bayrak x_pwa_tema)
         try{ var _ua=navigator.userAgent||''; if(/iPhone|iPad|iPod/i.test(_ua) || (/Macintosh/.test(_ua) && (navigator.maxTouchPoints||0)>1)) de.classList.add('x-ios'); }catch(e){}   // [ANDROID FİX 10l] iOS-özel CSS kapısı
         var mq=window.matchMedia('(orientation: portrait)');
         function yon(){ if(mq.matches){ de.classList.add('x-dik'); de.classList.remove('x-yatay'); } else { de.classList.add('x-yatay'); de.classList.remove('x-dik'); } }
@@ -2373,7 +2378,9 @@ HTML_TEMPLATE = """
             <div class="header">
                 <div class="header-controls">
                     <div class="ayar-wrap">
-                        <button class="theme-toggle-btn" onclick="toggleAyarMenu(this)" title="Ayarlar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7M14 6h3"/><path d="M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></svg></button>
+                        <!-- [MOBİL PWA] Standalone'da dişli+menü yerine DOĞRUDAN tema ikonu (Ana-ekrana-ekle gereksiz, tek seçenek tema kalıyor). Yalnız html.x-pwa-tektema'da görünür. -->
+                        <button class="theme-toggle-btn js-pwa-tema" onclick="toggleTheme()" title="Temayı değiştir" style="display:none;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
+                        <button class="theme-toggle-btn js-ayar-gear" onclick="toggleAyarMenu(this)" title="Ayarlar"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h7M14 6h3"/><path d="M3 14h3M10 14h7"/><circle cx="12" cy="6" r="2"/><circle cx="8" cy="14" r="2"/></svg></button>
                         <div class="ayar-menu">
                             <button class="theme-toggle-btn js-tema-btn" onclick="toggleTheme()" title="Temayı değiştir"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg></button>
                             <button class="theme-toggle-btn js-fs-btn" onclick="toggleFullscreen()" title="Tam ekran"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5H3.5V7.5"/><path d="M12.5 3.5H16.5V7.5"/><path d="M7.5 16.5H3.5V12.5"/><path d="M12.5 16.5H16.5V12.5"/></svg></button>
@@ -3058,7 +3065,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-14aj · [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-14ak · [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
