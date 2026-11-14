@@ -3082,7 +3082,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-14ay · [METIN TOGGLE DRIFT FIX] yatay-dikey git-gelde metin kademeli kayiyordu (merkez-donus geri-koymada padding-li yaziKutuSrc yk.w/2 -> her toggle -pX/-pY birikti). FIX metin metrigi (padding-siz) ile -> gidis-donus birebir, drift yok. + [DONDURME YON DUZELTME] yatayda metin/gorsel sayfayla TERS donuyordu (toggle konumlar CCW ust->sol, glyph +90 CW). FIX _frameAci -90 (CCW) + metin merkezden doner -> icerik sayfayla AYNI yonde. (Word/PDF cikti frame yonu editorle hizalanacak - kullanici dogrulamasi.) + [DONDURME ROTUSLARI] (1) yatayda metin+gorsel editorde de 90 doner (onceki surumde donmuyordu): _aciG=serbest aci + frame(yatayda metin/gorsel 90); cikti rot=true ile eslesir, degismez. (2) dondurme tutamaci dönüşüm-ikonlu (beyaz daire + mavi cift dairesel ok, duz daire degil). (3) donerken derece gostergesi (tutamac yaninda yuvarlak etiket). + [CIZIM SERBEST DONDURME] Canva gibi acili dondurme tutamaci: cizim kagidinda sekil/metin/gorsel/kalem secince alt-ortada tutamac -> surukleyerek dondur (1 derece hassas, Shift=15 snap, o.aci). Dondurulmus nesnede resize/hit-test YEREL cerceve (karsi tutamac sabit). Toggle acyi +-90 dondurur -> metin/gorsel dahil her sey sayfayla doner (w/h-swap yalniz aci=0 -> eski cikti aynen korunur). Cikti: Word rot=aci*60000; PDF rotated raster. Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust serit Gorsel/Cizgili/Sil/Vazgec/Kaydet IKON-ONLY (title tooltip; ed-gd-ico kare btn). + [CIZIM YATAY TOGGLE YON CEVRILDI] Kullanici mantigi: Dikey->Yatay gecisinde icerik 90 saat-TERSINE (CCW) donsun (dikey UST->yatay SOL, ALT->SAG, SAG->UST, SOL->ALT); Yatay->Dikey tersi (CW, SOL->UST). Onceki kayipsiz fix CW yondeydi (ust->sag) -> YON ters cevrildi: toggle ccw=!_yatay (dikeyken CCW, yatayken CW). Gidis-donus D->Y->D hala BIREBIR kayipsiz (CCW+CW=kimlik). cikti/kaydetme etkilenmez. + [HAVUZ ALT CUBUK STICKY] Kullanici: menu havuz kartindan AYRILMASIN AMA kaydirirken HEP GORUNUR kalsin. Fixed=koptu, static=kaydirinca kayboldu -> SON cozum masaustu gibi STICKY. Mobilde (x-mobile.x-dik) .pool-actions position:sticky + bottom:0 (kaydirirken viewport dibine pinlenir, hep gorunur) + negatif margin -16 (kart kenarina dayanir, tam genislik) + radius 12 (mobil kart) + padding-bottom 14+safe-bottom (butonlar home-indicator bolgesini asar). Base opak 2-katman bg + border-top(ayirac) korunur -> altindan kayan ogeleri orter, kartin parcasi gorunur; sona inince kart-dibine FLUSH oturur (connected). Butonlar IKON-ONLY (title tooltip), flex:1 esit dagilir. fixed-ozel backdrop-filter:none + 72px padding KALDIRILDI. Dogrulama (3017 mobil 375, 15 oge): mid-scroll bar bottom=812 pinli + kart genisligine flush; sona inince bar-bottom=kart-bottom. + [AYAR MENU IKONLARI=DISLI] Acilan ayar menusundeki ikonlar (tema/tam-ekran/ana-ekrana) da disli ile esit (30x30 radius8 ikon17; .header-controls .ayar-menu .theme-toggle-btn). + [AYARLAR DISLI=LOGO] Dislieme HER YERDE (PWA disi dahil) mavi logo (30x30) ile ayni boyut+hiza: .js-ayar-gear 30x30 radius8, masaustu margin-top:0 / dik-mobil margin-top:4 (header-controls konum offseti farkli). + [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-14az · [CIZIM PAGER] cizim editorunde GIZLI sol/sag gezinme oklari (fare gelince belirir): sol=onceki (ilk sayfada gizli), sag=sonraki, son sayfada sag=yesil + (yeni cizim kagidi ekle+ac). Gezinirken mevcut sayfa parcaya commit edilir. Kaydet tumunu kaydedip kapatir; degisiklik yoksa Kaydet soluk. + [METIN TOGGLE DRIFT FIX] yatay-dikey git-gelde metin kademeli kayiyordu (merkez-donus geri-koymada padding-li yaziKutuSrc yk.w/2 -> her toggle -pX/-pY birikti). FIX metin metrigi (padding-siz) ile -> gidis-donus birebir, drift yok. + [DONDURME YON DUZELTME] yatayda metin/gorsel sayfayla TERS donuyordu (toggle konumlar CCW ust->sol, glyph +90 CW). FIX _frameAci -90 (CCW) + metin merkezden doner -> icerik sayfayla AYNI yonde. (Word/PDF cikti frame yonu editorle hizalanacak - kullanici dogrulamasi.) + [DONDURME ROTUSLARI] (1) yatayda metin+gorsel editorde de 90 doner (onceki surumde donmuyordu): _aciG=serbest aci + frame(yatayda metin/gorsel 90); cikti rot=true ile eslesir, degismez. (2) dondurme tutamaci dönüşüm-ikonlu (beyaz daire + mavi cift dairesel ok, duz daire degil). (3) donerken derece gostergesi (tutamac yaninda yuvarlak etiket). + [CIZIM SERBEST DONDURME] Canva gibi acili dondurme tutamaci: cizim kagidinda sekil/metin/gorsel/kalem secince alt-ortada tutamac -> surukleyerek dondur (1 derece hassas, Shift=15 snap, o.aci). Dondurulmus nesnede resize/hit-test YEREL cerceve (karsi tutamac sabit). Toggle acyi +-90 dondurur -> metin/gorsel dahil her sey sayfayla doner (w/h-swap yalniz aci=0 -> eski cikti aynen korunur). Cikti: Word rot=aci*60000; PDF rotated raster. Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust serit Gorsel/Cizgili/Sil/Vazgec/Kaydet IKON-ONLY (title tooltip; ed-gd-ico kare btn). + [CIZIM YATAY TOGGLE YON CEVRILDI] Kullanici mantigi: Dikey->Yatay gecisinde icerik 90 saat-TERSINE (CCW) donsun (dikey UST->yatay SOL, ALT->SAG, SAG->UST, SOL->ALT); Yatay->Dikey tersi (CW, SOL->UST). Onceki kayipsiz fix CW yondeydi (ust->sag) -> YON ters cevrildi: toggle ccw=!_yatay (dikeyken CCW, yatayken CW). Gidis-donus D->Y->D hala BIREBIR kayipsiz (CCW+CW=kimlik). cikti/kaydetme etkilenmez. + [HAVUZ ALT CUBUK STICKY] Kullanici: menu havuz kartindan AYRILMASIN AMA kaydirirken HEP GORUNUR kalsin. Fixed=koptu, static=kaydirinca kayboldu -> SON cozum masaustu gibi STICKY. Mobilde (x-mobile.x-dik) .pool-actions position:sticky + bottom:0 (kaydirirken viewport dibine pinlenir, hep gorunur) + negatif margin -16 (kart kenarina dayanir, tam genislik) + radius 12 (mobil kart) + padding-bottom 14+safe-bottom (butonlar home-indicator bolgesini asar). Base opak 2-katman bg + border-top(ayirac) korunur -> altindan kayan ogeleri orter, kartin parcasi gorunur; sona inince kart-dibine FLUSH oturur (connected). Butonlar IKON-ONLY (title tooltip), flex:1 esit dagilir. fixed-ozel backdrop-filter:none + 72px padding KALDIRILDI. Dogrulama (3017 mobil 375, 15 oge): mid-scroll bar bottom=812 pinli + kart genisligine flush; sona inince bar-bottom=kart-bottom. + [AYAR MENU IKONLARI=DISLI] Acilan ayar menusundeki ikonlar (tema/tam-ekran/ana-ekrana) da disli ile esit (30x30 radius8 ikon17; .header-controls .ayar-menu .theme-toggle-btn). + [AYARLAR DISLI=LOGO] Dislieme HER YERDE (PWA disi dahil) mavi logo (30x30) ile ayni boyut+hiza: .js-ayar-gear 30x30 radius8, masaustu margin-top:0 / dik-mobil margin-top:4 (header-controls konum offseti farkli). + [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -9763,7 +9763,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "8f · 2026-11-14 [METIN TOGGLE DRIFT FIX] yatay-dikey git-gel'de metin KADEMELI kayiyordu: metin merkez-donusunde geri-koyma yaziKutuSrc (padding'li) yk.w/2 kullaniyordu -> her toggle -pX/-pY birikti. FIX: metin METRIGI (yaziMetrikPx, padding'siz) ile merkez+geri-koyma -> gidis-donus BIREBIR (birim test 5 tur drift=0). + [DONDURME YON DUZELTME] yatayda metin/gorsel frame donusu TERS yondeydi: toggle KONUMLARI CCW (ust->sol kullanici mantigi) ama glyph +90 CW donuyordu -> icerik sayfayla TERS. FIX: _frameAci +90 -> -90 (CCW; glyph artik konumlarla ayni yonde). Metin toggle konumu da MERKEZDEN doner (yaziKutuSrc merkez). NOT: Word/PDF cikti frame yonu (eski CW) EDITORLE artik ters -> cikti hizalamasi kullanici dogrulamasiyla ayrica yapilacak. + [DONDURME ROTUSLARI] (1) YATAYDA metin+gorsel editorde de 90 DONER: _frameAci (yatay+yazi/gorsel=90), _aciG=serbest+frame; render/hit-test/resize/tutamac _aciG ile; tutamac SERBEST aci set eder (gosterim-frame). Cikti rot=true ile eslesir (degismez). (2) Dondurme tutamaci DONUSUM IKONLU: beyaz daire + mavi cift dairesel ok. (3) Donerken tutamac yaninda DERECE gostergesi (yuvarlak etiket, _aciG). + [CIZIM SERBEST DONDURME] Canva gibi acili dondurme: sekil/metin/gorsel/kalem SEC -> alt-orta tutamac, surukle dondur (1 derece hassas, Shift=15 snap); o.aci; dondurulmus hit-test+resize YEREL cerceve (karsi tutamac sabit); dondurme tutamaci cizgiyle bagli daire. Toggle acyi da +-90 dondurur (metin/gorsel dahil her sey sayfayla doner; w/h-swap yalniz aci=0 icin -> eski cikti korunur). Cikti: Word DrawingML rot=aci*60000 (frame 90 + serbest aci); PDF dondurulmus raster (landscape per-prim aci + portre-serbest-dondurulmus duz raster, pdfmake prim doduremez). Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust seridinde Gorsel+Cizgili+Sil+Vazgec+Kaydet butonlari IKON-ONLY (metin kaldirildi, title tooltip): Gorsel=resim, Cizgili=cizgi-ikon, Sil=cop, Vazgec=X, Kaydet=disket; ed-gd-ico kare btn CSS. + [CIZIM YATAY TOGGLE YON+KAYIPSIZ] cizim kagidi dikey<->yatay: Dikey->Yatay 90 CCW/saat-tersi (ust->sol, alt->sag, sag->ust, sol->alt = kullanici mantigi), Yatay->Dikey 90 CW (sol->ust). toggle ccw=!_yatay. Gidis-donus D->Y->D BIREBIR kayipsiz (CCW+CW=kimlik). _dondurObjs90(arr,W,H,ccw). cikti/kaydet etkilenmez. + [CTRL+TIK LINK] rapor editoru Ctrl/Cmd+tik link acar (.ed-link-edit metni + .ed-metin <a> href; x_ctrl_link). + [DUZENLE KALEM SAGA] tum edit-kalem ikonlari saga (mirror); cizme-kalemi sola. + [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
+  XE.VERSION = "8g · 2026-11-14 [CIZIM PAGER] cizim editoru cok-sayfa gezgini: GIZLI sol/sag oklar (fare editore gelince belirir); sol=onceki (ilk sayfada gizli), sag=sonraki, SON sayfada sag=yesil '+' (yeni cizim kagidi ekle+ac). Gezinirken mevcut sayfa parcaya COMMIT edilir (degisiklik kaybolmaz). Kaydet=tum degisiklikleri kaydedip KAPATIR; kaydedilecek degisiklik yoksa Kaydet SOLUK (_ckDirty, itUndo set eder). XE._ckListe (rapordaki tum cizimler sirali), _cizimKagidiAc ckPager+ckGit, _cizimKagidiEkleVeAc. Navigasyon close+reopen (hafif flas). + [METIN TOGGLE DRIFT FIX] yatay-dikey git-gel'de metin KADEMELI kayiyordu: metin merkez-donusunde geri-koyma yaziKutuSrc (padding'li) yk.w/2 kullaniyordu -> her toggle -pX/-pY birikti. FIX: metin METRIGI (yaziMetrikPx, padding'siz) ile merkez+geri-koyma -> gidis-donus BIREBIR (birim test 5 tur drift=0). + [DONDURME YON DUZELTME] yatayda metin/gorsel frame donusu TERS yondeydi: toggle KONUMLARI CCW (ust->sol kullanici mantigi) ama glyph +90 CW donuyordu -> icerik sayfayla TERS. FIX: _frameAci +90 -> -90 (CCW; glyph artik konumlarla ayni yonde). Metin toggle konumu da MERKEZDEN doner (yaziKutuSrc merkez). NOT: Word/PDF cikti frame yonu (eski CW) EDITORLE artik ters -> cikti hizalamasi kullanici dogrulamasiyla ayrica yapilacak. + [DONDURME ROTUSLARI] (1) YATAYDA metin+gorsel editorde de 90 DONER: _frameAci (yatay+yazi/gorsel=90), _aciG=serbest+frame; render/hit-test/resize/tutamac _aciG ile; tutamac SERBEST aci set eder (gosterim-frame). Cikti rot=true ile eslesir (degismez). (2) Dondurme tutamaci DONUSUM IKONLU: beyaz daire + mavi cift dairesel ok. (3) Donerken tutamac yaninda DERECE gostergesi (yuvarlak etiket, _aciG). + [CIZIM SERBEST DONDURME] Canva gibi acili dondurme: sekil/metin/gorsel/kalem SEC -> alt-orta tutamac, surukle dondur (1 derece hassas, Shift=15 snap); o.aci; dondurulmus hit-test+resize YEREL cerceve (karsi tutamac sabit); dondurme tutamaci cizgiyle bagli daire. Toggle acyi da +-90 dondurur (metin/gorsel dahil her sey sayfayla doner; w/h-swap yalniz aci=0 icin -> eski cikti korunur). Cikti: Word DrawingML rot=aci*60000 (frame 90 + serbest aci); PDF dondurulmus raster (landscape per-prim aci + portre-serbest-dondurulmus duz raster, pdfmake prim doduremez). Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust seridinde Gorsel+Cizgili+Sil+Vazgec+Kaydet butonlari IKON-ONLY (metin kaldirildi, title tooltip): Gorsel=resim, Cizgili=cizgi-ikon, Sil=cop, Vazgec=X, Kaydet=disket; ed-gd-ico kare btn CSS. + [CIZIM YATAY TOGGLE YON+KAYIPSIZ] cizim kagidi dikey<->yatay: Dikey->Yatay 90 CCW/saat-tersi (ust->sol, alt->sag, sag->ust, sol->alt = kullanici mantigi), Yatay->Dikey 90 CW (sol->ust). toggle ccw=!_yatay. Gidis-donus D->Y->D BIREBIR kayipsiz (CCW+CW=kimlik). _dondurObjs90(arr,W,H,ccw). cikti/kaydet etkilenmez. + [CTRL+TIK LINK] rapor editoru Ctrl/Cmd+tik link acar (.ed-link-edit metni + .ed-metin <a> href; x_ctrl_link). + [DUZENLE KALEM SAGA] tum edit-kalem ikonlari saga (mirror); cizme-kalemi sola. + [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -10480,6 +10480,16 @@ body:not(.light-theme) #editorModal .ed-gal-ck{background:#17212e;}
 .ed-gd-ov{position:fixed;inset:0;z-index:5000;background:rgba(10,15,22,0.72);display:flex;align-items:center;justify-content:center;padding:0;box-sizing:border-box;}
 /* [TAM EKRAN 2026-11-10q] Kullanıcı: düzenleyici tam ekran olsun -> kutu viewport'u KAPLAR. */
 .ed-gd-box{position:relative;background:#fff;border-radius:0;box-shadow:none;display:flex;flex-direction:column;width:100%;height:100%;max-width:100%;max-height:100%;overflow:hidden;box-sizing:border-box;}
+/* [ÇİZİM PAGER] gizli sol/sağ gezinme okları — fare editöre gelince belirir; son sayfada sağ ok yeşil "+" (yeni sayfa). */
+.ed-gd-ok{position:absolute;top:50%;transform:translateY(-50%);z-index:40;width:42px;height:42px;border-radius:50%;border:none;display:inline-flex;align-items:center;justify-content:center;background:rgba(21,101,192,0.92);color:#fff;cursor:pointer;opacity:0;transition:opacity .18s, background .15s, transform .12s;box-shadow:0 3px 12px rgba(0,0,0,0.35);pointer-events:none;}
+.ed-gd-ok svg{display:block;}
+.ed-gd-ok-sol{left:16px;}
+.ed-gd-ok-sag{right:16px;}
+.ed-gd-ok.yok{display:none;}
+.ed-gd-ok.ekle{background:rgba(38,166,91,0.94);}
+.ed-gd-box:hover .ed-gd-ok:not(.yok){opacity:0.92;pointer-events:auto;}
+.ed-gd-ok:hover{background:rgba(21,101,192,1);transform:translateY(-50%) scale(1.07);}
+.ed-gd-ok.ekle:hover{background:rgba(38,166,91,1);}
 .ed-gd-ust{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #e3e8ee;background:#f7f9fc;}
 .ed-gd-tools{display:inline-flex;gap:3px;}
 .ed-gd-tool{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfd8e3;background:#fff;color:#334;border-radius:8px;cursor:pointer;}
@@ -10587,6 +10597,7 @@ body:not(.light-theme) .ed-gd-kirpuygula{background:#1e9e5a;border-color:#1e9e5a
 .ed-gd-btn{height:34px;padding:0 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;}
 .ed-gd-vaz{background:#eef1f5;color:#334;}
 .ed-gd-kaydet{background:#1565c0;color:#fff;}
+.ed-gd-kaydet.ed-gd-soluk{opacity:0.42;}   /* [ÇİZİM PAGER] kaydedilecek değişiklik yoksa Kaydet soluk */
 .ed-gd-btn.ed-gd-ico{width:34px;padding:0;display:inline-flex;align-items:center;justify-content:center;}
 .ed-gd-btn.ed-gd-ico svg{display:block;}
 .ed-gd-tuval-sar{flex:1;min-height:200px;display:flex;background:#2b3440;padding:10px;overflow:auto;box-sizing:border-box;}
@@ -11937,6 +11948,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
   function _gdKur(bi, pp, img0, mime, opts){
     opts=opts||{};
     var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _onKaydet=opts.onKaydet, _gorselKaydet=opts.gorselKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları + görsel-obje önbelleği; _gorselKaydet = çizim-gömülü görseli düzenleme kaydet geri-çağrısı
+    var _ckPager=!!opts.ckPager, _ckGit=opts.ckGit, _ckIdx=(opts.ckIdx||0), _ckLen=(opts.ckLen||1), _ckDirty=false;   // [ÇİZİM PAGER] çok-sayfa gezinme: sol/sağ ok, son sayfada sağ=+ekle; _ckDirty: kaydedilecek değişiklik var mı (Kaydet solukluğu)
     var _yatay=!!opts.yatay;   // [ÇİZİM YATAY] A4 landscape modu (tuval geniş); çıktıda 90° döndürülüp dikey sayfaya oturur
     function _dondurObjs90(arr, W, H, ccw){   // [YATAY] içerik KONUMLARINI 90° döndür. ccw=false: saat yönü/CW (x,y)->(H-y,x) [KULLANIM: Yatay->Dikey, sol->üst]. ccw=true: saat-tersi/CCW (x,y)->(y,W-x) [KULLANIM: Dikey->Yatay, üst->sol = kullanıcı mantığı]. İki yön birbirinin TAM tersi -> gidiş-dönüş (D->Y->D) KAYIPSIZ (şekil çizdiği yere birebir döner). Dikdörtgen/elips: en<->boy swap. Görsel/metin: YALNIZ konum (editörde dik kalır; çıktıda döner). Kalem: tüm noktalar.
       function P(x,y){ return ccw ? {x:y, y:W-x} : {x:H-y, y:x}; }
@@ -12053,6 +12065,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       +'    </div>'
       +'  </div>'
       +'  <div class="ed-gd-tuval-sar"><canvas class="ed-gd-tuval"></canvas></div>'
+      +(_ckPager?('<button type="button" class="ed-gd-ok ed-gd-ok-sol'+(_ckIdx>0?'':' yok')+'" title="Önceki çizim kağıdı"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>'
+        +'<button type="button" class="ed-gd-ok ed-gd-ok-sag'+((_ckIdx>=_ckLen-1)?' ekle':'')+'" title="'+((_ckIdx>=_ckLen-1)?'Yeni çizim kağıdı ekle':'Sonraki çizim kağıdı')+'">'+((_ckIdx>=_ckLen-1)?'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>':'<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>')+'</button>'):'')
       +(_cz?('<div class="ed-gd-zoom">'
         +'<button type="button" class="ed-gd-zbtn ed-gd-zout" title="Uzaklaştır (fare tekeri / pinch)">&minus;</button>'
         +'<span class="ed-gd-zval">100%</span>'
@@ -12290,7 +12304,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
 
     // ---- geri al (editör-içi) ----
     function anlik(){ return { objs:JSON.parse(JSON.stringify(objs)), b:base.src, w:baseW, h:baseH, cizgili:_cizgili, yatay:_yatay }; }
-    function itUndo(){ hist.push(anlik()); if(hist.length>40) hist.shift(); redoHist=[]; _geriBtn(); }   // YENİ değişiklik -> ileri yığını geçersiz
+    function itUndo(){ hist.push(anlik()); if(hist.length>40) hist.shift(); redoHist=[]; _geriBtn(); if(_ckPager && !_ckDirty){ _ckDirty=true; _ckKaydetBtnGuncelle(); } }   // YENİ değişiklik -> ileri yığını geçersiz + [PAGER] dirty işaretle
     function _uygula(s){ objs=JSON.parse(JSON.stringify(s.objs)); if(s.cizgili!==undefined){ _cizgili=!!s.cizgili; var _cb=ov.querySelector('.ed-gd-ckcizgili'); if(_cb) _cb.classList.toggle('aktif',_cizgili); } if(s.yatay!==undefined){ _yatay=!!s.yatay; var _yb=ov.querySelector('.ed-gd-ckyatay'); if(_yb) _yb.classList.toggle('aktif',_yatay); } if(base.src!==s.b){ var ni=new Image(); ni.onload=function(){ base=ni; baseW=s.w; baseH=s.h; olcekle(); ciz(); }; ni.src=s.b; } else { baseW=s.w; baseH=s.h; } secili=[]; _selBtn(); ciz(); }
     function geriAl(){ if(!hist.length) return; redoHist.push(anlik()); _uygula(hist.pop()); _geriBtn(); }
     function ileriAl(){ if(!redoHist.length) return; hist.push(anlik()); _uygula(redoHist.pop()); _geriBtn(); }
@@ -12591,6 +12605,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     ov.querySelector('.ed-gd-kirpuygula').addEventListener('click', kirpUygula);
     ov.querySelector('.ed-gd-vaz').addEventListener('click', kapat);
     ov.querySelector('.ed-gd-kaydet').addEventListener('click', kaydet);
+    if(_ckPager){   // [ÇİZİM PAGER] sol/sağ ok -> gezin (sağ son sayfada + = yeni sayfa); başlangıçta Kaydet soluk
+      var _okSol=ov.querySelector('.ed-gd-ok-sol'); if(_okSol) _okSol.addEventListener('click', function(){ if(_ckIdx>0) _ckGecis('prev'); });
+      var _okSag=ov.querySelector('.ed-gd-ok-sag'); if(_okSag) _okSag.addEventListener('click', function(){ _ckGecis(this.classList.contains('ekle')?'add':'next'); });
+      _ckKaydetBtnGuncelle();
+    }
     // [ÇİZİM KAĞIDI] Görsel ekle + Çizgili toggle
     if(_cz){
       var _ckgBtn=ov.querySelector('.ed-gd-ckgorsel'); if(_ckgBtn) _ckgBtn.addEventListener('click', _ckGorselEkle);
@@ -12674,27 +12693,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     window.addEventListener('resize', ciz);
 
     function kapat(){ try{ window.removeEventListener('resize', ciz); }catch(_){} try{ ov.remove(); }catch(_){} }
-    function kaydet(){
+    function _kaydetParca(){   // [ÇİZİM PAGER] render + parçaya yaz (KAPATMAZ). kaydet() + _ckCommit() bunu kullanır.
       if(yaziInp.style.display!=='none') _yaziBitir();
       var c=document.createElement('canvas'); c.width=baseW; c.height=baseH; var x=c.getContext('2d');
-      if(!_cz) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF -> ekran/galeri temadan boyanır, Word/PDF'de beyaz sayfa görünür. Görselde taban çizilir.
-      // [ÇİZİM KAĞIDI] çizgili defter + margin kılavuzu ÇIKTIYA GÖMÜLMEZ (yalnız ekran kılavuzu) -> burada çizme.
-      // objeleri NATIVE çözünürlükte çiz (scale=1)
-      var _os=scale, _oc=ctx; scale=1; ctx=x;   // [#12] b64 = EKRAN/tema-uyumlu renk (koyu temada koyu->açık) -> kart/galeri/havuz editörle uyumlu.
-      for(var i=0;i<objs.length;i++) cizObj(objs[i]);   // ÇIKTI (Word/PDF) 9A ile NATIVE vektör + GERÇEK renk kullanır (xCkExportPrim o.renk); b64 yalnız görünüm.
+      if(!_cz) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF; görselde taban çizilir.
+      var _os=scale, _oc=ctx; scale=1; ctx=x;   // objeleri NATIVE çözünürlükte çiz (scale=1); b64 ekran/tema-uyumlu renk.
+      for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       scale=_os; ctx=_oc;
       var _expC=c;
-      if(_cz){   // [ÇİZİM KAĞIDI] Word içerik alanı = margin kılavuzu içi -> KIRP (ŞEFFAF kalır). Çıktıda içerik-alanı TAM sayfayı
-        var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // kaplar (kılavuz-içi = Word sayfası, WYSIWYG). Vektör full-canvas saklı -> yeniden düzenleme etkilenmez.
-        if(cw>10 && ch>10){ var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d'); x2.drawImage(c, m.mx, m.my, cw, ch, 0, 0, cw, ch); _expC=c2; }   // beyaz dolgu YOK -> şeffaf
+      if(_cz){ var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // içerik-alanı kırp (şeffaf kalır)
+        if(cw>10 && ch>10){ var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d'); x2.drawImage(c, m.mx, m.my, cw, ch, 0, 0, cw, ch); _expC=c2; }
       }
       var du=_expC.toDataURL('image/png'), ci=du.indexOf(',');
-      if(ci<0){ kapat(); return; }
-      if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili, _yatay, baseW, baseH); }catch(_){} }   // PNG (kırpılmış, çizgisiz) + vektör (full-canvas) + yönelim(yatay)+boyut sakla
-      else if(_gorselKaydet){ try{ _gorselKaydet(du.slice(ci+1), 'image/png', baseW, baseH); }catch(_){} }   // [ÇİZİM GÖRSEL DÜZENLE] çizim-gömülü görsele yaz (b64 + yeni boyut)
+      if(ci<0) return false;
+      if(_cz && _onKaydet){ try{ _onKaydet(du.slice(ci+1), JSON.parse(JSON.stringify(objs)), _cizgili, _yatay, baseW, baseH); }catch(_){} }
+      else if(_gorselKaydet){ try{ _gorselKaydet(du.slice(ci+1), 'image/png', baseW, baseH); }catch(_){} }
       else { try{ XE._gorselParcaYaz(bi, pp, du.slice(ci+1), 'image/png'); }catch(_){} }
-      kapat();
+      return true;
     }
+    function kaydet(){ _kaydetParca(); kapat(); }   // Kaydet = tüm değişiklikleri (gezinenler zaten commit'li) + mevcut sayfayı kaydet + KAPAT (kullanıcı kararı)
+    function _ckCommit(){ if(_ckDirty){ _kaydetParca(); _ckDirty=false; _ckKaydetBtnGuncelle(); } }   // [ÇİZİM PAGER] gezinmeden önce mevcut sayfayı parçaya yaz
+    function _ckKaydetBtnGuncelle(){ if(!_ckPager) return; var b=ov.querySelector('.ed-gd-kaydet'); if(b) b.classList.toggle('ed-gd-soluk', !_ckDirty); }   // [ÇİZİM PAGER] kaydedilecek değişiklik yoksa Kaydet soluk
+    function _ckGecis(tur){ _ckCommit(); kapat(); try{ if(_ckGit) _ckGit(tur); }catch(_){} }   // commit + kapat + hedefi aç (_ckGit = _cizimKagidiAc'ten gelen pager gezinmesi)
 
     olcekle(); _toolYansit(); ciz();
   }
@@ -12918,15 +12938,35 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // ÇİZİM EDİTÖRÜNÜ OTOMATİK AÇMA (kullanıcı kararı): çizim kartı editörde belirsin, kullanıcı "Düzenle" ile açar.
     // Sadece yeni eklenen çizim kartına kaydır (link ile bul -> eklendiği görünsün).
     setTimeout(function(){ try{ var B2=XE.belge.birimler||[]; for(var j=0;j<B2.length;j++){ if(B2[j].item && B2[j].item.link===link){ var _kart=document.querySelector('#editor-root .ed-card[data-i="'+j+'"]'); if(_kart) _kart.scrollIntoView({block:'center', behavior:'smooth'}); break; } } }catch(_){} }, 80);
+    return link;   // [PAGER] yeni çizim linkini döndür (EkleVeAc kullanır)
+  };
+  XE._cizimKagidiEkleVeAc = async function(afterUid){   // [ÇİZİM PAGER] yeni çizim kağıdı ekle + AÇ (son sayfada "+" ile)
+    var _newLink=null; try{ _newLink=await XE._cizimKagidiEkle(afterUid||''); }catch(_){}
+    if(!_newLink) return;
+    try{ var LL=XE._ckListe(); for(var i=0;i<LL.length;i++){ if(LL[i].link===_newLink){ XE._cizimKagidiAc(LL[i].bi, LL[i].pp); return; } } }catch(_){}
+  };
+  XE._ckListe = function(){   // [ÇİZİM PAGER] rapordaki TÜM çizim kağıtları, sırayla: [{bi,pp,link}]
+    var B=XE.belge.birimler||[], L=[];
+    for(var i=0;i<B.length;i++){ var it=B[i].item; if(it && it.parcalar){ for(var j=0;j<it.parcalar.length;j++){ if(it.parcalar[j] && it.parcalar[j].cizimKagidi){ L.push({bi:i, pp:j, link:it.link||null}); break; } } } }
+    return L;
   };
   XE._cizimKagidiAc = function(bi, pp){
     if(!_gorselDuzenleAcikMi()) return;
     var b=(XE.belge.birimler||[])[bi]; if(!b||!b.item) return;
     var parca=(b.item.parcalar||[])[pp]; if(!parca || !parca.cizimKagidi) return;
     var cbW=parca.cbW||1240, cbH=parca.cbH||1754;
+    var _link=b.item.link||null, _uid=b.item.uid||((_link&&_link.indexOf('xmanual://')===0)?_link.slice(10):null);   // [PAGER] stabil kimlik (uid yoksa linkten)
+    var _L=XE._ckListe(), _idx=0; for(var _k=0;_k<_L.length;_k++){ if(_link?_L[_k].link===_link:(_L[_k].bi===bi&&_L[_k].pp===pp)){ _idx=_k; break; } }
+    function _ckGit(tur){   // [PAGER] commit+kapat SONRASI çağrılır: hedef çizimi aç / yeni ekle
+      var LL=XE._ckListe(), ci=0; for(var _m=0;_m<LL.length;_m++){ if(_link?LL[_m].link===_link:(LL[_m].bi===bi&&LL[_m].pp===pp)){ ci=_m; break; } }
+      if(tur==='prev' && ci>0){ var t=LL[ci-1]; XE._cizimKagidiAc(t.bi, t.pp); }
+      else if(tur==='next' && ci<LL.length-1){ var t2=LL[ci+1]; XE._cizimKagidiAc(t2.bi, t2.pp); }
+      else if(tur==='add'){ try{ XE._cizimKagidiEkleVeAc(_uid); }catch(_){} }
+    }
     var im=new Image();
     im.onload=function(){ try{ _gdKur(bi, pp, im, 'image/png', {
       cizim:true, cizgili:!!parca.cizgili, yatay:!!parca.yatay, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH,
+      ckPager:true, ckIdx:_idx, ckLen:_L.length, ckGit:_ckGit,
       onKaydet:function(b64, objs2, cizgili2, yatay2, cbW2, cbH2){ try{ XE._pushUndo(); }catch(_){}
         // Rebuild olmuş olabilir -> çizim parçasını link ile YENİDEN BUL (bayat referans kullanma).
         var _link=(b&&b.item&&b.item.link)||null, Bn=XE.belge.birimler||[], tgt=null, _bi2=bi;
