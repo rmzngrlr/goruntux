@@ -3082,7 +3082,7 @@ HTML_TEMPLATE = """
         // [AYARLAR] Tema + Tam ekran artık TEK "Ayarlar" (gear) butonu altında açılır menüde (ana sayfa + editör).
         // İkonlar SINIF ile güncellenir (.js-tema-btn / .js-fs-btn) -> her iki konumdaki butonlar senkron.
         // [SÜRÜM DAMGASI — H1] Canlıda "düzeldi mi?" sorusunu 2 saniyede cevapla: Docker rebuild sonrası bu metin değişmeli.
-        var X_BUILD = '2026-11-14au · [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust serit Gorsel/Cizgili/Sil/Vazgec/Kaydet IKON-ONLY (title tooltip; ed-gd-ico kare btn). + [CIZIM YATAY TOGGLE YON CEVRILDI] Kullanici mantigi: Dikey->Yatay gecisinde icerik 90 saat-TERSINE (CCW) donsun (dikey UST->yatay SOL, ALT->SAG, SAG->UST, SOL->ALT); Yatay->Dikey tersi (CW, SOL->UST). Onceki kayipsiz fix CW yondeydi (ust->sag) -> YON ters cevrildi: toggle ccw=!_yatay (dikeyken CCW, yatayken CW). Gidis-donus D->Y->D hala BIREBIR kayipsiz (CCW+CW=kimlik). cikti/kaydetme etkilenmez. + [HAVUZ ALT CUBUK STICKY] Kullanici: menu havuz kartindan AYRILMASIN AMA kaydirirken HEP GORUNUR kalsin. Fixed=koptu, static=kaydirinca kayboldu -> SON cozum masaustu gibi STICKY. Mobilde (x-mobile.x-dik) .pool-actions position:sticky + bottom:0 (kaydirirken viewport dibine pinlenir, hep gorunur) + negatif margin -16 (kart kenarina dayanir, tam genislik) + radius 12 (mobil kart) + padding-bottom 14+safe-bottom (butonlar home-indicator bolgesini asar). Base opak 2-katman bg + border-top(ayirac) korunur -> altindan kayan ogeleri orter, kartin parcasi gorunur; sona inince kart-dibine FLUSH oturur (connected). Butonlar IKON-ONLY (title tooltip), flex:1 esit dagilir. fixed-ozel backdrop-filter:none + 72px padding KALDIRILDI. Dogrulama (3017 mobil 375, 15 oge): mid-scroll bar bottom=812 pinli + kart genisligine flush; sona inince bar-bottom=kart-bottom. + [AYAR MENU IKONLARI=DISLI] Acilan ayar menusundeki ikonlar (tema/tam-ekran/ana-ekrana) da disli ile esit (30x30 radius8 ikon17; .header-controls .ayar-menu .theme-toggle-btn). + [AYARLAR DISLI=LOGO] Dislieme HER YERDE (PWA disi dahil) mavi logo (30x30) ile ayni boyut+hiza: .js-ayar-gear 30x30 radius8, masaustu margin-top:0 / dik-mobil margin-top:4 (header-controls konum offseti farkli). + [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
+        var X_BUILD = '2026-11-14av · [CIZIM SERBEST DONDURME] Canva gibi acili dondurme tutamaci: cizim kagidinda sekil/metin/gorsel/kalem secince alt-ortada tutamac -> surukleyerek dondur (1 derece hassas, Shift=15 snap, o.aci). Dondurulmus nesnede resize/hit-test YEREL cerceve (karsi tutamac sabit). Toggle acyi +-90 dondurur -> metin/gorsel dahil her sey sayfayla doner (w/h-swap yalniz aci=0 -> eski cikti aynen korunur). Cikti: Word rot=aci*60000; PDF rotated raster. Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust serit Gorsel/Cizgili/Sil/Vazgec/Kaydet IKON-ONLY (title tooltip; ed-gd-ico kare btn). + [CIZIM YATAY TOGGLE YON CEVRILDI] Kullanici mantigi: Dikey->Yatay gecisinde icerik 90 saat-TERSINE (CCW) donsun (dikey UST->yatay SOL, ALT->SAG, SAG->UST, SOL->ALT); Yatay->Dikey tersi (CW, SOL->UST). Onceki kayipsiz fix CW yondeydi (ust->sag) -> YON ters cevrildi: toggle ccw=!_yatay (dikeyken CCW, yatayken CW). Gidis-donus D->Y->D hala BIREBIR kayipsiz (CCW+CW=kimlik). cikti/kaydetme etkilenmez. + [HAVUZ ALT CUBUK STICKY] Kullanici: menu havuz kartindan AYRILMASIN AMA kaydirirken HEP GORUNUR kalsin. Fixed=koptu, static=kaydirinca kayboldu -> SON cozum masaustu gibi STICKY. Mobilde (x-mobile.x-dik) .pool-actions position:sticky + bottom:0 (kaydirirken viewport dibine pinlenir, hep gorunur) + negatif margin -16 (kart kenarina dayanir, tam genislik) + radius 12 (mobil kart) + padding-bottom 14+safe-bottom (butonlar home-indicator bolgesini asar). Base opak 2-katman bg + border-top(ayirac) korunur -> altindan kayan ogeleri orter, kartin parcasi gorunur; sona inince kart-dibine FLUSH oturur (connected). Butonlar IKON-ONLY (title tooltip), flex:1 esit dagilir. fixed-ozel backdrop-filter:none + 72px padding KALDIRILDI. Dogrulama (3017 mobil 375, 15 oge): mid-scroll bar bottom=812 pinli + kart genisligine flush; sona inince bar-bottom=kart-bottom. + [AYAR MENU IKONLARI=DISLI] Acilan ayar menusundeki ikonlar (tema/tam-ekran/ana-ekrana) da disli ile esit (30x30 radius8 ikon17; .header-controls .ayar-menu .theme-toggle-btn). + [AYARLAR DISLI=LOGO] Dislieme HER YERDE (PWA disi dahil) mavi logo (30x30) ile ayni boyut+hiza: .js-ayar-gear 30x30 radius8, masaustu margin-top:0 / dik-mobil margin-top:4 (header-controls konum offseti farkli). + [MOBIL PWA TEK TEMA] Ana ekrana eklenmis PWA mobilde acilinca disli+menu yerine DOGRUDAN tema ikonu (Ana-ekrana-ekle gereksiz; x-pwa-tektema sinifi = x-mobile+x-pwa+bayrak x_pwa_tema; panel-ozel, editor/masaustu/tarayici degismez). Tema ikonu mavi logo ile BIREBIR: 30x30 + ayni hiza (margin-top 4px). + [GORSEL SERIT BAGLAMSAL] Gorsel duzenleyicide de kontur-stili/dolgu/font kontrolleri secime gore gizlenir-gorunur (cizim gibi; _metgrpUygula gate kalkti). + [CTRL+TIK LINK] Rapor editorunde Ctrl/Cmd+tik -> link yeni sekmede acilir (link alani + metin ici <a>; bayrak x_ctrl_link). + [DUZENLE KALEM SAGA] tum Duzenle (edit) kalem ikonlari SAGA bakar (yatay ayna; cizme-kalemi sola kalir, fark olsun). + [GORSEL EDITOR UST SERIT] Gorsel duzenleyici ust seridi cizim ile birebir (font dropdown + boyut dropdown her iki modda; kirp SADECE gorsel=ek). + Cizim-gomulu gorsele TEK-TIK -> ust seritte "Duzenle" (kalem) butonu + CIFT-TIK de acar (_ckGorselDuzenle; kirp/yazi/ok/dikdortgen/kalem ic-ice, Kaydet b64 geri yazar). + Cizim buyutulmus onizleme (lightbox) SAYFA OPAK (seffaf b64 -> _ckZeminRenk tema A4 zemini, arka blur gorunmesin). + dolgu-UI/kontur-ikon. Bayrak x_gorsel_duzenle.';
         window.X_BUILD = X_BUILD;
         try { console.info('[GörüntüX] build:', X_BUILD); } catch (e) {}   // [SÜRÜM] yalnız konsol logu (görünür Ayarlar damgası kaldırıldı)
         function xTemaUygula() {
@@ -4515,7 +4515,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
         // [YATAY ÇİZİM PDF — Faz3] pdfmake METNİ döndüremediği için yatay çizimi, prim'leri (GERÇEK renk) bir tuvale
         // çizip 90° çevirerek döndürülmüş tek GÖRSEL üretir (A4 yatay 90° = A4 dikey, sıfır bozulma). er = YATAY
         // (döndürülmemiş) xCkExportPrim sonucu; tuval çizilip sonra 90° saat yönü çevrilir -> portre b64.
-        window.xCkRenderRot90 = function (er, pxW) {
+        window.xCkRenderRot90 = function (er, pxW, noTwist) {   // noTwist=true -> 90° çevirme YOK (dikey; serbest döndürülmüş prim'ler için raster)
             return new Promise(function (resolve) {
                 try {
                     if (!er || !er.prims) { resolve(null); return; }
@@ -4524,30 +4524,33 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     var W = Math.max(1, Math.round(pxW)), H = Math.max(1, Math.round(pxW / asp));
                     var c = document.createElement('canvas'); c.width = W; c.height = H; var x = c.getContext('2d');
                     x.lineJoin = 'round'; x.lineCap = 'round';
+                    function _aw(p, cxw, cyh, fn) { var _pa = p.aci || 0; if (_pa) { x.save(); x.translate(cxw, cyh); x.rotate(_pa * Math.PI / 180); x.translate(-cxw, -cyh); fn(); x.restore(); } else fn(); }   // [DÖNDÜR] prim'i merkez etrafında aci° döndürerek çiz
                     er.prims.forEach(function (p) {
-                        if (p.t === 'rect') { var _nl = ((p.stil || 'duz') === 'yok'); if (p.dolgu) { x.save(); x.globalAlpha = (p.dolguA == null ? 1 : p.dolguA); x.fillStyle = '#' + p.dolgu; x.fillRect(p.x * W, p.y * H, p.w * W, p.h * H); x.restore(); } if (!_nl) { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.strokeRect(p.x * W, p.y * H, p.w * W, p.h * H); x.setLineDash([]); } }
-                        else if (p.t === 'ellipse') { var _nl2 = ((p.stil || 'duz') === 'yok'); var _ecx = (p.x + p.w / 2) * W, _ecy = (p.y + p.h / 2) * H, _erx = Math.max(0.5, p.w / 2 * W), _ery = Math.max(0.5, p.h / 2 * H); if (p.dolgu) { x.save(); x.globalAlpha = (p.dolguA == null ? 1 : p.dolguA); x.fillStyle = '#' + p.dolgu; x.beginPath(); x.ellipse(_ecx, _ecy, _erx, _ery, 0, 0, 6.2832); x.fill(); x.restore(); } if (!_nl2) { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.beginPath(); x.ellipse(_ecx, _ecy, _erx, _ery, 0, 0, 6.2832); x.stroke(); x.setLineDash([]); } }
+                        if (p.t === 'rect') { _aw(p, (p.x + p.w / 2) * W, (p.y + p.h / 2) * H, function () { var _nl = ((p.stil || 'duz') === 'yok'); if (p.dolgu) { x.save(); x.globalAlpha = (p.dolguA == null ? 1 : p.dolguA); x.fillStyle = '#' + p.dolgu; x.fillRect(p.x * W, p.y * H, p.w * W, p.h * H); x.restore(); } if (!_nl) { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.strokeRect(p.x * W, p.y * H, p.w * W, p.h * H); x.setLineDash([]); } }); }
+                        else if (p.t === 'ellipse') { _aw(p, (p.x + p.w / 2) * W, (p.y + p.h / 2) * H, function () { var _nl2 = ((p.stil || 'duz') === 'yok'); var _ecx = (p.x + p.w / 2) * W, _ecy = (p.y + p.h / 2) * H, _erx = Math.max(0.5, p.w / 2 * W), _ery = Math.max(0.5, p.h / 2 * H); if (p.dolgu) { x.save(); x.globalAlpha = (p.dolguA == null ? 1 : p.dolguA); x.fillStyle = '#' + p.dolgu; x.beginPath(); x.ellipse(_ecx, _ecy, _erx, _ery, 0, 0, 6.2832); x.fill(); x.restore(); } if (!_nl2) { x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.beginPath(); x.ellipse(_ecx, _ecy, _erx, _ery, 0, 0, 6.2832); x.stroke(); x.setLineDash([]); } }); }
                         else if (p.t === 'line') { if ((p.stil || 'duz') === 'yok') return; var x1 = p.x1 * W, y1 = p.y1 * H, x2 = p.x2 * W, y2 = p.y2 * H; x.strokeStyle = '#' + p.renk; x.lineWidth = Math.max(1, p.kal * W); x.setLineDash(window._ckStilDash(p.stil, x.lineWidth)); x.beginPath(); x.moveTo(x1, y1); x.lineTo(x2, y2); x.stroke(); x.setLineDash([]); if (p.ok) { var ang = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(6, p.kal * W * 3.2); x.beginPath(); x.moveTo(x2, y2); x.lineTo(x2 - hl * Math.cos(ang - 0.42), y2 - hl * Math.sin(ang - 0.42)); x.lineTo(x2 - hl * Math.cos(ang + 0.42), y2 - hl * Math.sin(ang + 0.42)); x.closePath(); x.fillStyle = '#' + p.renk; x.fill(); } }
                     });
                     er.prims.forEach(function (p) {
                         if (p.t === 'text' && p.metin != null) {
                             var fpx = Math.max(4, p.boyut * W); x.font = (p.kalin ? 'bold ' : '') + fpx + 'px ' + (p.font || 'Arial'); x.textBaseline = 'top';
-                            var tx = p.x * W, ty = p.y * H;
-                            if (p.arka >= 1) { var tw = x.measureText(p.metin).width; x.save(); x.globalAlpha = (p.arka === 2 ? 0.82 : 0.38); x.fillStyle = '#000000'; x.fillRect(tx - 2, ty - 2, tw + 4, fpx * 1.25 + 4); x.restore(); }
-                            x.fillStyle = '#' + p.renk; x.fillText(p.metin, tx, ty);
+                            var tx = p.x * W, ty = p.y * H, _tw0 = x.measureText(p.metin).width;
+                            _aw(p, tx + _tw0 / 2, ty + fpx * 0.6, function () {
+                                if (p.arka >= 1) { x.save(); x.globalAlpha = (p.arka === 2 ? 0.82 : 0.38); x.fillStyle = '#000000'; x.fillRect(tx - 2, ty - 2, _tw0 + 4, fpx * 1.25 + 4); x.restore(); }
+                                x.fillStyle = '#' + p.renk; x.fillText(p.metin, tx, ty);
+                            });
                         }
                     });
                     var jobs = [];
                     if (er.penImg && er.penBox) jobs.push({ b64: er.penImg, mime: 'image/png', box: er.penBox });
-                    er.prims.forEach(function (p) { if (p.t === 'image' && p.b64) jobs.push({ b64: p.b64, mime: p.mime, box: { x: p.x, y: p.y, w: p.w, h: p.h } }); });
+                    er.prims.forEach(function (p) { if (p.t === 'image' && p.b64) jobs.push({ b64: p.b64, mime: p.mime, box: { x: p.x, y: p.y, w: p.w, h: p.h }, aci: (p.aci || 0) }); });
                     function finish() {
-                        var r = document.createElement('canvas'); r.width = H; r.height = W; var rx = r.getContext('2d');
-                        rx.translate(H, 0); rx.rotate(Math.PI / 2); rx.drawImage(c, 0, 0);
-                        var du = r.toDataURL('image/png'); resolve(du.slice(du.indexOf(',') + 1));
+                        var src = c;
+                        if (!noTwist) { var r = document.createElement('canvas'); r.width = H; r.height = W; var rx = r.getContext('2d'); rx.translate(H, 0); rx.rotate(Math.PI / 2); rx.drawImage(c, 0, 0); src = r; }
+                        var du = src.toDataURL('image/png'); resolve(du.slice(du.indexOf(',') + 1));
                     }
                     if (!jobs.length) { finish(); return; }
                     var done = 0;
-                    jobs.forEach(function (j) { var im = new Image(); im.onload = function () { try { x.drawImage(im, j.box.x * W, j.box.y * H, j.box.w * W, j.box.h * H); } catch (_e) { } if (++done === jobs.length) finish(); }; im.onerror = function () { if (++done === jobs.length) finish(); }; im.src = 'data:' + (j.mime || 'image/png') + ';base64,' + j.b64; });
+                    jobs.forEach(function (j) { var im = new Image(); im.onload = function () { try { var _ja = j.aci || 0, _jcx = (j.box.x + j.box.w / 2) * W, _jcy = (j.box.y + j.box.h / 2) * H; if (_ja) { x.save(); x.translate(_jcx, _jcy); x.rotate(_ja * Math.PI / 180); x.translate(-_jcx, -_jcy); } x.drawImage(im, j.box.x * W, j.box.y * H, j.box.w * W, j.box.h * H); if (_ja) x.restore(); } catch (_e) { } if (++done === jobs.length) finish(); }; im.onerror = function () { if (++done === jobs.length) finish(); }; im.src = 'data:' + (j.mime || 'image/png') + ';base64,' + j.b64; });
                 } catch (e) { resolve(null); }
             });
         };
@@ -4615,7 +4618,8 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 }
             } else { for (var _gs = 0; _gs < _gu.length; _gs++) { _gu[_gs].w = CW; } }
             // [YATAY ÇİZİM PDF — Faz3] PASS3'ten ÖNCE: yatay çizimlerin 90° döndürülmüş rasterini (gerçek renk) üret (async).
-            for (var _yp = 0; _yp < items.length; _yp++) { var _yu = items[_yp]; if (_yu.cizim && _yu.yatay && _yu.ckEr && _yu.ckEr.prims && window.xCkRenderRot90) { try { _yu.rotImg = await window.xCkRenderRot90(_yu.ckEr, 1800); } catch (_er) { _yu.rotImg = null; } } }
+            for (var _yp = 0; _yp < items.length; _yp++) { var _yu = items[_yp]; if (_yu.cizim && _yu.yatay && _yu.ckEr && _yu.ckEr.prims && window.xCkRenderRot90) { try { _yu.rotImg = await window.xCkRenderRot90(_yu.ckEr, 1800); } catch (_er) { _yu.rotImg = null; } }
+                else if (_yu.cizim && !_yu.yatay && _yu.ckEr && _yu.ckEr.prims && window.xCkRenderRot90 && _yu.ckEr.prims.some(function (p) { return p.aci; })) { try { _yu.flatImg = await window.xCkRenderRot90(_yu.ckEr, 1600, true); } catch (_e2) { _yu.flatImg = null; } } }   // [DÖNDÜR PDF] serbest döndürülmüş dikey çizim -> düz raster (pdfmake prim döndüremez)
             // PASS 3: içeriği kur (görsel placeholder'ını boyutlanmış imgBlok ile doldur)
             var content = [];
             for (var _i2 = 0; _i2 < items.length; _i2++) {
@@ -4625,6 +4629,12 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     var _ckWy = it.w || (CW - 36), _ckHy = _ckWy * (it.rh || 1.37);
                     if (content.length > 0) content.push({ text: ' ', pageBreak: 'before', fontSize: 1, margin: [0, 0, 0, 0] });
                     content.push({ image: 'data:image/png;base64,' + it.rotImg, width: _ckWy, height: _ckHy, alignment: 'center' });
+                    continue;
+                }
+                if (it.cizim && it.flatImg) {   // [DÖNDÜR PDF] serbest döndürülmüş dikey çizim -> düz tam-sayfa raster (pdfmake prim döndüremez)
+                    var _fw = it.w || (CW - 36), _fh = _fw / (it.ckEr.aspect || 0.7);
+                    if (content.length > 0) content.push({ text: ' ', pageBreak: 'before', fontSize: 1, margin: [0, 0, 0, 0] });
+                    content.push({ image: 'data:image/png;base64,' + it.flatImg, width: _fw, height: _fh, alignment: 'center' });
                     continue;
                 }
                 if (it.cizim && it.ckEr && it.ckEr.prims && it.ckEr.prims.length) {   // [9A PDF] cizim -> NATIVE (canvas sekiller + absolutePosition metin/gorsel)
@@ -8458,8 +8468,9 @@ LOCAL_DOCX_JS = r'''
         var inner='', nm='', aX=0, aY=0, aW=0, aH=0, uri=WPS;
         if(p.t==='rect' || p.t==='ellipse'){
           var W=Math.max(1,EX(p.w)), H=Math.max(1,EY(p.h));
+          var _rotS=p.aci?(' rot="'+Math.round((((p.aci%360)+360)%360)*60000)+'"'):'';   // [DÖNDÜR] serbest açı -> DrawingML rot (merkez etrafında)
           inner='<wps:wsp><wps:cNvPr id="'+id+'" name="s'+id+'"/><wps:cNvSpPr/><wps:spPr>'
-            +'<a:xfrm><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm>'
+            +'<a:xfrm'+_rotS+'><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm>'
             +'<a:prstGeom prst="'+(p.t==='ellipse'?'ellipse':'rect')+'"><a:avLst/></a:prstGeom>'+_ckWordDolgu(p)
             +_ckWordLn(p)+'</wps:spPr><wps:bodyPr/></wps:wsp>';
           nm='s'; aX=EX(p.x); aY=EY(p.y); aW=W; aH=H; uri=WPS;
@@ -8478,12 +8489,12 @@ LOCAL_DOCX_JS = r'''
             W=Math.max(1,Math.round(p.w*GH)); H=Math.max(1,Math.round(p.h*GW));
             aX=Math.round((1-(p.y+p.h/2))*GW - W/2); aY=Math.round((p.x+p.w/2)*GH - H/2);
             szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2/(er.aspect||0.7)));   // yatay: font = *groupWin / portre-oran
-            _rotA=' rot="5400000"';
           } else {
             W=Math.max(1,EX(p.w)); H=Math.max(1,EY(p.h));
             szHalf=Math.max(2, Math.round(p.boyut*groupWin*72*2));
             aX=EX(p.x); aY=EY(p.y);
           }
+          var _tta=((((p.rot?90:0)+(p.aci||0))%360)+360)%360; _rotA=_tta?(' rot="'+Math.round(_tta*60000)+'"'):'';   // [DÖNDÜR] frame 90° (yatay) + serbest aci
           var arkaFill='<a:noFill/>';
           if(p.arka===1) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:solidFill>';
           else if(p.arka===2) arkaFill='<a:solidFill><a:srgbClr val="000000"><a:alpha val="82000"/></a:srgbClr></a:solidFill>';
@@ -8498,8 +8509,9 @@ LOCAL_DOCX_JS = r'''
           var rid=addImageRaw(p.b64, p.mime);
           if(rid){
             var W, H, _rotAi='';
-            if(p.rot){ W=Math.max(1,Math.round(p.w*GH)); H=Math.max(1,Math.round(p.h*GW)); aX=Math.round((1-(p.y+p.h/2))*GW - W/2); aY=Math.round((p.x+p.w/2)*GH - H/2); _rotAi=' rot="5400000"'; }   // [YATAY] görsel 90° döner, merkez konum
+            if(p.rot){ W=Math.max(1,Math.round(p.w*GH)); H=Math.max(1,Math.round(p.h*GW)); aX=Math.round((1-(p.y+p.h/2))*GW - W/2); aY=Math.round((p.x+p.w/2)*GH - H/2); }   // [YATAY] görsel 90° döner, merkez konum
             else { W=Math.max(1,EX(p.w)); H=Math.max(1,EY(p.h)); aX=EX(p.x); aY=EY(p.y); }
+            var _tai=((((p.rot?90:0)+(p.aci||0))%360)+360)%360; _rotAi=_tai?(' rot="'+Math.round(_tai*60000)+'"'):'';   // [DÖNDÜR] frame 90° (yatay) + serbest aci
             inner='<pic:pic><pic:nvPicPr><pic:cNvPr id="'+id+'" name="g'+id+'"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="'+rid+'"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm'+_rotAi+'><a:off x="0" y="0"/><a:ext cx="'+W+'" cy="'+H+'"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>';
             nm='g'; aW=W; aH=H; uri=PIC;
           } else return;
@@ -9751,7 +9763,7 @@ X_EDITOR_JS = r'''
 (function () {
   "use strict";
   var XE = (window.XEditor = window.XEditor || {});
-  XE.VERSION = "8b · 2026-11-14 [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust seridinde Gorsel+Cizgili+Sil+Vazgec+Kaydet butonlari IKON-ONLY (metin kaldirildi, title tooltip): Gorsel=resim, Cizgili=cizgi-ikon, Sil=cop, Vazgec=X, Kaydet=disket; ed-gd-ico kare btn CSS. + [CIZIM YATAY TOGGLE YON+KAYIPSIZ] cizim kagidi dikey<->yatay: Dikey->Yatay 90 CCW/saat-tersi (ust->sol, alt->sag, sag->ust, sol->alt = kullanici mantigi), Yatay->Dikey 90 CW (sol->ust). toggle ccw=!_yatay. Gidis-donus D->Y->D BIREBIR kayipsiz (CCW+CW=kimlik). _dondurObjs90(arr,W,H,ccw). cikti/kaydet etkilenmez. + [CTRL+TIK LINK] rapor editoru Ctrl/Cmd+tik link acar (.ed-link-edit metni + .ed-metin <a> href; x_ctrl_link). + [DUZENLE KALEM SAGA] tum edit-kalem ikonlari saga (mirror); cizme-kalemi sola. + [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
+  XE.VERSION = "8c · 2026-11-14 [CIZIM SERBEST DONDURME] Canva gibi acili dondurme: sekil/metin/gorsel/kalem SEC -> alt-orta tutamac, surukle dondur (1 derece hassas, Shift=15 snap); o.aci; dondurulmus hit-test+resize YEREL cerceve (karsi tutamac sabit); dondurme tutamaci cizgiyle bagli daire. Toggle acyi da +-90 dondurur (metin/gorsel dahil her sey sayfayla doner; w/h-swap yalniz aci=0 icin -> eski cikti korunur). Cikti: Word DrawingML rot=aci*60000 (frame 90 + serbest aci); PDF dondurulmus raster (landscape per-prim aci + portre-serbest-dondurulmus duz raster, pdfmake prim doduremez). Bayrak x_ck_dondur. + [EDITOR ARAC CUBUK IKON-ONLY] cizim/gorsel editor ust seridinde Gorsel+Cizgili+Sil+Vazgec+Kaydet butonlari IKON-ONLY (metin kaldirildi, title tooltip): Gorsel=resim, Cizgili=cizgi-ikon, Sil=cop, Vazgec=X, Kaydet=disket; ed-gd-ico kare btn CSS. + [CIZIM YATAY TOGGLE YON+KAYIPSIZ] cizim kagidi dikey<->yatay: Dikey->Yatay 90 CCW/saat-tersi (ust->sol, alt->sag, sag->ust, sol->alt = kullanici mantigi), Yatay->Dikey 90 CW (sol->ust). toggle ccw=!_yatay. Gidis-donus D->Y->D BIREBIR kayipsiz (CCW+CW=kimlik). _dondurObjs90(arr,W,H,ccw). cikti/kaydet etkilenmez. + [CTRL+TIK LINK] rapor editoru Ctrl/Cmd+tik link acar (.ed-link-edit metni + .ed-metin <a> href; x_ctrl_link). + [DUZENLE KALEM SAGA] tum edit-kalem ikonlari saga (mirror); cizme-kalemi sola. + [GORSEL EDITOR UST SERIT] gorsel duzenleyici ust seridi cizim ile birebir: font dropdown + boyut dropdown her iki modda (gorselde _ckPtPx=1, _yzSel=en-yakin); Cizgili/Gorsel-ekle gorselde YOK (cizim-kagidi ozel), kirp SADECE gorsel. + cizim-gomulu gorsele TEK-TIK -> ust serit Duzenle (kalem) butonu (_selBtn gosterir) + cift-tik (_ckGorselDuzenle). Bayrak x_gorsel_duzenle. (7w korunur)";
   XE.belge = { stil: {}, birimler: [] };
   var _drag = null;
   var _savedScroll = null;   // [scroll zıplamasını önle]: re-render'da preview-body scroll'u korunur
@@ -11928,12 +11940,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var _yatay=!!opts.yatay;   // [ÇİZİM YATAY] A4 landscape modu (tuval geniş); çıktıda 90° döndürülüp dikey sayfaya oturur
     function _dondurObjs90(arr, W, H, ccw){   // [YATAY] içerik KONUMLARINI 90° döndür. ccw=false: saat yönü/CW (x,y)->(H-y,x) [KULLANIM: Yatay->Dikey, sol->üst]. ccw=true: saat-tersi/CCW (x,y)->(y,W-x) [KULLANIM: Dikey->Yatay, üst->sol = kullanıcı mantığı]. İki yön birbirinin TAM tersi -> gidiş-dönüş (D->Y->D) KAYIPSIZ (şekil çizdiği yere birebir döner). Dikdörtgen/elips: en<->boy swap. Görsel/metin: YALNIZ konum (editörde dik kalır; çıktıda döner). Kalem: tüm noktalar.
       function P(x,y){ return ccw ? {x:y, y:W-x} : {x:H-y, y:x}; }
+      var dA = ccw ? -90 : 90;   // [DÖNDÜR] serbest açılı (aci!=0) nesnenin açı kayması: D->Y CCW -> -90, Y->D CW -> +90.
       return (arr||[]).map(function(o){ o=JSON.parse(JSON.stringify(o)); var t=o.t;
-        if(t==='dikdortgen'||t==='elips'){ var a=P(o.x,o.y), b=P(o.x+o.w,o.y+o.h); o.x=Math.min(a.x,b.x); o.y=Math.min(a.y,b.y); o.w=Math.abs(a.x-b.x); o.h=Math.abs(a.y-b.y); }
+        if(t==='dikdortgen'||t==='elips'){
+          if(o.aci){ var kk={x:Math.min(o.x,o.x+o.w),y:Math.min(o.y,o.y+o.h),w:Math.abs(o.w),h:Math.abs(o.h)}; var c=P(kk.x+kk.w/2,kk.y+kk.h/2); o.x=c.x-kk.w/2; o.y=c.y-kk.h/2; o.w=kk.w; o.h=kk.h; o.aci=((((o.aci||0)+dA)%360)+360)%360; }   // [DÖNDÜR] döndürülmüş: merkez döner + aci (w/h swap YOK)
+          else { var a=P(o.x,o.y), b=P(o.x+o.w,o.y+o.h); o.x=Math.min(a.x,b.x); o.y=Math.min(a.y,b.y); o.w=Math.abs(a.x-b.x); o.h=Math.abs(a.y-b.y); }   // eksen-hizalı: w/h swap (eski; aci=0 çıktısı AYNEN korunur)
+        }
         else if(t==='ok'){ var p1=P(o.x1,o.y1), p2=P(o.x2,o.y2); o.x1=p1.x; o.y1=p1.y; o.x2=p2.x; o.y2=p2.y; }
-        else if(t==='gorsel'){ var cx=o.x+(o.w||0)/2, cy=o.y+(o.h||0)/2, c=P(cx,cy); o.x=c.x-(o.w||0)/2; o.y=c.y-(o.h||0)/2; }
-        else if(t==='yazi'){ var q=P(o.x,o.y); o.x=q.x; o.y=q.y; }
-        else if(t==='kalem'){ o.nk=(o.nk||[]).map(function(p){ return P(p.x,p.y); }); }
+        else if(t==='gorsel'){ var cx=o.x+(o.w||0)/2, cy=o.y+(o.h||0)/2, c2=P(cx,cy); o.x=c2.x-(o.w||0)/2; o.y=c2.y-(o.h||0)/2; }   // konum döner; serbest aci KORUNUR (frame 90° editör render + çıktı rot=true ile)
+        else if(t==='yazi'){ var q=P(o.x,o.y); o.x=q.x; o.y=q.y; }   // konum döner; serbest aci KORUNUR
+        else if(t==='kalem'){ o.nk=(o.nk||[]).map(function(p){ return P(p.x,p.y); }); }   // noktalar döner; serbest aci KORUNUR
         return o;
       });
     }
@@ -12106,6 +12122,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     }
     function cizObj(o){
       ctx.save();
+      var _ac=_aci(o);
+      if(_ac && _donebilirMi(o)){ var _ck=objKutu(o), _cx=S(_ck.x+_ck.w/2), _cy=S(_ck.y+_ck.h/2); ctx.translate(_cx,_cy); ctx.rotate(_ac*Math.PI/180); ctx.translate(-_cx,-_cy); }   // [DÖNDÜR] nesneyi merkez etrafında aci° döndür
       if(o.t==='yazi'){
         var fs=S(o.boyut), pX=fs*0.14, pY=fs*0.1, mm=yaziMetrikPx(o, fs);
         var bx=S(o.x), by=S(o.y), baseY=by+mm.asc;   // o.y = görsel ÜST; baseline = üst + ascent (metne SIKI)
@@ -12159,11 +12177,22 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     // [ÇİZİM BOYUTLANDIR 2026-11-13] tek-tık seçili şekle tutamaçlarla yeniden boyut + çift-tık X-Y ölçü menüsü (bayrak x_ck_boyut='0' -> kapalı)
     function _boyutAcik(){ try{ return localStorage.getItem('x_ck_boyut')!=='0'; }catch(_){ return true; } }
     function _resizableMi(o){ return !!(o && (o.t==='dikdortgen'||o.t==='elips'||o.t==='ok')); }
-    function _sekilTutamaclari(o){   // NATIVE koordinatta tutamaçlar
+    // [DÖNDÜR 2026-11-14] serbest açı döndürme (Canva gibi tutamaç). Bayrak x_ck_dondur='0' -> kapalı.
+    function _donAcik(){ try{ return localStorage.getItem('x_ck_dondur')!=='0'; }catch(_){ return true; } }
+    function _donebilirMi(o){ return !!(o && (o.t==='dikdortgen'||o.t==='elips'||o.t==='yazi'||o.t==='gorsel'||o.t==='kalem')); }   // döndürme tutamacı olan tipler (kalem dahil; ok uçlarla döner)
+    function _aci(o){ return (o && o.aci) ? o.aci : 0; }   // derece (saat yönü, ekran y-aşağı)
+    function _rotP(px,py,cx,cy,deg){ var a=deg*Math.PI/180, c=Math.cos(a), s=Math.sin(a), dx=px-cx, dy=py-cy; return { x:cx+dx*c-dy*s, y:cy+dx*s+dy*c }; }   // (cx,cy) etrafında deg° döndür
+    function _objMerkez(o){ if(o.t==='ok'){ return {x:(o.x1+o.x2)/2, y:(o.y1+o.y2)/2}; } var k=objKutu(o); return {x:k.x+k.w/2, y:k.y+k.h/2}; }
+    function _pLocal(o,p){ var a=_aci(o); if(!a) return p; var c=_objMerkez(o); return _rotP(p.x,p.y,c.x,c.y,-a); }   // pointer -> nesnenin döndürülmemiş yerel çerçevesi (hit-test/resize)
+    function _dondurTutamac(o){ var k=objKutu(o), cx=k.x+k.w/2, cy=k.y+k.h/2, off=26/scale; return _rotP(cx, k.y+k.h+off, cx, cy, _aci(o)); }   // döndürme tutamacı src konumu (alt-orta + offset, nesneyle döner)
+    function _dondurVur(o,p){ var h=_dondurTutamac(o), t=13/scale; return (Math.abs(p.x-h.x)<=t && Math.abs(p.y-h.y)<=t); }
+    function _sekilTutamaclari(o){   // NATIVE koordinatta tutamaçlar (döndürülmüşse pozisyonlar da döner)
       if(o.t==='ok'){ return [{k:'p1',x:o.x1,y:o.y1,yuvarlak:true},{k:'p2',x:o.x2,y:o.y2,yuvarlak:true}]; }
-      var k=objKutu(o), cx=k.x+k.w/2, cy=k.y+k.h/2;
-      return [{k:'nw',x:k.x,y:k.y},{k:'ne',x:k.x+k.w,y:k.y},{k:'sw',x:k.x,y:k.y+k.h},{k:'se',x:k.x+k.w,y:k.y+k.h},
+      var k=objKutu(o), cx=k.x+k.w/2, cy=k.y+k.h/2, a=_aci(o);
+      var hs=[{k:'nw',x:k.x,y:k.y},{k:'ne',x:k.x+k.w,y:k.y},{k:'sw',x:k.x,y:k.y+k.h},{k:'se',x:k.x+k.w,y:k.y+k.h},
               {k:'n',x:cx,y:k.y},{k:'s',x:cx,y:k.y+k.h},{k:'w',x:k.x,y:cy},{k:'e',x:k.x+k.w,y:cy}];
+      if(a) hs=hs.map(function(h){ var r=_rotP(h.x,h.y,cx,cy,a); return {k:h.k,x:r.x,y:r.y}; });
+      return hs;
     }
     function _tutamacVur(o,p){ var hs=_sekilTutamaclari(o), t=12/scale; for(var i=0;i<hs.length;i++){ if(Math.abs(p.x-hs[i].x)<=t && Math.abs(p.y-hs[i].y)<=t) return hs[i].k; } return null; }
     function _ckPxPerMm(){ var mmW=(_yatay?297:210); return (baseW||1240)/mmW; }   // A4 fiziksel ölçü: dikey 210mm / yatay 297mm genişlik
@@ -12213,8 +12242,11 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       if(_cz) _ckMarginCiz(ctx, cv.width, cv.height);   // [ÇİZİM KAĞIDI] Word-sayfası margin kılavuzu (ekran-only)
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       for(var _si=0;_si<secili.length;_si++){ var _so=secili[_si]; if(_so.t==='ok' && secili.length===1) continue;   // [BOYUTLANDIR] tek seçili çizgi/ok: kesikli kutu YOK (yalnız 2 uç noktası)
-        var k=objKutu(_so); ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0'; ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); ctx.restore(); }
+        var k=objKutu(_so); var _sa=_aci(_so); ctx.save(); ctx.setLineDash([5,4]); ctx.lineWidth=1.5; ctx.strokeStyle='#1d9bf0';
+        if(_sa && _donebilirMi(_so)){ var _scx=S(k.x+k.w/2), _scy=S(k.y+k.h/2); ctx.translate(_scx,_scy); ctx.rotate(_sa*Math.PI/180); ctx.translate(-_scx,-_scy); }   // [DÖNDÜR] seçim kutusu da döner
+        ctx.strokeRect(S(k.x)-3,S(k.y)-3,S(k.w)+6,S(k.h)+6); ctx.restore(); }
       if(_boyutAcik() && secili.length===1 && _resizableMi(secili[0])){ var _hh=_sekilTutamaclari(secili[0]); ctx.save(); ctx.fillStyle='#fff'; ctx.strokeStyle='#1d9bf0'; ctx.lineWidth=1.5; for(var _hj=0;_hj<_hh.length;_hj++){ var _hx=S(_hh[_hj].x), _hy=S(_hh[_hj].y); ctx.beginPath(); if(_hh[_hj].yuvarlak){ ctx.arc(_hx,_hy,5.5,0,6.2832); } else { ctx.rect(_hx-5,_hy-5,10,10); } ctx.fill(); ctx.stroke(); } ctx.restore(); }   // [BOYUTLANDIR] tek seçili şekil -> tutamaçlar
+      if(_donAcik() && secili.length===1 && _donebilirMi(secili[0])){ var _rSo=secili[0], _rk=objKutu(_rSo), _rc={x:_rk.x+_rk.w/2, y:_rk.y+_rk.h/2}, _rbm=_rotP(_rc.x, _rk.y+_rk.h, _rc.x, _rc.y, _aci(_rSo)), _rh=_dondurTutamac(_rSo); ctx.save(); ctx.strokeStyle='#1d9bf0'; ctx.lineWidth=1.5; ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(S(_rbm.x),S(_rbm.y)); ctx.lineTo(S(_rh.x),S(_rh.y)); ctx.stroke(); ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(S(_rh.x),S(_rh.y),6.5,0,6.2832); ctx.fill(); ctx.stroke(); ctx.restore(); }   // [DÖNDÜR] döndürme tutamacı (alt-orta, çizgiyle bağlı)
       if(marq){ ctx.save(); ctx.setLineDash([4,3]); ctx.lineWidth=1; ctx.strokeStyle='#1d9bf0'; ctx.fillStyle='rgba(29,155,240,0.14)'; ctx.fillRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.strokeRect(S(marq.x),S(marq.y),S(marq.w),S(marq.h)); ctx.restore(); }
       if(tool==='kirp' && crop){
         ctx.save();
@@ -12245,9 +12277,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function noktaMesafe(px,py,ax,ay,bx,by){ var dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy; if(l2===0) return Math.hypot(px-ax,py-ay); var t=((px-ax)*dx+(py-ay)*dy)/l2; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-(ax+t*dx),py-(ay+t*dy)); }
     function vurus(p){
       for(var i=objs.length-1;i>=0;i--){ var o=objs[i];
-        if(o.t==='ok'){ if(noktaMesafe(p.x,p.y,o.x1,o.y1,o.x2,o.y2) <= Math.max(o.kal*1.5,10)) return o; }
-        else if(o.t==='kalem'){ for(var j=1;j<o.nk.length;j++){ if(noktaMesafe(p.x,p.y,o.nk[j-1].x,o.nk[j-1].y,o.nk[j].x,o.nk[j].y) <= Math.max(o.kal*1.5,10)) return o; } }
-        else { var k=objKutu(o); if(p.x>=k.x-6 && p.x<=k.x+k.w+6 && p.y>=k.y-6 && p.y<=k.y+k.h+6) return o; }
+        var pl=_pLocal(o,p);   // [DÖNDÜR] döndürülmüşse pointer'ı yerel çerçeveye çevir
+        if(o.t==='ok'){ if(noktaMesafe(pl.x,pl.y,o.x1,o.y1,o.x2,o.y2) <= Math.max(o.kal*1.5,10)) return o; }
+        else if(o.t==='kalem'){ for(var j=1;j<o.nk.length;j++){ if(noktaMesafe(pl.x,pl.y,o.nk[j-1].x,o.nk[j-1].y,o.nk[j].x,o.nk[j].y) <= Math.max(o.kal*1.5,10)) return o; } }
+        else { var k=objKutu(o); if(pl.x>=k.x-6 && pl.x<=k.x+k.w+6 && pl.y>=k.y-6 && pl.y<=k.y+k.h+6) return o; }
       }
       return null;
     }
@@ -12288,6 +12321,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       }
       var p=noktaSrc(e);
       if(tool==='sec'){
+        if(_donAcik() && secili.length===1 && _donebilirMi(secili[0]) && _dondurVur(secili[0], p)){ itUndo(); var _dc=_objMerkez(secili[0]); drag={tip:'dondur', o:secili[0], cx:_dc.x, cy:_dc.y}; cv.style.cursor='grabbing'; ciz(); return; }   // [DÖNDÜR] döndürme tutamacına bas -> döndür (resize/seç/taşıdan ÖNCE)
         if(_boyutAcik() && secili.length===1 && _resizableMi(secili[0])){ var _hk=_tutamacVur(secili[0], p); if(_hk){ itUndo(); drag={tip:'resize', o:secili[0], h:_hk, b:JSON.parse(JSON.stringify(secili[0]))}; cv.style.cursor='grabbing'; ciz(); return; } }   // [BOYUTLANDIR] tutamaca bas -> yeniden boyut (seç/taşıdan ÖNCE)
         var o=vurus(p);
         if(o){ if(secili.indexOf(o)<0) secili=[o];   // yeni öğeye bas -> tekli seç; zaten seçili öğeye bas -> grubu KORU (grup taşı)
@@ -12316,8 +12350,19 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
         }
         ciz(); return;
       }
+      if(drag.tip==='dondur'){ var _ang=Math.atan2(p.y-drag.cy, p.x-drag.cx)*180/Math.PI - 90; if(e.shiftKey){ _ang=Math.round(_ang/15)*15; } drag.o.aci=((Math.round(_ang)%360)+360)%360; ciz(); return; }   // [DÖNDÜR] merkeze göre açı (1° hassas); Shift=15° snap
       if(drag.tip==='resize'){ var ro=drag.o, hk=drag.h;   // [BOYUTLANDIR] tutamacı sürükle (p zaten margin'e kıstırılmış)
         if(ro.t==='ok'){ if(hk==='p1'){ ro.x1=p.x; ro.y1=p.y; } else { ro.x2=p.x; ro.y2=p.y; } }
+        else if(_aci(drag.b)){   // [DÖNDÜR] döndürülmüş şekilde resize: yerel çerçevede, karşı tutamaç sabit
+          var bk2=objKutu(drag.b), a2=_aci(drag.b)*Math.PI/180, hw2=bk2.w/2, hh2=bk2.h/2, C0x=bk2.x+hw2, C0y=bk2.y+hh2;
+          var ux=Math.cos(a2), uy=Math.sin(a2), vx=-Math.sin(a2), vy=Math.cos(a2);
+          var AN={nw:[hw2,hh2,1,1],ne:[-hw2,hh2,1,1],sw:[hw2,-hh2,1,1],se:[-hw2,-hh2,1,1],n:[0,hh2,0,1],s:[0,-hh2,0,1],w:[hw2,0,1,0],e:[-hw2,0,1,0]}[hk];
+          var ancx=C0x+AN[0]*ux+AN[1]*vx, ancy=C0y+AN[0]*uy+AN[1]*vy;
+          var ddx=p.x-ancx, ddy=p.y-ancy, du=ddx*ux+ddy*uy, dv=ddx*vx+ddy*vy;
+          var nW=AN[2]?Math.max(5,Math.abs(du)):bk2.w, nH=AN[3]?Math.max(5,Math.abs(dv)):bk2.h;
+          var ncx=ancx+(AN[2]?du/2:0)*ux+(AN[3]?dv/2:0)*vx, ncy=ancy+(AN[2]?du/2:0)*uy+(AN[3]?dv/2:0)*vy;
+          ro.x=ncx-nW/2; ro.y=ncy-nH/2; ro.w=nW; ro.h=nH; ciz(); return;
+        }
         else { var bk=objKutu(drag.b), L=bk.x, R=bk.x+bk.w, T=bk.y, B=bk.y+bk.h;
           var _kose=(hk==='nw'||hk==='ne'||hk==='sw'||hk==='se');
           if(e.shiftKey && _kose && bk.h>0){   // [ORAN KİLİDİ] Shift + KÖŞE tutamaç -> en/boy oranını koru (karşı köşe sabit)
@@ -12360,6 +12405,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
       var d=drag; drag=null;
       if(d.tip==='tasi'){ itUndoGrup(d); }
       else if(d.tip==='resize'){ cv.style.cursor=(tool==='sec'?'default':'crosshair'); _stilYansit(); }   // [BOYUTLANDIR] boyut değişti (undo pd'de alındı); imleci geri al
+      else if(d.tip==='dondur'){ cv.style.cursor=(tool==='sec'?'default':'crosshair'); _stilYansit(); }   // [DÖNDÜR] açı değişti (undo pd'de alındı)
       else if(d.tip==='marquee'){ if(marq && (marq.w>3||marq.h>3)){ secili=objs.filter(function(o){ return kutuKesisir(objKutu(o), marq); }); if(secili.length===1) _stilYansit(); } marq=null; _selBtn(); ciz(); }
       else if(d.tip==='crop'){ /* kırp uygula butonuyla */ }
       else if(d.tip==='ciz'){ var o=d.o; if((o.t==='ok' && Math.hypot(o.x2-o.x1,o.y2-o.y1)<4) || ((o.t==='dikdortgen'||o.t==='elips') && (Math.abs(o.w)<4||Math.abs(o.h)<4))){ objs.pop(); if(hist.length){ hist.pop(); _geriBtn(); } ciz(); } }   // iptal -> snapshot'ı da geri al
@@ -12782,13 +12828,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     function HX(c){ var h=(''+(c||'#000000')).replace('#',''); if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; return /^[0-9a-fA-F]{6}$/.test(h)?h.toUpperCase():'000000'; }
     var prims=[], kalemler=[], _mc=null;
     for(var i=0;i<objs.length;i++){ var o=objs[i]; if(!o) continue;
-      if(o.t==='dikdortgen'){ prims.push({t:'rect', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz'), dolgu:(o.dolgu?HX(o.dolgu):null), dolguA:(o.dolguA==null?1:o.dolguA)}); }
-      else if(o.t==='elips'){ prims.push({t:'ellipse', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz'), dolgu:(o.dolgu?HX(o.dolgu):null), dolguA:(o.dolguA==null?1:o.dolguA)}); }
+      if(o.t==='dikdortgen'){ prims.push({t:'rect', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz'), dolgu:(o.dolgu?HX(o.dolgu):null), dolguA:(o.dolguA==null?1:o.dolguA), aci:(o.aci||0)}); }
+      else if(o.t==='elips'){ prims.push({t:'ellipse', x:FX(Math.min(o.x,o.x+o.w)), y:FY(Math.min(o.y,o.y+o.h)), w:Math.abs(o.w)/cw, h:Math.abs(o.h)/ch, renk:HX(o.renk), kal:o.kal/cw, stil:(o.stil||'duz'), dolgu:(o.dolgu?HX(o.dolgu):null), dolguA:(o.dolguA==null?1:o.dolguA), aci:(o.aci||0)}); }
       else if(o.t==='ok'){ prims.push({t:'line', x1:FX(o.x1), y1:FY(o.y1), x2:FX(o.x2), y2:FY(o.y2), renk:HX(o.renk), kal:o.kal/cw, ok:!o.basliksiz, stil:(o.stil||'duz')}); }   // [ÇİZGİ] basliksiz -> ok:false (düz çizgi, Word/PDF başlıksız)
       else if(o.t==='yazi'){ if(!_mc){ try{ _mc=document.createElement('canvas').getContext('2d'); }catch(_){} } var tw=0; try{ _mc.font=(o.kalin?'bold ':'')+o.boyut+'px '+(o.font||'Arial'); tw=_mc.measureText(o.metin||' ').width; }catch(_){ tw=(o.metin||'').length*o.boyut*0.55; }
-        prims.push({t:'text', x:FX(o.x-o.boyut*0.14), y:FY(o.y-o.boyut*0.1), w:(tw+o.boyut*0.3)/cw, h:(o.boyut*1.42)/ch, boyut:o.boyut/cw, renk:HX(o.renk), metin:o.metin||'', font:(o.font||'Arial'), kalin:!!o.kalin, arka:(typeof o.arka==='number'?o.arka:(o.arka?2:0))}); }
-      else if(o.t==='gorsel'){ prims.push({t:'image', x:FX(o.x), y:FY(o.y), w:o.w/cw, h:o.h/ch, b64:o.b64, mime:o.mime||'image/png'}); }
-      else if(o.t==='kalem'){ kalemler.push(o); }
+        prims.push({t:'text', x:FX(o.x-o.boyut*0.14), y:FY(o.y-o.boyut*0.1), w:(tw+o.boyut*0.3)/cw, h:(o.boyut*1.42)/ch, boyut:o.boyut/cw, renk:HX(o.renk), metin:o.metin||'', font:(o.font||'Arial'), kalin:!!o.kalin, arka:(typeof o.arka==='number'?o.arka:(o.arka?2:0)), aci:(o.aci||0)}); }
+      else if(o.t==='gorsel'){ prims.push({t:'image', x:FX(o.x), y:FY(o.y), w:o.w/cw, h:o.h/ch, b64:o.b64, mime:o.mime||'image/png', aci:(o.aci||0)}); }
+      else if(o.t==='kalem'){ var _ko=o; if(o.aci){ var _xs=o.nk.map(function(q){return q.x;}), _ys=o.nk.map(function(q){return q.y;}); var _kcx=(Math.min.apply(null,_xs)+Math.max.apply(null,_xs))/2, _kcy=(Math.min.apply(null,_ys)+Math.max.apply(null,_ys))/2; var _ka=o.aci*Math.PI/180, _kco=Math.cos(_ka), _ksi=Math.sin(_ka); _ko=JSON.parse(JSON.stringify(o)); _ko.nk=o.nk.map(function(q){ var dx=q.x-_kcx, dy=q.y-_kcy; return {x:_kcx+dx*_kco-dy*_ksi, y:_kcy+dx*_ksi+dy*_kco}; }); }   // [DÖNDÜR] kalem serbest açısını noktalara göm (raster döner)
+        kalemler.push(_ko); }
     }
     var penImg=null, penBox=null;
     if(kalemler.length){
@@ -12818,7 +12865,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal #editor-root{padding-bottom:calc(var(-
     var asp = er.aspect || 1.4;   // yatay (>1)
     var out = { prims:[], cw:er.ch, ch:er.cw, aspect:(asp?1/asp:0.714), penImg:er.penImg, penBox:null, penRot:false, yatayRot:true };
     for(var i=0;i<er.prims.length;i++){ var p=er.prims[i];
-      if(p.t==='rect' || p.t==='ellipse'){ out.prims.push({ t:p.t, x:1-(p.y+p.h), y:p.x, w:p.h, h:p.w, renk:p.renk, kal:(p.kal||0)*asp, stil:p.stil, dolgu:p.dolgu, dolguA:p.dolguA }); }
+      if(p.t==='rect' || p.t==='ellipse'){ out.prims.push({ t:p.t, x:1-(p.y+p.h), y:p.x, w:p.h, h:p.w, renk:p.renk, kal:(p.kal||0)*asp, stil:p.stil, dolgu:p.dolgu, dolguA:p.dolguA, aci:(p.aci||0) }); }   // [DÖNDÜR] serbest aci korunur (frame koordinat-swap üstüne renderer rot=aci ekler)
       else if(p.t==='line'){ out.prims.push({ t:'line', x1:1-p.y1, y1:p.x1, x2:1-p.y2, y2:p.x2, renk:p.renk, kal:(p.kal||0)*asp, ok:p.ok, stil:p.stil }); }
       else if(p.t==='text'){ var q=JSON.parse(JSON.stringify(p)); q.rot=true; out.prims.push(q); }   // orijinal koordinat + rot (Word merkez+90°)
       else if(p.t==='image'){ var q2=JSON.parse(JSON.stringify(p)); q2.rot=true; out.prims.push(q2); }
