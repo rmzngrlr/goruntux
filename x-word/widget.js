@@ -347,6 +347,53 @@
         return n;
     }
 
+    // X UZUN TWEET "Daha fazla göster" — X uzun tweet metnini VARSAYILAN kısaltır; yanıt/konuşmada
+    // gösterilen ANA (parent) tweet kesik kalır ("Daha fazla göster" linkiyle). Tıklanmazsa rapora KESIK
+    // metin girer. fbMetniAc deseni: article içinde X'in INLINE genişletme butonunu (tweet-text-show-more-link)
+    // tıkla — gezinme YAPMAZ, metni yerinde açar. Yalnız bu tweetin metni; "N yanıtı gör"/"daha fazla yorum"
+    // (yorum kontrolleri) ve alıntı tweet ETKİLENMEZ (tam-metin eşleşmesi + <a href> hariç). Bayrak
+    // x_tweet_metin_ac='0' -> kapalı (eski davranış). Yakalamadan ÖNCE çağrılır (scroll/ölçüm öncesi -> tam yükseklik).
+    async function xTweetMetniAc(article) {
+        var n = 0;
+        try {
+            if (!article) return 0;
+            if (localStorage.getItem('x_tweet_metin_ac') === '0') return 0;
+        } catch (e) {}
+        try {
+            var clicked = new Set();
+            for (var pass = 0; pass < 2; pass++) {
+                var hit = null;
+                // Birincil: X'in inline tweet-metni genişletme butonu (gezinmez, metni yerinde açar).
+                var byTestid = article.querySelectorAll('[data-testid="tweet-text-show-more-link"]');
+                for (var i = 0; i < byTestid.length; i++) {
+                    if (clicked.has(byTestid[i])) continue;
+                    var r0 = byTestid[i].getBoundingClientRect();
+                    if (r0.width > 0 && r0.height > 0) { hit = byTestid[i]; break; }
+                }
+                // Yedek (testid değişirse): TAM metin eşleşmesi; <a href> HARIC (gezinme riski -> dokunma).
+                if (!hit) {
+                    var els = article.querySelectorAll('button,[role="button"]');
+                    for (var j = 0; j < els.length; j++) {
+                        if (clicked.has(els[j])) continue;
+                        if (els[j].closest('a[href]')) continue;
+                        var t = (els[j].innerText || '').replace(/\s+/g, ' ').trim();
+                        if (/^(daha fazla göster|daha fazlasını göster|devamını göster|show more)$/i.test(t)) {
+                            var r1 = els[j].getBoundingClientRect();
+                            if (r1.width > 0 && r1.height > 0) { hit = els[j]; break; }
+                        }
+                    }
+                }
+                if (!hit) break;
+                clicked.add(hit);
+                var _href0 = location.href;
+                hit.click(); n++;
+                await new Promise(r => setTimeout(r, 350));
+                if (location.href !== _href0) break;   // beklenmedik gezinme (inline beklenirdi) -> dur
+            }
+        } catch (e) {}
+        return n;
+    }
+
     // Yakalama NEREDE BITMELI? Kullanici karari: goruntu BEGENI/YORUM/PAYLAS satirinin
     // HEMEN ALTINDA bitsin. Altta kalanlar ("En alakalı" siralama menusu, "bazı yorumlar
     // filtrelenmiş olabilir" uyarisi, yorum yazma kutusu) gonderiye ait DEGIL ve yorum
@@ -1329,6 +1376,10 @@
                     var idx = arr.indexOf(focusedArticle);
                     if (idx > 0) { parentArticle = arr[idx - 1]; }
                 } catch (e) {}
+                // X UZUN TWEET: ana (parent) + odak tweetteki "Daha fazla göster" otomatik aç -> kesik metin yakalanmasın.
+                // Scroll/ölçümden ÖNCE: açılan metin yüksekliği doğru ölçülür (hem tek-geçiş hem parça-parça yolu).
+                try { if (parentArticle) await xTweetMetniAc(parentArticle); } catch (e) {}
+                try { await xTweetMetniAc(focusedArticle); } catch (e) {}
                 if (!parentArticle) { return await _yakala(focusedArticle); }
                 // v4.39 TEK-GEÇİŞ: parent + odak BİTİŞİK -> bir kerede yakala (ayrı SS + birleştirme yerine). Çıktı
                 // aynı: atalar tam, odak footer'sız; ama atalar arası X thread DOĞAL görünür (parça-birleştirme yok).
@@ -1391,6 +1442,8 @@
                     return await captureArticle(el, opts) || "";
                 }
                 if (!secilenler || !secilenler.length) return "";
+                // X UZUN TWEET: seçili tüm article'larda "Daha fazla göster" otomatik aç (tek öğe dahil; ölçümden önce).
+                for (var _si = 0; _si < secilenler.length; _si++) { try { await xTweetMetniAc(secilenler[_si]); } catch (e) {} }
                 if (secilenler.length === 1) return await _yakala(secilenler[0]);
                 // v4.39 TEK-GEÇİŞ: seçim BİTİŞİK (en alt=odak, aralıkta boşluk YOK) ise bir kerede yakala. Boşluklu
                 // (üstten atlanmış ata) ise parça-parça (bölgeye istenmeyen ata girmesin). Bayrak x_coklu_tekgecis.
