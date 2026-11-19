@@ -2985,22 +2985,19 @@
                 btn.setAttribute('aria-label', "Bu paylaşımı GörüntüX Raporu'na ekle!");
                 btn.innerHTML = '<span class="x-gx-tw-ic">' + _X_GX_ICO + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span>';
                 (function (article, b) { b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xTweetYakalaEkle(article, b); }); })(art, btn);
-                // KONUM: hesap adı/@kullanıcı adının hemen bitimine (header satırında, boşlukla).
+                // KONUM: hesap adı/@kullanıcı adının HEMEN YANINA (User-Name'in İLK flex-row
+                // atasında, adın hemen sağına ~6px boşlukla). caret/Grok ŞARTI YOK -> bazı
+                // tweetlerde başarısız olup far-right'a (ortalığa) kaçmıyordu; artık hep ad yanında.
                 var un = art.querySelector('[data-testid="User-Name"]');
-                var yerlesti = false;
-                if (un) {
-                    var nameBlock = un, header = un.parentElement;
-                    while (header) {
-                        var cs = getComputedStyle(header);
-                        if (cs.display === 'flex' && cs.flexDirection === 'row' && header.querySelector('[data-testid="caret"]')) break;
-                        nameBlock = header; header = header.parentElement;
-                    }
-                    if (header && nameBlock && nameBlock.parentElement === header) { header.insertBefore(btn, nameBlock.nextSibling); yerlesti = true; }
+                if (!un) continue;
+                var nameBlock = un, header = un.parentElement;
+                while (header && header !== art) {
+                    var cs = getComputedStyle(header);
+                    if (cs.display === 'flex' && cs.flexDirection !== 'column') break;   // ilk flex-row atası
+                    nameBlock = header; header = header.parentElement;
                 }
-                if (!yerlesti) {   // yedek: Grok/caret kümesinin soluna
-                    var ref = art.querySelector('[aria-label*="Grok" i]') || art.querySelector('[data-testid="caret"]');
-                    if (ref && ref.parentElement) { ref.parentElement.insertBefore(btn, ref.parentElement.firstChild); yerlesti = true; }
-                }
+                if (header && header !== art && nameBlock.parentElement === header) header.insertBefore(btn, nameBlock.nextSibling);
+                else if (un.parentElement) un.parentElement.appendChild(btn);   // yedek: yine ad yanında (far-right DEĞİL)
             }
         } catch (e) {}
     }
