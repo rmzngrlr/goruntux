@@ -1588,6 +1588,7 @@
                 }
 
                 try {
+                    xGxButonlariGizle();   // [GÖRÜNTÜX İLE RAPORLA] profil/tweet SS'inde butonumuz görünmesin (finally'de geri açılır)
                     if (isInstagram) {
                         // Faz IG-1 (sade no-zoom): iki-sütun kırpması widget'ın üzerine binebildiğinden, widget'ı
                         // YOK ETMEDEN görünmez yap (visibility:hidden -> reflow/flaş yok), yakalama sonrası geri aç.
@@ -2010,6 +2011,7 @@
                     // Geri yüklemeleri her durumda yap
                     spacer.remove();
                     disableSmoothScrollStyles.remove();
+                    xGxButonlariGoster();   // [GÖRÜNTÜX İLE RAPORLA] SS bitti -> butonu geri aç
 
                     // Faz IG-1: gizlenen Instagram "Mesajlar" balonu / beğenenler satırı geri aç.
                     for (const h of igMsgHidden) {
@@ -2800,17 +2802,22 @@
         const s = document.createElement('style');
         s.id = 'x-gx-profil-rapor-style';
         s.textContent = `
-            .x-gx-rapor-btn{ position:relative; display:inline-flex; align-items:center; justify-content:center;
-                height:34px; min-width:34px; padding:0; margin-right:8px; border-radius:9999px;
-                background:transparent; border:1px solid rgba(113,118,123,.55); color:inherit;
-                cursor:pointer; opacity:.45; transition:opacity .15s ease, background .15s ease, padding .15s ease;
-                overflow:hidden; vertical-align:middle; }
-            .x-gx-rapor-btn:hover{ opacity:1; background:rgba(29,155,240,.12); padding:0 14px 0 10px; border-color:#1d9bf0; }
+            .x-gx-rapor-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center; justify-content:center;
+                width:36px; height:36px; padding:0; margin:0 8px 12px 0; border-radius:9999px;
+                background:transparent; border:1px solid rgba(113,118,123,.5); color:#1d9bf0;
+                cursor:pointer; opacity:.5; transition:opacity .15s ease, background .15s ease, border-color .15s ease;
+                flex:0 0 auto; }
+            .x-gx-rapor-btn:hover{ opacity:1; background:rgba(29,155,240,.12); border-color:#1d9bf0; }
+            .x-gx-rapor-btn.x-gx-gizli{ display:none !important; }   /* profil kartı SS'i alınırken butonu gizle */
             .x-gx-rapor-btn .x-gx-ico{ display:inline-flex; flex:0 0 auto; }
-            .x-gx-rapor-btn .x-gx-lbl{ max-width:0; opacity:0; white-space:nowrap; overflow:hidden;
-                font-weight:700; font-size:14px; margin-left:0; line-height:1;
-                transition:max-width .18s ease, opacity .15s ease, margin-left .15s ease; }
-            .x-gx-rapor-btn:hover .x-gx-lbl{ max-width:240px; opacity:1; margin-left:7px; color:#1d9bf0; }
+            .x-gx-rapor-btn .x-gx-tip{ position:absolute; top:calc(100% + 8px); left:50%;
+                transform:translateX(-50%) translateY(-4px); background:rgba(15,20,25,.96); color:#fff;
+                font-weight:600; font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px;
+                opacity:0; pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);
+                transition:opacity .12s ease, transform .12s ease; }
+            .x-gx-rapor-btn .x-gx-tip::before{ content:""; position:absolute; bottom:100%; left:50%;
+                transform:translateX(-50%); border:5px solid transparent; border-bottom-color:rgba(15,20,25,.96); }
+            .x-gx-rapor-btn:hover .x-gx-tip{ opacity:1; transform:translateX(-50%) translateY(0); }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
@@ -2829,9 +2836,8 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'x-gx-rapor-btn';
-            btn.title = 'GörüntüX ile Raporla!';
-            btn.setAttribute('aria-label', 'GörüntüX ile Raporla!');
-            btn.innerHTML = `<span class="x-gx-ico"><svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-lbl">GörüntüX ile Raporla!</span>`;
+            btn.setAttribute('aria-label', 'GörüntüX ile Raporla!');   // title YOK -> yerel tooltip çift görünmesin; metin özel .x-gx-tip tooltip'inde
+            btn.innerHTML = `<span class="x-gx-ico"><svg width="20" height="20" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#1d9bf0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V8h4"/><path d="M20 8h4v4"/><path d="M24 20v4h-4"/><path d="M12 24H8v-4"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">GörüntüX ile Raporla!</span>`;
             btn.addEventListener('click', (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
                 try { xProfilRaporBaslat(handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
@@ -2855,6 +2861,10 @@
             setInterval(() => { try { if (xGxProfilHandle()) xProfilRaporButonuEkle(); } catch (e) {} }, 600);
         } catch (e) {}
     }
+    // Profil kartı / tweet ekran görüntüsü alınırken butonumuz SS'e girmesin: captureArticle
+    // başında display:none (akış içi -> boşluk bırakmaz), finally'de geri. Tek seferlik (stitch bozulmaz).
+    function xGxButonlariGizle() { try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {} }
+    function xGxButonlariGoster() { try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {} }
 
     function renderIdleWidget(storageKey) {
         try {
