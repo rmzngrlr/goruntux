@@ -2771,6 +2771,91 @@
         buton.classList.toggle('xdock-show-lbl', text.trim() !== 'Rapora Ekle');
     }
 
+    // ============================================================================
+    // [GÖRÜNTÜX İLE RAPORLA] (Faz 2) — X profil başlığında, "Takip et" butonları
+    // satırına silik bir GörüntüX ikonu enjekte eder; hover'da opaklaşıp
+    // "GörüntüX ile Raporla!" etiketi açılır. Tıklanınca (sonraki fazlar) profilin
+    // tüm /all akışını otomatik raporlar. Bayrak: localStorage x_gx_profil_rapor
+    // !== '0'. Mevcut dock / "Rapora Ekle" / tarama motoru DEĞİŞMEZ (yalnız ek buton).
+    // ============================================================================
+    function xGxProfilRaporAcik() {
+        try { return localStorage.getItem('x_gx_profil_rapor') !== '0'; } catch (e) { return true; }
+    }
+    function xGxProfilHandle() {
+        try {
+            const m = location.href.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?/i);
+            const rez = ["home","explore","notifications","messages","search","i","settings",
+                         "compose","hashtag","login","logout","signup","share","intent",
+                         "tos","privacy","about","download","jobs","developer"];
+            if (m && m[1] && rez.indexOf(m[1].toLowerCase()) === -1) {
+                // yalnız profil KÖKÜ (x.com/handle) — /all, /with_replies, /status vb. değil
+                const kok = location.href.match(/^https?:\/\/(?:x|twitter)\.com\/[^/?#]+\/?(?:[?#]|$)/i);
+                if (kok) return m[1];
+            }
+        } catch (e) {}
+        return null;
+    }
+    function xGxProfilStilEkle() {
+        if (document.getElementById('x-gx-profil-rapor-style')) return;
+        const s = document.createElement('style');
+        s.id = 'x-gx-profil-rapor-style';
+        s.textContent = `
+            .x-gx-rapor-btn{ position:relative; display:inline-flex; align-items:center; justify-content:center;
+                height:34px; min-width:34px; padding:0; margin-right:8px; border-radius:9999px;
+                background:transparent; border:1px solid rgba(113,118,123,.55); color:inherit;
+                cursor:pointer; opacity:.45; transition:opacity .15s ease, background .15s ease, padding .15s ease;
+                overflow:hidden; vertical-align:middle; }
+            .x-gx-rapor-btn:hover{ opacity:1; background:rgba(29,155,240,.12); padding:0 14px 0 10px; border-color:#1d9bf0; }
+            .x-gx-rapor-btn .x-gx-ico{ display:inline-flex; flex:0 0 auto; }
+            .x-gx-rapor-btn .x-gx-lbl{ max-width:0; opacity:0; white-space:nowrap; overflow:hidden;
+                font-weight:700; font-size:14px; margin-left:0; line-height:1;
+                transition:max-width .18s ease, opacity .15s ease, margin-left .15s ease; }
+            .x-gx-rapor-btn:hover .x-gx-lbl{ max-width:240px; opacity:1; margin-left:7px; color:#1d9bf0; }
+        `;
+        (document.head || document.documentElement).appendChild(s);
+    }
+    function xProfilRaporButonuEkle() {
+        try {
+            if (!xGxProfilRaporAcik()) return;
+            const handle = xGxProfilHandle();
+            if (!handle) return;
+            // "Takip et" satırı: placementTracking (takip butonu) sarmalayıcısının ebeveyni
+            // (•••, bildirim, mesaj, Takip aynı flex satırında). Butonu satırın BAŞINA koyuyoruz.
+            const pt = document.querySelector('[data-testid="placementTracking"]');
+            if (!pt || !pt.parentElement) return;
+            const satir = pt.parentElement;
+            if (satir.querySelector('.x-gx-rapor-btn')) return;   // zaten eklenmiş
+            xGxProfilStilEkle();
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'x-gx-rapor-btn';
+            btn.title = 'GörüntüX ile Raporla!';
+            btn.setAttribute('aria-label', 'GörüntüX ile Raporla!');
+            btn.innerHTML = `<span class="x-gx-ico"><svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-lbl">GörüntüX ile Raporla!</span>`;
+            btn.addEventListener('click', (ev) => {
+                ev.preventDefault(); ev.stopPropagation();
+                try { xProfilRaporBaslat(handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
+            });
+            satir.insertBefore(btn, satir.firstChild);
+            printLog('[GX Profil Rapor] buton eklendi: @' + handle);
+        } catch (e) {}
+    }
+    // Faz 2 YER TUTUCU: mod kararı (panelde açık+dolu rapor var mı) + takvim + /all
+    // tarama motoru SONRAKİ fazlarda bağlanacak. Şimdilik niyeti doğrular.
+    function xProfilRaporBaslat(handle) {
+        printLog('[GX Profil Rapor] başlat istendi: @' + handle);
+        try { alert('GörüntüX ile Raporla — @' + handle + '\n\n(Rapor akışı: mod kararı + /all tarama motoru sonraki fazda bağlanacak.)'); } catch (e) {}
+    }
+    // SPA gezinme + X başlık yeniden-render'ına karşı: tek kalıcı poller (window-korumalı,
+    // widget her enjekte edildiğinde tekrar başlatmaz). Profil dışında no-op.
+    function xProfilRaporPollerBaslat() {
+        try {
+            if (window.__xGxProfilPollerAktif) return;
+            window.__xGxProfilPollerAktif = true;
+            setInterval(() => { try { if (xGxProfilHandle()) xProfilRaporButonuEkle(); } catch (e) {} }, 600);
+        } catch (e) {}
+    }
+
     function renderIdleWidget(storageKey) {
         try {
             printLog("renderIdleWidget çağrıldı...");
@@ -5382,6 +5467,7 @@
                 if ((((tivitMi && !rtSayfasiMi) || profilMi) && !fotografMi)) {
                     printLog(`${profilMi ? 'Profil' : 'Tekil tivit'} sayfası algılandı. Idle widget yükleniyor.`);
                     renderIdleWidget(directKey || "x_profil_gorevi_tekil");
+                    if (profilMi) { xProfilRaporButonuEkle(); xProfilRaporPollerBaslat(); }   // [GÖRÜNTÜX İLE RAPORLA] profil başlığı butonu (Faz 2)
                 } else {
                     printLog("Alakasız/foto sayfası. Widget gizleniyor.");
                     widget.style.display = 'none';
