@@ -2785,18 +2785,18 @@
     }
     function xGxProfilHandle() {
         try {
-            const m = location.href.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?/i);
+            // Profil KÖKÜ (x.com/handle) VEYA profil alt-sekmeleri (all/with_replies/reposts/
+            // media/highlights/superfollows/affiliates). /status, /followers, /photo vb. DEĞİL.
+            const m = location.href.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)(?:\/(all|with_replies|reposts|media|highlights|superfollows|affiliates))?\/?(?:[?#]|$)/i);
             const rez = ["home","explore","notifications","messages","search","i","settings",
                          "compose","hashtag","login","logout","signup","share","intent",
                          "tos","privacy","about","download","jobs","developer"];
-            if (m && m[1] && rez.indexOf(m[1].toLowerCase()) === -1) {
-                // yalnız profil KÖKÜ (x.com/handle) — /all, /with_replies, /status vb. değil
-                const kok = location.href.match(/^https?:\/\/(?:x|twitter)\.com\/[^/?#]+\/?(?:[?#]|$)/i);
-                if (kok) return m[1];
-            }
+            if (m && m[1] && rez.indexOf(m[1].toLowerCase()) === -1) return m[1];
         } catch (e) {}
         return null;
     }
+    // /all (Tümü) akışında mıyız? (tarama hasatı burada çalışır)
+    function xGxAllSayfasiMi() { return /^https?:\/\/(?:x|twitter)\.com\/[^/?#]+\/all\b/i.test(location.href); }
     function xGxProfilStilEkle() {
         if (document.getElementById('x-gx-profil-rapor-style')) return;
         const s = document.createElement('style');
@@ -2915,12 +2915,46 @@
         var esc = function (e) { if (e.key === 'Escape') { xProfilPopupKapat(); document.removeEventListener('keydown', esc, true); } };
         document.addEventListener('keydown', esc, true);
     }
+    // [#5] Popup içinde mesaj göster (yerli alert yerine). Popup kapalıysa açar.
+    function xProfilMesajGoster(handle, html, otoKapat) {
+        try {
+            var h = handle || xGxProfilHandle() || '';
+            if (!document.getElementById('x-gx-card')) xProfilPopupAc(h, { mod: 'mesaj', html: html });
+            else xProfilPopupGuncelle(h, { mod: 'mesaj', html: html });
+            if (otoKapat) { setTimeout(function () { try { xProfilPopupKapat(); } catch (e) {} }, 3800); }
+        } catch (e) {}
+    }
+    // [#1/#4] /all'a yönlendirmeden sonra beklemedeki taramayı sürdür (widget /all'da yüklenince).
+    function xProfilBeklemedekiTaramaKontrol() {
+        try {
+            if (!xGxAllSayfasiMi()) return;
+            chrome.storage.local.get(['x_gx_pending_scan'], function (r) {
+                var p = r && r.x_gx_pending_scan;
+                if (!p || !p.handle) return;
+                var h = xGxProfilHandle();
+                if (!h || h.toLowerCase() !== String(p.handle).toLowerCase()) return;
+                if (Date.now() - (p.ts || 0) > 120000) { try { chrome.storage.local.remove('x_gx_pending_scan'); } catch (e) {} return; }
+                try {
+                    chrome.storage.local.remove('x_gx_pending_scan', function () {
+                        // timeline yüklensin diye kısa bekle, sonra tarama akışını başlat
+                        setTimeout(function () { try { xProfilTaramaCalistir(p.handle, p.secim); } catch (e) {} }, 1800);
+                    });
+                } catch (e) {}
+            });
+        } catch (e) {}
+    }
     function xProfilPopupGuncelle(handle, durum) {
         var card = document.getElementById('x-gx-card'); if (!card) return;
         var logo = `<svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>`;
         var bas = `<h3>${logo} GörüntüX Raporu</h3><p class="x-gx-sub">@${handle} profilinin tüm paylaşım, RT ve yorumları</p>`;
         if (durum.mod === 'yukleniyor') {
             card.innerHTML = bas + `<div class="x-gx-spin"><span class="d"></span> Panel durumu kontrol ediliyor…</div>`;
+            return;
+        }
+        if (durum.mod === 'mesaj') {   // [#5] yerli alert yerine popup-içi mesaj
+            card.innerHTML = bas + (durum.html || '')
+                + `<div class="x-gx-act"><button class="x-gx-primary" id="x-gx-tamam">Tamam</button></div>`;
+            var _tb = card.querySelector('#x-gx-tamam'); if (_tb) _tb.onclick = xProfilPopupKapat;
             return;
         }
         if (durum.mod === 'devam') {
@@ -2959,14 +2993,16 @@
     // FAZ 4 YER TUTUCU: /all tarama motoru burada bağlanacak. Şimdilik seçilen modu/parametreleri gösterir.
     function xProfilTaramaBaslat(handle, secim) {
         xProfilPopupKapat();
-        printLog('[GX Profil Rapor] TARAMA @' + handle + ' -> ' + JSON.stringify(secim));
-        var uAll = /^https?:\/\/(?:x|twitter)\.com\/[^\/?#]+\/all\b/i.test(location.href);
-        if (!uAll) {
-            // Faz 4a: hasat /all üzerinde çalışır. 4b'de otomatik yönlendirme + yakalama state-machine bağlanacak.
-            try { alert('GörüntüX — Tarama ' + handle + '/all akışında çalışır.\nLütfen o profilin "Tümü" (/all) sekmesine geçip tekrar başlat.\n\n(Faz 4b: otomatik yönlendirme + yakalama + rapora ekleme.)'); } catch (e) {}
-            return;
-        }
-        xProfilTaramaCalistir(handle, secim);
+        printLog('[GX Profil Rapor] TARAMA @' + handle + ' mod=' + secim.mod);
+        if (xGxAllSayfasiMi()) { xProfilTaramaCalistir(handle, secim); return; }
+        // /all'da değiliz (profil kökü/alt-sekme) -> işaretle + /all'a GİT; widget /all'da
+        // yeniden yüklenince beklemedeki taramayı sürdürür (xProfilBeklemedekiTaramaKontrol).
+        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Tümü (/all) sayfasına gidiliyor…</div>');
+        try {
+            chrome.storage.local.set({ x_gx_pending_scan: { handle: handle, secim: secim, ts: Date.now() } }, function () {
+                try { location.href = 'https://x.com/' + handle + '/all'; } catch (e) {}
+            });
+        } catch (e) { try { location.href = 'https://x.com/' + handle + '/all'; } catch (_) {} }
     }
     // Faz 4b: HASAT -> URL listesi -> panelin KANITLANMIŞ "Başlat" akışına besle
     // (startAutomation: /api/auto/start [unify açıkken havuzu TEMİZLEMEZ=veri-kaybı-güvenli] +
@@ -2974,21 +3010,25 @@
     // Yorum = status URL'sine gidince thread bağlamıyla gelir (tek tek aç doğal).
     async function xProfilTaramaCalistir(handle, secim) {
         try {
+            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> İçerik taranıyor… (sayfa kaydırılıyor, ölçülü hız)</div>');
             printLog('[GX Hasat] başladı @' + handle + ' mod=' + secim.mod);
             var sonuc = await xProfilHasat(handle, secim, { maxTur: 300, bekle: 650 });
             var urls = ['https://x.com/' + handle];   // profil kartı (profile_header) ilk
             sonuc.ogeler.forEach(function (o) { if (o.link) urls.push(o.link); });   // eski->yeni
             var tipSay = {}; sonuc.ogeler.forEach(function (o) { tipSay[o.tip] = (tipSay[o.tip] || 0) + 1; });
-            printLog('[GX Tarama] ' + urls.length + ' URL (profil + ' + sonuc.ogeler.length + ' öğe) panele yollanıyor');
-            if (urls.length <= 1) { try { alert('GörüntüX: Bu aralıkta yakalanacak içerik bulunamadı.'); } catch (e) {} return; }
+            printLog('[GX Tarama] ' + urls.length + ' URL (profil + ' + sonuc.ogeler.length + ' öğe)');
+            if (urls.length <= 1) {
+                xProfilMesajGoster(handle, '<div class="x-gx-info">Bu aralıkta yakalanacak <b>yeni içerik bulunamadı</b>.' + (secim.mod === 'devam' ? '<br>Rapor zaten güncel görünüyor.' : '') + '</div>');
+                return;
+            }
             chrome.runtime.sendMessage({ action: 'gxProfilTaraBaslat', urls: urls, mod: secim.mod, handle: handle }, function (resp) {
                 if (chrome.runtime.lastError || !resp || resp.status !== 'ok') {
-                    try { alert('GörüntüX: Tarama başlatılamadı — GörüntüX paneli açık değil.\nPaneli açık tutup tekrar deneyin. (' + ((resp && resp.status) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'yanıt yok') + ')'); } catch (e) {}
+                    xProfilMesajGoster(handle, '<div class="x-gx-info" style="background:#fdeef0;border-color:#f6c6cd">Tarama başlatılamadı — <b>GörüntüX paneli açık değil</b>.<br>Paneli açık tutup tekrar deneyin.<br><span style="color:#8899a6;font-size:12px">(' + xGxKac((resp && resp.status) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'yanıt yok') + ')</span></div>');
                 } else {
-                    try { alert('GörüntüX: ' + sonuc.ogeler.length + ' içerik taranıyor\n(paylaşım: ' + (tipSay.paylasim || 0) + ' · RT: ' + (tipSay.rt || 0) + ' · yorum: ' + (tipSay.yorum || 0) + ')\n\nİlerlemeyi GörüntüX panelinde göreceksiniz.'); } catch (e) {}
+                    xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + sonuc.ogeler.length + ' içerik</b> taranıyor<br>paylaşım: ' + (tipSay.paylasim || 0) + ' · RT: ' + (tipSay.rt || 0) + ' · yorum: ' + (tipSay.yorum || 0) + '<br>İlerlemeyi <b>GörüntüX panelinde</b> göreceksin.</div>', true);
                 }
             });
-        } catch (e) { printLog('[GX Tarama] hata: ' + (e && e.message)); }
+        } catch (e) { printLog('[GX Tarama] hata: ' + (e && e.message)); xProfilMesajGoster(handle, '<div class="x-gx-info">Beklenmeyen hata: ' + xGxKac(e && e.message) + '</div>'); }
     }
     // [FAZ 4 HASAT] x.com/<handle>/all'da aşağı kaydırarak paylaşım/RT/yorumları toplar.
     // Tip: inject.js data-* (data-is-retweet/-reply/-tweet-id, paylaşılan DOM; ISOLATED
@@ -3058,7 +3098,22 @@
         try {
             if (window.__xGxProfilPollerAktif) return;
             window.__xGxProfilPollerAktif = true;
-            setInterval(() => { try { if (xGxProfilHandle()) xProfilRaporButonuEkle(); } catch (e) {} }, 600);
+            xProfilRaporButonuEkle();   // hemen dene
+            // HIZLI: profil başlığı (placementTracking) DOM'a girer girmez enjekte et (dock ile
+            // aynı anda hissi). Eskiden yalnız 600ms poll vardı -> buton geç geliyordu.
+            try {
+                var _mo = new MutationObserver(function () {
+                    try { if (xGxProfilHandle()) xProfilRaporButonuEkle(); } catch (e) {}
+                    if (document.querySelector('.x-gx-rapor-btn')) { try { _mo.disconnect(); } catch (e) {} }
+                });
+                _mo.observe(document.documentElement, { childList: true, subtree: true });
+                // SPA gezinmede başlık yeniden render olursa observer'ı kısa süre sonra yeniden kur
+                setInterval(function () {
+                    try { if (xGxProfilHandle() && !document.querySelector('.x-gx-rapor-btn')) { xProfilRaporButonuEkle(); } } catch (e) {}
+                }, 600);
+            } catch (e) {
+                setInterval(function () { try { if (xGxProfilHandle()) xProfilRaporButonuEkle(); } catch (e) {} }, 600);
+            }
         } catch (e) {}
     }
     // Profil kartı / tweet ekran görüntüsü alınırken butonumuz SS'e girmesin: captureArticle
@@ -5662,10 +5717,12 @@
                 // v3.88: fotograf/medya alt sayfasi (/status/123/photo/1, /media) -> widget YOK
                 // (background ile AYNI kontrol). tivitMi regex'i onek eslestigi icin ayrica dislanir.
                 let fotografMi = /\/status\/\d+\/(?:photo|media|video)(?:\/|$)/i.test(temizUrl);
-                // Profil sayfasi: x.com/{ad} (tek segment) ve {ad} rezerve yol DEGIL.
+                // Profil sayfasi: x.com/{ad} KÖK veya profil ALT-SEKMELERI (all/with_replies/
+                // reposts/media/highlights/superfollows/affiliates). [#1/#4] Buton + /all'a
+                // yonlendirme bunlarin HEPSINDE calissin diye alt-sekmeler de profilMi sayilir.
                 let profilMi = false;
                 {
-                    const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?$/i);
+                    const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)(?:\/(all|with_replies|reposts|media|highlights|superfollows|affiliates))?\/?$/i);
                     const _rez = ["home","explore","notifications","messages","search","i","settings",
                                   "compose","hashtag","login","logout","signup","share","intent",
                                   "tos","privacy","about","download","jobs","developer"];
@@ -5677,7 +5734,7 @@
                 if ((((tivitMi && !rtSayfasiMi) || profilMi) && !fotografMi)) {
                     printLog(`${profilMi ? 'Profil' : 'Tekil tivit'} sayfası algılandı. Idle widget yükleniyor.`);
                     renderIdleWidget(directKey || "x_profil_gorevi_tekil");
-                    if (profilMi) { xProfilRaporButonuEkle(); xProfilRaporPollerBaslat(); }   // [GÖRÜNTÜX İLE RAPORLA] profil başlığı butonu (Faz 2)
+                    if (profilMi) { xProfilRaporButonuEkle(); xProfilRaporPollerBaslat(); xProfilBeklemedekiTaramaKontrol(); }   // [GÖRÜNTÜX İLE RAPORLA] profil başlığı butonu (tüm profil sekmelerinde) + /all'da beklemedeki tarama
                 } else {
                     printLog("Alakasız/foto sayfası. Widget gizleniyor.");
                     widget.style.display = 'none';

@@ -396,9 +396,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       // v3.80: X PROFIL sayfasi. "Rapora Ekle" idle widget'i profilde de gorunsun diye
       // (v3.72'de widget.js icine eklenmisti ama background widget.js'i PROFILE enjekte
       // etmiyordu -> profilde hic acilmiyordu). Tespit widget.js'teki profilMi ile AYNI.
+      // [GÖRÜNTÜX İLE RAPORLA #1/#4]: profil KÖK + ALT-SEKMELERI (all/with_replies/reposts/
+      // media/highlights/superfollows/affiliates) -> widget enjekte edilsin (buton + /all'a
+      // yonlendirme hepsinde calissin; widget.js'teki profilMi ile AYNI).
       let profilMi = false;
       try {
-        const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)\/?$/i);
+        const _pm = temizUrl.match(/^https?:\/\/(?:x|twitter)\.com\/([^/?#]+)(?:\/(all|with_replies|reposts|media|highlights|superfollows|affiliates))?\/?$/i);
         const _rez = ["home","explore","notifications","messages","search","i","settings",
                       "compose","hashtag","login","logout","signup","share","intent",
                       "tos","privacy","about","download","jobs","developer"];
