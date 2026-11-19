@@ -2978,9 +2978,33 @@
             if (window.__xGxCaptureAktif) return;   // yakalama sırasında taze buton enjekte etme (SS'e girmesin)
             if (!/\/status\/\d+/.test(location.href)) return;   // yalnız tweet DETAY sayfası
             xGxTweetStilEkle();
+            // YALNIZ AÇIK (odaklı) tweet: URL'deki /status/<id> ile kendi zaman-damgası linki eşleşen
+            // article. Yanıtlar + üstteki parent tweetler + alıntılar hariç (kullanıcı isteği).
+            var _fm = location.href.match(/\/status\/(\d+)/);
+            var focusId = _fm ? _fm[1] : null;
+            function _kendiTweetId(art) {
+                // Alıntı tweet kapsayıcısı ([role="link"]) İÇİNDEKİ zaman linklerini atla -> yalnız tweet'in kendi permalink'i
+                var links = art.querySelectorAll('a[href*="/status/"]');
+                for (var k = 0; k < links.length; k++) {
+                    var lk = links[k];
+                    if (!lk.querySelector('time')) continue;
+                    if (lk.closest('[role="link"]')) continue;   // alıntı tweet -> atla
+                    var hm = (lk.getAttribute('href') || '').match(/\/status\/(\d+)/);
+                    if (hm) return hm[1];
+                }
+                return null;
+            }
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
+            // Önce odaklı article'ı bul; bulunamazsa ilk article'a düş (güvenli)
+            var hedef = null;
+            if (focusId) { for (var q = 0; q < arts.length; q++) { if (_kendiTweetId(arts[q]) === focusId) { hedef = arts[q]; break; } } }
+            if (!hedef && arts.length) hedef = arts[0];
             for (var i = 0; i < arts.length; i++) {
                 var art = arts[i];
+                if (art !== hedef) {   // odaklı olmayan (yanıt/parent/alıntı): varsa butonu temizle
+                    var _eski = art.querySelector('.x-gx-tw-btn'); if (_eski) _eski.remove();
+                    continue;
+                }
                 if (art.querySelector('.x-gx-tw-btn')) continue;
                 var btn = document.createElement('button');
                 btn.type = 'button'; btn.className = 'x-gx-tw-btn';
