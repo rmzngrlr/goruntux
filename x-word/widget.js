@@ -3050,68 +3050,94 @@
         var html = '<div class="x-gx-info"><b>' + sonuc.ogeler.length + ' içerik</b> bulundu'
             + (aralik ? ' <span style="color:#536471">(' + aralik + ')</span>' : '') + '<br>'
             + 'paylaşım: <b>' + (tipSay.paylasim || 0) + '</b> · RT: <b>' + (tipSay.rt || 0) + '</b> · yorum: <b>' + (tipSay.yorum || 0) + '</b></div>';
-        var durum = { mod: 'onay', html: html, _onayla: function () { xProfilYerindeYakala(handle, secim, sonuc); } };
+        var durum = { mod: 'onay', html: html, _onayla: function () { xProfilTiklaYakala(handle, secim, sonuc); } };
         xGxPopupStilEkle();
         if (!document.getElementById('x-gx-card')) xProfilPopupAc(handle, durum); else xProfilPopupGuncelle(handle, durum);
     }
-    // [#2 RT DÜZELTME] Yakalama /all'da YERİNDE: RT'ler burada "@handle yeniden yayınladı"
-    // atıfıyla görünür (idle "Rapora Ekle" mantığı: socialContext->group_override + sentetik
-    // rt:handle:id link). URL-kuyruk (startAutomation) YOK -> RT'ler orijinal sahibe GİTMEZ.
-    // Tek aşağı-geçiş: hedef id kartlarını captureArticle/xYakalaTweetVeYanit ile yakala +
-    // tampona al, sonra TARİHE GÖRE ters çevir (ESKİ->YENİ) + addToPool (profil kartı önce).
-    async function xProfilYerindeYakala(handle, secim, sonuc) {
+    // [#2 TIKLA-DETAY YAKALAMA] "Manuel gibi": /all'da hedef kartın GÖVDESİNE tıkla -> X
+    // uygulama-içi (SPA) detaya gider ve RT'de "@handle yeniden yayınladı" BAŞLIĞI KORUNUR
+    // (CANLI DOĞRULANDI: kart-gövdesi tıklama başlığı taşır; permalink/link-açma taşımaz).
+    // Detayda tam tweet (xTweetMetniAc ile "Daha fazla göster" açık) + başlık odak article
+    // içinde -> captureArticle yakalar. Yakala -> history.back() ile /all'a dön -> sıradaki.
+    // Tampon yeni->eski, sonra TARİHE göre TERS (eski->yeni) + addToPool (profil kartı önce).
+    async function xProfilTiklaYakala(handle, secim, sonuc) {
         var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
-        var _cap = window.__xGxCap, _capYanit = window.__xGxCapYanit;   // baslat içindeki yakalayıcılar
+        var _cap = window.__xGxCap, _capYanit = window.__xGxCapYanit;
         if (typeof _cap !== 'function') { xProfilMesajGoster(handle, '<div class="x-gx-info">Yakalama motoru hazır değil — sayfayı yenileyip (F5) tekrar deneyin.</div>'); return; }
         var origin = '';
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var addPool = function (item) { return new Promise(function (resolve) { try { chrome.runtime.sendMessage(Object.assign({ action: 'addToPool', origin: origin }, item), function (res) { resolve(res || {}); }); } catch (e) { resolve({ status: 'error' }); } }); };
-        var hedefSet = {}; sonuc.ogeler.forEach(function (o) { hedefSet[o.id] = o; });
-        var toplam = sonuc.ogeler.length;
+        var bekle = function (kosul, ms) { return new Promise(function (resolve) { var t0 = Date.now(); (function kon() { try { if (kosul()) { resolve(true); return; } } catch (e) {} if (Date.now() - t0 > ms) { resolve(false); return; } setTimeout(kon, 150); })(); }); };
+        var odakArticle = function (tid) {
+            var arts = document.querySelectorAll('article[data-testid="tweet"]');
+            if (tid) { for (var i = 0; i < arts.length; i++) { if (arts[i].querySelector('a[href*="/status/' + tid + '"]')) return arts[i]; } }
+            for (var j = 0; j < arts.length; j++) { var te = arts[j].querySelector('time'); if (te && !te.closest('a')) return arts[j]; }
+            return arts[0] || null;
+        };
+        var targets = {}; sonuc.ogeler.forEach(function (o) { targets[o.id] = o; });
+        var toplam = sonuc.ogeler.length, done = {}, tampon = {};
         // 1) PROFİL KARTI (en üst)
         xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Profil kartı yakalanıyor…</div>', false, true);
         try {
-            window.scrollTo(0, 0); await sleep(700);
-            var primaryCol = document.querySelector('[data-testid="primaryColumn"]');
-            if (primaryCol) {
+            window.scrollTo(0, 0); await sleep(800);
+            var pc = document.querySelector('[data-testid="primaryColumn"]');
+            if (pc) {
                 var _t = (document.title || '').replace(/^\(\d+\)\s*/, ''); var _m = _t.match(/^(.+?)\s*\(@[^)]+\)/); var _ad = (_m && _m[1]) ? _m[1].trim() : '';
-                var pbaslik = _ad ? (_ad + ' (@' + handle + ')') : ('@' + handle);
-                primaryCol.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(450);
-                var pss = await _cap(primaryCol) || '';
-                if (pss && pss.length > 100) await addPool({ title: pbaslik, link: 'https://x.com/' + handle, image: pss, is_profile: true, group_override: '' });
+                var pb = _ad ? (_ad + ' (@' + handle + ')') : ('@' + handle);
+                pc.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(450);
+                var pss = await _cap(pc) || '';
+                if (pss && pss.length > 100) await addPool({ title: pb, link: 'https://x.com/' + handle, image: pss, is_profile: true, group_override: '' });
             }
-        } catch (e) { printLog('[GX Yakala] profil kartı hata: ' + (e && e.message)); }
-        // 2) ÖĞELER: yukarıdan aşağı tek geçiş -> hedef kartları yerinde yakala -> tampon (yeni->eski)
-        var tampon = {}, bosTur = 0, oncekiH = 0;
-        window.scrollTo(0, 0); await sleep(600);
-        var maxTur = toplam * 3 + 50;
-        for (var tur = 0; tur < maxTur && Object.keys(tampon).length < toplam; tur++) {
+        } catch (e) { printLog('[GX Tıkla] profil kartı hata: ' + (e && e.message)); }
+        // 2) ÖĞELER: /all üstten -> hedef kart GÖVDESİNE tıkla -> detay -> yakala -> back
+        window.scrollTo(0, 0); await sleep(700);
+        var bosTur = 0, oncekiH = 0, guvenlik = 0, limit = toplam * 4 + 80;
+        while (Object.keys(done).length < toplam && guvenlik < limit) {
+            guvenlik++;
+            var secCard = null, secId = null, secInfo = null;
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
-            for (var j = 0; j < arts.length; j++) {
-                var a = arts[j];
-                var id = a.getAttribute('data-tweet-id') || '';
-                if (!id) { var sa = a.querySelector('a[href*="/status/"]'); if (sa) { var mm = (sa.getAttribute('href') || '').match(/\/status\/(\d{5,25})/); if (mm) id = mm[1]; } }
-                if (!id || !hedefSet[id] || tampon[id]) continue;
-                var meta = xProfilKartMeta(a, handle);
-                try {
-                    a.scrollIntoView({ block: 'center', behavior: 'instant' }); await sleep(220);
-                    var articles2 = document.querySelectorAll('article[data-testid="tweet"]');
-                    var ss = (hedefSet[id].tip === 'yorum' && typeof _capYanit === 'function') ? (await _capYanit(a, articles2) || '') : (await _cap(a) || '');
-                    if (ss && ss.length > 100) tampon[id] = { image: ss, baslik: meta.baslik, link: meta.link, groupOverride: meta.groupOverride, dateMs: hedefSet[id].dateMs };
-                } catch (e) { printLog('[GX Yakala] kart ' + id + ' hata: ' + (e && e.message)); }
-                xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Yakalanıyor… ' + Object.keys(tampon).length + ' / ' + toplam + '</div>', false, true);
+            for (var a = 0; a < arts.length; a++) {
+                var art = arts[a], id = art.getAttribute('data-tweet-id') || '';
+                if (!id) { var sa = art.querySelector('a[href*="/status/"]'); if (sa) { var mm = (sa.getAttribute('href') || '').match(/\/status\/(\d{5,25})/); if (mm) id = mm[1]; } }
+                if (id && targets[id] && !done[id]) { secCard = art; secId = id; secInfo = targets[id]; break; }
             }
-            if (Object.keys(tampon).length >= toplam) break;
-            window.scrollBy(0, Math.round(window.innerHeight * 0.85)); await sleep(550);
-            var h = document.documentElement.scrollHeight;
-            if (h <= oncekiH) { bosTur++; if (bosTur >= 5) break; } else { bosTur = 0; oncekiH = h; }
+            if (secCard) {
+                done[secId] = true;
+                try {
+                    secCard.scrollIntoView({ block: 'center', behavior: 'instant' }); await sleep(400);
+                    var tt = secCard.querySelector('[data-testid="tweetText"]') || secCard;
+                    var oncekiURL = location.href;
+                    tt.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));   // GÖVDE tıklama -> SPA detay (RT başlığı korunur)
+                    var gitti = await bekle(function () { return location.href !== oncekiURL && /\/status\/\d+/.test(location.href); }, 5000);
+                    if (gitti) {
+                        await sleep(950);
+                        try { if (typeof window.xTweetMetniAc === 'function') { window.xTweetMetniAc(); await sleep(300); } } catch (e) {}   // "Daha fazla göster" aç
+                        var detArt = odakArticle(secId);
+                        if (detArt) {
+                            var meta = xProfilKartMeta(detArt, handle);   // detayda socialContext VAR -> RT doğru atıf
+                            detArt.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(260);
+                            var allArts = document.querySelectorAll('article[data-testid="tweet"]');
+                            var ss = (secInfo.tip === 'yorum' && typeof _capYanit === 'function') ? (await _capYanit(detArt, allArts) || '') : (await _cap(detArt) || '');
+                            if (ss && ss.length > 100) tampon[secId] = { image: ss, baslik: meta.baslik, link: meta.link, groupOverride: meta.groupOverride, dateMs: secInfo.dateMs };
+                        }
+                        history.back();
+                        await bekle(function () { return /\/all\b/.test(location.href); }, 5000);
+                        await sleep(750);
+                    }
+                } catch (e) { printLog('[GX Tıkla] kart ' + secId + ' hata: ' + (e && e.message)); try { if (/\/status\//.test(location.href)) { history.back(); await sleep(1200); } } catch (_) {} }
+                xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Yakalanıyor… ' + Object.keys(tampon).length + ' / ' + toplam + '</div>', false, true);
+            } else {
+                window.scrollBy(0, Math.round(window.innerHeight * 0.85)); await sleep(600);
+                var h = document.documentElement.scrollHeight;
+                if (h <= oncekiH) { bosTur++; if (bosTur >= 6) break; } else { bosTur = 0; oncekiH = h; }
+            }
         }
         // 3) TARİHE GÖRE TERS (ESKİ->YENİ) + addToPool
         var liste = Object.keys(tampon).map(function (k) { return tampon[k]; }).sort(function (a, b) { return a.dateMs - b.dateMs; });
         var eklendi = 0, hata = 0;
-        for (var k = 0; k < liste.length; k++) {
-            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Rapora ekleniyor… ' + (k + 1) + ' / ' + liste.length + '</div>', false, true);
-            var it = liste[k];
+        for (var L = 0; L < liste.length; L++) {
+            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Rapora ekleniyor… ' + (L + 1) + ' / ' + liste.length + '</div>', false, true);
+            var it = liste[L];
             var rr = await addPool({ title: it.baslik, link: it.link, image: it.image, is_profile: false, group_override: it.groupOverride });
             if (rr && (rr.status === 'success' || rr.status === 'duplicate')) eklendi++; else hata++;
             await sleep(180);
