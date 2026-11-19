@@ -623,6 +623,16 @@
         chrome.runtime.sendMessage({ action: "logToServer", message: `[WIDGET] ${message}` }).catch(err => {});
     }
 
+    // ============================================================================
+    // DOCK MODU BAYRAĞI — varsayılan KAPALI (false) = yeni tasarım:
+    //   • Eski alt-sağ sürüklenebilir dock (#x-downloader-widget) DOM'da kalır ama GİZLENİR
+    //     (yedek: tüm tarama/uyarı/güncelleme fonksiyonları null-ref kırılmadan çalışır).
+    //   • Görünür arayüz = X'in sol navigasyonuna, logonun hemen altına enjekte edilen
+    //     yerli GörüntüX butonu (xNavButon*). Tık=Panele Git; dock durumu buraya yansır.
+    // OLAĞANÜSTÜ durumda ESKİ dock'u geri getirmek için bunu `true` yap (nav butonu kapanır).
+    // ============================================================================
+    var X_GX_DOCK_ESKI = (typeof window !== 'undefined' && window.__X_GX_DOCK_ESKI === true);
+
     function baslat() {
         if (!document.body) {
             setTimeout(baslat, 50);
@@ -778,6 +788,8 @@
                     #x-downloader-widget .xdock-hidden { display: none !important; }
                     /* Tam ekran (video fullscreen) -> tum dock gizli (window.xRaporFsListener). */
                     #x-downloader-widget.xdock-fs-gizli { display: none !important; }
+                    /* YENI MOD (X_GX_DOCK_ESKI=false): eski dock gorunmez yedek; arayuz nav butonunda. */
+                    #x-downloader-widget.x-gx-dock-yedek { display: none !important; }
 
                     /* Etkilesimli tarama diyalogu (limit/atla): dock KENARDA kalir, durum metni
                        acik yone BITISIK bir kart olarak ANLIK acilir; kapaninca dar hale doner. */
@@ -913,6 +925,13 @@
             widget.appendChild(progressBox);
 
             document.body.appendChild(widget);
+
+            // YENI MOD: eski dock'u GIZLE (gorunmez yedek) + sol-nav GoruntuX butonunu baslat.
+            // Durum (tarama/guncelleme) gizli dock'tan nav butonuna MutationObserver ile yansir.
+            if (!X_GX_DOCK_ESKI) {
+                try { widget.classList.add('x-gx-dock-yedek'); } catch (e) {}
+                try { xNavButonPollerBaslat(); } catch (e) {}
+            }
 
             function cropScreenshot(dataUrl, rect) {
                 return new Promise((resolve, reject) => {
@@ -2982,23 +3001,27 @@
             // article. Yanıtlar + üstteki parent tweetler + alıntılar hariç (kullanıcı isteği).
             var _fm = location.href.match(/\/status\/(\d+)/);
             var focusId = _fm ? _fm[1] : null;
-            function _kendiTweetId(art) {
-                // Alıntı tweet kapsayıcısı ([role="link"]) İÇİNDEKİ zaman linklerini atla -> yalnız tweet'in kendi permalink'i
+            // AÇIK (odaklı) tweet = ZAMAN-DAMGASI (permalink) linkinin id'si URL'deki /status/<id> ile
+            // eşleşen article. NOT: X bütün tweet satırını [role="link"] ile sarmalayabiliyor — tweet'in
+            // KENDİ permalink'i bile [role=link] içinde — bu yüzden "[role=link] içindekini atla" HATALIYDI
+            // (her linki eliyordu, hep parent'a düşüyordu). Doğru ayrım: <time> linkinin id'si = focusId.
+            // Parent + yanıtlar kendi id'leriyle linklenir (≠ focusId); alıntı tweet de kendi id'sini taşır.
+            function _odakliMi(art) {
+                if (!focusId) return false;
                 var links = art.querySelectorAll('a[href*="/status/"]');
                 for (var k = 0; k < links.length; k++) {
                     var lk = links[k];
-                    if (!lk.querySelector('time')) continue;
-                    if (lk.closest('[role="link"]')) continue;   // alıntı tweet -> atla
+                    if (!lk.querySelector('time')) continue;   // yalnız zaman-damgası (permalink) linkleri
                     var hm = (lk.getAttribute('href') || '').match(/\/status\/(\d+)/);
-                    if (hm) return hm[1];
+                    if (hm && hm[1] === focusId) return true;
                 }
-                return null;
+                return false;
             }
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
-            // Önce odaklı article'ı bul; bulunamazsa ilk article'a düş (güvenli)
+            // Yalnız odaklı article'a ekle; bulunamazsa HİÇBİRİNE ekleme (yanlış tweete koymaktansa koyma,
+            // sonraki 700ms poll'da yeniden dener).
             var hedef = null;
-            if (focusId) { for (var q = 0; q < arts.length; q++) { if (_kendiTweetId(arts[q]) === focusId) { hedef = arts[q]; break; } } }
-            if (!hedef && arts.length) hedef = arts[0];
+            if (focusId) { for (var q = 0; q < arts.length; q++) { if (_odakliMi(arts[q])) { hedef = arts[q]; break; } } }
             for (var i = 0; i < arts.length; i++) {
                 var art = arts[i];
                 if (art !== hedef) {   // odaklı olmayan (yanıt/parent/alıntı): varsa butonu temizle
@@ -3076,6 +3099,164 @@
             window.__xGxTweetPoller = true;
             xTweetRaporButonuEkle();
             setInterval(function () { try { xTweetRaporButonuEkle(); } catch (e) {} }, 700);
+        } catch (e) {}
+    }
+
+    // ====================== GÖRÜNTÜX NAV BUTONU (X sol-nav, logonun altı) ======================
+    // Eski dock gizli yedek; GÖRÜNÜR arayüz = X'in birincil nav'ına, X logosunun hemen altına
+    // (Anasayfa'nın üstüne) enjekte edilen yerli öğe. X'in kendi düzeni taşır: geniş=ikon+etiket,
+    // dar=yalnız ikon (diğer ikonları aşağı kaydırır). Tık=Panele Git. Dock durumu (tarama
+    // halkası/güncelleme) buraya MutationObserver ile yansıtılır (ayrı mantık yok).
+    function xNavStilEkle() {
+        if (document.getElementById('x-gx-nav-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-nav-style';
+        s.textContent = `
+            .x-gx-nav{ position:relative; display:flex; align-items:center; width:100%; box-sizing:border-box;
+                cursor:pointer; color:inherit; text-decoration:none; -webkit-tap-highlight-color:transparent; margin:4px 0; }
+            .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:16px; padding:8px 12px;
+                border-radius:9999px; transition:background .15s ease; max-width:100%; }
+            .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.12); }
+            .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; }
+            .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
+            .x-gx-nav-ring{ position:absolute; inset:-5px; display:none; transform:rotate(-90deg); transform-origin:50% 50%; }
+            .x-gx-nav.scanning .x-gx-nav-ring{ display:block; }
+            .x-gx-nav.scanning .x-gx-nav-logo{ opacity:.25; }
+            .x-gx-nav-ring .trk{ fill:none; stroke:rgba(113,118,123,.35); stroke-width:3; }
+            .x-gx-nav-ring .fil{ fill:none; stroke:#1d9bf0; stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
+            .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#1d9bf0; }
+            .x-gx-nav.scanning .x-gx-nav-cnt{ display:flex; }
+            .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
+                background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
+            .x-gx-nav.outdated .x-gx-nav-badge{ display:flex; }
+            .x-gx-nav-lbl{ font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            .x-gx-nav.collapsed .x-gx-nav-lbl{ display:none; }
+            .x-gx-nav.collapsed .x-gx-nav-inner{ gap:0; padding:10px; }
+            .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin-left:2px; width:26px; height:26px; border:none; border-radius:9999px;
+                background:#e0245e; color:#fff; font-size:13px; cursor:pointer; align-items:center; justify-content:center; }
+            .x-gx-nav.scanning:not(.collapsed) .x-gx-nav-cancel{ display:inline-flex; }
+            .x-gx-nav-pop{ display:none; position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%);
+                background:rgba(15,20,25,.97); color:#fff; font-size:13px; line-height:1.3; padding:10px 12px; border-radius:10px;
+                white-space:nowrap; z-index:99999; box-shadow:0 2px 12px rgba(0,0,0,.45); align-items:center; gap:10px; }
+            .x-gx-nav.collapsed.scanning:hover .x-gx-nav-pop,
+            .x-gx-nav.collapsed.outdated:hover .x-gx-nav-pop{ display:flex; }
+            .x-gx-nav-pop .pop-cancel{ border:none; border-radius:9999px; background:#e0245e; color:#fff; width:26px; height:26px; cursor:pointer; flex:0 0 auto; }
+        `;
+        (document.head || document.documentElement).appendChild(s);
+    }
+    function xNavPaneleGit() {
+        try { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (res) { chrome.runtime.sendMessage({ action: 'goToPanel', origin: res.server_origin }); }); } catch (e) {}
+    }
+    function xNavGuncellemeAc() {
+        try { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (res) { window.open(res.server_origin + '/#eklenti-guncelle', '_blank'); }); } catch (e) {}
+    }
+    function xNavButonOlustur() {
+        var a = document.createElement('a');
+        a.id = 'x-gx-nav-btn';
+        a.className = 'x-gx-nav collapsed';
+        a.href = '#'; a.setAttribute('role', 'link'); a.setAttribute('aria-label', 'GörüntüX');
+        a.innerHTML = ''
+            + '<span class="x-gx-nav-inner">'
+            +   '<span class="x-gx-nav-ico">'
+            +     '<svg class="x-gx-nav-logo" width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
+            +     '<svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg>'
+            +     '<span class="x-gx-nav-cnt">0/0</span>'
+            +     '<span class="x-gx-nav-badge">!</span>'
+            +   '</span>'
+            +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
+            +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
+            + '</span>'
+            + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
+        a.addEventListener('click', function (ev) {
+            ev.preventDefault(); ev.stopPropagation();
+            if (a.classList.contains('outdated')) { xNavGuncellemeAc(); return; }
+            xNavPaneleGit();
+        });
+        var _fwd = function (ev) { ev.preventDefault(); ev.stopPropagation(); try { var c = document.getElementById('w-scan-cancel'); if (c) c.click(); } catch (e) {} };
+        var cx1 = a.querySelector('.x-gx-nav-cancel'); if (cx1) cx1.addEventListener('click', _fwd);
+        var cx2 = a.querySelector('.pop-cancel'); if (cx2) cx2.addEventListener('click', _fwd);
+        return a;
+    }
+    function xNavYansit() {
+        try {
+            var nav = document.getElementById('x-gx-nav-btn');
+            var dock = document.getElementById('x-downloader-widget');
+            if (!nav || !dock) return;
+            var scanning = dock.classList.contains('scanning');
+            var wbtn = document.getElementById('w-buton');
+            var outdated = !!(wbtn && wbtn.classList.contains('outdated'));
+            nav.classList.toggle('scanning', scanning);
+            nav.classList.toggle('outdated', outdated && !scanning);
+            var ring = document.getElementById('w-scan-ring');
+            var navFil = nav.querySelector('.x-gx-nav-ring .fil');
+            if (ring && navFil) navFil.setAttribute('stroke-dashoffset', ring.getAttribute('stroke-dashoffset') || '100.53');
+            var txt = document.getElementById('w-scan-txt');
+            var cnt = nav.querySelector('.x-gx-nav-cnt');
+            if (txt && cnt) cnt.textContent = txt.textContent || '';
+            var msg = document.getElementById('w-scan-msg');
+            var lbl = nav.querySelector('.x-gx-nav-lbl');
+            var popMsg = nav.querySelector('.x-gx-nav-pop .pop-msg');
+            var popCancel = nav.querySelector('.x-gx-nav-pop .pop-cancel');
+            if (scanning) {
+                var m = (msg && msg.textContent) ? msg.textContent : 'Taranıyor…';
+                var c = (txt && txt.textContent) ? (' ' + txt.textContent) : '';
+                if (lbl) lbl.textContent = m + c;
+                if (popMsg) popMsg.textContent = m + c;
+                if (popCancel) popCancel.style.display = '';
+            } else if (outdated) {
+                if (lbl) lbl.textContent = 'Güncelleme gerekli';
+                if (popMsg) popMsg.textContent = 'Güncelleme gerekli — tıkla';
+                if (popCancel) popCancel.style.display = 'none';
+            } else {
+                if (lbl) lbl.textContent = 'GörüntüX';
+                if (popMsg) popMsg.textContent = '';
+                if (popCancel) popCancel.style.display = 'none';
+            }
+        } catch (e) {}
+    }
+    function xNavButonYerlestir() {
+        try {
+            if (X_GX_DOCK_ESKI) return;
+            // Birincil nav = Anasayfa linkini içeren <nav>. Logo bu nav'ın HEMEN ÜSTÜNDE ayrı
+            // kapsayıcıda; butonu nav'ın İLK öğesi yapınca logonun hemen altına, Anasayfa'nın üstüne gelir.
+            var home = document.querySelector('nav a[href="/home"]');
+            if (!home) return;
+            var navRoot = home.closest('nav');
+            if (!navRoot) return;
+            xNavStilEkle();
+            var btn = document.getElementById('x-gx-nav-btn');
+            if (!btn) btn = xNavButonOlustur();
+            if (btn.parentElement !== navRoot || navRoot.firstElementChild !== btn) {
+                navRoot.insertBefore(btn, navRoot.firstElementChild);
+            }
+            // Dar mod? Anasayfa öğesinin genişliğinden anla (ikon-nav ~50px, etiketli ~250px).
+            var collapsed = home.getBoundingClientRect().width < 100;
+            btn.classList.toggle('collapsed', collapsed);
+            xNavObserverKur();
+            xNavYansit();
+        } catch (e) {}
+    }
+    // Gizli dock durum değişimlerini (tarama halkası/güncelleme) nav butonuna ANLIK yansıt.
+    // baslat() SPA'da yeniden çalışıp dock'u YENİDEN kurabildiğinden (satır ~634 eski dock'u siler),
+    // gözlemciyi daima GÜNCEL dock düğümüne bağla (düğüm değiştiyse yeniden kur). 700ms poll zaten yedek.
+    function xNavObserverKur() {
+        try {
+            var dock = document.getElementById('x-downloader-widget');
+            if (!dock || !window.MutationObserver) return;
+            if (window.__xGxNavMoNode === dock) return;   // zaten bu dock gözleniyor
+            if (window.__xGxNavMo) { try { window.__xGxNavMo.disconnect(); } catch (e) {} }
+            window.__xGxNavMo = new MutationObserver(function () { xNavYansit(); });
+            window.__xGxNavMo.observe(dock, { attributes: true, childList: true, subtree: true, characterData: true });
+            window.__xGxNavMoNode = dock;
+        } catch (e) {}
+    }
+    function xNavButonPollerBaslat() {
+        try {
+            if (X_GX_DOCK_ESKI) return;
+            if (window.__xGxNavPoller) return;
+            window.__xGxNavPoller = true;
+            xNavButonYerlestir();
+            setInterval(function () { try { xNavButonYerlestir(); } catch (e) {} }, 700);
+            window.addEventListener('resize', function () { try { xNavButonYerlestir(); } catch (e) {} });
         } catch (e) {}
     }
     // [#1/#4] /all'a yönlendirmeden sonra beklemedeki taramayı sürdür (widget /all'da yüklenince).
