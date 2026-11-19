@@ -2920,11 +2920,13 @@
         document.addEventListener('keydown', esc, true);
     }
     // [#5] Popup içinde mesaj göster (yerli alert yerine). Popup kapalıysa açar.
-    function xProfilMesajGoster(handle, html, otoKapat) {
+    // ilerleme=true -> 'ilerleme' modu (Tamam butonu YOK; süren işlem göstergesi).
+    function xProfilMesajGoster(handle, html, otoKapat, ilerleme) {
         try {
             var h = handle || xGxProfilHandle() || '';
-            if (!document.getElementById('x-gx-card')) xProfilPopupAc(h, { mod: 'mesaj', html: html });
-            else xProfilPopupGuncelle(h, { mod: 'mesaj', html: html });
+            var durum = { mod: ilerleme ? 'ilerleme' : 'mesaj', html: html };
+            if (!document.getElementById('x-gx-card')) xProfilPopupAc(h, durum);
+            else xProfilPopupGuncelle(h, durum);
             if (otoKapat) { setTimeout(function () { try { xProfilPopupKapat(); } catch (e) {} }, 3800); }
         } catch (e) {}
     }
@@ -2959,6 +2961,10 @@
             card.innerHTML = bas + (durum.html || '')
                 + `<div class="x-gx-act"><button class="x-gx-primary" id="x-gx-tamam">Tamam</button></div>`;
             var _tb = card.querySelector('#x-gx-tamam'); if (_tb) _tb.onclick = xProfilPopupKapat;
+            return;
+        }
+        if (durum.mod === 'ilerleme') {   // süren işlem -> buton YOK (kapatılamaz gösterge)
+            card.innerHTML = bas + (durum.html || '');
             return;
         }
         if (durum.mod === 'onay') {   // hasat sonucu -> kullanıcı onaylayınca tara
@@ -3009,7 +3015,7 @@
         if (xGxAllSayfasiMi()) { xProfilTaramaCalistir(handle, secim); return; }
         // /all'da değiliz (profil kökü/alt-sekme) -> işaretle + /all'a GİT; widget /all'da
         // yeniden yüklenince beklemedeki taramayı sürdürür (xProfilBeklemedekiTaramaKontrol).
-        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Tümü (/all) sayfasına gidiliyor…</div>');
+        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Tümü (/all) sayfasına gidiliyor…</div>', false, true);
         try {
             chrome.storage.local.set({ x_gx_pending_scan: { handle: handle, secim: secim, ts: Date.now() } }, function () {
                 try { location.href = 'https://x.com/' + handle + '/all'; } catch (e) {}
@@ -3022,7 +3028,7 @@
     // Yorum = status URL'sine gidince thread bağlamıyla gelir (tek tek aç doğal).
     async function xProfilTaramaCalistir(handle, secim) {
         try {
-            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> İçerik taranıyor… (sayfa kaydırılıyor, ölçülü hız)</div>');
+            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> İçerik taranıyor… (sayfa kaydırılıyor, ölçülü hız)</div>', false, true);
             printLog('[GX Hasat] başladı @' + handle + ' mod=' + secim.mod);
             var sonuc = await xProfilHasat(handle, secim, { maxTur: 300, bekle: 650 });
             var urls = ['https://x.com/' + handle];   // profil kartı (profile_header) ilk
@@ -3063,7 +3069,7 @@
         var hedefSet = {}; sonuc.ogeler.forEach(function (o) { hedefSet[o.id] = o; });
         var toplam = sonuc.ogeler.length;
         // 1) PROFİL KARTI (en üst)
-        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Profil kartı yakalanıyor…</div>');
+        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Profil kartı yakalanıyor…</div>', false, true);
         try {
             window.scrollTo(0, 0); await sleep(700);
             var primaryCol = document.querySelector('[data-testid="primaryColumn"]');
@@ -3093,7 +3099,7 @@
                     var ss = (hedefSet[id].tip === 'yorum' && typeof _capYanit === 'function') ? (await _capYanit(a, articles2) || '') : (await _cap(a) || '');
                     if (ss && ss.length > 100) tampon[id] = { image: ss, baslik: meta.baslik, link: meta.link, groupOverride: meta.groupOverride, dateMs: hedefSet[id].dateMs };
                 } catch (e) { printLog('[GX Yakala] kart ' + id + ' hata: ' + (e && e.message)); }
-                xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Yakalanıyor… ' + Object.keys(tampon).length + ' / ' + toplam + '</div>');
+                xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Yakalanıyor… ' + Object.keys(tampon).length + ' / ' + toplam + '</div>', false, true);
             }
             if (Object.keys(tampon).length >= toplam) break;
             window.scrollBy(0, Math.round(window.innerHeight * 0.85)); await sleep(550);
@@ -3104,7 +3110,7 @@
         var liste = Object.keys(tampon).map(function (k) { return tampon[k]; }).sort(function (a, b) { return a.dateMs - b.dateMs; });
         var eklendi = 0, hata = 0;
         for (var k = 0; k < liste.length; k++) {
-            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Rapora ekleniyor… ' + (k + 1) + ' / ' + liste.length + '</div>');
+            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Rapora ekleniyor… ' + (k + 1) + ' / ' + liste.length + '</div>', false, true);
             var it = liste[k];
             var rr = await addPool({ title: it.baslik, link: it.link, image: it.image, is_profile: false, group_override: it.groupOverride });
             if (rr && (rr.status === 'success' || rr.status === 'duplicate')) eklendi++; else hata++;
