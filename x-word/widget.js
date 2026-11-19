@@ -2065,7 +2065,7 @@
 
             // [GÖRÜNTÜX İLE RAPORLA #2] Profil YERİNDE-yakalama (top-level xProfilYerindeYakala)
             // bu iç yakalayıcılara erişsin diye window'a aç (baslat çalışınca, buton görünmeden önce set edilir).
-            try { window.__xGxCap = captureArticle; window.__xGxCapYanit = xYakalaTweetVeYanit; } catch (e) {}
+            try { window.__xGxCap = captureArticle; window.__xGxCapYanit = xYakalaTweetVeYanit; window.__xGxCokluSec = xCokluTweetSec; window.__xGxYakalaCoklu = xYakalaCoklu; } catch (e) {}
 
             // Global timer and progress helper states
             let timerIntervalId = null;
@@ -3085,7 +3085,23 @@
         try {
             try { if (typeof window.xTweetMetniAc === 'function') { window.xTweetMetniAc(); await sleep(250); } } catch (e) {}
             var allArts = document.querySelectorAll('article[data-testid="tweet"]');
-            var ss = (isReply && typeof _capYanit === 'function') ? (await _capYanit(article, allArts) || '') : (await _cap(article) || '');
+            // ÇOKLU-SEÇİM (dock'tan taşınan özellik): açık tweet'in ≥2 ATASI varsa (zincir A←B←C),
+            // kullanıcı atalar+eklenen tweet'ten onay kutularıyla seçer; 1 ata (ana+yorum)/tekil ->
+            // otomatik (eski xYakalaTweetVeYanit). Bayrak x_coklu_sec='0' -> kapalı.
+            var _cokluSec = window.__xGxCokluSec, _yakalaCoklu = window.__xGxYakalaCoklu;
+            var _cokluAcik = true; try { if (localStorage.getItem('x_coklu_sec') === '0') _cokluAcik = false; } catch (e) {}
+            var _arr = Array.prototype.slice.call(allArts);
+            var _fi = _arr.indexOf(article);
+            var ss;
+            if (_cokluAcik && _fi >= 2 && typeof _cokluSec === 'function' && typeof _yakalaCoklu === 'function') {
+                if (tipEl) tipEl.textContent = 'Üst gönderileri seçin…';
+                var _adaylar = _arr.slice(0, _fi + 1);   // atalar (0..fi-1) + eklenen tweet (fi), yukarıdan aşağıya
+                var _secilenler = await _cokluSec(_adaylar, article);
+                if (!_secilenler) { xTweetBtnDurum(btn, 'x-gx-warn', 'İptal edildi'); return; }   // iptal -> ekleme yok
+                ss = await _yakalaCoklu(_secilenler, _adaylar) || '';
+            } else {
+                ss = (isReply && typeof _capYanit === 'function') ? (await _capYanit(article, allArts) || '') : (await _cap(article) || '');
+            }
             if (!ss || ss.length < 100) { xTweetBtnDurum(btn, 'x-gx-warn', 'Yakalanamadı'); return; }
             var res = await new Promise(function (r) { try { chrome.runtime.sendMessage({ action: 'addToPool', origin: origin, title: meta.baslik, link: meta.link, image: ss, is_profile: false, group_override: meta.groupOverride }, function (x) { r(x || {}); }); } catch (e) { r({ status: 'error' }); } });
             if (res && res.status === 'success') xTweetBtnDurum(btn, 'x-gx-ok', 'Rapora eklendi ✔');
@@ -3128,8 +3144,13 @@
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
             .x-gx-nav.outdated .x-gx-nav-badge{ display:flex; }
-            .x-gx-nav-lbl{ font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+            /* Etiket fontu = X nav etiketi (Anasayfa) fontu. X, fontu LINK'te degil ETIKET SPAN'inde
+               tanimliyor (link computed='Times' serif) -> Chirp stack'ini dogrudan ver (serif kaybolur). */
+            .x-gx-nav-lbl{ font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+                font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .x-gx-nav.collapsed .x-gx-nav-lbl{ display:none; }
+            /* Dar modda ikonu X logosu + Anasayfa ikonuyla AYNI dikey eksende ortala (cx=item merkezi). */
+            .x-gx-nav.collapsed{ justify-content:center; }
             .x-gx-nav.collapsed .x-gx-nav-inner{ gap:0; padding:10px; }
             .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin-left:2px; width:26px; height:26px; border:none; border-radius:9999px;
                 background:#e0245e; color:#fff; font-size:13px; cursor:pointer; align-items:center; justify-content:center; }
