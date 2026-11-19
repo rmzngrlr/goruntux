@@ -2959,11 +2959,85 @@
     // FAZ 4 YER TUTUCU: /all tarama motoru burada bağlanacak. Şimdilik seçilen modu/parametreleri gösterir.
     function xProfilTaramaBaslat(handle, secim) {
         xProfilPopupKapat();
-        printLog('[GX Profil Rapor] TARAMA (Faz4 bekliyor) @' + handle + ' -> ' + JSON.stringify(secim));
-        var ozet = (secim.mod === 'devam')
-            ? 'Devam modu: ' + (xGxTarihTR(secim.sonTarihISO) || 'son içerik') + ' → bugün'
-            : 'Takvim modu: ' + xGxTarihTR(secim.baslangicISO) + ' → ' + xGxTarihTR(secim.bitisISO);
-        try { alert('GörüntüX — @' + handle + '\n' + ozet + '\n\n(/all tarama motoru Faz 4\'te bağlanacak.)'); } catch (e) {}
+        printLog('[GX Profil Rapor] TARAMA @' + handle + ' -> ' + JSON.stringify(secim));
+        var uAll = /^https?:\/\/(?:x|twitter)\.com\/[^\/?#]+\/all\b/i.test(location.href);
+        if (!uAll) {
+            // Faz 4a: hasat /all üzerinde çalışır. 4b'de otomatik yönlendirme + yakalama state-machine bağlanacak.
+            try { alert('GörüntüX — Tarama ' + handle + '/all akışında çalışır.\nLütfen o profilin "Tümü" (/all) sekmesine geçip tekrar başlat.\n\n(Faz 4b: otomatik yönlendirme + yakalama + rapora ekleme.)'); } catch (e) {}
+            return;
+        }
+        xProfilTaramaCalistir(handle, secim);
+    }
+    // Faz 4a: HASAT + özet (yakalama + havuz = Faz 4b). Şimdilik ne yakalanacağını gösterir.
+    async function xProfilTaramaCalistir(handle, secim) {
+        try {
+            printLog('[GX Hasat] başladı @' + handle);
+            var sonuc = await xProfilHasat(handle, secim, { maxTur: 300, bekle: 650 });
+            var tipSay = {}; sonuc.ogeler.forEach(function (o) { tipSay[o.tip] = (tipSay[o.tip] || 0) + 1; });
+            var ilk = sonuc.ogeler[0], son = sonuc.ogeler[sonuc.ogeler.length - 1];
+            var ozet = sonuc.ogeler.length + ' öğe bulundu (' + sonuc.sebep + ')'
+                + (ilk ? '\n' + xGxTarihTR(new Date(ilk.dateMs).toISOString()) + ' → ' + xGxTarihTR(new Date(son.dateMs).toISOString()) : '')
+                + '\npaylaşım: ' + (tipSay.paylasim || 0) + '  ·  RT: ' + (tipSay.rt || 0) + '  ·  yorum: ' + (tipSay.yorum || 0);
+            printLog('[GX Hasat] bitti: ' + ozet.replace(/\n/g, ' | '));
+            try { alert('GörüntüX hasat (Faz 4a):\n' + ozet + '\n\n(Sırada Faz 4b: her öğeyi yakalayıp eskiden-yeniye rapora ekleme — önce profil kartı.)'); } catch (e) {}
+        } catch (e) { printLog('[GX Hasat] hata: ' + (e && e.message)); }
+    }
+    // [FAZ 4 HASAT] x.com/<handle>/all'da aşağı kaydırarak paylaşım/RT/yorumları toplar.
+    // Tip: inject.js data-* (data-is-retweet/-reply/-tweet-id, paylaşılan DOM; ISOLATED
+    // widget MAIN world etiketlerini okur) VARSA onu, yoksa DOM-yedek (socialContext/
+    // "yanıt olarak"/status-link). Tarih Snowflake id'den. id ile dedup (virtualization).
+    // Durma: devam=sınır id/tarih; takvim=aralık altına inince. Sonuç ESKİ→YENİ sıralı.
+    async function xProfilHasat(handle, secim, opts) {
+        opts = opts || {};
+        var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+        var SNOW = function (id) { try { return Number((BigInt(id) >> BigInt(22)) + BigInt(1288834974657)); } catch (e) { return 0; } };
+        handle = (handle || '').toLowerCase();
+        var sinirMs = (secim.mod === 'devam' && secim.sonTarihISO) ? Date.parse(secim.sonTarihISO) : 0;
+        var basMs = (secim.mod === 'takvim' && secim.baslangicISO) ? Date.parse(secim.baslangicISO + 'T00:00:00') : 0;
+        var bitMs = (secim.mod === 'takvim' && secim.bitisISO) ? Date.parse(secim.bitisISO + 'T23:59:59') : Infinity;
+        var bulunan = {}, durduk = false, sebep = '', bosTur = 0, oncekiH = 0, maxTur = opts.maxTur || 400;
+        for (var tur = 0; tur < maxTur && !durduk; tur++) {
+            if (opts.iptalKontrol && opts.iptalKontrol()) { sebep = 'iptal'; break; }
+            var cells = document.querySelectorAll('[data-testid="cellInnerDiv"]');
+            for (var ci = 0; ci < cells.length; ci++) {
+                var arts = cells[ci].querySelectorAll('article[data-testid="tweet"]');
+                if (!arts.length) continue;
+                var sc = cells[ci].querySelector('[data-testid="socialContext"]');
+                var scTxt = sc ? (sc.textContent || '') : '';
+                for (var ai = 0; ai < arts.length; ai++) {
+                    var a = arts[ai];
+                    var id = a.getAttribute('data-tweet-id') || '';
+                    var statusA = a.querySelector('a[href*="/status/"]');
+                    var href = statusA ? statusA.getAttribute('href').split('?')[0].replace(/\/(analytics|photo|video|retweets|likes).*$/, '') : '';
+                    if (!id && href) { var mm = href.match(/\/status\/(\d{5,25})/); if (mm) id = mm[1]; }
+                    if (!id || bulunan[id]) continue;
+                    var isRT = a.getAttribute('data-is-retweet') === 'true' || /yeniden (yayınladı|gönderdi)|reposted/i.test(scTxt);
+                    var isReply = a.getAttribute('data-is-reply') === 'true' || /yanıt olarak|replying to/i.test(a.innerText || '');
+                    var isPinned = /sabitlendi|pinned/i.test(scTxt);
+                    var author = (a.getAttribute('data-author-username') || '').toLowerCase();
+                    if (!author && href) { var am = href.match(/^\/([^\/]+)\/status/); if (am) author = am[1].toLowerCase(); }
+                    var dateMs = SNOW(id);
+                    bulunan[id] = { id: id, link: href ? ('https://x.com' + href) : '', tip: isRT ? 'rt' : (isReply ? 'yorum' : 'paylasim'), author: author, dateMs: dateMs, isPinned: isPinned };
+                    if (secim.mod === 'devam' && sinirMs) { if (id === secim.sonId || (dateMs && dateMs <= sinirMs && !isPinned)) { durduk = true; sebep = 'sinir'; } }
+                    if (secim.mod === 'takvim' && basMs && dateMs && dateMs < basMs && !isPinned) { durduk = true; sebep = 'aralik-alt'; }
+                }
+                if (durduk) break;
+            }
+            if (durduk) break;
+            window.scrollBy(0, Math.round(window.innerHeight * 0.9));
+            await sleep(opts.bekle || 650);
+            var h = document.documentElement.scrollHeight;
+            if (h <= oncekiH) { bosTur++; if (bosTur >= (opts.bosLimit || 4)) { sebep = 'son'; break; } }
+            else { bosTur = 0; oncekiH = h; }
+        }
+        var arr = Object.keys(bulunan).map(function (k) { return bulunan[k]; });
+        arr = arr.filter(function (it) {
+            if (secim.mod === 'takvim') { if (it.dateMs > bitMs) return false; if (basMs && it.dateMs < basMs) return false; }
+            if (secim.mod === 'devam' && sinirMs && it.dateMs && it.dateMs <= sinirMs) return false;
+            return true;
+        });
+        arr.sort(function (a, b) { return a.dateMs - b.dateMs; });   // ESKİ -> YENİ
+        return { ogeler: arr, sebep: sebep, hamSayi: Object.keys(bulunan).length };
     }
     // --- küçük tarih yardımcıları ---
     function xGxBugunISO() { try { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } catch (e) { return ''; } }
