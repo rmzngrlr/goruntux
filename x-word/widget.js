@@ -2962,6 +2962,8 @@
             .x-gx-tw-btn.x-gx-gizli{ display:none !important; }
             .x-gx-tw-btn.x-gx-ok{ color:#00ba7c; opacity:1; }
             .x-gx-tw-btn.x-gx-warn{ color:#f5a623; opacity:1; }
+            .x-gx-tw-btn .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
+            .x-gx-tw-btn .x-gx-tw-ic svg{ display:block; }
             .x-gx-tw-btn .x-gx-tw-tip{ position:absolute; top:calc(100% + 8px); left:0;
                 transform:translateY(-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px;
                 line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0; pointer-events:none;
