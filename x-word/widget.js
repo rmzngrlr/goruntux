@@ -2828,6 +2828,7 @@
     function xProfilRaporButonuEkle() {
         try {
             if (!xGxProfilRaporAcik()) return;
+            if (window.__xGxCaptureAktif) return;   // yakalama sırasında taze buton enjekte etme (SS'e girmesin)
             const handle = xGxProfilHandle();
             if (!handle) return;
             // "Takip et" satırı: placementTracking (takip butonu) sarmalayıcısının ebeveyni
@@ -2955,13 +2956,13 @@
         var s = document.createElement('style'); s.id = 'x-gx-tw-style';
         s.textContent = `
             .x-gx-tw-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center; justify-content:center;
-                width:32px; height:32px; margin-right:2px; border-radius:9999px; background:transparent; border:none;
-                color:#1d9bf0; cursor:pointer; opacity:.55; transition:opacity .15s ease, background .15s ease; flex:0 0 auto; }
+                width:30px; height:30px; margin:0 0 0 6px; border-radius:9999px; background:transparent; border:none;
+                color:#1d9bf0; cursor:pointer; opacity:.55; transition:opacity .15s ease, background .15s ease; flex:0 0 auto; vertical-align:middle; }
             .x-gx-tw-btn:hover{ opacity:1; background:rgba(29,155,240,.12); }
             .x-gx-tw-btn.x-gx-gizli{ display:none !important; }
             .x-gx-tw-btn.x-gx-ok{ color:#00ba7c; opacity:1; }
             .x-gx-tw-btn.x-gx-warn{ color:#f5a623; opacity:1; }
-            .x-gx-tw-btn .x-gx-tw-tip{ position:absolute; top:calc(100% + 8px); right:0;
+            .x-gx-tw-btn .x-gx-tw-tip{ position:absolute; top:calc(100% + 8px); left:0;
                 transform:translateY(-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px;
                 line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0; pointer-events:none;
                 z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease, transform .12s ease; }
@@ -2972,23 +2973,34 @@
     function xTweetRaporButonuEkle() {
         try {
             if (!xGxTweetBtnAcik()) return;
+            if (window.__xGxCaptureAktif) return;   // yakalama sırasında taze buton enjekte etme (SS'e girmesin)
             if (!/\/status\/\d+/.test(location.href)) return;   // yalnız tweet DETAY sayfası
             xGxTweetStilEkle();
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
             for (var i = 0; i < arts.length; i++) {
                 var art = arts[i];
                 if (art.querySelector('.x-gx-tw-btn')) continue;
-                var grok = art.querySelector('[aria-label*="Grok" i]');
-                var caret = art.querySelector('[data-testid="caret"]');
-                var ref = grok || caret;   // Grok varsa onun soluna, yoksa caret (…) soluna
-                if (!ref || !ref.parentElement) continue;
-                var kume = ref.parentElement;
                 var btn = document.createElement('button');
                 btn.type = 'button'; btn.className = 'x-gx-tw-btn';
                 btn.setAttribute('aria-label', "Bu paylaşımı GörüntüX Raporu'na ekle!");
                 btn.innerHTML = '<span class="x-gx-tw-ic">' + _X_GX_ICO + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span>';
                 (function (article, b) { b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xTweetYakalaEkle(article, b); }); })(art, btn);
-                kume.insertBefore(btn, kume.firstChild);
+                // KONUM: hesap adı/@kullanıcı adının hemen bitimine (header satırında, boşlukla).
+                var un = art.querySelector('[data-testid="User-Name"]');
+                var yerlesti = false;
+                if (un) {
+                    var nameBlock = un, header = un.parentElement;
+                    while (header) {
+                        var cs = getComputedStyle(header);
+                        if (cs.display === 'flex' && cs.flexDirection === 'row' && header.querySelector('[data-testid="caret"]')) break;
+                        nameBlock = header; header = header.parentElement;
+                    }
+                    if (header && nameBlock && nameBlock.parentElement === header) { header.insertBefore(btn, nameBlock.nextSibling); yerlesti = true; }
+                }
+                if (!yerlesti) {   // yedek: Grok/caret kümesinin soluna
+                    var ref = art.querySelector('[aria-label*="Grok" i]') || art.querySelector('[data-testid="caret"]');
+                    if (ref && ref.parentElement) { ref.parentElement.insertBefore(btn, ref.parentElement.firstChild); yerlesti = true; }
+                }
             }
         } catch (e) {}
     }
@@ -3374,6 +3386,7 @@
     // Profil kartı / tweet ekran görüntüsü alınırken butonumuz SS'e girmesin: captureArticle
     // başında display:none (akış içi -> boşluk bırakmaz), finally'de geri. Tek seferlik (stitch bozulmaz).
     function xGxButonlariGizle() {
+        window.__xGxCaptureAktif = true;   // poller'ları duraklat (yakalama sırasında taze buton enjekte etme)
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
         // [SS'TE POPUP OLMASIN] tarama ilerleme/popup overlay'ini (backdrop+kart) yakalama sırasında gizle
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = 'hidden'; } catch (e) {}
@@ -3381,6 +3394,7 @@
     function xGxButonlariGoster() {
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = ''; } catch (e) {}
+        window.__xGxCaptureAktif = false;
     }
 
     function renderIdleWidget(storageKey) {
