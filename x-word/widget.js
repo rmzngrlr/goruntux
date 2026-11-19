@@ -2957,6 +2957,15 @@
             var _tb = card.querySelector('#x-gx-tamam'); if (_tb) _tb.onclick = xProfilPopupKapat;
             return;
         }
+        if (durum.mod === 'onay') {   // hasat sonucu -> kullanıcı onaylayınca tara
+            card.innerHTML = bas + (durum.html || '')
+                + `<div class="x-gx-act"><button class="x-gx-ghost" id="x-gx-iptal">Vazgeç</button>`
+                + `<button class="x-gx-primary" id="x-gx-onayla">Taramayı başlat</button></div>`
+                + `<p class="x-gx-note">Tarama ölçülü hızda yapılır. İlerleme GörüntüX panelinde görünür.</p>`;
+            var _ib = card.querySelector('#x-gx-iptal'); if (_ib) _ib.onclick = xProfilPopupKapat;
+            var _ob = card.querySelector('#x-gx-onayla'); if (_ob) _ob.onclick = function () { try { if (durum._onayla) durum._onayla(); } catch (e) {} };
+            return;
+        }
         if (durum.mod === 'devam') {
             var tar = xGxTarihTR(durum.sonTarihISO);
             card.innerHTML = bas
@@ -3021,14 +3030,31 @@
                 xProfilMesajGoster(handle, '<div class="x-gx-info">Bu aralıkta yakalanacak <b>yeni içerik bulunamadı</b>.' + (secim.mod === 'devam' ? '<br>Rapor zaten güncel görünüyor.' : '') + '</div>');
                 return;
             }
-            chrome.runtime.sendMessage({ action: 'gxProfilTaraBaslat', urls: urls, mod: secim.mod, handle: handle }, function (resp) {
-                if (chrome.runtime.lastError || !resp || resp.status !== 'ok') {
-                    xProfilMesajGoster(handle, '<div class="x-gx-info" style="background:#fdeef0;border-color:#f6c6cd">Tarama başlatılamadı — <b>GörüntüX paneli açık değil</b>.<br>Paneli açık tutup tekrar deneyin.<br><span style="color:#8899a6;font-size:12px">(' + xGxKac((resp && resp.status) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'yanıt yok') + ')</span></div>');
-                } else {
-                    xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + sonuc.ogeler.length + ' içerik</b> taranıyor<br>paylaşım: ' + (tipSay.paylasim || 0) + ' · RT: ' + (tipSay.rt || 0) + ' · yorum: ' + (tipSay.yorum || 0) + '<br>İlerlemeyi <b>GörüntüX panelinde</b> göreceksin.</div>', true);
-                }
-            });
+            // [ONAY] Ne bulundu göster; kullanıcı ONAYLAYINCA tarama başlar.
+            xProfilOnayGoster(handle, secim, sonuc, urls, tipSay);
         } catch (e) { printLog('[GX Tarama] hata: ' + (e && e.message)); xProfilMesajGoster(handle, '<div class="x-gx-info">Beklenmeyen hata: ' + xGxKac(e && e.message) + '</div>'); }
+    }
+    // [ONAY] Hasat sonucu: ne bulundu göster, kullanıcı ONAYLAYINCA tarama başlar.
+    function xProfilOnayGoster(handle, secim, sonuc, urls, tipSay) {
+        var ilk = sonuc.ogeler[0], son = sonuc.ogeler[sonuc.ogeler.length - 1];
+        var aralik = ilk ? (xGxTarihTR(new Date(ilk.dateMs).toISOString()) + ' → ' + xGxTarihTR(new Date(son.dateMs).toISOString())) : '';
+        var html = '<div class="x-gx-info"><b>' + sonuc.ogeler.length + ' içerik</b> bulundu'
+            + (aralik ? ' <span style="color:#536471">(' + aralik + ')</span>' : '') + '<br>'
+            + 'paylaşım: <b>' + (tipSay.paylasim || 0) + '</b> · RT: <b>' + (tipSay.rt || 0) + '</b> · yorum: <b>' + (tipSay.yorum || 0) + '</b><br>'
+            + 'Önce <b>profil kartı</b>, sonra <b>eskiden-yeniye</b> yakalanacak.</div>';
+        var durum = { mod: 'onay', html: html, _onayla: function () { xProfilTaramaGonder(handle, secim, urls, tipSay); } };
+        xGxPopupStilEkle();
+        if (!document.getElementById('x-gx-card')) xProfilPopupAc(handle, durum); else xProfilPopupGuncelle(handle, durum);
+    }
+    function xProfilTaramaGonder(handle, secim, urls, tipSay) {
+        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Tarama başlatılıyor…</div>');
+        chrome.runtime.sendMessage({ action: 'gxProfilTaraBaslat', urls: urls, mod: secim.mod, handle: handle }, function (resp) {
+            if (chrome.runtime.lastError || !resp || resp.status !== 'ok') {
+                xProfilMesajGoster(handle, '<div class="x-gx-info" style="background:#fdeef0;border-color:#f6c6cd">Tarama başlatılamadı — <b>GörüntüX paneli açık değil</b>.<br>Paneli açık tutup tekrar deneyin.<br><span style="color:#8899a6;font-size:12px">(' + xGxKac((resp && resp.status) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'yanıt yok') + ')</span></div>');
+            } else {
+                xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + (urls.length - 1) + ' içerik</b> taranıyor<br>İlerlemeyi <b>GörüntüX panelinde</b> göreceksin.</div>', true);
+            }
+        });
     }
     // [FAZ 4 HASAT] x.com/<handle>/all'da aşağı kaydırarak paylaşım/RT/yorumları toplar.
     // Tip: inject.js data-* (data-is-retweet/-reply/-tweet-id, paylaşılan DOM; ISOLATED
