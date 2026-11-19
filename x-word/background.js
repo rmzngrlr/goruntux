@@ -1197,6 +1197,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async yanit
   }
 
+  // [GÖRÜNTÜX İLE RAPORLA Faz3] Widget profil butonu -> paneldeki açık rapor durumunu sorar.
+  // panel_tab_id -> bridge.js -> panel sayfası yanıtlar {dolu, ad, sonTarihISO}. Yanıt yoksa
+  // panelAcik:false döner (widget güvenli şekilde takvim moduna düşer).
+  if (message.action === "gxPanelRaporDurum") {
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const panelTabId = res.panel_tab_id;
+      if (!panelTabId) { try { sendResponse({ panelAcik: false, sebep: "panel-yok" }); } catch (_) {} return; }
+      let bitti = false;
+      const t = setTimeout(() => { if (!bitti) { bitti = true; try { sendResponse({ panelAcik: false, sebep: "panel-timeout" }); } catch (_) {} } }, 1800);
+      try {
+        chrome.tabs.sendMessage(panelTabId, { action: "gxRaporDurumSor", handle: message.handle || "" }, (resp) => {
+          if (bitti) return; bitti = true; clearTimeout(t);
+          const err = chrome.runtime.lastError;
+          if (err || !resp) { try { sendResponse({ panelAcik: false, sebep: err ? err.message : "yanit-yok" }); } catch (_) {} return; }
+          try { sendResponse(Object.assign({ panelAcik: true }, resp)); } catch (_) {}
+        });
+      } catch (e) { if (!bitti) { bitti = true; clearTimeout(t); try { sendResponse({ panelAcik: false, sebep: "exception" }); } catch (_) {} } }
+    });
+    return true; // async yanit
+  }
+
   // SILINDI (v3.62): "savePanelOrigin" isleyicisi — registerPanel'in DOGRULAMASIZ atasi.
   // server_origin + panel_tab_id + client_id'yi meta[name=x-rapor-panel] kapisi OLMADAN
   // yaziyordu, yani herhangi bir sayfa kendini "panel" ilan edebilirdi. panel_tab_id

@@ -2836,8 +2836,8 @@
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'x-gx-rapor-btn';
-            btn.setAttribute('aria-label', 'GörüntüX ile Raporla!');   // title YOK -> yerel tooltip çift görünmesin; metin özel .x-gx-tip tooltip'inde
-            btn.innerHTML = `<span class="x-gx-ico"><svg width="20" height="20" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#1d9bf0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V8h4"/><path d="M20 8h4v4"/><path d="M24 20v4h-4"/><path d="M12 24H8v-4"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">GörüntüX ile Raporla!</span>`;
+            btn.setAttribute('aria-label', "Bu X profilinin GörüntüX Raporu'nu oluştur.");   // title YOK -> yerel tooltip çift görünmesin; metin özel .x-gx-tip tooltip'inde
+            btn.innerHTML = `<span class="x-gx-ico"><svg width="20" height="20" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#1d9bf0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V8h4"/><path d="M20 8h4v4"/><path d="M24 20v4h-4"/><path d="M12 24H8v-4"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">Bu X profilinin GörüntüX Raporu'nu oluştur.</span>`;
             btn.addEventListener('click', (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
                 try { xProfilRaporBaslat(handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
@@ -2846,12 +2846,130 @@
             printLog('[GX Profil Rapor] buton eklendi: @' + handle);
         } catch (e) {}
     }
-    // Faz 2 YER TUTUCU: mod kararı (panelde açık+dolu rapor var mı) + takvim + /all
-    // tarama motoru SONRAKİ fazlarda bağlanacak. Şimdilik niyeti doğrular.
+    // ====================== FAZ 3: MOD KARARI + POPUP ======================
+    // Butona basınca: paneldeki açık rapor durumunu sorgula → DOLU ise "Devam"
+    // (bıraktığı yerden bugüne), DEĞİLSE "Takvim" (tarih aralığı). Panel yanıt
+    // vermezse güvenli şekilde takvime düşer. Tarama başlatma Faz 4.
     function xProfilRaporBaslat(handle) {
         printLog('[GX Profil Rapor] başlat istendi: @' + handle);
-        try { alert('GörüntüX ile Raporla — @' + handle + '\n\n(Rapor akışı: mod kararı + /all tarama motoru sonraki fazda bağlanacak.)'); } catch (e) {}
+        xProfilPopupAc(handle, { mod: 'yukleniyor' });
+        xPanelRaporDurumSorgula(handle, function (durum) {
+            xProfilPopupGuncelle(handle, durum);
+        });
     }
+    // Panel durumu sorgusu: background → bridge → panel → geri. 2.5sn içinde yanıt
+    // gelmezse (panel kapalı / henüz desteklemiyor) takvim moduna düş.
+    function xPanelRaporDurumSorgula(handle, cb) {
+        var bitti = false;
+        var tmr = setTimeout(function () { if (!bitti) { bitti = true; cb({ mod: 'takvim', sebep: 'panel-yanit-yok' }); } }, 2500);
+        try {
+            chrome.runtime.sendMessage({ action: 'gxPanelRaporDurum', handle: handle }, function (resp) {
+                if (bitti) return; bitti = true; clearTimeout(tmr);
+                if (chrome.runtime.lastError || !resp) { cb({ mod: 'takvim', sebep: 'kanal-hatasi' }); return; }
+                // resp: { panelAcik, dolu, ad, sonTarihISO }
+                if (resp.panelAcik && resp.dolu) cb({ mod: 'devam', ad: resp.ad || '', sonTarihISO: resp.sonTarihISO || '' });
+                else cb({ mod: 'takvim', panelAcik: !!resp.panelAcik });
+            });
+        } catch (e) { if (!bitti) { bitti = true; clearTimeout(tmr); cb({ mod: 'takvim', sebep: 'exception' }); } }
+    }
+    function xGxPopupStilEkle() {
+        if (document.getElementById('x-gx-popup-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-popup-style';
+        s.textContent = `
+            #x-gx-ov{ position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center;
+                background:rgba(0,0,0,.55); backdrop-filter:blur(2px); font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+            #x-gx-card{ width:min(440px,92vw); max-height:90vh; overflow:auto; background:#fff; color:#0f1419;
+                border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,.35); padding:20px 22px; box-sizing:border-box; }
+            #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; display:flex; align-items:center; gap:9px; }
+            #x-gx-card .x-gx-sub{ color:#536471; font-size:13px; margin:0 0 16px; }
+            #x-gx-card .x-gx-row{ display:flex; gap:12px; margin:12px 0; }
+            #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#536471; margin:0 0 5px; }
+            #x-gx-card input[type=date]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cfd9de;
+                border-radius:9px; font-size:14px; color:#0f1419; background:#fff; }
+            #x-gx-card .x-gx-info{ background:#e8f5fe; border:1px solid #cfe9fb; color:#0f1419; border-radius:11px;
+                padding:12px 14px; font-size:13.5px; line-height:1.5; margin:4px 0 16px; }
+            #x-gx-card .x-gx-info b{ color:#1d9bf0; }
+            #x-gx-card .x-gx-act{ display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+            #x-gx-card button{ font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
+            #x-gx-card .x-gx-primary{ background:#1d9bf0; color:#fff; }
+            #x-gx-card .x-gx-primary:hover{ background:#1a8cd8; }
+            #x-gx-card .x-gx-primary:disabled{ opacity:.5; cursor:default; }
+            #x-gx-card .x-gx-ghost{ background:#fff; color:#0f1419; border-color:#cfd9de; }
+            #x-gx-card .x-gx-ghost:hover{ background:#f2f3f5; }
+            #x-gx-card .x-gx-note{ color:#8899a6; font-size:12px; margin-top:12px; line-height:1.45; }
+            #x-gx-card .x-gx-spin{ display:flex; align-items:center; gap:10px; color:#536471; font-size:14px; padding:14px 0; }
+            #x-gx-card .x-gx-spin .d{ width:16px;height:16px;border:2px solid #cfd9de;border-top-color:#1d9bf0;border-radius:50%;animation:xgxsp .8s linear infinite; }
+            @keyframes xgxsp{ to{ transform:rotate(360deg); } }
+        `;
+        (document.head || document.documentElement).appendChild(s);
+    }
+    function xProfilPopupKapat() { var o = document.getElementById('x-gx-ov'); if (o) o.remove(); }
+    function xProfilPopupAc(handle, durum) {
+        xGxPopupStilEkle();
+        xProfilPopupKapat();
+        var ov = document.createElement('div'); ov.id = 'x-gx-ov';
+        ov.addEventListener('click', function (e) { if (e.target === ov) xProfilPopupKapat(); });
+        var card = document.createElement('div'); card.id = 'x-gx-card';
+        ov.appendChild(card); document.body.appendChild(ov);
+        xProfilPopupGuncelle(handle, durum);
+        var esc = function (e) { if (e.key === 'Escape') { xProfilPopupKapat(); document.removeEventListener('keydown', esc, true); } };
+        document.addEventListener('keydown', esc, true);
+    }
+    function xProfilPopupGuncelle(handle, durum) {
+        var card = document.getElementById('x-gx-card'); if (!card) return;
+        var logo = `<svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>`;
+        var bas = `<h3>${logo} GörüntüX Raporu</h3><p class="x-gx-sub">@${handle} profilinin tüm paylaşım, RT ve yorumları</p>`;
+        if (durum.mod === 'yukleniyor') {
+            card.innerHTML = bas + `<div class="x-gx-spin"><span class="d"></span> Panel durumu kontrol ediliyor…</div>`;
+            return;
+        }
+        if (durum.mod === 'devam') {
+            var tar = xGxTarihTR(durum.sonTarihISO);
+            card.innerHTML = bas
+                + `<div class="x-gx-info">Panelde açık rapor bulundu${durum.ad ? ': <b>' + xGxKac(durum.ad) + '</b>' : ''}.<br>`
+                + `En son içerik: <b>${tar || '—'}</b>.<br>Bu profilin <b>o tarihten bugüne</b> yeni içerikleri, raporun sonuna eklenecek.</div>`
+                + `<div class="x-gx-act"><button class="x-gx-ghost" id="x-gx-iptal">Vazgeç</button>`
+                + `<button class="x-gx-primary" id="x-gx-basla">Devam et ve tara</button></div>`
+                + `<p class="x-gx-note">Tarama ölçülü hızda yapılır (X hız sınırına takılmamak için). İstediğin an durdurabilirsin.</p>`;
+            card.querySelector('#x-gx-iptal').onclick = xProfilPopupKapat;
+            card.querySelector('#x-gx-basla').onclick = function () { xProfilTaramaBaslat(handle, { mod: 'devam', sonTarihISO: durum.sonTarihISO }); };
+            return;
+        }
+        // takvim (fresh) — varsayılan: bitiş bugün, başlangıç 1 yıl öncesi
+        var bugun = xGxBugunISO();
+        var yilOnce = xGxGunEkleISO(bugun, -365);
+        var panelNot = (durum.panelAcik === false)
+            ? `<p class="x-gx-note">Not: Panelde açık/dolu bir rapor yok; baştan rapor için tarih aralığı seç. (Devam etmek istersen önce panelde ilgili raporu aç.)</p>` : '';
+        card.innerHTML = bas
+            + `<div class="x-gx-info">Baştan rapor: taranacak <b>tarih aralığını</b> seç. Seçilen aralık <b>eskiden yeniye</b> raporlanır (önce profil kartı).</div>`
+            + `<div class="x-gx-row"><div style="flex:1"><label>Başlangıç</label><input type="date" id="x-gx-bas" max="${bugun}" value="${yilOnce}"></div>`
+            + `<div style="flex:1"><label>Bitiş</label><input type="date" id="x-gx-bit" max="${bugun}" value="${bugun}"></div></div>`
+            + `<div class="x-gx-act"><button class="x-gx-ghost" id="x-gx-iptal">Vazgeç</button>`
+            + `<button class="x-gx-primary" id="x-gx-basla">Taramayı başlat</button></div>`
+            + panelNot
+            + `<p class="x-gx-note">Çok eski/büyük hesaplarda X yüklemeyi yavaşlatabilir; ulaşılabilen kadarı raporlanır.</p>`;
+        card.querySelector('#x-gx-iptal').onclick = xProfilPopupKapat;
+        card.querySelector('#x-gx-basla').onclick = function () {
+            var bas = card.querySelector('#x-gx-bas').value, bit = card.querySelector('#x-gx-bit').value;
+            if (!bas || !bit) { alert('Lütfen başlangıç ve bitiş tarihlerini seç.'); return; }
+            if (bas > bit) { alert('Başlangıç tarihi bitişten sonra olamaz.'); return; }
+            xProfilTaramaBaslat(handle, { mod: 'takvim', baslangicISO: bas, bitisISO: bit });
+        };
+    }
+    // FAZ 4 YER TUTUCU: /all tarama motoru burada bağlanacak. Şimdilik seçilen modu/parametreleri gösterir.
+    function xProfilTaramaBaslat(handle, secim) {
+        xProfilPopupKapat();
+        printLog('[GX Profil Rapor] TARAMA (Faz4 bekliyor) @' + handle + ' -> ' + JSON.stringify(secim));
+        var ozet = (secim.mod === 'devam')
+            ? 'Devam modu: ' + (xGxTarihTR(secim.sonTarihISO) || 'son içerik') + ' → bugün'
+            : 'Takvim modu: ' + xGxTarihTR(secim.baslangicISO) + ' → ' + xGxTarihTR(secim.bitisISO);
+        try { alert('GörüntüX — @' + handle + '\n' + ozet + '\n\n(/all tarama motoru Faz 4\'te bağlanacak.)'); } catch (e) {}
+    }
+    // --- küçük tarih yardımcıları ---
+    function xGxBugunISO() { try { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } catch (e) { return ''; } }
+    function xGxGunEkleISO(iso, gun) { try { var d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + gun); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); } catch (e) { return iso; } }
+    function xGxTarihTR(iso) { try { if (!iso) return ''; var d = new Date(iso); if (isNaN(d)) return ''; return String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear(); } catch (e) { return ''; } }
+    function xGxKac(s) { try { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); } catch (e) { return ''; } }
     // SPA gezinme + X başlık yeniden-render'ına karşı: tek kalıcı poller (window-korumalı,
     // widget her enjekte edildiğinde tekrar başlatmaz). Profil dışında no-op.
     function xProfilRaporPollerBaslat() {

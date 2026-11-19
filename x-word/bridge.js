@@ -28,6 +28,12 @@ if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sen
   }
 }
 
+// [GÖRÜNTÜX İLE RAPORLA Faz3] SW -> panel durum sorgusu için bekleyen istek haritası.
+// Background 'gxRaporDurumSor' yollar; biz panele postMessage'le sorar, panelin
+// X_RAPOR_DURUM_YANIT cevabını eşleştirip sendResponse ile SW'ye döneriz.
+var _gxDurumBekleyen = {};
+var _gxDurumSayac = 0;
+
 // 1.5. Panel kaydi (server_origin + panel_tab_id) — SADECE GERCEK PANEL.
 // Panel HTML'inde <meta name="x-rapor-panel"> isareti var. Yalnizca bu isareti tasiyan sayfa
 // kendini panel olarak kaydeder. Boylece rastgele http sekmeleri ya da is-sekmeleri panel_tab_id'yi
@@ -120,6 +126,16 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
+  // [GÖRÜNTÜX İLE RAPORLA Faz3] Panelin durum-sorgusu yanıtı -> bekleyen SW isteğini çöz.
+  if (event.data && event.data.type === "X_RAPOR_DURUM_YANIT" && event.data.reqId != null) {
+    var _bek = _gxDurumBekleyen[event.data.reqId];
+    if (_bek) {
+      delete _gxDurumBekleyen[event.data.reqId];
+      try { clearTimeout(_bek.t); } catch (e) {}
+      try { _bek.cevapla({ dolu: !!event.data.dolu, ad: event.data.ad || "", sonTarihISO: event.data.sonTarihISO || "" }); } catch (e) {}
+    }
+  }
+
 });
 
 // Faz #1-A: SW'den gelen yerel goruntuyu panel sayfasina aktar (SW -> bridge -> panel).
@@ -137,6 +153,19 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
       if (msg && msg.action === "taramaDurdu" && msg.sebep) {
         window.postMessage({ type: "X_RAPOR_TARAMA_DURDU", sebep: msg.sebep }, "*");
         sendResponse && sendResponse({ status: "ok" });
+      }
+      // [GÖRÜNTÜX İLE RAPORLA Faz3] SW profil butonu adına paneldeki rapor durumunu soruyor.
+      // Panele postMessage'le sor, X_RAPOR_DURUM_YANIT gelince SW'ye dön (async).
+      if (msg && msg.action === "gxRaporDurumSor") {
+        if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ dolu: false, sebep: "panel-degil" }); } catch (e) {} return false; }
+        var reqId = "gx" + (++_gxDurumSayac) + "_" + Date.now();
+        var cevaplandi = false;
+        var cevapla = function (d) { if (cevaplandi) return; cevaplandi = true; try { sendResponse(d); } catch (e) {} };
+        var t = setTimeout(function () { if (!cevaplandi) { delete _gxDurumBekleyen[reqId]; cevapla({ dolu: false, sebep: "panel-yanit-timeout" }); } }, 1200);
+        _gxDurumBekleyen[reqId] = { cevapla: cevapla, t: t };
+        try { window.postMessage({ type: "X_RAPOR_DURUM_SOR", reqId: reqId, handle: msg.handle || "" }, "*"); }
+        catch (e) { clearTimeout(t); delete _gxDurumBekleyen[reqId]; cevapla({ dolu: false, sebep: "post-hata" }); }
+        return true; // async yanit
       }
     } catch (e) {}
     return false;
