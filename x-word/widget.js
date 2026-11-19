@@ -3260,8 +3260,15 @@
     }
     // Profil kartı / tweet ekran görüntüsü alınırken butonumuz SS'e girmesin: captureArticle
     // başında display:none (akış içi -> boşluk bırakmaz), finally'de geri. Tek seferlik (stitch bozulmaz).
-    function xGxButonlariGizle() { try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {} }
-    function xGxButonlariGoster() { try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {} }
+    function xGxButonlariGizle() {
+        try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
+        // [SS'TE POPUP OLMASIN] tarama ilerleme/popup overlay'ini (backdrop+kart) yakalama sırasında gizle
+        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = 'hidden'; } catch (e) {}
+    }
+    function xGxButonlariGoster() {
+        try { document.querySelectorAll('.x-gx-rapor-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
+        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = ''; } catch (e) {}
+    }
 
     function renderIdleWidget(storageKey) {
         try {
