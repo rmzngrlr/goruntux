@@ -1218,6 +1218,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // async yanit
   }
 
+  // [GÖRÜNTÜX İLE RAPORLA Faz4b] Widget profil hasatı -> panele URL listesi ilet; panel
+  // kendi kanıtlanmış "Başlat" (startAutomation: /api/auto/start + startWordScan) akışıyla
+  // taramayı başlatır (motor X sekmesini URL'lerde gezip yakalar). panel_tab_id gerekir.
+  if (message.action === "gxProfilTaraBaslat") {
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const panelTabId = res.panel_tab_id;
+      if (!panelTabId) { try { sendResponse({ status: "no-panel" }); } catch (_) {} return; }
+      try {
+        chrome.tabs.sendMessage(panelTabId, { action: "gxProfilTaraPanel", urls: message.urls || [], mod: message.mod || "", handle: message.handle || "" }, (resp) => {
+          const err = chrome.runtime.lastError;
+          try { sendResponse({ status: err ? "error" : "ok", detail: err ? err.message : (resp || {}) }); } catch (_) {}
+        });
+      } catch (e) { try { sendResponse({ status: "error", detail: String(e) }); } catch (_) {} }
+    });
+    return true; // async yanit
+  }
+
   // SILINDI (v3.62): "savePanelOrigin" isleyicisi — registerPanel'in DOGRULAMASIZ atasi.
   // server_origin + panel_tab_id + client_id'yi meta[name=x-rapor-panel] kapisi OLMADAN
   // yaziyordu, yani herhangi bir sayfa kendini "panel" ilan edebilirdi. panel_tab_id

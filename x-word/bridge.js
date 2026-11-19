@@ -167,6 +167,13 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
         catch (e) { clearTimeout(t); delete _gxDurumBekleyen[reqId]; cevapla({ dolu: false, sebep: "post-hata" }); }
         return true; // async yanit
       }
+      // [GÖRÜNTÜX İLE RAPORLA Faz4b] SW -> panele profil tarama URL listesi ilet.
+      if (msg && msg.action === "gxProfilTaraPanel") {
+        if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ ok: false, sebep: "panel-degil" }); } catch (e) {} return false; }
+        try { window.postMessage({ type: "X_RAPOR_PROFIL_TARA", urls: msg.urls || [], mod: msg.mod || "", handle: msg.handle || "" }, "*"); sendResponse && sendResponse({ ok: true }); }
+        catch (e) { try { sendResponse({ ok: false, sebep: "post-hata" }); } catch (_) {} }
+        return false;
+      }
     } catch (e) {}
     return false;
   });

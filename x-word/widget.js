@@ -2968,19 +2968,27 @@
         }
         xProfilTaramaCalistir(handle, secim);
     }
-    // Faz 4a: HASAT + özet (yakalama + havuz = Faz 4b). Şimdilik ne yakalanacağını gösterir.
+    // Faz 4b: HASAT -> URL listesi -> panelin KANITLANMIŞ "Başlat" akışına besle
+    // (startAutomation: /api/auto/start [unify açıkken havuzu TEMİZLEMEZ=veri-kaybı-güvenli] +
+    // startWordScan -> mevcut wordTaramaYonetimi motoru yakalar). Profil kartı ilk, öğeler ESKİ->YENİ.
+    // Yorum = status URL'sine gidince thread bağlamıyla gelir (tek tek aç doğal).
     async function xProfilTaramaCalistir(handle, secim) {
         try {
-            printLog('[GX Hasat] başladı @' + handle);
+            printLog('[GX Hasat] başladı @' + handle + ' mod=' + secim.mod);
             var sonuc = await xProfilHasat(handle, secim, { maxTur: 300, bekle: 650 });
+            var urls = ['https://x.com/' + handle];   // profil kartı (profile_header) ilk
+            sonuc.ogeler.forEach(function (o) { if (o.link) urls.push(o.link); });   // eski->yeni
             var tipSay = {}; sonuc.ogeler.forEach(function (o) { tipSay[o.tip] = (tipSay[o.tip] || 0) + 1; });
-            var ilk = sonuc.ogeler[0], son = sonuc.ogeler[sonuc.ogeler.length - 1];
-            var ozet = sonuc.ogeler.length + ' öğe bulundu (' + sonuc.sebep + ')'
-                + (ilk ? '\n' + xGxTarihTR(new Date(ilk.dateMs).toISOString()) + ' → ' + xGxTarihTR(new Date(son.dateMs).toISOString()) : '')
-                + '\npaylaşım: ' + (tipSay.paylasim || 0) + '  ·  RT: ' + (tipSay.rt || 0) + '  ·  yorum: ' + (tipSay.yorum || 0);
-            printLog('[GX Hasat] bitti: ' + ozet.replace(/\n/g, ' | '));
-            try { alert('GörüntüX hasat (Faz 4a):\n' + ozet + '\n\n(Sırada Faz 4b: her öğeyi yakalayıp eskiden-yeniye rapora ekleme — önce profil kartı.)'); } catch (e) {}
-        } catch (e) { printLog('[GX Hasat] hata: ' + (e && e.message)); }
+            printLog('[GX Tarama] ' + urls.length + ' URL (profil + ' + sonuc.ogeler.length + ' öğe) panele yollanıyor');
+            if (urls.length <= 1) { try { alert('GörüntüX: Bu aralıkta yakalanacak içerik bulunamadı.'); } catch (e) {} return; }
+            chrome.runtime.sendMessage({ action: 'gxProfilTaraBaslat', urls: urls, mod: secim.mod, handle: handle }, function (resp) {
+                if (chrome.runtime.lastError || !resp || resp.status !== 'ok') {
+                    try { alert('GörüntüX: Tarama başlatılamadı — GörüntüX paneli açık değil.\nPaneli açık tutup tekrar deneyin. (' + ((resp && resp.status) || (chrome.runtime.lastError && chrome.runtime.lastError.message) || 'yanıt yok') + ')'); } catch (e) {}
+                } else {
+                    try { alert('GörüntüX: ' + sonuc.ogeler.length + ' içerik taranıyor\n(paylaşım: ' + (tipSay.paylasim || 0) + ' · RT: ' + (tipSay.rt || 0) + ' · yorum: ' + (tipSay.yorum || 0) + ')\n\nİlerlemeyi GörüntüX panelinde göreceksiniz.'); } catch (e) {}
+                }
+            });
+        } catch (e) { printLog('[GX Tarama] hata: ' + (e && e.message)); }
     }
     // [FAZ 4 HASAT] x.com/<handle>/all'da aşağı kaydırarak paylaşım/RT/yorumları toplar.
     // Tip: inject.js data-* (data-is-retweet/-reply/-tweet-id, paylaşılan DOM; ISOLATED
