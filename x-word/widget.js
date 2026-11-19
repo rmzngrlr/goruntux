@@ -2808,10 +2808,10 @@
         s.textContent = `
             .x-gx-rapor-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center; justify-content:center;
                 width:36px; height:36px; padding:0; margin:0 8px 12px 0; border-radius:9999px;
-                background:transparent; border:1px solid rgba(113,118,123,.5); color:#1d9bf0;
-                cursor:pointer; opacity:.5; transition:opacity .15s ease, background .15s ease, border-color .15s ease;
+                background:transparent; border:none; color:#1d9bf0;
+                cursor:pointer; opacity:1; transition:transform .12s ease, filter .12s ease;
                 flex:0 0 auto; }
-            .x-gx-rapor-btn:hover{ opacity:1; background:rgba(29,155,240,.12); border-color:#1d9bf0; }
+            .x-gx-rapor-btn:hover{ filter:brightness(1.08); transform:scale(1.06); }
             .x-gx-rapor-btn.x-gx-gizli{ display:none !important; }   /* profil kartı SS'i alınırken butonu gizle */
             .x-gx-rapor-btn .x-gx-ico{ display:inline-flex; flex:0 0 auto; }
             .x-gx-rapor-btn .x-gx-tip{ position:absolute; top:calc(100% + 8px); left:50%;
@@ -2842,7 +2842,7 @@
             btn.type = 'button';
             btn.className = 'x-gx-rapor-btn';
             btn.setAttribute('aria-label', "Bu X profilinin GörüntüX Raporu'nu oluştur.");   // title YOK -> yerel tooltip çift görünmesin; metin özel .x-gx-tip tooltip'inde
-            btn.innerHTML = `<span class="x-gx-ico"><svg width="20" height="20" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#1d9bf0" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V8h4"/><path d="M20 8h4v4"/><path d="M24 20v4h-4"/><path d="M12 24H8v-4"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">Bu X profilinin GörüntüX Raporu'nu oluştur.</span>`;
+            btn.innerHTML = `<span class="x-gx-ico"><svg width="26" height="26" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">Bu X profilinin GörüntüX Raporu'nu oluştur.</span>`;
             btn.addEventListener('click', (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
                 try { xProfilRaporBaslat(handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
@@ -2949,7 +2949,7 @@
     // SOLUNA GörüntüX butonu; tooltip "Bu paylaşımı GörüntüX Raporu'na ekle!". Tıklayınca
     // O tweet'i yakalar + havuza ekler (dock "Rapora Ekle" ile aynı: yorum ise parent
     // bağlamıyla xYakalaTweetVeYanit, RT ise group_override). Bayrak x_gx_tweet_btn!='0'.
-    var _X_GX_ICO = '<svg width="19" height="19" viewBox="0 0 32 32"><g fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12V8h4"/><path d="M20 8h4v4"/><path d="M24 20v4h-4"/><path d="M12 24H8v-4"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>';
+    var _X_GX_ICO = '<svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>';
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
     function xGxTweetStilEkle() {
         if (document.getElementById('x-gx-tw-style')) return;
@@ -2957,8 +2957,8 @@
         s.textContent = `
             .x-gx-tw-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center; justify-content:center;
                 width:30px; height:30px; margin:0 0 0 6px; border-radius:9999px; background:transparent; border:none;
-                color:#1d9bf0; cursor:pointer; opacity:.55; transition:opacity .15s ease, background .15s ease; flex:0 0 auto; vertical-align:middle; }
-            .x-gx-tw-btn:hover{ opacity:1; background:rgba(29,155,240,.12); }
+                color:#1d9bf0; cursor:pointer; opacity:1; transition:transform .12s ease, filter .12s ease; flex:0 0 auto; vertical-align:middle; }
+            .x-gx-tw-btn:hover{ filter:brightness(1.08); transform:scale(1.08); }
             .x-gx-tw-btn.x-gx-gizli{ display:none !important; }
             .x-gx-tw-btn.x-gx-ok{ color:#00ba7c; opacity:1; }
             .x-gx-tw-btn.x-gx-warn{ color:#f5a623; opacity:1; }
@@ -2992,14 +2992,23 @@
                 // tweetlerde başarısız olup far-right'a (ortalığa) kaçmıyordu; artık hep ad yanında.
                 var un = art.querySelector('[data-testid="User-Name"]');
                 if (!un) continue;
-                var nameBlock = un, header = un.parentElement;
-                while (header && header !== art) {
-                    var cs = getComputedStyle(header);
-                    if (cs.display === 'flex' && cs.flexDirection !== 'column') break;   // ilk flex-row atası
-                    nameBlock = header; header = header.parentElement;
+                // KONUM/HİZA: User-Name'in İLK alt-satırı = isim satırı (flex-row, align-items:center
+                // -> ad metniyle DİKEY ortalı, cy~74). Dış kapsayıcı align-items:baseline olduğundan
+                // oraya konan 30px yuvarlak buton ~9px yukarı (Grok kümesine) kaçıyordu; isim satırına koy.
+                var isimSatiri = un.children && un.children[0];
+                if (isimSatiri && isimSatiri.nodeType === 1 && getComputedStyle(isimSatiri).flexDirection !== 'column') {
+                    isimSatiri.appendChild(btn);
+                } else {
+                    // yedek: User-Name'in ilk flex-row atası (eski davranış)
+                    var nameBlock = un, header = un.parentElement;
+                    while (header && header !== art) {
+                        var cs = getComputedStyle(header);
+                        if (cs.display === 'flex' && cs.flexDirection !== 'column') break;
+                        nameBlock = header; header = header.parentElement;
+                    }
+                    if (header && header !== art && nameBlock.parentElement === header) header.insertBefore(btn, nameBlock.nextSibling);
+                    else if (un.parentElement) un.parentElement.appendChild(btn);
                 }
-                if (header && header !== art && nameBlock.parentElement === header) header.insertBefore(btn, nameBlock.nextSibling);
-                else if (un.parentElement) un.parentElement.appendChild(btn);   // yedek: yine ad yanında (far-right DEĞİL)
             }
         } catch (e) {}
     }
