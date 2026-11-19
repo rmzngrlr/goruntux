@@ -2930,6 +2930,19 @@
             if (otoKapat) { setTimeout(function () { try { xProfilPopupKapat(); } catch (e) {} }, 3800); }
         } catch (e) {}
     }
+    // [İLERLEME DOCK'TA] Profil tarama ilerlemesini SAĞDAKİ DOCK halkasında göster (popup değil).
+    function xProfilDockIlerleme(yapilan, toplam, msg) {
+        try {
+            var w = document.getElementById('x-downloader-widget'); if (w) { w.classList.add('scanning'); w.classList.remove('xdock-dialog'); }
+            var ring = document.getElementById('w-scan-ring'); if (ring && toplam) { var C = 100.53, pct = Math.max(0, Math.min(100, Math.round((yapilan / toplam) * 100))); ring.setAttribute('stroke-dashoffset', String(C * (1 - pct / 100))); }
+            var txt = document.getElementById('w-scan-txt'); if (txt) txt.textContent = (yapilan || 0) + '/' + (toplam || 0);
+            var m = document.getElementById('w-scan-msg'); if (m && msg) m.textContent = msg;
+        } catch (e) {}
+    }
+    function xProfilDockBitir() {
+        try { var w = document.getElementById('x-downloader-widget'); if (w) w.classList.remove('scanning'); } catch (e) {}
+        try { var ring = document.getElementById('w-scan-ring'); if (ring) ring.setAttribute('stroke-dashoffset', '100.53'); } catch (e) {}
+    }
     // [#1/#4] /all'a yönlendirmeden sonra beklemedeki taramayı sürdür (widget /all'da yüklenince).
     function xProfilBeklemedekiTaramaKontrol() {
         try {
@@ -3064,6 +3077,9 @@
         var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
         var _cap = window.__xGxCap, _capYanit = window.__xGxCapYanit;
         if (typeof _cap !== 'function') { xProfilMesajGoster(handle, '<div class="x-gx-info">Yakalama motoru hazır değil — sayfayı yenileyip (F5) tekrar deneyin.</div>'); return; }
+        xProfilPopupKapat();   // onay popup'ını kapat -> ilerleme SAĞDAKİ DOCK'ta
+        window.__xGxTaraIptal = false;
+        try { var _cbtn = document.getElementById('w-scan-cancel'); if (_cbtn) { _cbtn.onclick = function (ev) { if (ev) ev.stopPropagation(); window.__xGxTaraIptal = true; var _mm = document.getElementById('w-scan-msg'); if (_mm) _mm.textContent = 'Durduruluyor…'; }; } } catch (e) {}
         var origin = '';
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var addPool = function (item) { return new Promise(function (resolve) { try { chrome.runtime.sendMessage(Object.assign({ action: 'addToPool', origin: origin }, item), function (res) { resolve(res || {}); }); } catch (e) { resolve({ status: 'error' }); } }); };
@@ -3077,7 +3093,7 @@
         var targets = {}; sonuc.ogeler.forEach(function (o) { targets[o.id] = o; });
         var toplam = sonuc.ogeler.length, done = {}, tampon = {};
         // 1) PROFİL KARTI (en üst)
-        xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Profil kartı yakalanıyor…</div>', false, true);
+        xProfilDockIlerleme(0, toplam, 'Profil kartı…');
         try {
             window.scrollTo(0, 0); await sleep(800);
             var pc = document.querySelector('[data-testid="primaryColumn"]');
@@ -3093,6 +3109,7 @@
         window.scrollTo(0, 0); await sleep(700);
         var bosTur = 0, oncekiH = 0, guvenlik = 0, limit = toplam * 4 + 80;
         while (Object.keys(done).length < toplam && guvenlik < limit) {
+            if (window.__xGxTaraIptal) break;   // dock iptal butonu
             guvenlik++;
             var secCard = null, secId = null, secInfo = null;
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
@@ -3125,7 +3142,7 @@
                         await sleep(750);
                     }
                 } catch (e) { printLog('[GX Tıkla] kart ' + secId + ' hata: ' + (e && e.message)); try { if (/\/status\//.test(location.href)) { history.back(); await sleep(1200); } } catch (_) {} }
-                xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Yakalanıyor… ' + Object.keys(tampon).length + ' / ' + toplam + '</div>', false, true);
+                xProfilDockIlerleme(Object.keys(tampon).length, toplam, 'Yakalanıyor…');
             } else {
                 window.scrollBy(0, Math.round(window.innerHeight * 0.85)); await sleep(600);
                 var h = document.documentElement.scrollHeight;
@@ -3136,13 +3153,14 @@
         var liste = Object.keys(tampon).map(function (k) { return tampon[k]; }).sort(function (a, b) { return a.dateMs - b.dateMs; });
         var eklendi = 0, hata = 0;
         for (var L = 0; L < liste.length; L++) {
-            xProfilMesajGoster(handle, '<div class="x-gx-spin"><span class="d"></span> Rapora ekleniyor… ' + (L + 1) + ' / ' + liste.length + '</div>', false, true);
+            xProfilDockIlerleme(L + 1, liste.length, 'Rapora ekleniyor…');
             var it = liste[L];
             var rr = await addPool({ title: it.baslik, link: it.link, image: it.image, is_profile: false, group_override: it.groupOverride });
             if (rr && (rr.status === 'success' || rr.status === 'duplicate')) eklendi++; else hata++;
             await sleep(180);
         }
-        xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + eklendi + ' içerik</b> rapora eklendi' + (hata ? (' <span style="color:#536471">(' + hata + ' atlandı)</span>') : '') + '.<br>GörüntüX panelinde görebilirsin.</div>', true);
+        xProfilDockBitir();
+        xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + eklendi + ' içerik</b> rapora eklendi' + (hata ? (' <span style="color:#536471">(' + hata + ' atlandı)</span>') : '') + (window.__xGxTaraIptal ? ' <span style="color:#536471">(durduruldu)</span>' : '') + '.<br>GörüntüX panelinde görebilirsin.</div>', true);
     }
     // Kart meta: başlık + link + RT grup-override (idle "Rapora Ekle" ile aynı mantık).
     function xProfilKartMeta(card, handle) {
@@ -3207,6 +3225,10 @@
                     var author = (a.getAttribute('data-author-username') || '').toLowerCase();
                     if (!author && href) { var am = href.match(/^\/([^\/]+)\/status/); if (am) author = am[1].toLowerCase(); }
                     var dateMs = SNOW(id);
+                    // [PROFİL-DIŞI BAĞLAM ATLA] Yorumun cevap verdiği PARENT tweet (başkasının, akışta
+                    // bağlam olarak görünen) ayrı öğe sayılmasın. Tut: profilin KENDİ içeriği (author==handle)
+                    // VEYA profilin RT'si (isRT). Diğerleri (author!=handle & RT değil) = parent bağlamı -> ATLA.
+                    if (author && author !== handle && !isRT) continue;
                     bulunan[id] = { id: id, link: href ? ('https://x.com' + href) : '', tip: isRT ? 'rt' : (isReply ? 'yorum' : 'paylasim'), author: author, dateMs: dateMs, isPinned: isPinned };
                     if (secim.mod === 'devam' && sinirMs) { if (id === secim.sonId || (dateMs && dateMs <= sinirMs && !isPinned)) { durduk = true; sebep = 'sinir'; } }
                     if (secim.mod === 'takvim' && basMs && dateMs && dateMs < basMs && !isPinned) { durduk = true; sebep = 'aralik-alt'; }
