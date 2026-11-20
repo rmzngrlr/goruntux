@@ -3026,12 +3026,14 @@
             try { xNavYansit(); } catch (e) {}   // nav'ı anında güncelle (observer'a güvenme)
         } catch (e) {}
     }
-    function xProfilDockBitir() {
-        try { window.__xGxTaramaAktif = false; } catch (e) {}   // iş bitti -> kalıcı tarama göstergesi kapanır
+    // Tarama BİTİNCE dock göstergesini kapat + nav halkasını temizle (profil VE Rapor'matik ortak).
+    function xGxTaramaGostergeKapat() {
+        try { window.__xGxTaramaAktif = false; } catch (e) {}
         try { var w = document.getElementById('x-downloader-widget'); if (w) w.classList.remove('scanning'); } catch (e) {}
         try { var ring = document.getElementById('w-scan-ring'); if (ring) ring.setAttribute('stroke-dashoffset', '100.53'); } catch (e) {}
-        try { xNavYansit(); } catch (e) {}
+        try { if (typeof xNavYansit === 'function') xNavYansit(); } catch (e) {}
     }
+    function xProfilDockBitir() { xGxTaramaGostergeKapat(); }
     // ====================== TWEET DETAY "Rapora Ekle" BUTONU ======================
     // Tweet detay sayfasında (/status/) HER tweet'in (ana + yanıtlar) Grok/… kümesinin
     // SOLUNA GörüntüX butonu; tooltip "Bu paylaşımı GörüntüX Raporu'na ekle!". Tıklayınca
@@ -4365,7 +4367,7 @@
                                 job_id: gorev.job_id, results: [], final: true
                             }, () => {
                                 chrome.storage.local.remove(storageKey, () => {
-                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                    try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                                 });
                             });
                         }
@@ -4560,6 +4562,7 @@
                             total: progress
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
+                                try { xGxTaramaGostergeKapat(); } catch (e) {}
                                 chrome.runtime.sendMessage({
                                     action: "completeJobAndFocusPanel",
                                     origin: gorev.server_origin
@@ -4979,7 +4982,7 @@
                                 });
                             } else {
                                 chrome.storage.local.remove(storageKey, () => {
-                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                    try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                                 });
                             }
                         });
@@ -5025,6 +5028,7 @@
                             final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
+                                try { xGxTaramaGostergeKapat(); } catch (e) {}
                                 chrome.runtime.sendMessage({
                                     action: "completeJobAndFocusPanel",
                                     origin: gorev.server_origin
@@ -5384,7 +5388,7 @@
                                 });
                             } else {
                                 chrome.storage.local.remove(storageKey, () => {
-                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                    try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                                 });
                             }
                         });
@@ -5422,7 +5426,7 @@
                             job_id: gorev.job_id, results: [], final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
-                                chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                             });
                         });
                     }
@@ -5745,7 +5749,7 @@
                                 });
                             } else {
                                 chrome.storage.local.remove(storageKey, () => {
-                                    chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                    try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                                 });
                             }
                         });
@@ -5780,6 +5784,7 @@
                             final: true
                         }, () => {
                             chrome.storage.local.remove(storageKey, () => {
+                                try { xGxTaramaGostergeKapat(); } catch (e) {}
                                 chrome.runtime.sendMessage({
                                     action: "completeJobAndFocusPanel",
                                     origin: gorev.server_origin
@@ -6238,7 +6243,7 @@
                 }, (response) => {
                     if (response && response.status === 'cancelled') {
                         chrome.storage.local.remove(storageKey, () => {
-                            chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                            try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                         });
                         return;
                     }
@@ -6251,7 +6256,7 @@
                     }, (progResponse) => {
                         if (progResponse && progResponse.status === 'cancelled') {
                             chrome.storage.local.remove(storageKey, () => {
-                                chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
+                                try { xGxTaramaGostergeKapat(); } catch (e) {} chrome.runtime.sendMessage({ action: "completeJobAndFocusPanel", origin: gorev.server_origin });
                             });
                             return;
                         }
@@ -6283,6 +6288,7 @@
                     }, () => {
                         chrome.storage.local.remove(storageKey, () => {
                             // Background worker'a bu sekmenin kapatılıp panelin odaklanması talimatını veriyoruz.
+                            try { xGxTaramaGostergeKapat(); } catch (e) {}
                             chrome.runtime.sendMessage({
                                 action: "completeJobAndFocusPanel",
                                 origin: gorev.server_origin
