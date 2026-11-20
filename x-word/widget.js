@@ -3100,7 +3100,7 @@
         try {
             el.classList.remove('x-gx-ok', 'x-gx-warn');
             var ic = el.querySelector('.x-gx-tw-ic'); if (ic) ic.innerHTML = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
-            var t = el.querySelector('.x-gx-tw-tip'); if (t) t.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+            var t = el.__tip; if (t) t.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
         } catch (e) {}
     }
     async function xNavEkleTikla(el) {
@@ -3122,7 +3122,7 @@
     function xNavTipGoster(el, sure) {
         try {
             if (!el) return;
-            var tip = el.querySelector('.x-gx-tw-tip'); if (!tip) return;
+            var tip = el.__tip; if (!tip) return;
             var r = el.getBoundingClientRect();
             tip.style.left = Math.round(r.right + 10) + 'px';
             tip.style.top = Math.round(r.top + r.height / 2) + 'px';
@@ -3134,7 +3134,7 @@
     function xTweetBtnDurum(btn, sinif, tip) {
         try {
             btn.classList.remove('x-gx-ok', 'x-gx-warn'); if (sinif) btn.classList.add(sinif);
-            var t = btn.querySelector('.x-gx-tw-tip'); if (t && tip) t.textContent = tip;
+            var t = btn.__tip; if (t && tip) t.textContent = tip;
             var ic = btn.querySelector('.x-gx-tw-ic');
             if (ic) {
                 if (sinif === 'x-gx-ok') ic.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
@@ -3154,7 +3154,7 @@
         var isReply = article.getAttribute('data-is-reply') === 'true' || /yanıt olarak|replying to/i.test(article.innerText || '');
         var meta = xProfilKartMeta(article, yazar);
         btn.style.opacity = '1';
-        var tipEl = btn.querySelector('.x-gx-tw-tip'); if (tipEl) tipEl.textContent = 'Ekleniyor…';
+        var tipEl = btn.__tip; if (tipEl) tipEl.textContent = 'Ekleniyor…';
         try {
             try { if (typeof window.xTweetMetniAc === 'function') { window.xTweetMetniAc(); await sleep(250); } } catch (e) {}
             var allArts = document.querySelectorAll('article[data-testid="tweet"]');
@@ -3251,8 +3251,10 @@
             .x-gx-nav-ekle.x-gx-ok{ background:#00ba7c; color:#fff; }
             .x-gx-nav-ekle.x-gx-warn{ background:#f5a623; color:#fff; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
-            /* tooltip FIXED: X nav'ının overflow:auto kabı absolute tooltip'i KIRPIYORDU -> fixed + JS konum. */
-            .x-gx-nav-ekle .x-gx-tw-tip{ position:fixed; transform:translateY(-50%);
+            /* tooltip FIXED + documentElement'e taşınır: X nav'ında TRANSFORM'lu ata (translateZ/scale vb.)
+               fixed tooltip'i o ataya hapsedip overflow ile KIRPIYORDU -> span <html>'e taşınır (ata yok),
+               CSS .x-gx-nav-tip sınıfıyla uygulanır. Konum hover'da JS ile (viewport koordinatı). */
+            .x-gx-nav-tip{ position:fixed; transform:translateY(-50%);
                 background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px;
                 border-radius:6px; opacity:0; pointer-events:none; z-index:2147483600; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease; }
             .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin:0 8px 0 4px; width:26px; height:26px; border:none; border-radius:9999px;
@@ -3285,7 +3287,7 @@
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
@@ -3310,10 +3312,16 @@
         var cx2 = a.querySelector('.pop-cancel'); if (cx2) cx2.addEventListener('click', _fwd);
         var ekle = a.querySelector('#x-gx-nav-ekle');
         if (ekle) {
+            // Tooltip span'ini <html>'e TAŞI (transform'lu ata = hapis+kırpma; bkz CSS notu). Referansı
+            // ekle.__tip'te tut (artık ekle.querySelector('.x-gx-tw-tip') NULL döner -> __tip kullan).
+            try {
+                var _tip = ekle.querySelector('.x-gx-tw-tip');
+                if (_tip) { var _esk = document.getElementById('x-gx-nav-tip'); if (_esk) _esk.remove(); _tip.id = 'x-gx-nav-tip'; document.documentElement.appendChild(_tip); ekle.__tip = _tip; }
+            } catch (e) {}
             ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
-            // Tooltip FIXED olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
-            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.querySelector('.x-gx-tw-tip'); if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
-            ekle.addEventListener('mouseleave', function () { try { var tip = ekle.querySelector('.x-gx-tw-tip'); if (tip) tip.style.opacity = '0'; } catch (e) {} });
+            // Tooltip FIXED + <html>'de olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
+            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
+            ekle.addEventListener('mouseleave', function () { try { var tip = ekle.__tip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
         }
         return a;
     }
