@@ -2926,7 +2926,8 @@
             #x-gx-card .x-gx-tipsec input{ width:17px; height:17px; accent-color:#1d9bf0; cursor:pointer; flex:0 0 auto; }
             #x-gx-card .x-gx-tipsec b{ margin-left:auto; color:#1d9bf0; font-weight:800; }
             #x-gx-card .x-gx-tipwarn{ color:#e0245e; font-size:12.5px; font-weight:700; margin-top:4px; }
-            #x-gx-card .x-gx-act{ display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
+            #x-gx-card .x-gx-act{ display:flex; flex-direction:column-reverse; gap:9px; margin-top:18px; }
+            #x-gx-card .x-gx-act button{ width:100%; }
             #x-gx-card button{ font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
             #x-gx-card .x-gx-primary{ background:#1d9bf0; color:#fff; }
             #x-gx-card .x-gx-primary:hover{ background:#1a8cd8; }
@@ -2944,11 +2945,19 @@
     function xGxPopoverKonumla() {
         var ov = document.getElementById('x-gx-ov'); if (!ov) return;
         var card = ov.querySelector('#x-gx-card');
-        var ow = (card && card.offsetWidth) || 360, oh = (card && card.offsetHeight) || 300;
         var nav = document.getElementById('x-gx-nav-btn');
         var left, top;
-        if (nav) { var r = nav.getBoundingClientRect(); left = r.right + 12; top = r.top; }
-        else { left = 72; top = 60; }
+        // SOL menüde, GörüntüX butonunun ALTINDA + sol-hizalı.
+        if (nav) {
+            var r = nav.getBoundingClientRect(); left = r.left; top = r.bottom + 6;
+            // TWEET'E TAŞMASIN: kart genişliğini içerik sütununun (primaryColumn) sol kenarıyla sınırla.
+            if (card) {
+                var prim = document.querySelector('[data-testid="primaryColumn"]');
+                var solSinir = prim ? prim.getBoundingClientRect().left : window.innerWidth;
+                card.style.width = Math.max(230, Math.min(360, solSinir - left - 12)) + 'px';
+            }
+        } else { left = 12; top = 60; if (card) card.style.width = ''; }
+        var ow = (card && card.offsetWidth) || 360, oh = (card && card.offsetHeight) || 300;
         if (left + ow > window.innerWidth - 10) left = Math.max(10, window.innerWidth - ow - 10);
         if (top + oh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - oh - 10);
         if (top < 10) top = 10;
@@ -3252,7 +3261,18 @@
             if (a.classList.contains('outdated')) { xNavGuncellemeAc(); return; }
             xNavPaneleGit();
         });
-        var _fwd = function (ev) { ev.preventDefault(); ev.stopPropagation(); try { var c = document.getElementById('w-scan-cancel'); if (c) c.click(); } catch (e) {} };
+        var _fwd = function (ev) {
+            ev.preventDefault(); ev.stopPropagation();
+            if (window.__xGxTaramaAktif) {
+                // Profil taraması: iptal bayrağını DOĞRUDAN set et. (Dock SPA'da yeniden kurulup
+                // #w-scan-cancel onclick'i kaybolunca ona forward etmek boşa gidiyordu -> iptal çalışmıyordu.)
+                try { window.__xGxTaraIptal = true; window.__xGxTaraMsg = 'Durduruluyor…'; } catch (e) {}
+                try { var m = document.getElementById('w-scan-msg'); if (m) m.textContent = 'Durduruluyor…'; } catch (e) {}
+                try { xNavYansit(); } catch (e) {}
+            } else {
+                try { var c = document.getElementById('w-scan-cancel'); if (c) c.click(); } catch (e) {}   // genel/Rapormatik tarama
+            }
+        };
         var cx1 = a.querySelector('.x-gx-nav-cancel'); if (cx1) cx1.addEventListener('click', _fwd);
         var cx2 = a.querySelector('.pop-cancel'); if (cx2) cx2.addEventListener('click', _fwd);
         return a;
