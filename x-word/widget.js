@@ -2543,6 +2543,16 @@
     // Not: 'cancelled' is-mantigi geregi gecerli bir sonuctur, ASLA yeniden denenmez.
     //      submit tekrari sunucuda link normalizasyonuyla ELENIR, cift kayit olusmaz.
     function swSendReliable(msg, cb, timeoutMs = 12000, retries = 3) {
+        // İPTAL FLAŞI FIX: tarama iptal edildiyse (son ~12 sn) YAKALAMA isteklerini GÖNDERME ve cb'yi
+        // ÇAĞIRMA -> background X sekmesini öne getirmez (flaş yok), retry/throw/showError tetiklenmez,
+        // await askıda kalır ve tarama o noktada sessizce durur (worker sekmesi reload'da bayrak sıfırlanır).
+        try {
+            var _ipt = window.__xWordIptal;
+            if (_ipt && (Date.now() - _ipt < 12000) && msg && (msg.action === "captureTab" || msg.action === "captureAndCrop")) {
+                try { logToServer("[swSend] iptal: capture atlandi (X one getirilmez)"); } catch (e) {}
+                return;
+            }
+        } catch (e) {}
         let finished = false;
         const finish = (resp) => { if (finished) return; finished = true; try { cb(resp); } catch (e) {} };
         const attempt = (left) => {
@@ -2696,6 +2706,11 @@
 
     function durdurVeTemizle(storageKey, interval, serverOrigin, sebep) {
         if (interval) clearInterval(interval);
+        // İPTAL FLAŞI FIX: iptalden sonra uçuştaki/yeni YAKALAMALAR worker (X) sekmesini ekran görüntüsü
+        // için öne getirip "anlık X" flaşı yapıyordu. Bu bayrak (worker sekmesinin window'unda, reload'da
+        // kendiliğinden sıfırlanır) swSendReliable'da capture isteklerini DURDURUR (göndermez). Zaman damgalı:
+        // ~12 sn sonra kendiliğinden kalkar (tarama zaten bitmiş olur; idle yakalamayı kalıcı bozma).
+        try { window.__xWordIptal = Date.now(); } catch (e) {}
         // Tarama sonlandi: dock'taki "taranıyor" isigini kapat (savunmaci).
         try { const _w = document.getElementById('x-downloader-widget'); if (_w) _w.classList.remove('scanning'); } catch (e) {}
         chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", client_id: "" }, (res) => {
@@ -4374,6 +4389,7 @@
 
     async function wordTaramaYonetimi(gorev, storageKey) {
         try {
+            try { window.__xWordIptal = 0; } catch (e) {}   // aktif/yeni tarama -> iptal-capture bayrağını temizle
             let hamUrl = window.location.href.split('?')[0];
             let activeTask = gorev.kuyruk[0];
             
