@@ -3093,7 +3093,7 @@
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
     // Keşfet gelişmiş-arama modu (varsayılan AÇIK): Keşfet'te yeşil buton = arama ikonu + gelişmiş arama popup'ı.
     function xGxKesfetAcik() { try { return localStorage.getItem('x_kesfet_ara') !== '0'; } catch (e) { return true; } }
-    function xGxKesfetMi() { try { return /^https?:\/\/(?:x|twitter)\.com\/explore(?:\/|\?|#|$)/i.test(location.href); } catch (e) { return false; } }
+    function xGxKesfetMi() { try { return /^https?:\/\/(?:x|twitter)\.com\/(?:explore|search)(?:\/|\?|#|$)/i.test(location.href); } catch (e) { return false; } }
     // Profil YEŞİL-NAV modu (varsayılan AÇIK): profil işi sol-nav yeşil butona taşındı (kişi ikonu + popup);
     // '0' -> eski mavi profil-başlığı butonu geri döner (xProfilRaporButonuEkle), yeşil profil modu kapanır.
     function xGxProfilModAcik() { try { return localStorage.getItem('x_profil_yesil') !== '0'; } catch (e) { return true; } }

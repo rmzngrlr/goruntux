@@ -407,6 +407,9 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
                       "tos","privacy","about","download","jobs","developer"];
         if (_pm && _pm[1] && _rez.indexOf(_pm[1].toLowerCase()) === -1) profilMi = true;
       } catch (e) {}
+      // [KEŞFET GELİŞMİŞ ARAMA] /explore VE /search -> widget.js enjekte edilsin (sol-nav yeşil ARAMA butonu +
+      // popup orada çalışır; Ara'ya basınca /search?q='e gidilir, orada da refine edilebilmeli).
+      let kesfetMi = /^https?:\/\/(?:x|twitter)\.com\/(?:explore|search)(?:\/|\?|#|$)/i.test(temizUrl);
 
       let storageKey = `x_profil_gorevi_${tabId}`;
 
@@ -573,7 +576,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // v3.88: fotograf/medya alt sayfalari HARIC. Ayrica GECERSIZ sayfaya (anasayfa,
             // foto, alakasiz) gidilince mevcut widget KALDIRILIR -> SPA gezinmede widget
             // yanlis sayfada kalmaz (kullanici: profil/tweet widget'i baska sayfaya gidince kapansin).
-            const _gecerliWidgetSayfasi = (((tivitMi && !retweetSayfasiMi) || profilMi) && !fotografMi);
+            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi) && !fotografMi));
             if (_gecerliWidgetSayfasi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
