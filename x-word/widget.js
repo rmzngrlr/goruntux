@@ -3154,7 +3154,11 @@
         var _dk = document.getElementById('x-downloader-widget');
         if (window.__xGxTaramaAktif === true || (_dk && _dk.classList.contains('scanning'))) return;
         var mod = xNavEkleMod();
-        if (mod === 'profil') { xProfilSecimPopupAc(el); return; }   // profil sayfası: 2-seçenekli popup
+        if (mod === 'profil') {   // profil sayfası: TEK popup (#x-gx-card) 'secim' modunda aç (toggle)
+            if (document.getElementById('x-gx-ov')) { xProfilPopupKapat(); return; }
+            var h = xGxProfilHandle(); if (h) xProfilPopupAc(h, { mod: 'secim' });
+            return;
+        }
         // ---- EKLE modu: /status/ açık tweet yakala (mevcut) ----
         var art = xGxOdakliArticle();
         if (!art) { xTweetBtnDurum(el, 'x-gx-warn', 'Açık tweet yok'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
@@ -3165,41 +3169,8 @@
         el.__busy = false;
         setTimeout(function () { xNavEkleSifirla(el); }, 2800);
     }
-    // ===== PROFİL SEÇİM POPUP'ı (yeşil kişi butonu) =====
-    function xProfilSecimPopupKapat() {
-        try { var p = document.getElementById('x-gx-prof-pop'); if (p) p.remove(); } catch (e) {}
-        try { document.removeEventListener('mousedown', xProfilSecimPopupDisTik, true); } catch (e) {}
-    }
-    function xProfilSecimPopupDisTik(ev) {
-        try { var p = document.getElementById('x-gx-prof-pop'); if (!p) return; if (p.contains(ev.target)) return; if (ev.target && ev.target.closest && ev.target.closest('#x-gx-nav-ekle')) return; xProfilSecimPopupKapat(); } catch (e) {}
-    }
-    function xProfilSecimPopupAc(el) {
-        try {
-            if (document.getElementById('x-gx-prof-pop')) { xProfilSecimPopupKapat(); return; }   // açıksa kapat (toggle)
-            var handle = xGxProfilHandle(); if (!handle) return;
-            xProfilSecimPopupKapat();
-            var pop = document.createElement('div');
-            pop.id = 'x-gx-prof-pop'; pop.className = 'x-gx-prof-pop';
-            pop.innerHTML = ''
-                + '<div class="x-gx-pp-h">@' + handle + ' — ne yapılsın?</div>'
-                + '<button type="button" class="x-gx-pp-opt" data-a="kart"><span class="x-gx-pp-ic c1"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></span><span class="x-gx-pp-tx"><b>Profil Kartı ekran görüntüsü</b><i>Yalnız profil kartını yakala → rapora ekle</i></span></button>'
-                + '<button type="button" class="x-gx-pp-opt" data-a="rapor"><span class="x-gx-pp-ic c2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 13h8M8 17h5"/></svg></span><span class="x-gx-pp-tx"><b>Bu profilin GörüntüX Raporu\'nu oluştur</b><i>Takvim/tarih aralığı → tüm aktiviteyi tara</i></span></button>';
-            document.documentElement.appendChild(pop);
-            // Konum: nav butonunun ALTINA, sol-hizalı (rapor popup'ı #x-gx-ov ile aynı yer), viewport içinde tut.
-            var nav = document.getElementById('x-gx-nav-btn');
-            var r = (nav || el).getBoundingClientRect();
-            var left = r.left, top = r.bottom + 6;
-            var ow = pop.offsetWidth || 300, oh = pop.offsetHeight || 150;
-            if (left + ow > window.innerWidth - 10) left = Math.max(10, window.innerWidth - ow - 10);
-            if (top + oh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - oh - 10);
-            if (top < 10) top = 10;
-            pop.style.left = Math.round(left) + 'px';
-            pop.style.top = Math.round(top) + 'px';
-            pop.querySelector('[data-a="kart"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); xProfilKartYakala(el); });
-            pop.querySelector('[data-a="rapor"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); try { xProfilRaporBaslat(xGxProfilHandle() || handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); } });
-            setTimeout(function () { try { document.addEventListener('mousedown', xProfilSecimPopupDisTik, true); } catch (e) {} }, 0);
-        } catch (e) {}
-    }
+    // (Eski ayrı seçim popup'ı xProfilSecimPopupAc KALDIRILDI — seçim artık #x-gx-card 'secim' modunda,
+    //  rapor/takvim ile TEK popup; yeşil buton xNavEkleTikla → xProfilPopupAc(handle,{mod:'secim'}).)
     // Profil KARTI tek-yakalama (popup seçenek 1): en üste kaydır, profil kartını yakala, rapora ekle + panoya.
     async function xProfilKartYakala(el) {
         if (!el || el.__busy) return;
@@ -3384,12 +3355,8 @@
             .x-gx-nav.collapsed.scanning:hover .x-gx-nav-pop,
             .x-gx-nav.collapsed.outdated:hover .x-gx-nav-pop{ display:flex; }
             .x-gx-nav-pop .pop-cancel{ border:none; border-radius:9999px; background:#e0245e; color:#fff; width:26px; height:26px; cursor:pointer; flex:0 0 auto; }
-            /* PROFİL SEÇİM POPUP'ı (yeşil kişi butonu): <html>'e eklenir, butonun sağında fixed. */
-            /* Nav butonunun ALTINDA açılır (rapor popup'ı #x-gx-ov ile aynı yer). Panel teması (koyu). */
-            .x-gx-prof-pop{ position:fixed; z-index:2147483600; animation:xgxpop .14s ease;
-                background:#0e141f; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:8px; min-width:300px; max-width:min(380px,calc(100vw - 20px));
-                box-shadow:0 12px 40px rgba(0,0,0,.5); font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-            .x-gx-pp-h{ font-size:12px; color:#8b98a5; padding:6px 10px 8px; }
+            /* PROFİL SEÇENEK satırları (#x-gx-card 'secim' modu içinde; rapor/takvim ile TEK popup). */
+            .x-gx-secler{ display:flex; flex-direction:column; gap:2px; margin:6px 0 2px; }
             .x-gx-pp-opt{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:transparent; border:none;
                 padding:11px 12px; border-radius:10px; cursor:pointer; color:#e7e9ea; }
             .x-gx-pp-opt:hover{ background:rgba(255,255,255,.06); }
@@ -3399,11 +3366,12 @@
             .x-gx-pp-tx{ display:flex; flex-direction:column; gap:2px; min-width:0; }
             .x-gx-pp-tx b{ font-size:14px; font-weight:600; line-height:1.25; }
             .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8b98a5; }
-            /* [SS'TE GÖRÜNMESİN] Yakalama sürerken (<html>.x-gx-capturing) yeşil buton tooltip'i ("Yakalanıyor…"
-               vb.) + profil seçim popup'ı gizli (pc üzerine taşıp kadraja giriyordu). inline opacity'yi !important ezer.
-               Nav butonu/halkası gizlenMEZ (sol-navda, kadraj dışı; otomatik taramada halka titremesin). */
+            /* Seçim → takvim ŞIK GEÇİŞ (içerik değişince kısa fade/yukarı-kayma). */
+            #x-gx-card.x-gx-gecis{ animation:xgxgecis .2s ease; }
+            @keyframes xgxgecis{ from{ opacity:.35; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+            /* [SS'TE GÖRÜNMESİN] Yakalama sürerken yeşil buton tooltip'i + tarama popover'ı gizli (pc'ye taşıp
+               kadraja giriyordu). Rapor/seçim popup'ı #x-gx-ov zaten html.x-gx-capturing ile gizli. */
             html.x-gx-capturing .x-gx-nav-tip,
-            html.x-gx-capturing .x-gx-prof-pop,
             html.x-gx-capturing .x-gx-nav-pop{ visibility:hidden !important; opacity:0 !important; }
         `;
         (document.head || document.documentElement).appendChild(s);
@@ -3462,6 +3430,20 @@
             ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
             ekle.addEventListener('mouseleave', function () { try { var tip = ekle.__tip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
         }
+        // MAVİ İKON TOOLTIP'i (documentElement'e, ikon ALTINDA): güncelleme uyarısı burada; etiket "GörüntüX" sabit.
+        // Metin xNavYansit'te duruma göre set edilir ("Güncelleme gerekli — tıklayarak güncelle" / "GörüntüX paneline git").
+        try {
+            var _bEsk = document.getElementById('x-gx-nav-btip'); if (_bEsk) _bEsk.remove();
+            var btip = document.createElement('span');
+            btip.id = 'x-gx-nav-btip'; btip.className = 'x-gx-nav-tip'; btip.textContent = 'GörüntüX paneline git';
+            document.documentElement.appendChild(btip);
+            a.__btip = btip;
+            var ico = a.querySelector('.x-gx-nav-ico');
+            if (ico) {
+                ico.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = a.__btip; if (!tip || !tip.textContent) return; var r = ico.getBoundingClientRect(); tip.style.left = Math.round(r.left) + 'px'; tip.style.top = Math.round(r.bottom + 8) + 'px'; tip.style.transform = 'none'; tip.style.opacity = '1'; } catch (e) {} });
+                ico.addEventListener('mouseleave', function () { try { var tip = a.__btip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
+            }
+        } catch (e) {}
         return a;
     }
     function xNavYansit() {
@@ -3499,14 +3481,18 @@
                 if (lbl) lbl.textContent = lblText;
                 if (popMsg) popMsg.textContent = lblText;
                 if (popCancel) popCancel.style.display = '';
+                if (nav.__btip) nav.__btip.textContent = '';
             } else if (outdated) {
-                if (lbl) lbl.textContent = 'Güncelleme gerekli';
-                if (popMsg) popMsg.textContent = 'Güncelleme gerekli — tıkla';
+                // ETİKET DEĞİŞMEZ ("GörüntüX" kalır); güncelleme uyarısı ikon badge'i (!) + TOOLTIP'te (eski dock gibi).
+                if (lbl) lbl.textContent = 'GörüntüX';
+                if (popMsg) popMsg.textContent = 'Güncelleme gerekli — tıklayarak güncelle';
                 if (popCancel) popCancel.style.display = 'none';
+                if (nav.__btip) nav.__btip.textContent = 'Güncelleme gerekli — tıklayarak güncelle';
             } else {
                 if (lbl) lbl.textContent = 'GörüntüX';
                 if (popMsg) popMsg.textContent = '';
                 if (popCancel) popCancel.style.display = 'none';
+                if (nav.__btip) nav.__btip.textContent = 'GörüntüX paneline git';
             }
         } catch (e) {}
     }
@@ -3601,6 +3587,23 @@
             var _ib = card.querySelector('#x-gx-iptal'); if (_ib) _ib.onclick = xProfilPopupKapat;
             var _ob = card.querySelector('#x-gx-onayla'); if (_ob) _ob.onclick = function () { try { if (durum._onayla) durum._onayla(); } catch (e) {} };
             try { card.querySelectorAll('.x-gx-tipcb').forEach(function (cb) { cb.onchange = function () { var w = card.querySelector('#x-gx-tipwarn'); if (w) w.style.display = 'none'; try { xGxPopoverKonumla(); } catch (e) {} }; }); } catch (e) {}
+            return;
+        }
+        if (durum.mod === 'secim') {   // YEŞİL BUTON: tek popup, önce 2 seçenek (profil kartı / rapor)
+            card.innerHTML = `<h3>${logo} GörüntüX</h3><p class="x-gx-sub">@${xGxKac(handle)} — ne yapmak istersin?</p>`
+                + '<div class="x-gx-secler">'
+                +   '<button type="button" class="x-gx-pp-opt" id="x-gx-sec-kart"><span class="x-gx-pp-ic c1"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></span><span class="x-gx-pp-tx"><b>Profil Kartı ekran görüntüsü</b><i>Yalnız profil kartını yakala → rapora ekle</i></span></button>'
+                +   '<button type="button" class="x-gx-pp-opt" id="x-gx-sec-rapor"><span class="x-gx-pp-ic c2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 13h8M8 17h5"/></svg></span><span class="x-gx-pp-tx"><b>Bu profilin GörüntüX Raporu\'nu oluştur</b><i>Takvim/tarih aralığı → tüm aktiviteyi tara</i></span></button>'
+                + '</div>';
+            var _sk = card.querySelector('#x-gx-sec-kart');
+            if (_sk) _sk.onclick = function () { xProfilPopupKapat(); try { xProfilKartYakala(document.getElementById('x-gx-nav-ekle')); } catch (e) {} };
+            var _sr = card.querySelector('#x-gx-sec-rapor');
+            if (_sr) _sr.onclick = function () {
+                // ŞIK GEÇİŞ: aynı popup'ta takvim/durum'a geç (yeni popup açma; hafif fade).
+                try { card.classList.remove('x-gx-gecis'); void card.offsetWidth; card.classList.add('x-gx-gecis'); } catch (e) {}
+                xProfilPopupGuncelle(handle, { mod: 'yukleniyor' });
+                xPanelRaporDurumSorgula(handle, function (durum2) { xProfilPopupGuncelle(handle, durum2); });
+            };
             return;
         }
         if (durum.mod === 'devam') {
