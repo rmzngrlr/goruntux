@@ -3390,6 +3390,12 @@
             .x-gx-pp-tx{ display:flex; flex-direction:column; gap:2px; min-width:0; }
             .x-gx-pp-tx b{ font-size:14px; font-weight:600; line-height:1.25; }
             .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8899a6; }
+            /* [SS'TE GÖRÜNMESİN] Yakalama sürerken (<html>.x-gx-capturing) yeşil buton tooltip'i ("Yakalanıyor…"
+               vb.) + profil seçim popup'ı gizli (pc üzerine taşıp kadraja giriyordu). inline opacity'yi !important ezer.
+               Nav butonu/halkası gizlenMEZ (sol-navda, kadraj dışı; otomatik taramada halka titremesin). */
+            html.x-gx-capturing .x-gx-nav-tip,
+            html.x-gx-capturing .x-gx-prof-pop,
+            html.x-gx-capturing .x-gx-nav-pop{ visibility:hidden !important; opacity:0 !important; }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
