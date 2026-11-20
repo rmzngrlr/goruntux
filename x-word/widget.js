@@ -3040,8 +3040,8 @@
     // O tweet'i yakalar + havuza ekler (dock "Rapora Ekle" ile aynı: yorum ise parent
     // bağlamıyla xYakalaTweetVeYanit, RT ise group_override). Bayrak x_gx_tweet_btn!='0'.
     var _X_GX_ICO = '<svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>';
-    // Yeşil "Rapora Ekle" logosu: aynı çerçeve ama ortada X yerine + (artı), yeşil zemin.
-    var _X_GX_ICO_EKLE = '<svg width="26" height="26" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#00ba7c"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 12v8M12 16h8"/></g></svg>';
+    // Yeşil "Rapora Ekle" işareti (daire zemin BUTONDA): çerçeve + ortada ARTI, stroke=currentColor.
+    var _X_GX_ICO_EKLE = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
     function xGxTweetStilEkle() {
         if (document.getElementById('x-gx-tw-style')) return;
@@ -3179,10 +3179,12 @@
         s.textContent = `
             .x-gx-nav{ position:relative; display:flex; align-items:center; width:100%; box-sizing:border-box;
                 cursor:pointer; color:inherit; text-decoration:none; -webkit-tap-highlight-color:transparent; margin:4px 0; }
-            .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:16px; padding:8px 12px;
+            /* KAPSÜL: kalıcı açık-mavi hap; padding:0 -> daireler uçlara SIFIRA SIFIR. */
+            .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:0; padding:0; background:rgba(29,155,240,.12);
                 border-radius:9999px; transition:background .15s ease; max-width:100%; }
-            .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.12); }
-            .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; }
+            .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.2); }
+            /* MAVİ DAİRE (sol uç): zemin daire, içte beyaz işaret (frame+X). */
+            .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:#1d9bf0; display:inline-flex; align-items:center; justify-content:center; }
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
             .x-gx-nav-ring{ position:absolute; inset:-5px; display:none; transform:rotate(-90deg); transform-origin:50% 50%; }
             .x-gx-nav.scanning .x-gx-nav-ring{ display:block; }
@@ -3197,28 +3199,27 @@
             /* Etiket fontu = X nav etiketi (Anasayfa) fontu. X, fontu LINK'te degil ETIKET SPAN'inde
                tanimliyor (link computed='Times' serif) -> Chirp stack'ini dogrudan ver (serif kaybolur). */
             .x-gx-nav-lbl{ font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-                font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+                font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0 15px; }
             .x-gx-nav.collapsed .x-gx-nav-lbl{ display:none; }
-            /* Dar modda ikonu X logosu + Anasayfa ikonuyla AYNI dikey eksende ortala (cx=item merkezi).
-               flex-column -> yeşil "+" butonu GörüntüX ikonunun ALTINA, aynı eksende hizalı gelir. */
-            .x-gx-nav.collapsed{ flex-direction:column; align-items:center; justify-content:center; gap:4px; }
-            .x-gx-nav.collapsed .x-gx-nav-inner{ gap:0; padding:10px; }
-            .x-gx-nav.collapsed .x-gx-nav-ekle{ margin-left:0; }
-            /* YEŞİL "+" (Rapora Ekle) butonu — GörüntüX butonunun İÇİNDE: geniş=etiketin hemen sağına
-               bitişik, dar=ikonun altına. Yalnız /status/ + açık tweet varken (.aktif). Tık=o tweeti yakala. */
+            /* Dar mod: kapsül yerine İKİZ DAİRELER alt alta, aynı eksende (mavi üstte, yeşil altında). */
+            .x-gx-nav.collapsed{ justify-content:center; }
+            .x-gx-nav.collapsed .x-gx-nav-inner{ flex-direction:column; gap:4px; padding:0; background:transparent; }
+            /* YEŞİL DAİRE (sağ uç): kapsül içinde, mavinin İKİZİ; daire zemin BURADA, içte beyaz işaret (frame+ARTI).
+               Yalnız /status/ + açık tweet varken (.aktif). Tık=o tweeti yakala. */
             .x-gx-nav-ekle{ position:relative; display:none; flex:0 0 auto; align-items:center; justify-content:center;
-                width:40px; height:40px; margin-left:6px; border-radius:9999px; cursor:pointer; transition:transform .12s ease, filter .12s ease; }
+                width:40px; height:40px; border-radius:50%; background:#00ba7c; color:#fff; cursor:pointer; transition:filter .12s ease; }
             .x-gx-nav-ekle.aktif{ display:inline-flex; }
-            .x-gx-nav-ekle:hover{ filter:brightness(1.08); transform:scale(1.07); }
+            .x-gx-nav-ekle:hover{ filter:brightness(1.08); }
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
-            .x-gx-nav-ekle.x-gx-ok{ color:#00ba7c; }
-            .x-gx-nav-ekle.x-gx-warn{ color:#f5a623; }
-            .x-gx-nav-ekle .x-gx-tw-tip{ position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%) translateY(-4px);
+            .x-gx-nav-ekle.x-gx-ok{ background:#00ba7c; color:#fff; }
+            .x-gx-nav-ekle.x-gx-warn{ background:#f5a623; color:#fff; }
+            /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
+            .x-gx-nav-ekle .x-gx-tw-tip{ position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(-4px);
                 background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px;
                 border-radius:6px; opacity:0; pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease, transform .12s ease; }
-            .x-gx-nav-ekle:hover .x-gx-tw-tip{ opacity:1; transform:translateX(-50%) translateY(0); }
-            .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin-left:2px; width:26px; height:26px; border:none; border-radius:9999px;
+            .x-gx-nav-ekle:hover .x-gx-tw-tip{ opacity:1; transform:translateY(-50%) translateX(0); }
+            .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin:0 8px 0 4px; width:26px; height:26px; border:none; border-radius:9999px;
                 background:#e0245e; color:#fff; font-size:13px; cursor:pointer; align-items:center; justify-content:center; }
             .x-gx-nav.scanning:not(.collapsed) .x-gx-nav-cancel{ display:inline-flex; }
             .x-gx-nav-pop{ display:none; position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%);
@@ -3243,17 +3244,17 @@
         a.href = '#'; a.setAttribute('role', 'link'); a.setAttribute('aria-label', 'GörüntüX');
         a.innerHTML = ''
             + '<span class="x-gx-nav-inner">'
-            +   '<span class="x-gx-nav-ico">'
-            +     '<svg class="x-gx-nav-logo" width="30" height="30" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
+            +   '<span class="x-gx-nav-ico">'   // daire zemin CSS'te (background:#1d9bf0); içte beyaz işaret
+            +     '<svg class="x-gx-nav-logo" width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
             +     '<svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg>'
             +     '<span class="x-gx-nav-cnt">0/0</span>'
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic">' + _X_GX_ICO_EKLE + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
-            + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>'
-            + '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic">' + _X_GX_ICO_EKLE + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>';
+            + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
         a.addEventListener('click', function (ev) {
             ev.preventDefault(); ev.stopPropagation();
             if (a.classList.contains('outdated')) { xNavGuncellemeAc(); return; }
