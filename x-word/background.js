@@ -1,3 +1,10 @@
+// İPTAL PENCERESİ: kullanıcı taramayı durdurunca (resetServerJob) kısa süre worker (X) sekmesini
+// AKTİVE ETME — ne poll yeni görev çeksin ne de uçuştaki ekran görüntüsü X'i öne getirsin. Aksi halde
+// iptalden sonra panele geçerken "anlık X'e gidip dönme" flaşı oluyordu. Yeni tarama (startWordScan)
+// pencereyi hemen sıfırlar, böylece gerçek yeni tarama engellenmez.
+let __xCancelUntil = 0;
+function xIptalPenceresindeMi() { return Date.now() < __xCancelUntil; }
+
 const originalFetch = fetch;
 fetch = function(url, options = {}) {
   let urlStr = typeof url === 'string' ? url : (url.url || "");
@@ -857,6 +864,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // activeJobFound koruması çift-başlatmayı engeller.
     const job = message.job;
     if (!job) { sendResponse({ status: "error", message: "job yok" }); return false; }
+    __xCancelUntil = 0;   // yeni tarama -> iptal penceresini kaldır (poll/capture engellenmesin)
     // MV3 TUZAĞI: storage.get async'tir. Eskiden burada sendResponse senkron çağrılıp
     // return false yapılıyordu; boşta kalmış worker bu mesajla uyanıp cevabı verdiği an
     // Chrome onu TEKRAR askıya alıyor, async callback (processServerJob) HİÇ çalışmıyordu.
@@ -887,6 +895,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   //                 DIKKAT: cropImageInBackground FONKSIYONU duruyor — canli yol onu kullaniyor.
 
   if (message.action === "captureTab") {
+    if (xIptalPenceresindeMi()) { try { sendResponse({ status: "error", message: "tarama iptal edildi" }); } catch (_) {} return true; }   // iptal penceresi: X sekmesini öne getirip yakalama -> flaş yapma
     const tabId    = sender.tab ? sender.tab.id     : null;
     const windowId = sender.tab ? sender.tab.windowId : null;
 
@@ -942,6 +951,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // İki ayrı mesaj (captureTab + cropImage) arasında service worker uykuya geçerse
   // ikinci yanıt null gelir ve kırpma yapılamaz. Bu action her ikisini tek seferde yapar.
   if (message.action === "captureAndCrop") {
+    if (xIptalPenceresindeMi()) { try { sendResponse({ status: "error", message: "tarama iptal edildi" }); } catch (_) {} return true; }   // iptal penceresi: X sekmesini öne getirip yakalama -> flaş yapma
     const tabId    = sender.tab ? sender.tab.id     : null;
     const windowId = sender.tab ? sender.tab.windowId : null;
     const rect     = message.rect;
@@ -1041,6 +1051,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "resetServerJob") {
+    // İptal başladı: ~6 sn worker (X) sekmesini aktive etme (poll + capture guard) -> panele geçişte X flaşı olmasın.
+    __xCancelUntil = Date.now() + 6000;
     let origin = message.origin || "https://goruntux.rgmedya.tr";
     let clientId = message.client_id || "";
     let resetUrl = `${origin}/api/auto/reset`;
@@ -1458,6 +1470,7 @@ chrome.action.onClicked.addListener((tab) => {
 
 function checkServerJobs() {
   try {
+    if (xIptalPenceresindeMi()) return;   // iptal penceresi: yeni görev çekme (worker X sekmesini yönlendirme/aktive etme)
     chrome.storage.local.get(null, (allStorage) => {
       try {
         let rawOrigin = allStorage.server_origin || "https://goruntux.rgmedya.tr";
