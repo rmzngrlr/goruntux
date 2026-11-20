@@ -2975,8 +2975,13 @@
             #x-gx-card .x-gx-akor.acik .x-gx-akor-ch{ transform:rotate(180deg); }
             #x-gx-card .x-gx-akor-b{ display:none; padding:0 2px 12px; }
             #x-gx-card .x-gx-akor.acik .x-gx-akor-b{ display:block; animation:xgxgecis .18s ease; }
-            #x-gx-card .x-gx-ikili{ display:flex; gap:8px; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
-            #x-gx-card .x-gx-uclu{ display:flex; gap:8px; margin-top:4px; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
+            #x-gx-card .x-gx-ikili{ display:flex; gap:8px; align-items:flex-start; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
+            #x-gx-card .x-gx-uclu{ display:flex; gap:7px; margin-top:6px; align-items:flex-start; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
+            /* Min satırı etiketleri TEK SATIR (2 satıra kayıp inputları yamultmasın) + label alt boşluğu eşit. */
+            #x-gx-card .x-gx-uclu label{ white-space:nowrap; font-size:11.5px; }
+            #x-gx-card .x-gx-ikili label, #x-gx-card .x-gx-uclu label{ margin-top:0; }
+            /* Tarih inputu dar sütunda "yyyy"yi kessemesin: kompakt padding + font. */
+            #x-gx-card input[type=date]{ padding:9px 6px; font-size:13px; }
             #x-gx-card .x-gx-prev-h{ font-size:11px; color:#8b98a5; margin:14px 0 5px; }
             #x-gx-card .x-gx-prev{ background:rgba(29,155,240,.1); border:1px solid rgba(29,155,240,.28); border-radius:10px; padding:9px 11px;
                 font-size:12.5px; color:#cfe3f5; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; min-height:18px; line-height:1.45; }
@@ -3284,6 +3289,48 @@
             return q;
         } catch (e) { return ''; }
     }
+    // REVERSE-SYNC: X arama inputundaki query'yi ayrıştırıp popup alanlarına doldur (query kurucunun TERSİ).
+    function xAramaQueryAyristir(q) {
+        try {
+            var card = document.getElementById('x-gx-card'); if (!card) return;
+            var set = function (id, v) { var e = card.querySelector('#' + id); if (e) e.value = v; };
+            var tumu = [], hicbiri = [], etiket = [], mention = [], tam = '', herhangi = '', dil = '', since = '', until = '', from = '', to = '', yanit = '', link = '', minrep = '', minfav = '', minrt = '';
+            var tokens = String(q || '').match(/"[^"]*"|\([^)]*\)|\S+/g) || [];
+            tokens.forEach(function (t) {
+                var m;
+                if (t.charAt(0) === '"') { tam = t.replace(/^"|"$/g, ''); return; }
+                if (t.charAt(0) === '(') { herhangi = t.replace(/^\(|\)$/g, '').split(/\s+OR\s+/i).filter(Boolean).join(' '); return; }
+                if (/^-?filter:replies$/i.test(t)) { yanit = t.charAt(0) === '-' ? 'exclude' : 'only'; return; }
+                if (/^-?filter:links$/i.test(t)) { link = t.charAt(0) === '-' ? 'exclude' : 'only'; return; }
+                if ((m = t.match(/^since:(\S+)$/i))) { since = m[1]; return; }
+                if ((m = t.match(/^until:(\S+)$/i))) { until = m[1]; return; }
+                if ((m = t.match(/^lang:(\S+)$/i))) { dil = m[1]; return; }
+                if ((m = t.match(/^from:(\S+)$/i))) { from = m[1]; return; }
+                if ((m = t.match(/^to:(\S+)$/i))) { to = m[1]; return; }
+                if ((m = t.match(/^min_replies:(\d+)$/i))) { minrep = m[1]; return; }
+                if ((m = t.match(/^min_faves:(\d+)$/i))) { minfav = m[1]; return; }
+                if ((m = t.match(/^min_retweets:(\d+)$/i))) { minrt = m[1]; return; }
+                if (t.charAt(0) === '#') { etiket.push(t); return; }
+                if (t.charAt(0) === '@') { mention.push(t); return; }
+                if (t.charAt(0) === '-' && t.length > 1) { hicbiri.push(t.slice(1)); return; }
+                tumu.push(t);
+            });
+            set('ara-tumu', tumu.join(' ')); set('ara-tam', tam); set('ara-herhangi', herhangi);
+            set('ara-hicbiri', hicbiri.join(' ')); set('ara-etiket', etiket.join(' ')); set('ara-mention', mention.join(' '));
+            set('ara-from', from); set('ara-to', to); set('ara-since', since); set('ara-until', until);
+            set('ara-minrep', minrep); set('ara-minfav', minfav); set('ara-minrt', minrt);
+            var _ds = card.querySelector('#ara-dil'); if (_ds) { _ds.value = dil; if (_ds.value !== dil) _ds.value = ''; }   // listede yoksa Herhangi
+            var _ys = card.querySelector('#ara-yanit'); if (_ys) _ys.value = yanit;
+            var _ls = card.querySelector('#ara-link'); if (_ls) _ls.value = link;
+            // Dolu alanı olan akordiyonları aç (kullanıcı aktif filtreleri görsün).
+            card.querySelectorAll('.x-gx-akor').forEach(function (a) {
+                var dolu = false;
+                a.querySelectorAll('input').forEach(function (i) { if (i.value) dolu = true; });
+                a.querySelectorAll('select').forEach(function (s) { if (s.value) dolu = true; });
+                if (dolu) a.classList.add('acik');
+            });
+        } catch (e) {}
+    }
     function xAramaPopupAc() {
         if (window.__xGxCaptureAktif) return;
         xGxPopupStilEkle();
@@ -3304,7 +3351,7 @@
                 + '<input id="ara-herhangi" placeholder="Herhangi biri (a b c)" style="margin-top:7px">'
                 + '<input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)" style="margin-top:7px">'
                 + '<input id="ara-etiket" placeholder="Etiketler (#konu)" style="margin-top:7px">'
-                + '<label>Dil</label><select id="ara-dil">' + dilOpt + '</select>')
+                + '<label style="margin-top:12px">Dil</label><select id="ara-dil">' + dilOpt + '</select>')
             + akor('Tarihler', true,
                 '<div class="x-gx-ikili"><div><label>Kaçtan</label><input type="date" id="ara-since"></div><div><label>Kaça</label><input type="date" id="ara-until"></div></div>')
             + akor('Hesaplar', false,
@@ -3328,7 +3375,9 @@
             if (!q) { try { card.querySelector('#ara-tumu').focus(); } catch (e) {} return; }
             try { window.location.href = 'https://x.com/search?q=' + encodeURIComponent(q) + '&src=typed_query'; } catch (e) {}
         };
-        xAramaQueryKur(false);
+        // REVERSE-SYNC: açılışta X arama inputundaki mevcut query'yi popup alanlarına doldur (/search'te dolu gelir).
+        try { var _xin = document.querySelector('input[data-testid="SearchBox_Search_Input"]'); if (_xin && _xin.value && _xin.value.trim()) xAramaQueryAyristir(_xin.value.trim()); } catch (e) {}
+        xAramaQueryKur(false);   // önizlemeyi güncelle (X'e TEKRAR yazma — zaten orada)
         xGxPopoverKonumla();
         var disTik = function (e) {
             var o = document.getElementById('x-gx-ov'); if (!o || o.contains(e.target)) return;
