@@ -2924,35 +2924,37 @@
             @keyframes xgxpop{ from{ opacity:0; transform:translateX(-6px); } to{ opacity:1; transform:none; } }
             /* [SS'TE POPUP OLMASIN] yakalama sürerken (<html>.x-gx-capturing) popup KESİN gizli (geç oluşsa da). */
             html.x-gx-capturing #x-gx-ov{ display:none !important; }
-            #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#fff; color:#0f1419;
-                border-radius:16px; box-shadow:0 10px 36px rgba(0,0,0,.28); border:1px solid rgba(15,20,25,.12); padding:16px 18px; box-sizing:border-box; }
-            #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; display:flex; align-items:center; gap:9px; }
-            #x-gx-card .x-gx-sub{ color:#536471; font-size:13px; margin:8px 0 16px; }
+            /* PANEL TEMASI (koyu): --bg-modal #0e141f, text #e7e9ea, secondary #8b98a5, input #111622, accent #1d9bf0. */
+            #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#0e141f; color:#e7e9ea;
+                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box; }
+            #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; color:#e7e9ea; display:flex; align-items:center; gap:9px; }
+            #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
-            #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#536471; margin:0 0 5px; }
-            #x-gx-card input[type=date], #x-gx-card input[type=datetime-local]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cfd9de;
-                border-radius:9px; font-size:14px; color:#0f1419; background:#fff; }
-            #x-gx-card .x-gx-info{ background:#e8f5fe; border:1px solid #cfe9fb; color:#0f1419; border-radius:11px;
+            #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#8b98a5; margin:0 0 5px; }
+            #x-gx-card input[type=date], #x-gx-card input[type=datetime-local]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid rgba(255,255,255,.14);
+                border-radius:9px; font-size:14px; color:#e7e9ea; background:#111622; color-scheme:dark; }
+            #x-gx-card input[type=date]:focus, #x-gx-card input[type=datetime-local]:focus{ outline:none; border-color:#1d9bf0; box-shadow:0 0 0 3px rgba(29,155,240,.15); }
+            #x-gx-card .x-gx-info{ background:rgba(29,155,240,.12); border:1px solid rgba(29,155,240,.3); color:#e7e9ea; border-radius:11px;
                 padding:12px 14px; font-size:13.5px; line-height:1.5; margin:4px 0 16px; }
-            #x-gx-card .x-gx-info b{ color:#1d9bf0; }
-            #x-gx-card .x-gx-tiplbl{ font-size:12.5px; font-weight:700; color:#536471; margin:2px 0 6px; }
+            #x-gx-card .x-gx-info b{ color:#5bb3f5; }
+            #x-gx-card .x-gx-tiplbl{ font-size:12.5px; font-weight:700; color:#8b98a5; margin:2px 0 6px; }
             #x-gx-card .x-gx-tipsecler{ display:flex; flex-direction:column; gap:2px; margin-bottom:4px; }
-            #x-gx-card .x-gx-tipsec{ display:flex; align-items:center; gap:9px; font-size:14px; padding:7px 9px; border-radius:9px; cursor:pointer; user-select:none; }
-            #x-gx-card .x-gx-tipsec:hover{ background:#f2f7fb; }
+            #x-gx-card .x-gx-tipsec{ display:flex; align-items:center; gap:9px; font-size:14px; color:#e7e9ea; padding:7px 9px; border-radius:9px; cursor:pointer; user-select:none; }
+            #x-gx-card .x-gx-tipsec:hover{ background:rgba(255,255,255,.06); }
             #x-gx-card .x-gx-tipsec input{ width:17px; height:17px; accent-color:#1d9bf0; cursor:pointer; flex:0 0 auto; }
-            #x-gx-card .x-gx-tipsec b{ margin-left:auto; color:#1d9bf0; font-weight:800; }
-            #x-gx-card .x-gx-tipwarn{ color:#e0245e; font-size:12.5px; font-weight:700; margin-top:4px; }
+            #x-gx-card .x-gx-tipsec b{ margin-left:auto; color:#5bb3f5; font-weight:800; }
+            #x-gx-card .x-gx-tipwarn{ color:#f4212e; font-size:12.5px; font-weight:700; margin-top:4px; }
             #x-gx-card .x-gx-act{ display:flex; flex-direction:column-reverse; gap:9px; margin-top:18px; }
             #x-gx-card .x-gx-act button{ width:100%; }
             #x-gx-card button{ font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
             #x-gx-card .x-gx-primary{ background:#1d9bf0; color:#fff; }
             #x-gx-card .x-gx-primary:hover{ background:#1a8cd8; }
             #x-gx-card .x-gx-primary:disabled{ opacity:.5; cursor:default; }
-            #x-gx-card .x-gx-ghost{ background:#fff; color:#0f1419; border-color:#cfd9de; }
-            #x-gx-card .x-gx-ghost:hover{ background:#f2f3f5; }
-            #x-gx-card .x-gx-note{ color:#8899a6; font-size:12px; margin-top:12px; line-height:1.45; }
-            #x-gx-card .x-gx-spin{ display:flex; align-items:center; gap:10px; color:#536471; font-size:14px; padding:14px 0; }
-            #x-gx-card .x-gx-spin .d{ width:16px;height:16px;border:2px solid #cfd9de;border-top-color:#1d9bf0;border-radius:50%;animation:xgxsp .8s linear infinite; }
+            #x-gx-card .x-gx-ghost{ background:rgba(255,255,255,.05); color:#e7e9ea; border-color:rgba(255,255,255,.15); }
+            #x-gx-card .x-gx-ghost:hover{ background:rgba(255,255,255,.1); }
+            #x-gx-card .x-gx-note{ color:#8b98a5; font-size:12px; margin-top:12px; line-height:1.45; }
+            #x-gx-card .x-gx-spin{ display:flex; align-items:center; gap:10px; color:#8b98a5; font-size:14px; padding:14px 0; }
+            #x-gx-card .x-gx-spin .d{ width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#1d9bf0;border-radius:50%;animation:xgxsp .8s linear infinite; }
             @keyframes xgxsp{ to{ transform:rotate(360deg); } }
         `;
         (document.head || document.documentElement).appendChild(s);
@@ -3183,9 +3185,16 @@
                 + '<button type="button" class="x-gx-pp-opt" data-a="kart"><span class="x-gx-pp-ic c1"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></span><span class="x-gx-pp-tx"><b>Profil Kartı ekran görüntüsü</b><i>Yalnız profil kartını yakala → rapora ekle</i></span></button>'
                 + '<button type="button" class="x-gx-pp-opt" data-a="rapor"><span class="x-gx-pp-ic c2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 13h8M8 17h5"/></svg></span><span class="x-gx-pp-tx"><b>Bu profilin GörüntüX Raporu\'nu oluştur</b><i>Takvim/tarih aralığı → tüm aktiviteyi tara</i></span></button>';
             document.documentElement.appendChild(pop);
-            var r = el.getBoundingClientRect();
-            pop.style.left = Math.round(r.right + 14) + 'px';
-            pop.style.top = Math.round(r.top + r.height / 2) + 'px';
+            // Konum: nav butonunun ALTINA, sol-hizalı (rapor popup'ı #x-gx-ov ile aynı yer), viewport içinde tut.
+            var nav = document.getElementById('x-gx-nav-btn');
+            var r = (nav || el).getBoundingClientRect();
+            var left = r.left, top = r.bottom + 6;
+            var ow = pop.offsetWidth || 300, oh = pop.offsetHeight || 150;
+            if (left + ow > window.innerWidth - 10) left = Math.max(10, window.innerWidth - ow - 10);
+            if (top + oh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - oh - 10);
+            if (top < 10) top = 10;
+            pop.style.left = Math.round(left) + 'px';
+            pop.style.top = Math.round(top) + 'px';
             pop.querySelector('[data-a="kart"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); xProfilKartYakala(el); });
             pop.querySelector('[data-a="rapor"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); try { xProfilRaporBaslat(xGxProfilHandle() || handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); } });
             setTimeout(function () { try { document.addEventListener('mousedown', xProfilSecimPopupDisTik, true); } catch (e) {} }, 0);
@@ -3315,9 +3324,9 @@
             .x-gx-nav{ position:relative; display:flex; align-items:center; width:100%; box-sizing:border-box;
                 cursor:pointer; color:inherit; text-decoration:none; -webkit-tap-highlight-color:transparent; margin:4px 0; }
             /* KAPSÜL: kalıcı açık-mavi hap; padding:0 -> daireler uçlara SIFIRA SIFIR. */
-            .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:0; padding:0; background:rgba(29,155,240,.12);
+            .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:0; padding:0; background:transparent;
                 border-radius:9999px; transition:background .15s ease; max-width:100%; }
-            .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.2); }
+            .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.18); }
             /* MAVİ DAİRE (sol uç): zemin daire, içte beyaz işaret (frame+X). */
             .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:#1d9bf0; display:inline-flex; align-items:center; justify-content:center; }
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
@@ -3376,20 +3385,20 @@
             .x-gx-nav.collapsed.outdated:hover .x-gx-nav-pop{ display:flex; }
             .x-gx-nav-pop .pop-cancel{ border:none; border-radius:9999px; background:#e0245e; color:#fff; width:26px; height:26px; cursor:pointer; flex:0 0 auto; }
             /* PROFİL SEÇİM POPUP'ı (yeşil kişi butonu): <html>'e eklenir, butonun sağında fixed. */
-            .x-gx-prof-pop{ position:fixed; transform:translateY(-50%); z-index:2147483600;
-                background:#0f1419; border:1px solid #2a3a55; border-radius:12px; padding:8px; min-width:300px;
-                box-shadow:0 10px 30px rgba(0,0,0,.5); font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-            .x-gx-prof-pop::before{ content:""; position:absolute; right:100%; top:50%; transform:translateY(-50%); border:8px solid transparent; border-right-color:#0f1419; }
-            .x-gx-pp-h{ font-size:12px; color:#8899a6; padding:6px 10px 8px; }
+            /* Nav butonunun ALTINDA açılır (rapor popup'ı #x-gx-ov ile aynı yer). Panel teması (koyu). */
+            .x-gx-prof-pop{ position:fixed; z-index:2147483600; animation:xgxpop .14s ease;
+                background:#0e141f; border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:8px; min-width:300px; max-width:min(380px,calc(100vw - 20px));
+                box-shadow:0 12px 40px rgba(0,0,0,.5); font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+            .x-gx-pp-h{ font-size:12px; color:#8b98a5; padding:6px 10px 8px; }
             .x-gx-pp-opt{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:transparent; border:none;
-                padding:11px 12px; border-radius:9px; cursor:pointer; color:#e7e9ea; }
-            .x-gx-pp-opt:hover{ background:rgba(255,255,255,.07); }
+                padding:11px 12px; border-radius:10px; cursor:pointer; color:#e7e9ea; }
+            .x-gx-pp-opt:hover{ background:rgba(255,255,255,.06); }
             .x-gx-pp-ic{ flex:0 0 auto; width:34px; height:34px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; }
-            .x-gx-pp-ic.c1{ background:rgba(0,186,124,.18); color:#4fd1a5; }
-            .x-gx-pp-ic.c2{ background:rgba(29,155,240,.18); color:#5bb3f5; }
+            .x-gx-pp-ic.c1{ background:rgba(0,186,124,.16); color:#00ba7c; }
+            .x-gx-pp-ic.c2{ background:rgba(29,155,240,.16); color:#1d9bf0; }
             .x-gx-pp-tx{ display:flex; flex-direction:column; gap:2px; min-width:0; }
             .x-gx-pp-tx b{ font-size:14px; font-weight:600; line-height:1.25; }
-            .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8899a6; }
+            .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8b98a5; }
             /* [SS'TE GÖRÜNMESİN] Yakalama sürerken (<html>.x-gx-capturing) yeşil buton tooltip'i ("Yakalanıyor…"
                vb.) + profil seçim popup'ı gizli (pc üzerine taşıp kadraja giriyordu). inline opacity'yi !important ezer.
                Nav butonu/halkası gizlenMEZ (sol-navda, kadraj dışı; otomatik taramada halka titremesin). */
