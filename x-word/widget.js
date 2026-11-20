@@ -2864,7 +2864,9 @@
             btn.innerHTML = `<span class="x-gx-ico"><svg width="26" height="26" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg></span><span class="x-gx-tip">Bu X profilinin GörüntüX Raporu'nu oluştur.</span>`;
             btn.addEventListener('click', (ev) => {
                 ev.preventDefault(); ev.stopPropagation();
-                try { xProfilRaporBaslat(handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
+                // Handle'ı TIK ANINDA taze oku: buton bir profilde oluşup SPA ile başka profile geçilince
+                // closure'daki eski handle (ör. @mahajansi) bayat kalıyordu -> hep güncel URL'den al.
+                try { xProfilRaporBaslat(xGxProfilHandle() || handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); }
             });
             satir.insertBefore(btn, satir.firstChild);
             printLog('[GX Profil Rapor] buton eklendi: @' + handle);
@@ -2905,10 +2907,10 @@
             #x-gx-card{ width:min(440px,92vw); max-height:90vh; overflow:auto; background:#fff; color:#0f1419;
                 border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,.35); padding:20px 22px; box-sizing:border-box; }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; display:flex; align-items:center; gap:9px; }
-            #x-gx-card .x-gx-sub{ color:#536471; font-size:13px; margin:0 0 16px; }
+            #x-gx-card .x-gx-sub{ color:#536471; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; gap:12px; margin:12px 0; }
             #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#536471; margin:0 0 5px; }
-            #x-gx-card input[type=date]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cfd9de;
+            #x-gx-card input[type=date], #x-gx-card input[type=datetime-local]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cfd9de;
                 border-radius:9px; font-size:14px; color:#0f1419; background:#fff; }
             #x-gx-card .x-gx-info{ background:#e8f5fe; border:1px solid #cfe9fb; color:#0f1419; border-radius:11px;
                 padding:12px 14px; font-size:13.5px; line-height:1.5; margin:4px 0 16px; }
@@ -3337,19 +3339,20 @@
             card.querySelector('#x-gx-basla').onclick = function () { xProfilTaramaBaslat(handle, { mod: 'devam', sonTarihISO: durum.sonTarihISO }); };
             return;
         }
-        // takvim (fresh) — varsayılan: bitiş bugün, başlangıç 1 yıl öncesi
+        // takvim (fresh) — varsayılan: bitiş ŞİMDİ (tarih+saat), başlangıç 1 yıl öncesi 00:00
         var bugun = xGxBugunISO();
-        var yilOnce = xGxGunEkleISO(bugun, -365);
+        var _dn = new Date(); var _pp = function (n) { return (n < 10 ? '0' : '') + n; };
+        var simdiDT = _dn.getFullYear() + '-' + _pp(_dn.getMonth() + 1) + '-' + _pp(_dn.getDate()) + 'T' + _pp(_dn.getHours()) + ':' + _pp(_dn.getMinutes());
+        var yilOnceDT = xGxGunEkleISO(bugun, -365) + 'T00:00';
         var panelNot = (durum.panelAcik === false)
             ? `<p class="x-gx-note">Not: Panelde açık/dolu bir rapor yok; baştan rapor için tarih aralığı seç. (Devam etmek istersen önce panelde ilgili raporu aç.)</p>` : '';
         card.innerHTML = bas
-            + `<div class="x-gx-info">Baştan rapor: taranacak <b>tarih aralığını</b> seç. Seçilen aralık <b>eskiden yeniye</b> raporlanır (önce profil kartı).</div>`
-            + `<div class="x-gx-row"><div style="flex:1"><label>Başlangıç</label><input type="date" id="x-gx-bas" max="${bugun}" value="${yilOnce}"></div>`
-            + `<div style="flex:1"><label>Bitiş</label><input type="date" id="x-gx-bit" max="${bugun}" value="${bugun}"></div></div>`
+            + `<div class="x-gx-info">Baştan rapor: taranacak <b>tarih+saat aralığını</b> seç. Seçilen aralık <b>eskiden yeniye</b> raporlanır (önce profil kartı).</div>`
+            + `<div class="x-gx-row"><div style="flex:1"><label>Başlangıç</label><input type="datetime-local" id="x-gx-bas" max="${simdiDT}" value="${yilOnceDT}"></div>`
+            + `<div style="flex:1"><label>Bitiş</label><input type="datetime-local" id="x-gx-bit" max="${simdiDT}" value="${simdiDT}"></div></div>`
             + `<div class="x-gx-act"><button class="x-gx-ghost" id="x-gx-iptal">Vazgeç</button>`
             + `<button class="x-gx-primary" id="x-gx-basla">Taramayı başlat</button></div>`
-            + panelNot
-            + `<p class="x-gx-note">Çok eski/büyük hesaplarda X yüklemeyi yavaşlatabilir; ulaşılabilen kadarı raporlanır.</p>`;
+            + panelNot;
         card.querySelector('#x-gx-iptal').onclick = xProfilPopupKapat;
         card.querySelector('#x-gx-basla').onclick = function () {
             var bas = card.querySelector('#x-gx-bas').value, bit = card.querySelector('#x-gx-bit').value;
@@ -3541,8 +3544,9 @@
         var SNOW = function (id) { try { return Number((BigInt(id) >> BigInt(22)) + BigInt(1288834974657)); } catch (e) { return 0; } };
         handle = (handle || '').toLowerCase();
         var sinirMs = (secim.mod === 'devam' && secim.sonTarihISO) ? Date.parse(secim.sonTarihISO) : 0;
-        var basMs = (secim.mod === 'takvim' && secim.baslangicISO) ? Date.parse(secim.baslangicISO + 'T00:00:00') : 0;
-        var bitMs = (secim.mod === 'takvim' && secim.bitisISO) ? Date.parse(secim.bitisISO + 'T23:59:59') : Infinity;
+        // ISO artık datetime-local (tarih+saat, 'T' içerir); eski tarih-only ISO için 'T..' ekle (geri uyum).
+        var basMs = (secim.mod === 'takvim' && secim.baslangicISO) ? Date.parse(secim.baslangicISO.indexOf('T') >= 0 ? secim.baslangicISO : (secim.baslangicISO + 'T00:00:00')) : 0;
+        var bitMs = (secim.mod === 'takvim' && secim.bitisISO) ? Date.parse(secim.bitisISO.indexOf('T') >= 0 ? secim.bitisISO : (secim.bitisISO + 'T23:59:59')) : Infinity;
         var bulunan = {}, durduk = false, sebep = '', bosTur = 0, oncekiH = 0, maxTur = opts.maxTur || 400;
         for (var tur = 0; tur < maxTur && !durduk; tur++) {
             if (opts.iptalKontrol && opts.iptalKontrol()) { sebep = 'iptal'; break; }
