@@ -2929,10 +2929,10 @@
                 border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box;
                 scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent; }
             /* İNCE + KOYU scrollbar (popup koyu tema; varsayılan açık/sistem scrollbar uyumsuzdu). */
-            #x-gx-card::-webkit-scrollbar{ width:6px; height:6px; }
+            #x-gx-card::-webkit-scrollbar{ width:4px; height:4px; }
             #x-gx-card::-webkit-scrollbar-track{ background:transparent; }
-            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:8px; }
-            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.32); }
+            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:8px; }
+            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.3); }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; color:#e7e9ea; display:flex; align-items:center; gap:9px; }
             #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
@@ -3157,14 +3157,17 @@
             if (!el) return;
             el.classList.remove('x-gx-ok', 'x-gx-warn');
             var ic = el.querySelector('.x-gx-tw-ic');
+            // İKONLAR INLINE (değişken yerine): değişken-referansı bazı enjeksiyon/zamanlama durumlarında
+            // "undefined" basıyordu (geçmiş tuzak, commit 7b6179f) -> SVG'leri doğrudan göm, bulletproof.
+            var _svgFrame = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/>';
             if (mod === 'profil') {
-                if (ic) ic.innerHTML = _X_GX_ICO_KISI;
+                if (ic) ic.innerHTML = _svgFrame + '<circle cx="16" cy="14" r="2.6"/><path d="M11.8 22.6c0-2.7 1.9-4.3 4.2-4.3s4.2 1.6 4.2 4.3"/></g></svg>';
                 if (el.__tip) el.__tip.textContent = "Bu profil için GörüntüX";
             } else if (mod === 'ara') {
-                if (ic) ic.innerHTML = _X_GX_ICO_ARA;
+                if (ic) ic.innerHTML = _svgFrame + '<circle cx="15" cy="15" r="3.2"/><path d="M17.3 17.3l2.3 2.3"/></g></svg>';
                 if (el.__tip) el.__tip.textContent = "Gelişmiş arama";
             } else {
-                if (ic) ic.innerHTML = _X_GX_ICO_EKLE;
+                if (ic) ic.innerHTML = _svgFrame + '<path d="M16 11.5v9M11.5 16h9"/></g></svg>';
                 if (el.__tip) el.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
             }
             el.__mod = (mod === 'profil' || mod === 'ara') ? mod : 'ekle';
