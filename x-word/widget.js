@@ -3369,12 +3369,12 @@
         var bugun = xGxBugunISO();
         var _dn = new Date(); var _pp = function (n) { return (n < 10 ? '0' : '') + n; };
         var simdiDT = _dn.getFullYear() + '-' + _pp(_dn.getMonth() + 1) + '-' + _pp(_dn.getDate()) + 'T' + _pp(_dn.getHours()) + ':' + _pp(_dn.getMinutes());
-        var yilOnceDT = xGxGunEkleISO(bugun, -365) + 'T00:00';
+        var basDT = bugun + 'T00:00';   // Başlangıç varsayılanı = BUGÜN 00:00 (popup'ın açıldığı gün; eski "1 yıl önce" kaldırıldı)
         var panelNot = (durum.panelAcik === false)
             ? `<p class="x-gx-note">Not: Panelde açık/dolu bir rapor yok; baştan rapor için tarih aralığı seç. (Devam etmek istersen önce panelde ilgili raporu aç.)</p>` : '';
         card.innerHTML = bas
             + `<div class="x-gx-info">Baştan rapor: taranacak <b>tarih+saat aralığını</b> seç. Seçilen aralık <b>eskiden yeniye</b> raporlanır (önce profil kartı).</div>`
-            + `<div class="x-gx-row"><div style="flex:1"><label>Başlangıç</label><input type="datetime-local" id="x-gx-bas" max="${simdiDT}" value="${yilOnceDT}"></div>`
+            + `<div class="x-gx-row"><div style="flex:1"><label>Başlangıç</label><input type="datetime-local" id="x-gx-bas" max="${simdiDT}" value="${basDT}"></div>`
             + `<div style="flex:1"><label>Bitiş</label><input type="datetime-local" id="x-gx-bit" max="${simdiDT}" value="${simdiDT}"></div></div>`
             + `<div class="x-gx-act"><button class="x-gx-ghost" id="x-gx-iptal">Vazgeç</button>`
             + `<button class="x-gx-primary" id="x-gx-basla">Taramayı başlat</button></div>`
