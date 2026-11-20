@@ -3111,9 +3111,25 @@
         var art = xGxOdakliArticle();
         if (!art) { xTweetBtnDurum(el, 'x-gx-warn', 'Açık tweet yok'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
         el.__busy = true;
-        try { await xTweetYakalaEkle(art, el); } catch (e) {}   // yakala + addToPool + feedback (çoklu-seçim dahil)
+        // Pano yazımı TIKLAMA anında başlamalı (user-activation tuzağı; görsel sözle sonra doldurulur).
+        var pano = null; try { pano = xPanoHazirla(); } catch (e) {}
+        try { await xTweetYakalaEkle(art, el, pano); } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} }   // yakala + pano + addToPool + feedback (çoklu-seçim dahil)
         el.__busy = false;
         setTimeout(function () { xNavEkleSifirla(el); }, 2800);   // birkaç sn sonra yeşil "+"'ya geri dön
+    }
+    // Durum/açıklama tooltip'ini hover BEKLEMEDEN kısa süre göster (yakalama sonucu "Rapora eklendi ·
+    // Panoda" vb. kullanıcıya görünür olsun). Mouseenter ile aynı konumlama (fixed; nav kabı kırpıyordu).
+    function xNavTipGoster(el, sure) {
+        try {
+            if (!el) return;
+            var tip = el.querySelector('.x-gx-tw-tip'); if (!tip) return;
+            var r = el.getBoundingClientRect();
+            tip.style.left = Math.round(r.right + 10) + 'px';
+            tip.style.top = Math.round(r.top + r.height / 2) + 'px';
+            tip.style.opacity = '1';
+            clearTimeout(el.__tipT);
+            el.__tipT = setTimeout(function () { try { tip.style.opacity = '0'; } catch (e) {} }, sure || 2600);
+        } catch (e) {}
     }
     function xTweetBtnDurum(btn, sinif, tip) {
         try {
@@ -3125,13 +3141,14 @@
                 else if (sinif === 'x-gx-warn') ic.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>';
                 else ic.innerHTML = _X_GX_ICO;
             }
+            if (sinif) xNavTipGoster(btn);   // durumu hover beklemeden göster
         } catch (e) {}
     }
     // Tıklanan SPESİFİK tweet'i yakala + havuza ekle (dock "Rapora Ekle" mantığı, tek tweet).
-    async function xTweetYakalaEkle(article, btn) {
+    async function xTweetYakalaEkle(article, btn, pano) {
         var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
         var _cap = window.__xGxCap, _capYanit = window.__xGxCapYanit;
-        if (typeof _cap !== 'function') { xTweetBtnDurum(btn, 'x-gx-warn', 'Hazır değil — F5 yapın'); return; }
+        if (typeof _cap !== 'function') { try { if (pano) pano.iptal(); } catch (e) {} xTweetBtnDurum(btn, 'x-gx-warn', 'Hazır değil — F5 yapın'); return; }
         var origin = ''; try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var yazar = (article.getAttribute('data-author-username') || '').toLowerCase();
         var isReply = article.getAttribute('data-is-reply') === 'true' || /yanıt olarak|replying to/i.test(article.innerText || '');
@@ -3153,17 +3170,19 @@
                 if (tipEl) tipEl.textContent = 'Üst gönderileri seçin…';
                 var _adaylar = _arr.slice(0, _fi + 1);   // atalar (0..fi-1) + eklenen tweet (fi), yukarıdan aşağıya
                 var _secilenler = await _cokluSec(_adaylar, article);
-                if (!_secilenler) { xTweetBtnDurum(btn, 'x-gx-warn', 'İptal edildi'); return; }   // iptal -> ekleme yok
+                if (!_secilenler) { try { if (pano) pano.iptal(); } catch (e) {} xTweetBtnDurum(btn, 'x-gx-warn', 'İptal edildi'); return; }   // iptal -> ekleme yok
                 ss = await _yakalaCoklu(_secilenler, _adaylar) || '';
             } else {
                 ss = (isReply && typeof _capYanit === 'function') ? (await _capYanit(article, allArts) || '') : (await _cap(article) || '');
             }
-            if (!ss || ss.length < 100) { xTweetBtnDurum(btn, 'x-gx-warn', 'Yakalanamadı'); return; }
+            if (!ss || ss.length < 100) { try { if (pano) pano.iptal(); } catch (e) {} xTweetBtnDurum(btn, 'x-gx-warn', 'Yakalanamadı'); return; }
+            // Görseli PANOYA kopyala (eski dock davranışı: Ctrl+V ile başka yere yapıştırılabilsin).
+            var panoOk = false; try { if (pano) panoOk = await pano.gorseliVer(ss); } catch (e) {}
             var res = await new Promise(function (r) { try { chrome.runtime.sendMessage({ action: 'addToPool', origin: origin, title: meta.baslik, link: meta.link, image: ss, is_profile: false, group_override: meta.groupOverride }, function (x) { r(x || {}); }); } catch (e) { r({ status: 'error' }); } });
-            if (res && res.status === 'success') xTweetBtnDurum(btn, 'x-gx-ok', 'Rapora eklendi ✔');
-            else if (res && res.status === 'duplicate') xTweetBtnDurum(btn, 'x-gx-warn', 'Zaten havuzda');
+            if (res && res.status === 'success') xTweetBtnDurum(btn, 'x-gx-ok', panoOk ? 'Rapora eklendi · 📋 Panoda' : 'Rapora eklendi ✔');
+            else if (res && res.status === 'duplicate') xTweetBtnDurum(btn, 'x-gx-warn', panoOk ? 'Zaten havuzda · 📋 Panoda' : 'Zaten havuzda');
             else xTweetBtnDurum(btn, 'x-gx-warn', 'Eklenemedi');
-        } catch (e) { xTweetBtnDurum(btn, 'x-gx-warn', 'Hata'); printLog('[GX Tweet Btn] hata: ' + (e && e.message)); }
+        } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} xTweetBtnDurum(btn, 'x-gx-warn', 'Hata'); printLog('[GX Tweet Btn] hata: ' + (e && e.message)); }
     }
     function xTweetButonPollerBaslat() {
         try {
