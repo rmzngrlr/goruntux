@@ -2926,7 +2926,13 @@
             html.x-gx-capturing #x-gx-ov{ display:none !important; }
             /* PANEL TEMASI (koyu): --bg-modal #0e141f, text #e7e9ea, secondary #8b98a5, input #111622, accent #1d9bf0. */
             #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#0e141f; color:#e7e9ea;
-                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box; }
+                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box;
+                scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent; }
+            /* İNCE + KOYU scrollbar (popup koyu tema; varsayılan açık/sistem scrollbar uyumsuzdu). */
+            #x-gx-card::-webkit-scrollbar{ width:6px; height:6px; }
+            #x-gx-card::-webkit-scrollbar-track{ background:transparent; }
+            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.18); border-radius:8px; }
+            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.32); }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; color:#e7e9ea; display:flex; align-items:center; gap:9px; }
             #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
@@ -2956,6 +2962,22 @@
             #x-gx-card .x-gx-spin{ display:flex; align-items:center; gap:10px; color:#8b98a5; font-size:14px; padding:14px 0; }
             #x-gx-card .x-gx-spin .d{ width:16px;height:16px;border:2px solid rgba(255,255,255,.2);border-top-color:#1d9bf0;border-radius:50%;animation:xgxsp .8s linear infinite; }
             @keyframes xgxsp{ to{ transform:rotate(360deg); } }
+            /* ===== KEŞFET GELİŞMİŞ ARAMA (akordiyon; profil popup temasıyla aynı kart) ===== */
+            .x-gx-ara-logo{ width:28px; height:28px; border-radius:50%; background:#00ba7c; color:#fff; display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto; }
+            #x-gx-card .x-gx-akor{ border-top:1px solid rgba(255,255,255,.07); }
+            #x-gx-card .x-gx-akor:first-of-type{ border-top:none; margin-top:4px; }
+            #x-gx-card .x-gx-akor-h{ width:100%; display:flex; align-items:center; justify-content:space-between; background:transparent; border:none; color:#e7e9ea; font-weight:800; font-size:14px; padding:12px 2px; cursor:pointer; }
+            #x-gx-card .x-gx-akor-ch{ color:#8b98a5; font-size:12px; transition:transform .18s ease; }
+            #x-gx-card .x-gx-akor.acik .x-gx-akor-ch{ transform:rotate(180deg); }
+            #x-gx-card .x-gx-akor-b{ display:none; padding:0 2px 12px; }
+            #x-gx-card .x-gx-akor.acik .x-gx-akor-b{ display:block; animation:xgxgecis .18s ease; }
+            #x-gx-card .x-gx-ikili{ display:flex; gap:8px; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
+            #x-gx-card .x-gx-uclu{ display:flex; gap:8px; margin-top:4px; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
+            #x-gx-card .x-gx-prev-h{ font-size:11px; color:#8b98a5; margin:14px 0 5px; }
+            #x-gx-card .x-gx-prev{ background:rgba(29,155,240,.1); border:1px solid rgba(29,155,240,.28); border-radius:10px; padding:9px 11px;
+                font-size:12.5px; color:#cfe3f5; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; min-height:18px; line-height:1.45; }
+            #x-gx-card .x-gx-ara-act{ display:flex; gap:9px; margin-top:14px; }
+            #x-gx-card .x-gx-ara-act button{ flex:1; font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
@@ -3062,7 +3084,12 @@
     var _X_GX_ICO_EKLE = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
     // Yeşil PROFİL işareti: çerçeve köşeleri + ortada KİŞİ (baş + omuz), stroke=currentColor.
     var _X_GX_ICO_KISI = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><circle cx="16" cy="14" r="2.6"/><path d="M11.8 22.6c0-2.7 1.9-4.3 4.2-4.3s4.2 1.6 4.2 4.3"/></g></svg>';
+    // Yeşil ARAMA işareti (Keşfet): çerçeve köşeleri + ortada BÜYÜTEÇ, stroke=currentColor.
+    var _X_GX_ICO_ARA = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><circle cx="15" cy="15" r="3.2"/><path d="M17.3 17.3l2.3 2.3"/></g></svg>';
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
+    // Keşfet gelişmiş-arama modu (varsayılan AÇIK): Keşfet'te yeşil buton = arama ikonu + gelişmiş arama popup'ı.
+    function xGxKesfetAcik() { try { return localStorage.getItem('x_kesfet_ara') !== '0'; } catch (e) { return true; } }
+    function xGxKesfetMi() { try { return /^https?:\/\/(?:x|twitter)\.com\/explore(?:\/|\?|#|$)/i.test(location.href); } catch (e) { return false; } }
     // Profil YEŞİL-NAV modu (varsayılan AÇIK): profil işi sol-nav yeşil butona taşındı (kişi ikonu + popup);
     // '0' -> eski mavi profil-başlığı butonu geri döner (xProfilRaporButonuEkle), yeşil profil modu kapanır.
     function xGxProfilModAcik() { try { return localStorage.getItem('x_profil_yesil') !== '0'; } catch (e) { return true; } }
@@ -3116,6 +3143,7 @@
             var scanning = (window.__xGxTaramaAktif === true) || !!(dock && dock.classList.contains('scanning'));
             if (scanning) return 'tara';
             if (xGxProfilModAcik() && xGxProfilRaporAcik() && xGxProfilHandle()) return 'profil';
+            if (xGxKesfetAcik() && xGxKesfetMi()) return 'ara';
             if (xGxTweetBtnAcik() && /\/status\/\d+/.test(location.href) && xGxOdakliArticle()) return 'ekle';
         } catch (e) {}
         return null;
@@ -3128,11 +3156,14 @@
             if (mod === 'profil') {
                 if (ic) ic.innerHTML = _X_GX_ICO_KISI;
                 if (el.__tip) el.__tip.textContent = "Bu profil için GörüntüX";
+            } else if (mod === 'ara') {
+                if (ic) ic.innerHTML = _X_GX_ICO_ARA;
+                if (el.__tip) el.__tip.textContent = "Gelişmiş arama";
             } else {
                 if (ic) ic.innerHTML = _X_GX_ICO_EKLE;
                 if (el.__tip) el.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
             }
-            el.__mod = (mod === 'profil') ? 'profil' : 'ekle';
+            el.__mod = (mod === 'profil' || mod === 'ara') ? mod : 'ekle';
         } catch (e) {}
     }
     function xNavEkleGuncelle() {
@@ -3141,12 +3172,12 @@
             var mod = xNavEkleMod();
             el.classList.toggle('aktif', !!mod);
             // İkonu YALNIZ mod değişince kur (150ms poll her turda ikonu/geri-bildirimi ezmesin, meşgulken dokunma).
-            var ikonMod = (mod === 'profil') ? 'profil' : 'ekle';
+            var ikonMod = (mod === 'profil' || mod === 'ara') ? mod : 'ekle';
             if (mod && mod !== 'tara' && !el.__busy && el.__mod !== ikonMod) xNavEkleIkonKur(el, ikonMod);
         } catch (e) {}
     }
     function xNavEkleSifirla(el) {
-        try { xNavEkleIkonKur(el, el && el.__mod === 'profil' ? 'profil' : 'ekle'); } catch (e) {}
+        try { xNavEkleIkonKur(el, (el && (el.__mod === 'profil' || el.__mod === 'ara')) ? el.__mod : 'ekle'); } catch (e) {}
     }
     async function xNavEkleTikla(el) {
         if (!el || el.__busy) return;
@@ -3157,6 +3188,11 @@
         if (mod === 'profil') {   // profil sayfası: TEK popup (#x-gx-card) 'secim' modunda aç (toggle)
             if (document.getElementById('x-gx-ov')) { xProfilPopupKapat(); return; }
             var h = xGxProfilHandle(); if (h) xProfilPopupAc(h, { mod: 'secim' });
+            return;
+        }
+        if (mod === 'ara') {   // Keşfet: gelişmiş arama popup'ı (toggle)
+            if (document.getElementById('x-gx-ov')) { xProfilPopupKapat(); return; }
+            xAramaPopupAc();
             return;
         }
         // ---- EKLE modu: /status/ açık tweet yakala (mevcut) ----
@@ -3199,6 +3235,116 @@
         } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} xTweetBtnDurum(el, 'x-gx-warn', 'Yakalanamadı'); printLog('[GX Profil Kart] hata: ' + (e && e.message)); }
         el.__busy = false;
         setTimeout(function () { xNavEkleSifirla(el); }, 2800);
+    }
+    // ====================== KEŞFET: GELİŞMİŞ ARAMA POPUP'ı (yeşil arama ikonu) ======================
+    // Alanlar operatörlerle query'ye kurulur ve X arama inputuna (SearchBox_Search_Input) CANLI yazılır
+    // (native setter + input event; React ezmez — canlı doğrulandı). Popup = profil popup'ı (#x-gx-card) teması.
+    function xAramaXYaz(q) {
+        try {
+            var input = document.querySelector('input[data-testid="SearchBox_Search_Input"]');
+            if (!input) return false;
+            var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+            setter.call(input, q);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            return true;
+        } catch (e) { return false; }
+    }
+    function xAramaQueryKur(yaz) {
+        try {
+            var card = document.getElementById('x-gx-card'); if (!card) return '';
+            var g = function (id) { var e = card.querySelector('#' + id); return e ? String(e.value || '').trim() : ''; };
+            var kel = function (s) { return s.split(/\s+/).filter(Boolean); };
+            var p = [];
+            var tumu = g('ara-tumu'); if (tumu) p.push(tumu);
+            var tam = g('ara-tam'); if (tam) p.push('"' + tam.replace(/"/g, '') + '"');
+            var herh = kel(g('ara-herhangi')); if (herh.length) p.push('(' + herh.join(' OR ') + ')');
+            kel(g('ara-hicbiri')).forEach(function (w) { p.push('-' + w.replace(/^-/, '')); });
+            kel(g('ara-etiket')).forEach(function (h) { p.push(h.charAt(0) === '#' ? h : '#' + h); });
+            var from = g('ara-from'); if (from) p.push('from:' + from.replace(/^@/, ''));
+            var to = g('ara-to'); if (to) p.push('to:' + to.replace(/^@/, ''));
+            kel(g('ara-mention')).forEach(function (m) { p.push(m.charAt(0) === '@' ? m : '@' + m); });
+            var since = g('ara-since'); if (since) p.push('since:' + since);
+            var until = g('ara-until'); if (until) p.push('until:' + until);
+            var yanit = g('ara-yanit'); if (yanit === 'only') p.push('filter:replies'); else if (yanit === 'exclude') p.push('-filter:replies');
+            var link = g('ara-link'); if (link === 'only') p.push('filter:links'); else if (link === 'exclude') p.push('-filter:links');
+            var mr = g('ara-minrep'); if (mr) p.push('min_replies:' + mr);
+            var mf = g('ara-minfav'); if (mf) p.push('min_faves:' + mf);
+            var mt = g('ara-minrt'); if (mt) p.push('min_retweets:' + mt);
+            var dil = g('ara-dil'); if (dil) p.push('lang:' + dil);
+            var q = p.join(' ');
+            var prev = card.querySelector('#x-gx-ara-prev'); if (prev) prev.textContent = q || '—';
+            if (yaz) xAramaXYaz(q);
+            return q;
+        } catch (e) { return ''; }
+    }
+    function xAramaPopupAc() {
+        if (window.__xGxCaptureAktif) return;
+        xGxPopupStilEkle();
+        xProfilPopupKapat();   // açık #x-gx-ov varsa kapat
+        var ov = document.createElement('div'); ov.id = 'x-gx-ov';
+        var card = document.createElement('div'); card.id = 'x-gx-card'; card.className = 'x-gx-ara-card';
+        ov.appendChild(card); document.body.appendChild(ov);
+        var logo = '<span class="x-gx-ara-logo"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg></span>';
+        var diller = [['', 'Herhangi'], ['tr', 'Türkçe'], ['en', 'English'], ['ar', 'Arabic'], ['de', 'German'], ['es', 'Spanish'], ['fr', 'French'], ['it', 'Italian'], ['pt', 'Portuguese'], ['ru', 'Russian'], ['fa', 'Persian'], ['nl', 'Dutch'], ['pl', 'Polish'], ['uk', 'Ukrainian'], ['ja', 'Japanese'], ['ko', 'Korean'], ['zh', 'Chinese']];
+        var dilOpt = diller.map(function (d) { return '<option value="' + d[0] + '">' + d[1] + '</option>'; }).join('');
+        var akor = function (baslik, acik, govde) {
+            return '<div class="x-gx-akor' + (acik ? ' acik' : '') + '"><button type="button" class="x-gx-akor-h">' + baslik + '<span class="x-gx-akor-ch">▾</span></button><div class="x-gx-akor-b">' + govde + '</div></div>';
+        };
+        card.innerHTML = '<h3>' + logo + ' Gelişmiş Arama</h3><p class="x-gx-sub">Alanları doldur → X arama kutusuna otomatik yazılır</p>'
+            + akor('Kelimeler', true,
+                '<input id="ara-tumu" placeholder="Bu kelimelerin tümü">'
+                + '<input id="ara-tam" placeholder="Tam olarak bu ifade" style="margin-top:7px">'
+                + '<input id="ara-herhangi" placeholder="Herhangi biri (a b c)" style="margin-top:7px">'
+                + '<input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)" style="margin-top:7px">'
+                + '<input id="ara-etiket" placeholder="Etiketler (#konu)" style="margin-top:7px">'
+                + '<label>Dil</label><select id="ara-dil">' + dilOpt + '</select>')
+            + akor('Tarihler', true,
+                '<div class="x-gx-ikili"><div><label>Kaçtan</label><input type="date" id="ara-since"></div><div><label>Kaça</label><input type="date" id="ara-until"></div></div>')
+            + akor('Hesaplar', false,
+                '<div class="x-gx-ikili"><div><label>Kimden</label><input id="ara-from" placeholder="@kullanıcı"></div><div><label>Kime</label><input id="ara-to" placeholder="@kullanıcı"></div></div>'
+                + '<label>Bahseden</label><input id="ara-mention" placeholder="@kullanıcı">')
+            + akor('Filtreler ve Etkileşim', false,
+                '<div class="x-gx-ikili"><div><label>Yanıtlar</label><select id="ara-yanit"><option value="">Hepsi</option><option value="only">Yalnız yanıt</option><option value="exclude">Yanıt hariç</option></select></div>'
+                + '<div><label>Bağlantılar</label><select id="ara-link"><option value="">Hepsi</option><option value="only">Yalnız linkli</option><option value="exclude">Link hariç</option></select></div></div>'
+                + '<div class="x-gx-uclu"><div><label>Min yanıt</label><input type="number" id="ara-minrep" min="0" placeholder="0"></div><div><label>Min beğeni</label><input type="number" id="ara-minfav" min="0" placeholder="0"></div><div><label>Min RT</label><input type="number" id="ara-minrt" min="0" placeholder="0"></div></div>')
+            + '<div class="x-gx-prev-h">X aramasına yazılan:</div><div class="x-gx-prev" id="x-gx-ara-prev">—</div>'
+            + '<div class="x-gx-ara-act"><button type="button" class="x-gx-ghost" id="x-gx-ara-temizle">Temizle</button><button type="button" class="x-gx-primary" id="x-gx-ara-ara">Ara</button></div>';
+        card.querySelectorAll('.x-gx-akor-h').forEach(function (h) { h.addEventListener('click', function () { h.parentElement.classList.toggle('acik'); try { xGxPopoverKonumla(); } catch (e) {} }); });
+        card.querySelectorAll('input, select').forEach(function (f) { f.addEventListener('input', function () { xAramaQueryKur(true); }); f.addEventListener('change', function () { xAramaQueryKur(true); }); });
+        card.querySelector('#x-gx-ara-temizle').onclick = function () {
+            card.querySelectorAll('input').forEach(function (i) { i.value = ''; });
+            card.querySelectorAll('select').forEach(function (s) { s.selectedIndex = 0; });
+            xAramaQueryKur(true);
+        };
+        card.querySelector('#x-gx-ara-ara').onclick = function () {
+            var q = xAramaQueryKur(true);
+            if (!q) { try { card.querySelector('#ara-tumu').focus(); } catch (e) {} return; }
+            try { window.location.href = 'https://x.com/search?q=' + encodeURIComponent(q) + '&src=typed_query'; } catch (e) {}
+        };
+        xAramaQueryKur(false);
+        xGxPopoverKonumla();
+        var disTik = function (e) {
+            var o = document.getElementById('x-gx-ov'); if (!o || o.contains(e.target)) return;
+            var nb = document.getElementById('x-gx-nav-btn'); if (nb && nb.contains(e.target)) return;
+            xProfilPopupKapat();
+        };
+        var esc = function (e) { if (e.key === 'Escape') xProfilPopupKapat(); };
+        var yeniden = function () { try { xGxPopoverKonumla(); } catch (e) {} };
+        setTimeout(function () { try { document.addEventListener('click', disTik, true); } catch (e) {} }, 0);
+        document.addEventListener('keydown', esc, true);
+        window.addEventListener('resize', yeniden); window.addEventListener('scroll', yeniden, true);
+        var _acPath = location.pathname;
+        var _navT = setInterval(function () {
+            if (!document.getElementById('x-gx-ov')) { clearInterval(_navT); return; }
+            if (location.pathname !== _acPath) { clearInterval(_navT); try { xProfilPopupKapat(); } catch (e) {} }
+        }, 400);
+        window.__xGxPopoverTemizle = function () {
+            try { document.removeEventListener('click', disTik, true); } catch (e) {}
+            try { document.removeEventListener('keydown', esc, true); } catch (e) {}
+            try { window.removeEventListener('resize', yeniden); window.removeEventListener('scroll', yeniden, true); } catch (e) {}
+            try { clearInterval(_navT); } catch (e) {}
+            window.__xGxPopoverTemizle = null;
+        };
     }
     // Durum/açıklama tooltip'ini hover BEKLEMEDEN kısa süre göster (yakalama sonucu "Rapora eklendi ·
     // Panoda" vb. kullanıcıya görünür olsun). Mouseenter ile aynı konumlama (fixed; nav kabı kırpıyordu).
@@ -3540,6 +3686,8 @@
             xNavButonYerlestir();
             setInterval(function () { try { xNavButonYerlestir(); } catch (e) {} }, 700);
             window.addEventListener('resize', function () { try { xNavButonYerlestir(); } catch (e) {} });
+            // Yeşil buton mod-poll'u TÜM X sayfalarında çalışsın (Keşfet 'ara' modu dahil; kendi içinde gate'li).
+            try { xTweetButonPollerBaslat(); } catch (e) {}
         } catch (e) {}
     }
     // [#1/#4] /all'a yönlendirmeden sonra beklemedeki taramayı sürdür (widget /all'da yüklenince).
