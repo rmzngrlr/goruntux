@@ -2902,15 +2902,17 @@
         if (document.getElementById('x-gx-popup-style')) return;
         var s = document.createElement('style'); s.id = 'x-gx-popup-style';
         s.textContent = `
-            #x-gx-ov{ position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center;
-                background:rgba(0,0,0,.55); backdrop-filter:blur(2px); font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+            /* EKRANI KAPLAMAYAN popover: backdrop YOK; konum JS ile sol-menüdeki GörüntüX nav butonuna yaslanır. */
+            #x-gx-ov{ position:fixed; top:60px; left:72px; z-index:2147483600; font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+                animation:xgxpop .14s ease; }
+            @keyframes xgxpop{ from{ opacity:0; transform:translateX(-6px); } to{ opacity:1; transform:none; } }
             /* [SS'TE POPUP OLMASIN] yakalama sürerken (<html>.x-gx-capturing) popup KESİN gizli (geç oluşsa da). */
             html.x-gx-capturing #x-gx-ov{ display:none !important; }
-            #x-gx-card{ width:min(440px,92vw); max-height:90vh; overflow:auto; background:#fff; color:#0f1419;
-                border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,.35); padding:20px 22px; box-sizing:border-box; }
+            #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#fff; color:#0f1419;
+                border-radius:16px; box-shadow:0 10px 36px rgba(0,0,0,.28); border:1px solid rgba(15,20,25,.12); padding:16px 18px; box-sizing:border-box; }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; display:flex; align-items:center; gap:9px; }
             #x-gx-card .x-gx-sub{ color:#536471; font-size:13px; margin:8px 0 16px; }
-            #x-gx-card .x-gx-row{ display:flex; gap:12px; margin:12px 0; }
+            #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
             #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#536471; margin:0 0 5px; }
             #x-gx-card input[type=date], #x-gx-card input[type=datetime-local]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid #cfd9de;
                 border-radius:9px; font-size:14px; color:#0f1419; background:#fff; }
@@ -2931,26 +2933,58 @@
         `;
         (document.head || document.documentElement).appendChild(s);
     }
-    function xProfilPopupKapat() { var o = document.getElementById('x-gx-ov'); if (o) o.remove(); }
+    // Popover'ı sol-menüdeki GörüntüX nav butonunun SAĞINA yasla (üstü hizalı), viewport içinde tut.
+    function xGxPopoverKonumla() {
+        var ov = document.getElementById('x-gx-ov'); if (!ov) return;
+        var card = ov.querySelector('#x-gx-card');
+        var ow = (card && card.offsetWidth) || 360, oh = (card && card.offsetHeight) || 300;
+        var nav = document.getElementById('x-gx-nav-btn');
+        var left, top;
+        if (nav) { var r = nav.getBoundingClientRect(); left = r.right + 12; top = r.top; }
+        else { left = 72; top = 60; }
+        if (left + ow > window.innerWidth - 10) left = Math.max(10, window.innerWidth - ow - 10);
+        if (top + oh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - oh - 10);
+        if (top < 10) top = 10;
+        ov.style.left = Math.round(left) + 'px'; ov.style.top = Math.round(top) + 'px';
+    }
+    function xProfilPopupKapat() {
+        try { if (window.__xGxPopoverTemizle) window.__xGxPopoverTemizle(); } catch (e) {}
+        var o = document.getElementById('x-gx-ov'); if (o) o.remove();
+    }
     function xProfilPopupAc(handle, durum) {
         if (window.__xGxCaptureAktif) return;   // [SS'TE POPUP OLMASIN] yakalama sürerken popup OLUŞTURMA
         xGxPopupStilEkle();
         xProfilPopupKapat();
         var ov = document.createElement('div'); ov.id = 'x-gx-ov';
-        ov.addEventListener('click', function (e) { if (e.target === ov) xProfilPopupKapat(); });
         var card = document.createElement('div'); card.id = 'x-gx-card';
         ov.appendChild(card); document.body.appendChild(ov);
         xProfilPopupGuncelle(handle, durum);
-        var esc = function (e) { if (e.key === 'Escape') { xProfilPopupKapat(); document.removeEventListener('keydown', esc, true); } };
+        xGxPopoverKonumla();
+        // Backdrop YOK (ekranı kaplamaz): dışarı tık / Esc ile kapat; resize/scroll'da yeniden konumla.
+        var disTik = function (e) {
+            var o = document.getElementById('x-gx-ov'); if (!o || o.contains(e.target)) return;
+            var nb = document.getElementById('x-gx-nav-btn'); if (nb && nb.contains(e.target)) return;
+            var pb = e.target.closest ? e.target.closest('.x-gx-rapor-btn') : null; if (pb) return;   // profil butonu -> kapatma
+            xProfilPopupKapat();
+        };
+        var esc = function (e) { if (e.key === 'Escape') xProfilPopupKapat(); };
+        var yeniden = function () { try { xGxPopoverKonumla(); } catch (e) {} };
+        setTimeout(function () { try { document.addEventListener('click', disTik, true); } catch (e) {} }, 0);   // açılış tıklaması kapatmasın
         document.addEventListener('keydown', esc, true);
-        // [OTO-KAPAT] Sayfa (SPA) değişince popup ASILI KALMASIN -> başka profile/tweete geçince kapat.
-        // Yoksa kalıntı popup sonraki yakalamaların (profil/Rapormatik) SS'ine giriyor. Tarama kendi
-        // akışında zaten kapatıp gerektiğinde yeniden açar (params storage'da, popup'ta değil).
+        window.addEventListener('resize', yeniden); window.addEventListener('scroll', yeniden, true);
+        // [OTO-KAPAT] Sayfa (SPA) değişince popup asılı kalmasın (kalıntı popup sonraki yakalamalara girmesin).
         var _acPath = location.pathname;
         var _navT = setInterval(function () {
             if (!document.getElementById('x-gx-ov')) { clearInterval(_navT); return; }
             if (location.pathname !== _acPath) { clearInterval(_navT); try { xProfilPopupKapat(); } catch (e) {} }
         }, 400);
+        window.__xGxPopoverTemizle = function () {
+            try { document.removeEventListener('click', disTik, true); } catch (e) {}
+            try { document.removeEventListener('keydown', esc, true); } catch (e) {}
+            try { window.removeEventListener('resize', yeniden); window.removeEventListener('scroll', yeniden, true); } catch (e) {}
+            try { clearInterval(_navT); } catch (e) {}
+            window.__xGxPopoverTemizle = null;
+        };
     }
     // [#5] Popup içinde mesaj göster (yerli alert yerine). Popup kapalıysa açar.
     // ilerleme=true -> 'ilerleme' modu (Tamam butonu YOK; süren işlem göstergesi).
@@ -3329,6 +3363,7 @@
     }
     function xProfilPopupGuncelle(handle, durum) {
         var card = document.getElementById('x-gx-card'); if (!card) return;
+        setTimeout(function () { try { xGxPopoverKonumla(); } catch (e) {} }, 0);   // içerik/boyut değişince popover'ı yeniden yasla
         var logo = `<svg width="24" height="24" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>`;
         var bas = `<h3>${logo} GörüntüX Raporu</h3><p class="x-gx-sub">@${handle} profilinin tüm paylaşım, RT ve yorumları</p>`;
         if (durum.mod === 'yukleniyor') {
