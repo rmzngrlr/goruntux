@@ -2861,6 +2861,7 @@
     }
     function xProfilRaporButonuEkle() {
         try {
+            if (xGxProfilModAcik()) return;   // YENİ: profil işi sol-nav yeşil butona taşındı; bu header butonu GİZLİ YEDEK (x_profil_yesil='0' ile geri gelir)
             if (!xGxProfilRaporAcik()) return;
             if (window.__xGxCaptureAktif) return;   // yakalama sırasında taze buton enjekte etme (SS'e girmesin)
             const handle = xGxProfilHandle();
@@ -3057,7 +3058,12 @@
     var _X_GX_ICO = '<svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>';
     // Yeşil "Rapora Ekle" işareti (daire zemin BUTONDA): çerçeve + ortada ARTI, stroke=currentColor.
     var _X_GX_ICO_EKLE = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
+    // Yeşil PROFİL işareti: çerçeve köşeleri + ortada KİŞİ (baş + omuz), stroke=currentColor.
+    var _X_GX_ICO_KISI = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><circle cx="16" cy="14" r="2.6"/><path d="M11.8 22.6c0-2.7 1.9-4.3 4.2-4.3s4.2 1.6 4.2 4.3"/></g></svg>';
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
+    // Profil YEŞİL-NAV modu (varsayılan AÇIK): profil işi sol-nav yeşil butona taşındı (kişi ikonu + popup);
+    // '0' -> eski mavi profil-başlığı butonu geri döner (xProfilRaporButonuEkle), yeşil profil modu kapanır.
+    function xGxProfilModAcik() { try { return localStorage.getItem('x_profil_yesil') !== '0'; } catch (e) { return true; } }
     function xGxTweetStilEkle() {
         if (document.getElementById('x-gx-tw-style')) return;
         var s = document.createElement('style'); s.id = 'x-gx-tw-style';
@@ -3100,29 +3106,54 @@
     }
     // Sol-nav YEŞİL "+" (Rapora Ekle) butonunun GÖRÜNÜRLÜĞÜ: yalnız /status/ + açık tweet varken,
     // yakalama/tarama dışında. (Per-tweet buton kaldırıldı; iş bu tek butona taşındı — kullanıcı isteği.)
+    // Yeşil butonun MODU: 'tara' (ilerleme halkası) | 'profil' (profil sayfası: kişi ikonu + popup) |
+    // 'ekle' (/status/ açık tweet: + ikonu, yakala) | null (gizli). Profil ve /status/ ayrık sayfalar.
+    function xNavEkleMod() {
+        try {
+            var dock = document.getElementById('x-downloader-widget');
+            var scanning = (window.__xGxTaramaAktif === true) || !!(dock && dock.classList.contains('scanning'));
+            if (scanning) return 'tara';
+            if (xGxProfilModAcik() && xGxProfilRaporAcik() && xGxProfilHandle()) return 'profil';
+            if (xGxTweetBtnAcik() && /\/status\/\d+/.test(location.href) && xGxOdakliArticle()) return 'ekle';
+        } catch (e) {}
+        return null;
+    }
+    function xNavEkleIkonKur(el, mod) {
+        try {
+            if (!el) return;
+            el.classList.remove('x-gx-ok', 'x-gx-warn');
+            var ic = el.querySelector('.x-gx-tw-ic');
+            if (mod === 'profil') {
+                if (ic) ic.innerHTML = _X_GX_ICO_KISI;
+                if (el.__tip) el.__tip.textContent = "Bu profil için GörüntüX";
+            } else {
+                if (ic) ic.innerHTML = _X_GX_ICO_EKLE;
+                if (el.__tip) el.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+            }
+            el.__mod = (mod === 'profil') ? 'profil' : 'ekle';
+        } catch (e) {}
+    }
     function xNavEkleGuncelle() {
         try {
             var el = document.getElementById('x-gx-nav-ekle'); if (!el) return;
-            // TARAMA sürerken: yeşil ikon = İLERLEME HALKASI (göster, tık=ekleme devre dışı).
-            // idle /status/ + açık tweet: yeşil ikon = EKLEME butonu. SS bölgesinde değil -> yakalamada gizleme yok.
-            var dock = document.getElementById('x-downloader-widget');
-            var scanning = (window.__xGxTaramaAktif === true) || !!(dock && dock.classList.contains('scanning'));
-            var ekleMod = xGxTweetBtnAcik() && !scanning && /\/status\/\d+/.test(location.href) && !!xGxOdakliArticle();
-            el.classList.toggle('aktif', scanning || ekleMod);
+            var mod = xNavEkleMod();
+            el.classList.toggle('aktif', !!mod);
+            // İkonu YALNIZ mod değişince kur (150ms poll her turda ikonu/geri-bildirimi ezmesin, meşgulken dokunma).
+            var ikonMod = (mod === 'profil') ? 'profil' : 'ekle';
+            if (mod && mod !== 'tara' && !el.__busy && el.__mod !== ikonMod) xNavEkleIkonKur(el, ikonMod);
         } catch (e) {}
     }
     function xNavEkleSifirla(el) {
-        try {
-            el.classList.remove('x-gx-ok', 'x-gx-warn');
-            var ic = el.querySelector('.x-gx-tw-ic'); if (ic) ic.innerHTML = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
-            var t = el.__tip; if (t) t.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
-        } catch (e) {}
+        try { xNavEkleIkonKur(el, el && el.__mod === 'profil' ? 'profil' : 'ekle'); } catch (e) {}
     }
     async function xNavEkleTikla(el) {
         if (!el || el.__busy) return;
-        // Tarama sürerken yeşil ikon = ilerleme halkası; tık ekleme YAPMAZ.
+        // Tarama sürerken yeşil ikon = ilerleme halkası; tık YAPMAZ.
         var _dk = document.getElementById('x-downloader-widget');
         if (window.__xGxTaramaAktif === true || (_dk && _dk.classList.contains('scanning'))) return;
+        var mod = xNavEkleMod();
+        if (mod === 'profil') { xProfilSecimPopupAc(el); return; }   // profil sayfası: 2-seçenekli popup
+        // ---- EKLE modu: /status/ açık tweet yakala (mevcut) ----
         var art = xGxOdakliArticle();
         if (!art) { xTweetBtnDurum(el, 'x-gx-warn', 'Açık tweet yok'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
         el.__busy = true;
@@ -3130,7 +3161,64 @@
         var pano = null; try { pano = xPanoHazirla(); } catch (e) {}
         try { await xTweetYakalaEkle(art, el, pano); } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} }   // yakala + pano + addToPool + feedback (çoklu-seçim dahil)
         el.__busy = false;
-        setTimeout(function () { xNavEkleSifirla(el); }, 2800);   // birkaç sn sonra yeşil "+"'ya geri dön
+        setTimeout(function () { xNavEkleSifirla(el); }, 2800);
+    }
+    // ===== PROFİL SEÇİM POPUP'ı (yeşil kişi butonu) =====
+    function xProfilSecimPopupKapat() {
+        try { var p = document.getElementById('x-gx-prof-pop'); if (p) p.remove(); } catch (e) {}
+        try { document.removeEventListener('mousedown', xProfilSecimPopupDisTik, true); } catch (e) {}
+    }
+    function xProfilSecimPopupDisTik(ev) {
+        try { var p = document.getElementById('x-gx-prof-pop'); if (!p) return; if (p.contains(ev.target)) return; if (ev.target && ev.target.closest && ev.target.closest('#x-gx-nav-ekle')) return; xProfilSecimPopupKapat(); } catch (e) {}
+    }
+    function xProfilSecimPopupAc(el) {
+        try {
+            if (document.getElementById('x-gx-prof-pop')) { xProfilSecimPopupKapat(); return; }   // açıksa kapat (toggle)
+            var handle = xGxProfilHandle(); if (!handle) return;
+            xProfilSecimPopupKapat();
+            var pop = document.createElement('div');
+            pop.id = 'x-gx-prof-pop'; pop.className = 'x-gx-prof-pop';
+            pop.innerHTML = ''
+                + '<div class="x-gx-pp-h">@' + handle + ' — ne yapılsın?</div>'
+                + '<button type="button" class="x-gx-pp-opt" data-a="kart"><span class="x-gx-pp-ic c1"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></svg></span><span class="x-gx-pp-tx"><b>Profil Kartı ekran görüntüsü</b><i>Yalnız profil kartını yakala → rapora ekle</i></span></button>'
+                + '<button type="button" class="x-gx-pp-opt" data-a="rapor"><span class="x-gx-pp-ic c2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M5 3h9l5 5v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M8 13h8M8 17h5"/></svg></span><span class="x-gx-pp-tx"><b>Bu profilin GörüntüX Raporu\'nu oluştur</b><i>Takvim/tarih aralığı → tüm aktiviteyi tara</i></span></button>';
+            document.documentElement.appendChild(pop);
+            var r = el.getBoundingClientRect();
+            pop.style.left = Math.round(r.right + 14) + 'px';
+            pop.style.top = Math.round(r.top + r.height / 2) + 'px';
+            pop.querySelector('[data-a="kart"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); xProfilKartYakala(el); });
+            pop.querySelector('[data-a="rapor"]').addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xProfilSecimPopupKapat(); try { xProfilRaporBaslat(xGxProfilHandle() || handle); } catch (e) { printLog('[GX Profil Rapor] hata: ' + (e && e.message)); } });
+            setTimeout(function () { try { document.addEventListener('mousedown', xProfilSecimPopupDisTik, true); } catch (e) {} }, 0);
+        } catch (e) {}
+    }
+    // Profil KARTI tek-yakalama (popup seçenek 1): en üste kaydır, profil kartını yakala, rapora ekle + panoya.
+    async function xProfilKartYakala(el) {
+        if (!el || el.__busy) return;
+        var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+        var _cap = window.__xGxCap;
+        if (typeof _cap !== 'function') { xTweetBtnDurum(el, 'x-gx-warn', 'Hazır değil — F5 yapın'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
+        var handle = xGxProfilHandle() || '';
+        el.__busy = true;
+        var pano = null; try { pano = xPanoHazirla(); } catch (e) {}
+        var origin = ''; try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        if (el.__tip) el.__tip.textContent = 'Yakalanıyor…'; try { xNavTipGoster(el, 4000); } catch (e) {}
+        try {
+            window.scrollTo(0, 0); await sleep(600);
+            var pc = document.querySelector('[data-testid="primaryColumn"]');
+            if (!pc) throw new Error('profil kartı bulunamadı');
+            var _t = (document.title || '').replace(/^\(\d+\)\s*/, ''); var _m = _t.match(/^(.+?)\s*\(@[^)]+\)/); var _ad = (_m && _m[1]) ? _m[1].trim() : '';
+            var pb = _ad ? (_ad + ' (@' + handle + ')') : ('@' + handle);
+            pc.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(420);
+            var ss = await _cap(pc) || '';
+            if (!ss || ss.length < 100) throw new Error('yakalanamadı');
+            var panoOk = false; try { if (pano) panoOk = await pano.gorseliVer(ss); } catch (e) {}
+            var res = await new Promise(function (r) { try { chrome.runtime.sendMessage({ action: 'addToPool', origin: origin, title: pb, link: 'https://x.com/' + handle, image: ss, is_profile: true, group_override: '' }, function (x) { r(x || {}); }); } catch (e) { r({ status: 'error' }); } });
+            if (res && res.status === 'success') xTweetBtnDurum(el, 'x-gx-ok', panoOk ? 'Profil kartı eklendi · 📋 Panoda' : 'Profil kartı eklendi ✔');
+            else if (res && res.status === 'duplicate') xTweetBtnDurum(el, 'x-gx-warn', panoOk ? 'Zaten havuzda · 📋 Panoda' : 'Zaten havuzda');
+            else xTweetBtnDurum(el, 'x-gx-warn', 'Eklenemedi');
+        } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} xTweetBtnDurum(el, 'x-gx-warn', 'Yakalanamadı'); printLog('[GX Profil Kart] hata: ' + (e && e.message)); }
+        el.__busy = false;
+        setTimeout(function () { xNavEkleSifirla(el); }, 2800);
     }
     // Durum/açıklama tooltip'ini hover BEKLEMEDEN kısa süre göster (yakalama sonucu "Rapora eklendi ·
     // Panoda" vb. kullanıcıya görünür olsun). Mouseenter ile aynı konumlama (fixed; nav kabı kırpıyordu).
@@ -3287,6 +3375,21 @@
             .x-gx-nav.collapsed.scanning:hover .x-gx-nav-pop,
             .x-gx-nav.collapsed.outdated:hover .x-gx-nav-pop{ display:flex; }
             .x-gx-nav-pop .pop-cancel{ border:none; border-radius:9999px; background:#e0245e; color:#fff; width:26px; height:26px; cursor:pointer; flex:0 0 auto; }
+            /* PROFİL SEÇİM POPUP'ı (yeşil kişi butonu): <html>'e eklenir, butonun sağında fixed. */
+            .x-gx-prof-pop{ position:fixed; transform:translateY(-50%); z-index:2147483600;
+                background:#0f1419; border:1px solid #2a3a55; border-radius:12px; padding:8px; min-width:300px;
+                box-shadow:0 10px 30px rgba(0,0,0,.5); font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+            .x-gx-prof-pop::before{ content:""; position:absolute; right:100%; top:50%; transform:translateY(-50%); border:8px solid transparent; border-right-color:#0f1419; }
+            .x-gx-pp-h{ font-size:12px; color:#8899a6; padding:6px 10px 8px; }
+            .x-gx-pp-opt{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:transparent; border:none;
+                padding:11px 12px; border-radius:9px; cursor:pointer; color:#e7e9ea; }
+            .x-gx-pp-opt:hover{ background:rgba(255,255,255,.07); }
+            .x-gx-pp-ic{ flex:0 0 auto; width:34px; height:34px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; }
+            .x-gx-pp-ic.c1{ background:rgba(0,186,124,.18); color:#4fd1a5; }
+            .x-gx-pp-ic.c2{ background:rgba(29,155,240,.18); color:#5bb3f5; }
+            .x-gx-pp-tx{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+            .x-gx-pp-tx b{ font-size:14px; font-weight:600; line-height:1.25; }
+            .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8899a6; }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
