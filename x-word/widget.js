@@ -3096,7 +3096,7 @@
     function xNavEkleSifirla(el) {
         try {
             el.classList.remove('x-gx-ok', 'x-gx-warn');
-            var ic = el.querySelector('.x-gx-tw-ic'); if (ic) ic.innerHTML = _X_GX_ICO_EKLE;
+            var ic = el.querySelector('.x-gx-tw-ic'); if (ic) ic.innerHTML = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg>';
             var t = el.querySelector('.x-gx-tw-tip'); if (t) t.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
         } catch (e) {}
     }
@@ -3244,14 +3244,14 @@
         a.href = '#'; a.setAttribute('role', 'link'); a.setAttribute('aria-label', 'GörüntüX');
         a.innerHTML = ''
             + '<span class="x-gx-nav-inner">'
-            +   '<span class="x-gx-nav-ico">'   // daire zemin CSS'te (background:#1d9bf0); içte beyaz işaret
+            +   '<span class="x-gx-nav-ico">'
             +     '<svg class="x-gx-nav-logo" width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
             +     '<svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg>'
             +     '<span class="x-gx-nav-cnt">0/0</span>'
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic">' + _X_GX_ICO_EKLE + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
@@ -3302,7 +3302,7 @@
                 navFil.setAttribute('stroke-dashoffset', dash);
             }
             var cnt = nav.querySelector('.x-gx-nav-cnt');
-            if (cnt) cnt.textContent = sayac;
+            if (cnt) cnt.textContent = scanning ? (sayac || '') : '';   // idle'da BOŞ (bayat "undefined/.." gösterme)
             var msg = document.getElementById('w-scan-msg');
             var mText = (taraAktif && window.__xGxTaraMsg) ? window.__xGxTaraMsg : ((msg && msg.textContent) ? msg.textContent : 'Taranıyor…');
             var lbl = nav.querySelector('.x-gx-nav-lbl');
