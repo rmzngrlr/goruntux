@@ -3012,7 +3012,7 @@ HTML_TEMPLATE = """
                     <!-- [ÖZEL] sayı/aralık yazarak seçim (örn. 1-3, 5); yalnız "Özel" sekmesinde görünür -->
                     <div id="paylas-sec-ozel" style="display:none;"><input type="text" id="paylas-sec-ozel-inp" placeholder="örn. 1-3, 5" autocomplete="off" spellcheck="false" oninput="xPaylasSecOzelGir(this.value)"><span class="paylas-sec-ozel-ipucu">Sayfa no / aralık (virgülle ayır)</span></div>
                     <div id="paylas-sec-grid"></div>
-                    <button type="button" class="paylas-ileri paylas-olustur-btn" onclick="xPaylasOlustur()"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16h12"/></svg>Oluştur</button>
+                    <button type="button" class="paylas-ileri paylas-olustur-btn" onclick="xPaylasOlustur()"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16h12"/></svg>Oluştur ve İndir</button>
                 </div>
                 <div id="paylas-asama2" style="display:none;"></div>
                 <!-- İLERLEME/İNDİRİLDİ EKRANI (aynı konum): hazırlanırken dolan halka+%, bitince tik + dosya + 5 sn geri sayım -->
