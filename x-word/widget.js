@@ -3088,11 +3088,12 @@
     function xNavEkleGuncelle() {
         try {
             var el = document.getElementById('x-gx-nav-ekle'); if (!el) return;
-            // Yeşil buton sol-nav'da (SS bölgesinde değil) -> yakalama sırasında GİZLEME; __xGxCaptureAktif
-            // koşulu kaldırıldı (kullanıcı isteği). Yalnız profil taraması (__xGxTaramaAktif) devredeyken gizli.
-            var goster = xGxTweetBtnAcik() && !window.__xGxTaramaAktif
-                && /\/status\/\d+/.test(location.href) && !!xGxOdakliArticle();
-            el.classList.toggle('aktif', goster);
+            // TARAMA sürerken: yeşil ikon = İLERLEME HALKASI (göster, tık=ekleme devre dışı).
+            // idle /status/ + açık tweet: yeşil ikon = EKLEME butonu. SS bölgesinde değil -> yakalamada gizleme yok.
+            var dock = document.getElementById('x-downloader-widget');
+            var scanning = (window.__xGxTaramaAktif === true) || !!(dock && dock.classList.contains('scanning'));
+            var ekleMod = xGxTweetBtnAcik() && !scanning && /\/status\/\d+/.test(location.href) && !!xGxOdakliArticle();
+            el.classList.toggle('aktif', scanning || ekleMod);
         } catch (e) {}
     }
     function xNavEkleSifirla(el) {
@@ -3104,6 +3105,9 @@
     }
     async function xNavEkleTikla(el) {
         if (!el || el.__busy) return;
+        // Tarama sürerken yeşil ikon = ilerleme halkası; tık ekleme YAPMAZ.
+        var _dk = document.getElementById('x-downloader-widget');
+        if (window.__xGxTaramaAktif === true || (_dk && _dk.classList.contains('scanning'))) return;
         var art = xGxOdakliArticle();
         if (!art) { xTweetBtnDurum(el, 'x-gx-warn', 'Açık tweet yok'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
         el.__busy = true;
@@ -3197,10 +3201,12 @@
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
             .x-gx-nav-ring{ position:absolute; inset:-5px; display:none; transform:rotate(-90deg); transform-origin:50% 50%; }
             .x-gx-nav.scanning .x-gx-nav-ring{ display:block; }
-            .x-gx-nav.scanning .x-gx-nav-logo{ opacity:.25; }
-            .x-gx-nav-ring .trk{ fill:none; stroke:rgba(113,118,123,.35); stroke-width:3; }
-            .x-gx-nav-ring .fil{ fill:none; stroke:#1d9bf0; stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
-            .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#1d9bf0; }
+            /* Tarama halkası YEŞİL ikon üzerinde (kullanıcı isteği): tarama sürerken yeşil +'yı soluklaştır,
+               halka+sayaç yeşil daire üzerinde beyaz. Mavi GörüntüX ikonu NORMAL kalır (artık soluklaşmaz). */
+            .x-gx-nav.scanning .x-gx-nav-ekle .x-gx-tw-ic{ opacity:.2; }
+            .x-gx-nav-ring .trk{ fill:none; stroke:rgba(255,255,255,.3); stroke-width:3; }
+            .x-gx-nav-ring .fil{ fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
+            .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#fff; }
             .x-gx-nav.scanning .x-gx-nav-cnt{ display:flex; }
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
@@ -3218,6 +3224,8 @@
             .x-gx-nav-ekle{ position:relative; display:none; flex:0 0 auto; align-items:center; justify-content:center;
                 width:40px; height:40px; border-radius:50%; background:#00ba7c; color:#fff; cursor:pointer; transition:filter .12s ease; }
             .x-gx-nav-ekle.aktif{ display:inline-flex; }
+            /* Tarama sürerken yeşil daire DAİMA görünür (halka+sayaç onun üzerinde); poller/`/status/` koşulunu bekleme. */
+            .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; }
             .x-gx-nav-ekle:hover{ filter:brightness(1.08); }
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
@@ -3255,12 +3263,10 @@
             + '<span class="x-gx-nav-inner">'
             +   '<span class="x-gx-nav-ico">'
             +     '<svg class="x-gx-nav-logo" width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
-            +     '<svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg>'
-            +     '<span class="x-gx-nav-cnt">0/0</span>'
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
@@ -3287,7 +3293,7 @@
         if (ekle) {
             ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
             // Tooltip FIXED olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
-            ekle.addEventListener('mouseenter', function () { try { var tip = ekle.querySelector('.x-gx-tw-tip'); if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
+            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.querySelector('.x-gx-tw-tip'); if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
             ekle.addEventListener('mouseleave', function () { try { var tip = ekle.querySelector('.x-gx-tw-tip'); if (tip) tip.style.opacity = '0'; } catch (e) {} });
         }
         return a;
@@ -3323,7 +3329,7 @@
             var popMsg = nav.querySelector('.x-gx-nav-pop .pop-msg');
             var popCancel = nav.querySelector('.x-gx-nav-pop .pop-cancel');
             if (scanning) {
-                var lblText = mText + (sayac ? (' ' + sayac) : '');
+                var lblText = mText;   // sayaç artık YEŞİL halkada; etikette tekrarlama
                 if (lbl) lbl.textContent = lblText;
                 if (popMsg) popMsg.textContent = lblText;
                 if (popCancel) popCancel.style.display = '';
