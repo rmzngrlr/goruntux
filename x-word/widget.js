@@ -2926,13 +2926,14 @@
             html.x-gx-capturing #x-gx-ov{ display:none !important; }
             /* PANEL TEMASI (koyu): --bg-modal #0e141f, text #e7e9ea, secondary #8b98a5, input #111622, accent #1d9bf0. */
             #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#0e141f; color:#e7e9ea;
-                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box;
-                scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent; }
-            /* İNCE + KOYU scrollbar (popup koyu tema; varsayılan açık/sistem scrollbar uyumsuzdu). */
-            #x-gx-card::-webkit-scrollbar{ width:0.5px; height:0.5px; }
+                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box; }
+            /* ÇOK İNCE + KOYU scrollbar. ⚠ scrollbar-width (Firefox prop'u) KULLANMA: modern Chrome'da
+               ::-webkit-scrollbar'ı DEVRE DIŞI bırakıp native KALIN scrollbar render ediyor. width<1px -> 0 (görünmez),
+               bu yüzden 2px (en ince görünür). (Chrome eklentisi; Firefox hedefi yok.) */
+            #x-gx-card::-webkit-scrollbar{ width:2px; height:2px; }
             #x-gx-card::-webkit-scrollbar-track{ background:transparent; }
-            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:8px; }
-            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.3); }
+            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.22); border-radius:8px; }
+            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.35); }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; color:#e7e9ea; display:flex; align-items:center; gap:9px; }
             #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
@@ -2989,6 +2990,21 @@
                 font-size:12.5px; color:#cfe3f5; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; min-height:18px; line-height:1.45; }
             #x-gx-card .x-gx-ara-act{ display:flex; gap:9px; margin-top:14px; }
             #x-gx-card .x-gx-ara-act button{ flex:1; font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
+            /* ÖZEL KOYU DROPDOWN (native <select> açılır-listesi macOS'ta AÇIK render; color-scheme:dark native
+               menüyü koyartmıyor -> panel gibi xcs). Kapalı kutu = .x-gx-xcs, açık liste = .x-gx-xcs-list (<html>'de). */
+            #x-gx-card .x-gx-xcs{ width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:8px;
+                padding:9px 11px; border:1px solid rgba(255,255,255,.14); border-radius:9px; font-size:14px; color:#e7e9ea; background:#111622; cursor:pointer; text-align:left; font-family:inherit; }
+            #x-gx-card .x-gx-xcs:hover{ border-color:rgba(255,255,255,.25); }
+            #x-gx-card .x-gx-xcs.acik{ border-color:#1d9bf0; box-shadow:0 0 0 3px rgba(29,155,240,.15); }
+            #x-gx-card .x-gx-xcs-lbl{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+            #x-gx-card .x-gx-xcs-chev{ color:#8b98a5; flex:0 0 auto; font-size:12px; transition:transform .15s ease; }
+            #x-gx-card .x-gx-xcs.acik .x-gx-xcs-chev{ transform:rotate(180deg); }
+            .x-gx-xcs-list{ position:fixed; z-index:2147483601; background:#15202b; border:1px solid rgba(255,255,255,.12); border-radius:10px;
+                box-shadow:0 12px 32px rgba(0,0,0,.6); max-height:260px; overflow:auto; padding:4px; box-sizing:border-box; font-family:"TwitterChirp",-apple-system,"system-ui",Segoe UI,Roboto,sans-serif; }
+            .x-gx-xcs-list::-webkit-scrollbar{ width:2px; } .x-gx-xcs-list::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.22); border-radius:8px; }
+            .x-gx-xcs-it{ padding:8px 10px; border-radius:7px; font-size:14px; color:#e7e9ea; cursor:pointer; white-space:nowrap; }
+            .x-gx-xcs-it:hover{ background:rgba(255,255,255,.08); }
+            .x-gx-xcs-it.sec{ background:rgba(29,155,240,.2); color:#fff; }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
@@ -3017,6 +3033,41 @@
     function xProfilPopupKapat() {
         try { if (window.__xGxPopoverTemizle) window.__xGxPopoverTemizle(); } catch (e) {}
         var o = document.getElementById('x-gx-ov'); if (o) o.remove();
+        try { document.querySelectorAll('.x-gx-xcs-list').forEach(function (l) { l.remove(); }); } catch (e) {}   // açık özel-dropdown listesi varsa temizle
+    }
+    // Native <select>'i KOYU özel dropdown'a çevir (macOS native açılır-listesi açık render; color-scheme yetmiyor).
+    function xAramaSelectKur(sel) {
+        try {
+            if (!sel || sel.__xcs) return; sel.__xcs = true;
+            sel.style.display = 'none';
+            var box = document.createElement('button'); box.type = 'button'; box.className = 'x-gx-xcs';
+            box.innerHTML = '<span class="x-gx-xcs-lbl"></span><span class="x-gx-xcs-chev">▾</span>';
+            var lbl = box.querySelector('.x-gx-xcs-lbl');
+            var sync = function () { var o = sel.options[sel.selectedIndex]; lbl.textContent = o ? o.textContent : ''; };
+            sync(); sel.__xcsSync = sync;
+            sel.parentNode.insertBefore(box, sel.nextSibling);
+            var liste = null;
+            var disKapat = function (e) { if (!liste) return; if (liste.contains(e.target) || box.contains(e.target)) return; kapat(); };
+            var kapat = function () { if (liste) { try { liste.remove(); } catch (e) {} liste = null; } box.classList.remove('acik'); try { document.removeEventListener('mousedown', disKapat, true); } catch (e) {} };
+            box.addEventListener('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                if (liste) { kapat(); return; }
+                liste = document.createElement('div'); liste.className = 'x-gx-xcs-list';
+                Array.prototype.forEach.call(sel.options, function (o, i) {
+                    var it = document.createElement('div'); it.className = 'x-gx-xcs-it' + (i === sel.selectedIndex ? ' sec' : ''); it.textContent = o.textContent;
+                    it.addEventListener('click', function (ev) { ev.stopPropagation(); sel.selectedIndex = i; sync(); try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (x) {} kapat(); });
+                    liste.appendChild(it);
+                });
+                document.documentElement.appendChild(liste);
+                var r = box.getBoundingClientRect();
+                liste.style.left = Math.round(r.left) + 'px'; liste.style.minWidth = Math.round(r.width) + 'px';
+                liste.style.top = Math.round(r.bottom + 4) + 'px';
+                var lh = liste.offsetHeight;
+                if (r.bottom + 4 + lh > window.innerHeight - 8) liste.style.top = Math.round(Math.max(8, r.top - 4 - lh)) + 'px';
+                box.classList.add('acik');
+                setTimeout(function () { try { document.addEventListener('mousedown', disKapat, true); } catch (e) {} }, 0);
+            });
+        } catch (e) {}
     }
     function xProfilPopupAc(handle, durum) {
         if (window.__xGxCaptureAktif) return;   // [SS'TE POPUP OLMASIN] yakalama sürerken popup OLUŞTURMA
@@ -3367,9 +3418,10 @@
             + '<div class="x-gx-ara-act"><button type="button" class="x-gx-ghost" id="x-gx-ara-temizle">Temizle</button><button type="button" class="x-gx-primary" id="x-gx-ara-ara">Ara</button></div>';
         card.querySelectorAll('.x-gx-akor-h').forEach(function (h) { h.addEventListener('click', function () { h.parentElement.classList.toggle('acik'); try { xGxPopoverKonumla(); } catch (e) {} }); });
         card.querySelectorAll('input, select').forEach(function (f) { f.addEventListener('input', function () { xAramaQueryKur(true); }); f.addEventListener('change', function () { xAramaQueryKur(true); }); });
+        card.querySelectorAll('select').forEach(function (s) { xAramaSelectKur(s); });   // native select'leri KOYU özel dropdown'a çevir
         card.querySelector('#x-gx-ara-temizle').onclick = function () {
             card.querySelectorAll('input').forEach(function (i) { i.value = ''; });
-            card.querySelectorAll('select').forEach(function (s) { s.selectedIndex = 0; });
+            card.querySelectorAll('select').forEach(function (s) { s.selectedIndex = 0; if (s.__xcsSync) s.__xcsSync(); });
             xAramaQueryKur(true);
         };
         card.querySelector('#x-gx-ara-ara').onclick = function () {
@@ -3379,6 +3431,7 @@
         };
         // REVERSE-SYNC: açılışta X arama inputundaki mevcut query'yi popup alanlarına doldur (/search'te dolu gelir).
         try { var _xin = document.querySelector('input[data-testid="SearchBox_Search_Input"]'); if (_xin && _xin.value && _xin.value.trim()) xAramaQueryAyristir(_xin.value.trim()); } catch (e) {}
+        try { card.querySelectorAll('select').forEach(function (s) { if (s.__xcsSync) s.__xcsSync(); }); } catch (e) {}   // reverse-sync sonrası özel dropdown etiketleri
         xAramaQueryKur(false);   // önizlemeyi güncelle (X'e TEKRAR yazma — zaten orada)
         xGxPopoverKonumla();
         var disTik = function (e) {
