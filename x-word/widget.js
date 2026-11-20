@@ -3040,6 +3040,8 @@
     // O tweet'i yakalar + havuza ekler (dock "Rapora Ekle" ile aynı: yorum ise parent
     // bağlamıyla xYakalaTweetVeYanit, RT ise group_override). Bayrak x_gx_tweet_btn!='0'.
     var _X_GX_ICO = '<svg width="22" height="22" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#1d9bf0"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>';
+    // Yeşil "Rapora Ekle" logosu: aynı çerçeve ama ortada X yerine + (artı), yeşil zemin.
+    var _X_GX_ICO_EKLE = '<svg width="26" height="26" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#00ba7c"/><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 12v8M12 16h8"/></g></svg>';
     function xGxTweetBtnAcik() { try { return localStorage.getItem('x_gx_tweet_btn') !== '0'; } catch (e) { return true; } }
     function xGxTweetStilEkle() {
         if (document.getElementById('x-gx-tw-style')) return;
@@ -3062,73 +3064,50 @@
         `;
         (document.head || document.documentElement).appendChild(s);
     }
-    function xTweetRaporButonuEkle() {
+    // AÇIK (odaklı) tweet'i bul = URL'deki /status/<id> ile KENDİ zaman-damgası (permalink) linki eşleşen
+    // article. NOT: X tweet satırını [role=link] ile sarabiliyor (permalink dahil) -> [role=link] eleme HATALI;
+    // <time> linkinin id'si = focusId doğru ayrım (parent/yanıt kendi id'leriyle; alıntı da kendi id'si).
+    function xGxOdakliArticle() {
         try {
-            if (!xGxTweetBtnAcik()) return;
-            if (window.__xGxCaptureAktif) return;   // yakalama sırasında taze buton enjekte etme (SS'e girmesin)
-            if (!/\/status\/\d+/.test(location.href)) return;   // yalnız tweet DETAY sayfası
-            xGxTweetStilEkle();
-            // YALNIZ AÇIK (odaklı) tweet: URL'deki /status/<id> ile kendi zaman-damgası linki eşleşen
-            // article. Yanıtlar + üstteki parent tweetler + alıntılar hariç (kullanıcı isteği).
-            var _fm = location.href.match(/\/status\/(\d+)/);
-            var focusId = _fm ? _fm[1] : null;
-            // AÇIK (odaklı) tweet = ZAMAN-DAMGASI (permalink) linkinin id'si URL'deki /status/<id> ile
-            // eşleşen article. NOT: X bütün tweet satırını [role="link"] ile sarmalayabiliyor — tweet'in
-            // KENDİ permalink'i bile [role=link] içinde — bu yüzden "[role=link] içindekini atla" HATALIYDI
-            // (her linki eliyordu, hep parent'a düşüyordu). Doğru ayrım: <time> linkinin id'si = focusId.
-            // Parent + yanıtlar kendi id'leriyle linklenir (≠ focusId); alıntı tweet de kendi id'sini taşır.
-            function _odakliMi(art) {
-                if (!focusId) return false;
-                var links = art.querySelectorAll('a[href*="/status/"]');
-                for (var k = 0; k < links.length; k++) {
-                    var lk = links[k];
-                    if (!lk.querySelector('time')) continue;   // yalnız zaman-damgası (permalink) linkleri
-                    var hm = (lk.getAttribute('href') || '').match(/\/status\/(\d+)/);
-                    if (hm && hm[1] === focusId) return true;
-                }
-                return false;
-            }
+            var m = location.href.match(/\/status\/(\d+)/); if (!m) return null;
+            var focusId = m[1];
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
-            // Yalnız odaklı article'a ekle; bulunamazsa HİÇBİRİNE ekleme (yanlış tweete koymaktansa koyma,
-            // sonraki 700ms poll'da yeniden dener).
-            var hedef = null;
-            if (focusId) { for (var q = 0; q < arts.length; q++) { if (_odakliMi(arts[q])) { hedef = arts[q]; break; } } }
-            for (var i = 0; i < arts.length; i++) {
-                var art = arts[i];
-                if (art !== hedef) {   // odaklı olmayan (yanıt/parent/alıntı): varsa butonu temizle
-                    var _eski = art.querySelector('.x-gx-tw-btn'); if (_eski) _eski.remove();
-                    continue;
-                }
-                if (art.querySelector('.x-gx-tw-btn')) continue;
-                var btn = document.createElement('button');
-                btn.type = 'button'; btn.className = 'x-gx-tw-btn';
-                btn.setAttribute('aria-label', "Bu paylaşımı GörüntüX Raporu'na ekle!");
-                btn.innerHTML = '<span class="x-gx-tw-ic">' + _X_GX_ICO + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span>';
-                (function (article, b) { b.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xTweetYakalaEkle(article, b); }); })(art, btn);
-                // KONUM: hesap adı/@kullanıcı adının HEMEN YANINA (User-Name'in İLK flex-row
-                // atasında, adın hemen sağına ~6px boşlukla). caret/Grok ŞARTI YOK -> bazı
-                // tweetlerde başarısız olup far-right'a (ortalığa) kaçmıyordu; artık hep ad yanında.
-                var un = art.querySelector('[data-testid="User-Name"]');
-                if (!un) continue;
-                // KONUM/HİZA: User-Name'in İLK alt-satırı = isim satırı (flex-row, align-items:center
-                // -> ad metniyle DİKEY ortalı, cy~74). Dış kapsayıcı align-items:baseline olduğundan
-                // oraya konan 30px yuvarlak buton ~9px yukarı (Grok kümesine) kaçıyordu; isim satırına koy.
-                var isimSatiri = un.children && un.children[0];
-                if (isimSatiri && isimSatiri.nodeType === 1 && getComputedStyle(isimSatiri).flexDirection !== 'column') {
-                    isimSatiri.appendChild(btn);
-                } else {
-                    // yedek: User-Name'in ilk flex-row atası (eski davranış)
-                    var nameBlock = un, header = un.parentElement;
-                    while (header && header !== art) {
-                        var cs = getComputedStyle(header);
-                        if (cs.display === 'flex' && cs.flexDirection !== 'column') break;
-                        nameBlock = header; header = header.parentElement;
-                    }
-                    if (header && header !== art && nameBlock.parentElement === header) header.insertBefore(btn, nameBlock.nextSibling);
-                    else if (un.parentElement) un.parentElement.appendChild(btn);
+            for (var q = 0; q < arts.length; q++) {
+                var links = arts[q].querySelectorAll('a[href*="/status/"]');
+                for (var k = 0; k < links.length; k++) {
+                    if (!links[k].querySelector('time')) continue;   // yalnız zaman-damgası (permalink) linkleri
+                    var hm = (links[k].getAttribute('href') || '').match(/\/status\/(\d+)/);
+                    if (hm && hm[1] === focusId) return arts[q];
                 }
             }
         } catch (e) {}
+        return null;
+    }
+    // Sol-nav YEŞİL "+" (Rapora Ekle) butonunun GÖRÜNÜRLÜĞÜ: yalnız /status/ + açık tweet varken,
+    // yakalama/tarama dışında. (Per-tweet buton kaldırıldı; iş bu tek butona taşındı — kullanıcı isteği.)
+    function xNavEkleGuncelle() {
+        try {
+            var el = document.getElementById('x-gx-nav-ekle'); if (!el) return;
+            var goster = xGxTweetBtnAcik() && !window.__xGxCaptureAktif && !window.__xGxTaramaAktif
+                && /\/status\/\d+/.test(location.href) && !!xGxOdakliArticle();
+            el.classList.toggle('aktif', goster);
+        } catch (e) {}
+    }
+    function xNavEkleSifirla(el) {
+        try {
+            el.classList.remove('x-gx-ok', 'x-gx-warn');
+            var ic = el.querySelector('.x-gx-tw-ic'); if (ic) ic.innerHTML = _X_GX_ICO_EKLE;
+            var t = el.querySelector('.x-gx-tw-tip'); if (t) t.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+        } catch (e) {}
+    }
+    async function xNavEkleTikla(el) {
+        if (!el || el.__busy) return;
+        var art = xGxOdakliArticle();
+        if (!art) { xTweetBtnDurum(el, 'x-gx-warn', 'Açık tweet yok'); setTimeout(function () { xNavEkleSifirla(el); }, 2200); return; }
+        el.__busy = true;
+        try { await xTweetYakalaEkle(art, el); } catch (e) {}   // yakala + addToPool + feedback (çoklu-seçim dahil)
+        el.__busy = false;
+        setTimeout(function () { xNavEkleSifirla(el); }, 2800);   // birkaç sn sonra yeşil "+"'ya geri dön
     }
     function xTweetBtnDurum(btn, sinif, tip) {
         try {
@@ -3184,8 +3163,8 @@
         try {
             if (window.__xGxTweetPoller) return;
             window.__xGxTweetPoller = true;
-            xTweetRaporButonuEkle();
-            setInterval(function () { try { xTweetRaporButonuEkle(); } catch (e) {} }, 700);
+            xNavEkleGuncelle();
+            setInterval(function () { try { xNavEkleGuncelle(); } catch (e) {} }, 700);
         } catch (e) {}
     }
 
@@ -3220,9 +3199,25 @@
             .x-gx-nav-lbl{ font-family:"TwitterChirp",-apple-system,"system-ui","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
                 font-size:20px; font-weight:400; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
             .x-gx-nav.collapsed .x-gx-nav-lbl{ display:none; }
-            /* Dar modda ikonu X logosu + Anasayfa ikonuyla AYNI dikey eksende ortala (cx=item merkezi). */
-            .x-gx-nav.collapsed{ justify-content:center; }
+            /* Dar modda ikonu X logosu + Anasayfa ikonuyla AYNI dikey eksende ortala (cx=item merkezi).
+               flex-column -> yeşil "+" butonu GörüntüX ikonunun ALTINA, aynı eksende hizalı gelir. */
+            .x-gx-nav.collapsed{ flex-direction:column; align-items:center; justify-content:center; gap:4px; }
             .x-gx-nav.collapsed .x-gx-nav-inner{ gap:0; padding:10px; }
+            .x-gx-nav.collapsed .x-gx-nav-ekle{ margin-left:0; }
+            /* YEŞİL "+" (Rapora Ekle) butonu — GörüntüX butonunun İÇİNDE: geniş=etiketin hemen sağına
+               bitişik, dar=ikonun altına. Yalnız /status/ + açık tweet varken (.aktif). Tık=o tweeti yakala. */
+            .x-gx-nav-ekle{ position:relative; display:none; flex:0 0 auto; align-items:center; justify-content:center;
+                width:40px; height:40px; margin-left:6px; border-radius:9999px; cursor:pointer; transition:transform .12s ease, filter .12s ease; }
+            .x-gx-nav-ekle.aktif{ display:inline-flex; }
+            .x-gx-nav-ekle:hover{ filter:brightness(1.08); transform:scale(1.07); }
+            .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
+            .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
+            .x-gx-nav-ekle.x-gx-ok{ color:#00ba7c; }
+            .x-gx-nav-ekle.x-gx-warn{ color:#f5a623; }
+            .x-gx-nav-ekle .x-gx-tw-tip{ position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%) translateY(-4px);
+                background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px;
+                border-radius:6px; opacity:0; pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease, transform .12s ease; }
+            .x-gx-nav-ekle:hover .x-gx-tw-tip{ opacity:1; transform:translateX(-50%) translateY(0); }
             .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin-left:2px; width:26px; height:26px; border:none; border-radius:9999px;
                 background:#e0245e; color:#fff; font-size:13px; cursor:pointer; align-items:center; justify-content:center; }
             .x-gx-nav.scanning:not(.collapsed) .x-gx-nav-cancel{ display:inline-flex; }
@@ -3257,7 +3252,8 @@
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
-            + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
+            + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>'
+            + '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic">' + _X_GX_ICO_EKLE + '</span><span class="x-gx-tw-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>';
         a.addEventListener('click', function (ev) {
             ev.preventDefault(); ev.stopPropagation();
             if (a.classList.contains('outdated')) { xNavGuncellemeAc(); return; }
@@ -3277,6 +3273,8 @@
         };
         var cx1 = a.querySelector('.x-gx-nav-cancel'); if (cx1) cx1.addEventListener('click', _fwd);
         var cx2 = a.querySelector('.pop-cancel'); if (cx2) cx2.addEventListener('click', _fwd);
+        var ekle = a.querySelector('#x-gx-nav-ekle');
+        if (ekle) ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
         return a;
     }
     function xNavYansit() {
