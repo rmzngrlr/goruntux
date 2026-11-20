@@ -2975,6 +2975,8 @@
             #x-gx-card .x-gx-akor.acik .x-gx-akor-ch{ transform:rotate(180deg); }
             #x-gx-card .x-gx-akor-b{ display:none; padding:0 2px 12px; }
             #x-gx-card .x-gx-akor.acik .x-gx-akor-b{ display:block; animation:xgxgecis .18s ease; }
+            /* Akordiyon gövdesinin DOĞRUDAN-çocuğu başlıklar (Dil, Bahseden) bir önceki input/satıra yapışmasın. */
+            #x-gx-card .x-gx-akor-b > label{ margin-top:12px; }
             #x-gx-card .x-gx-ikili{ display:flex; gap:8px; align-items:flex-start; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
             #x-gx-card .x-gx-uclu{ display:flex; gap:7px; margin-top:6px; align-items:flex-start; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
             /* Min satırı etiketleri TEK SATIR (2 satıra kayıp inputları yamultmasın) + label alt boşluğu eşit. */
@@ -3351,7 +3353,7 @@
                 + '<input id="ara-herhangi" placeholder="Herhangi biri (a b c)" style="margin-top:7px">'
                 + '<input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)" style="margin-top:7px">'
                 + '<input id="ara-etiket" placeholder="Etiketler (#konu)" style="margin-top:7px">'
-                + '<label style="margin-top:12px">Dil</label><select id="ara-dil">' + dilOpt + '</select>')
+                + '<label>Dil</label><select id="ara-dil">' + dilOpt + '</select>')
             + akor('Tarihler', true,
                 '<div class="x-gx-ikili"><div><label>Kaçtan</label><input type="date" id="ara-since"></div><div><label>Kaça</label><input type="date" id="ara-until"></div></div>')
             + akor('Hesaplar', false,
