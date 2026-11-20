@@ -167,6 +167,15 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
         catch (e) { clearTimeout(t); delete _gxDurumBekleyen[reqId]; cevapla({ dolu: false, sebep: "post-hata" }); }
         return true; // async yanit
       }
+      // [TIK SECIM / Step 2] SW -> panele secili tweet linklerini ilet. Panel sayfasi
+      // X_RAPOR_SECILEN_LINKLER dinler -> accumulatedLinks kuyruguna uzlastirir + onizlemeyi gunceller.
+      // goto:true ise panelde Rapormatik sekmesine gecilir ("Rapor'matik'e Git!").
+      if (msg && msg.action === "gxTikLinkler") {
+        if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ ok: false, sebep: "panel-degil" }); } catch (e) {} return false; }
+        try { window.postMessage({ type: "X_RAPOR_SECILEN_LINKLER", links: msg.links || [], goto: !!msg.goto }, "*"); sendResponse && sendResponse({ ok: true }); }
+        catch (e) { try { sendResponse({ ok: false, sebep: "post-hata" }); } catch (_) {} }
+        return false;
+      }
       // [GÖRÜNTÜX İLE RAPORLA Faz4b] SW -> panele profil tarama URL listesi ilet.
       if (msg && msg.action === "gxProfilTaraPanel") {
         if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ ok: false, sebep: "panel-degil" }); } catch (e) {} return false; }

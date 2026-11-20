@@ -411,6 +411,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       // popup orada çalışır; Ara'ya basınca /search?q='e gidilir, orada da refine edilebilmeli).
       let kesfetMi = /^https?:\/\/(?:x|twitter)\.com\/(?:explore|search)(?:\/|\?|#|$)/i.test(temizUrl);
 
+      // [TIK SECIM / Step 2] "tweet olan her yer HARIC tweet detay" -> tik ikonlari icin widget.js
+      // ANASAYFA ve diger tweet-tasiyan yuzeylere de enjekte edilmeli (eskiden yalniz status/profil/
+      // explore/search). Tik'in kendisi /status/ (tweet detay) sayfasinda widget icinde BASTIRILIR,
+      // ama enjeksiyon orada zaten var (mevcut "Rapora Ekle" butonu). Burada EKSIK olan yuzeyleri acariz:
+      //   /home, /notifications, /i/bookmarks, /i/lists/*, /i/communities/*, /hashtag/*
+      let homeMi = /^https?:\/\/(?:x|twitter)\.com\/home(?:\/|\?|#|$)/i.test(temizUrl);
+      let digerTweetYuzeyiMi = /^https?:\/\/(?:x|twitter)\.com\/(?:notifications|i\/bookmarks|i\/lists\/|i\/communities\/|hashtag\/)/i.test(temizUrl);
+
       let storageKey = `x_profil_gorevi_${tabId}`;
 
       chrome.storage.local.get([storageKey], (result) => {
@@ -576,7 +584,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // v3.88: fotograf/medya alt sayfalari HARIC. Ayrica GECERSIZ sayfaya (anasayfa,
             // foto, alakasiz) gidilince mevcut widget KALDIRILIR -> SPA gezinmede widget
             // yanlis sayfada kalmaz (kullanici: profil/tweet widget'i baska sayfaya gidince kapansin).
-            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi) && !fotografMi));
+            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi || homeMi || digerTweetYuzeyiMi) && !fotografMi));
             if (_gecerliWidgetSayfasi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
@@ -1162,6 +1170,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // [TIK SECIM / Step 2] Widget'ta bir tweet TIKLENINCE (toggle) selimin TAM listesi buraya gelir.
+  // Panel ACIKSA linkleri panele ilet -> panel kuyruguna (accumulatedLinks + onizleme) uzlastirilir.
+  // Panel KAPALIYSA bir sey yapma: kanonik durum zaten widget tarafinda chrome.storage.local'de
+  // (x_secili_tweetler) tutuluyor; panel acilinca registerPanel finalize'inda senkron edilir.
+  if (message.action === "tikSecimSenkron") {
+    const _links = Array.isArray(message.links) ? message.links : [];
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const pid = res && res.panel_tab_id;
+      if (pid) {
+        try { chrome.tabs.sendMessage(pid, { action: "gxTikLinkler", links: _links }, () => { if (chrome.runtime.lastError) { /* panel dinlemiyorsa sessiz */ } }); } catch (e) {}
+      }
+    });
+    try { sendResponse({ status: "ok" }); } catch (_) {}
+    return false;
+  }
+
+  // [TIK SECIM / Step 2] Alt menudeki "Rapor'matik'e Git!" -> paneli ONE AL/AC + Rapormatik sekmesine
+  // gec + secili linkleri sagla. goToPanel ile ayni panel-bulma mantigi; ek olarak {goto:true} ile
+  // panelde switchTab('tab-auto') tetiklenir. Panel kapaliysa pending_tik_goto isaretlenir ve
+  // registerPanel finalize'inda (panel yuklenince) linkler + goto gonderilir.
+  if (message.action === "tikPaneleGit") {
+    const _links = Array.isArray(message.links) ? message.links : [];
+    chrome.storage.local.get(['panel_tab_id', 'server_origin'], (res) => {
+      const origin = (res && res.server_origin) || "https://goruntux.rgmedya.tr";
+      let host = "";
+      try { host = new URL(origin).hostname; } catch (e) {}
+      chrome.tabs.query({}, (tabs) => {
+        try {
+          const panelTab = tabs.find((t) => {
+            if (!t.url) return false;
+            let h = "";
+            try { h = new URL(t.url).hostname; } catch (e) {}
+            return host && h && host === h;
+          });
+          if (panelTab) {
+            chrome.tabs.update(panelTab.id, { active: true }, () => {
+              if (panelTab.windowId != null) chrome.windows.update(panelTab.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+            });
+            try { chrome.tabs.sendMessage(panelTab.id, { action: "gxTikLinkler", links: _links, goto: true }, () => { if (chrome.runtime.lastError) {} }); } catch (e) {}
+          } else {
+            chrome.storage.local.set({ pending_tik_goto: true });
+            chrome.tabs.create({ url: origin, active: true }, (nt) => {
+              if (chrome.runtime.lastError || !nt) return;
+              if (nt.windowId != null) chrome.windows.update(nt.windowId, { focused: true }, () => { if (chrome.runtime.lastError) {} });
+            });
+          }
+        } catch (err) {
+          logToServer(`[tikPaneleGit] ${err.message || err}`);
+        }
+      });
+    });
+    try { sendResponse({ status: "ok" }); } catch (_) {}
+    return false;
+  }
+
   // SILINDI (v3.62): "setUserAuth" isleyicisi. Cagirani (bridge.js) HER http(s) sayfasindan
   // kosulsuz gonderiyordu; isleyici de server_origin'i sayfanin origin'inden "bootstrap"
   // ediyordu. Sosyal medya host'lari haric tutulmustu ama kalan TUM internet haric DEGILDI.
@@ -1275,6 +1338,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           // simdi teslim et (panel kapaliyken eklenip kuyrukta bekleyenler). Panel sayfasinin
           // bridge.js'i localImage mesajini alip IndexedDB'ye yazar.
           try { flushPendingLocalImages(apiOrigin); } catch (e) {}
+          // [TIK SECIM / Step 2] Panel yeni acildi -> X'te tiklenen (secili) gonderi linklerini
+          // panele senkron et (kuyruk + onizleme). pending_tik_goto varsa Rapormatik sekmesine de gec.
+          try {
+            chrome.storage.local.get(['x_secili_tweetler', 'pending_tik_goto'], (r2) => {
+              const arr = ((r2 && r2.x_secili_tweetler) || []).map((x) => x && x.link).filter(Boolean);
+              const goto = !!(r2 && r2.pending_tik_goto);
+              if (arr.length || goto) {
+                setTimeout(() => {
+                  try { chrome.tabs.sendMessage(senderTabId, { action: "gxTikLinkler", links: arr, goto: goto }, () => { if (chrome.runtime.lastError) {} }); } catch (e) {}
+                }, 350);
+              }
+              if (goto) { try { chrome.storage.local.remove('pending_tik_goto'); } catch (e) {} }
+            });
+          } catch (e) {}
         });
         try { sendResponse({ status: "success", duplicate: false }); } catch (_) {}
       };

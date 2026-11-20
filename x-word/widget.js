@@ -932,6 +932,8 @@
                 try { widget.classList.add('x-gx-dock-yedek'); } catch (e) {}
                 try { xNavButonPollerBaslat(); } catch (e) {}
             }
+            // [TIK SECIM / Step 2] Tweet tik ikonlari + alttan kayan secim menusu (her enjekte X sayfasinda).
+            try { xTikInit(); } catch (e) {}
 
             function cropScreenshot(dataUrl, rect) {
                 return new Promise((resolve, reject) => {
@@ -3818,6 +3820,165 @@
             xNavYansit();
         } catch (e) {}
     }
+    // ========================================================================
+    // [TIK SECIM / Step 2] Tweet'lerde Grok'un SOLUNA "tik" ikonu + alttan kayan secim menusu.
+    // Tik -> tweet linki Rapor'matik kuyruguna (panel) CANLI eklenir (toggle). Secim
+    // chrome.storage.local (x_secili_tweetler) ile KALICI + tum X sekmeleri arasi senkron.
+    // /status (tweet detay) sayfasinda tik BASTIRILIR. CSS'te BACKTICK YOK (template-literal tuzagi).
+    // ========================================================================
+    function xTikHostX() { return /(?:^|\.)x\.com$/i.test(location.hostname) || /(?:^|\.)twitter\.com$/i.test(location.hostname); }
+    function xTikStilKur() {
+        if (document.getElementById('x-gx-tik-style')) return;
+        var st = document.createElement('style');
+        st.id = 'x-gx-tik-style';
+        st.textContent = [
+            '.x-gx-tik{background:none;border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;min-width:34px;border-radius:9999px;padding:0;margin:0;transition:background .12s;}',
+            '.x-gx-tik svg{width:19px;height:19px;display:block;}',
+            '.x-gx-tik:hover{background:rgba(29,155,240,0.1);}',
+            '.x-gx-tik.x-gx-tik-on:hover{background:rgba(29,155,240,0.15);}',
+            '#x-gx-tik-bar{position:fixed;left:50%;bottom:20px;transform:translate(-50%,160%);z-index:2147483000;display:flex;align-items:center;gap:12px;background:#15202b;border:1px solid #1d9bf0;border-radius:14px;padding:10px 14px;box-shadow:0 8px 28px rgba(0,0,0,0.38);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;max-width:94vw;transition:transform .3s cubic-bezier(.2,.8,.2,1);}',
+            '#x-gx-tik-bar.x-gx-tik-bar-in{transform:translate(-50%,0);}',
+            '#x-gx-tik-bar .x-gx-tik-sayac{width:34px;height:34px;min-width:34px;border-radius:50%;background:#1d9bf0;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:14px;}',
+            '#x-gx-tik-bar .x-gx-tik-mesaj{line-height:1.25;color:#e7e9ea;}',
+            '#x-gx-tik-bar .x-gx-tik-bas{font-weight:600;font-size:14px;}',
+            '#x-gx-tik-bar .x-gx-tik-alt{color:#8b98a5;font-size:12px;}',
+            '#x-gx-tik-bar button{cursor:pointer;border-radius:9999px;font-size:13px;white-space:nowrap;font-family:inherit;}',
+            '#x-gx-tik-bar .x-gx-tik-iptal{background:transparent;border:1px solid #38444d;color:#e7e9ea;padding:7px 14px;}',
+            '#x-gx-tik-bar .x-gx-tik-iptal:hover{background:rgba(255,255,255,0.06);}',
+            '#x-gx-tik-bar .x-gx-tik-git{background:#1d9bf0;border:0;color:#fff;font-weight:600;padding:7px 15px;display:inline-flex;align-items:center;gap:6px;}',
+            '#x-gx-tik-bar .x-gx-tik-git:hover{background:#1a8cd8;}'
+        ].join('');
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function xTikBoya() {
+        try {
+            if (!xTikHostX()) return;
+            xTikStilKur();
+            if (/\/status\/\d+/.test(location.pathname)) return;   // tweet DETAY -> tik YOK
+            var sec = window.__xTikSecili || {};
+            var arts = document.querySelectorAll('article[data-testid="tweet"]');
+            for (var i = 0; i < arts.length; i++) {
+                var a = arts[i];
+                var grok = a.querySelector('button[aria-label^="Grok"]');
+                if (!grok) continue;
+                var grokWrap = grok.parentElement;
+                var row = grokWrap && grokWrap.parentElement;
+                if (!row) continue;
+                var tEl = a.querySelector('a[href*="/status/"] time');
+                var aEl = tEl && tEl.closest('a[href*="/status/"]');
+                var href = aEl && aEl.getAttribute('href');
+                if (!href) continue;
+                var m = href.match(/\/status\/(\d+)/);
+                if (!m) continue;
+                var id = m[1];
+                var link = 'https://x.com' + href.split('?')[0].split('#')[0];
+                var gc = 'rgb(83,100,113)';   // Grok ikonunun GUNCEL rengi (tema uyumu)
+                try { var gsvg = grok.querySelector('svg'); if (gsvg) { var cc = getComputedStyle(gsvg).color; if (cc) gc = cc; } } catch (e) {}
+                var btn = row.querySelector('.x-gx-tik');
+                if (!btn) {
+                    var wrap = document.createElement('div');
+                    wrap.className = (grokWrap.className || '') + ' x-gx-tik-wrap';
+                    btn = document.createElement('button');
+                    btn.className = 'x-gx-tik';
+                    btn.type = 'button';
+                    btn.setAttribute('aria-label', 'Rapor\'matik icin sec');
+                    btn.title = 'Rapor\'matik icin sec';
+                    btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>';   // INLINE (undefined-degisken tuzagindan kacin)
+                    btn.addEventListener('click', function (ev) {
+                        ev.preventDefault(); ev.stopPropagation();
+                        try { if (window.__xTikToggle) window.__xTikToggle(this.getAttribute('data-id'), this.getAttribute('data-link')); } catch (e) {}
+                    }, true);
+                    wrap.appendChild(btn);
+                    row.insertBefore(wrap, row.firstChild);   // Grok'un SOLUNA
+                }
+                btn.setAttribute('data-id', id);
+                btn.setAttribute('data-link', link);
+                var on = !!sec[id];
+                btn.style.color = on ? '#1d9bf0' : gc;
+                if (on) btn.classList.add('x-gx-tik-on'); else btn.classList.remove('x-gx-tik-on');
+            }
+        } catch (e) {}
+    }
+    function xTikMenu() {
+        try {
+            var bar = document.getElementById('x-gx-tik-bar');
+            if (!xTikHostX()) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
+            var sec = window.__xTikSecili || {};
+            var n = 0; for (var k in sec) { if (Object.prototype.hasOwnProperty.call(sec, k)) n++; }
+            if (window.__xTikMenuGizli || n === 0) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
+            if (!bar) {
+                xTikStilKur();
+                bar = document.createElement('div');
+                bar.id = 'x-gx-tik-bar';
+                bar.innerHTML =
+                    '<div class="x-gx-tik-sayac" id="x-gx-tik-n">0</div>'
+                  + '<div class="x-gx-tik-mesaj"><div class="x-gx-tik-bas" id="x-gx-tik-bas">0 gonderi secildi</div><div class="x-gx-tik-alt">Rapor\'matik linklerine eklendi</div></div>'
+                  + '<button type="button" class="x-gx-tik-iptal" id="x-gx-tik-iptal">Iptal</button>'
+                  + '<button type="button" class="x-gx-tik-git" id="x-gx-tik-git">Rapor\'matik\'e Git <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h12M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>';
+                document.body.appendChild(bar);
+                var ib = bar.querySelector('#x-gx-tik-iptal');
+                if (ib) ib.addEventListener('click', function (ev) {
+                    ev.preventDefault(); ev.stopPropagation();
+                    window.__xTikMenuGizli = true;   // YALNIZ menuyu kapat (secim + panel kuyrugu KALIR)
+                    var b = document.getElementById('x-gx-tik-bar'); if (b && b.parentNode) b.parentNode.removeChild(b);
+                }, true);
+                var gb = bar.querySelector('#x-gx-tik-git');
+                if (gb) gb.addEventListener('click', function (ev) {
+                    ev.preventDefault(); ev.stopPropagation();
+                    var s = window.__xTikSecili || {}; var arr = [];
+                    for (var kk in s) { if (Object.prototype.hasOwnProperty.call(s, kk)) arr.push(s[kk]); }
+                    try { chrome.runtime.sendMessage({ action: 'tikPaneleGit', links: arr }, function () { if (chrome.runtime.lastError) {} }); } catch (e) {}
+                }, true);
+                requestAnimationFrame(function () { var b = document.getElementById('x-gx-tik-bar'); if (b) b.classList.add('x-gx-tik-bar-in'); });
+            }
+            var nn = bar.querySelector('#x-gx-tik-n'); if (nn) nn.textContent = n;
+            var bb = bar.querySelector('#x-gx-tik-bas'); if (bb) bb.textContent = n + ' gonderi secildi';
+        } catch (e) {}
+    }
+    function xTikInit() {
+        // Her enjeksiyonda GUNCEL fonksiyonlari window'a bagla (IIFE yeni URL'de yeniden calisir).
+        window.__xTikBoya = xTikBoya;
+        window.__xTikMenu = xTikMenu;
+        window.__xTikToggle = function (id, link) {
+            try {
+                if (!id) return;
+                window.__xTikSecili = window.__xTikSecili || {};
+                if (window.__xTikSecili[id]) delete window.__xTikSecili[id];
+                else window.__xTikSecili[id] = link || '';
+                window.__xTikMenuGizli = false;   // herhangi bir tik -> menu yeniden aktif
+                var arr = [];
+                for (var k in window.__xTikSecili) { if (Object.prototype.hasOwnProperty.call(window.__xTikSecili, k)) arr.push({ id: k, link: window.__xTikSecili[k] }); }
+                try { chrome.storage.local.set({ x_secili_tweetler: arr }); } catch (e) {}
+                try { chrome.runtime.sendMessage({ action: 'tikSecimSenkron', links: arr.map(function (x) { return x.link; }) }, function () { if (chrome.runtime.lastError) {} }); } catch (e) {}
+                if (window.__xTikBoya) window.__xTikBoya();
+                if (window.__xTikMenu) window.__xTikMenu();
+            } catch (e) {}
+        };
+        // BIR KEZ (window bayragi): durum yukle + depo dinleyici + yedek interval.
+        if (!window.__xTikKuruldu) {
+            window.__xTikKuruldu = true;
+            window.__xTikSecili = window.__xTikSecili || {};
+            var _ty = function () { try { if (window.__xTikBoya) window.__xTikBoya(); if (window.__xTikMenu) window.__xTikMenu(); } catch (e) {} };
+            try {
+                chrome.storage.local.get(['x_secili_tweetler'], function (r) {
+                    try { ((r && r.x_secili_tweetler) || []).forEach(function (it) { if (it && it.id) window.__xTikSecili[it.id] = it.link || ''; }); } catch (e) {}
+                    _ty();
+                });
+            } catch (e) {}
+            try {
+                chrome.storage.onChanged.addListener(function (ch, area) {
+                    if (area !== 'local' || !ch.x_secili_tweetler) return;
+                    window.__xTikSecili = {};
+                    try { (ch.x_secili_tweetler.newValue || []).forEach(function (it) { if (it && it.id) window.__xTikSecili[it.id] = it.link || ''; }); } catch (e) {}
+                    _ty();
+                });
+            } catch (e) {}
+            setInterval(_ty, 800);
+        }
+        try { xTikBoya(); } catch (e) {}
+        try { xTikMenu(); } catch (e) {}
+    }
+
     // Gizli dock durum değişimlerini (tarama halkası/güncelleme) nav butonuna ANLIK yansıt.
     // baslat() SPA'da yeniden çalışıp dock'u YENİDEN kurabildiğinden (satır ~634 eski dock'u siler),
     // gözlemciyi daima GÜNCEL dock düğümüne bağla (düğüm değiştiyse yeniden kur). 700ms poll zaten yedek.
