@@ -1,24 +1,3 @@
-// === GEÇİCİ TEŞHİS (iptal "X flaşı" kaynağını bul): her tab aktivasyonunu + kod kaynak noktalarını
-// zaman damgasıyla logla. Docker logunda `grep XFLAS` ile görülür. SORUN ÇÖZÜLÜNCE KALDIRILACAK. ===
-function xFlasLog(nereden, extra) {
-  try {
-    var line = '[XFLAS] ' + nereden + (extra ? (' | ' + extra) : '') + ' | t=' + (Date.now() % 1000000);
-    try { console.log(line); } catch (e) {}
-    try { if (typeof logToServer === 'function') logToServer(line); } catch (e) {}
-  } catch (e) {}
-}
-try {
-  chrome.tabs.onActivated.addListener(function (info) {
-    try {
-      chrome.tabs.get(info.tabId, function (t) {
-        if (chrome.runtime.lastError) return;
-        var h = ''; try { h = (t && t.url) ? new URL(t.url).hostname : ''; } catch (e) {}
-        xFlasLog('TAB-AKTIF', 'tab=' + info.tabId + ' host=' + h);
-      });
-    } catch (e) {}
-  });
-} catch (e) {}
-
 const originalFetch = fetch;
 fetch = function(url, options = {}) {
   let urlStr = typeof url === 'string' ? url : (url.url || "");
@@ -910,7 +889,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "captureTab") {
     const tabId    = sender.tab ? sender.tab.id     : null;
     const windowId = sender.tab ? sender.tab.windowId : null;
-    xFlasLog('captureTab-ISTEK', 'tab=' + tabId);
 
     // captureVisibleTab için sekmeyi önce aktif yap
     function doCaptureVisible() {
@@ -966,7 +944,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "captureAndCrop") {
     const tabId    = sender.tab ? sender.tab.id     : null;
     const windowId = sender.tab ? sender.tab.windowId : null;
-    xFlasLog('captureAndCrop-ISTEK', 'tab=' + tabId);
     const rect     = message.rect;
     const dpr      = message.dpr || 1;
     const vw       = message.vw || 0;   // Faz YT: olcek dpr'den DEGIL, yakalanan goruntuden turetilir
@@ -1064,7 +1041,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "resetServerJob") {
-    xFlasLog('resetServerJob-ISTEK (IPTAL BASLADI)', 'origin=' + (message.origin || ''));
     let origin = message.origin || "https://goruntux.rgmedya.tr";
     let clientId = message.client_id || "";
     let resetUrl = `${origin}/api/auto/reset`;
@@ -1150,7 +1126,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // v3.74'te kaldirilan focusOrOpenPanel'in aksine bu EXPLICIT bir kullanici eylemi -> panele
   // GECMEK isteniyor (odaklanir/acilir). MEVCUT X sekmesini KAPATMAZ (gezinme kaybolmasin).
   if (message.action === "goToPanel") {
-    xFlasLog('goToPanel-ISTEK');
     const targetOrigin = message.origin || "https://goruntux.rgmedya.tr";
     let targetHost = "";
     try { targetHost = new URL(targetOrigin).hostname; } catch (e) {}
@@ -1331,7 +1306,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "completeJobAndFocusPanel") {
-    xFlasLog('completeJobAndFocusPanel-ISTEK', 'sebep=' + (message.sebep || ''));
     const targetOrigin = message.origin || "https://goruntux.rgmedya.tr";
     logToServer(`[completeJobAndFocusPanel] Otomasyon tamamlandı. Panel aranıyor: ${targetOrigin}`);
     
@@ -1515,7 +1489,6 @@ function checkServerJobs() {
             try {
               if (data.status === "success" && data.job) {
                 logToServer(`[checkServerJobs] Görev alındı: ${data.job.job_id} (mod: ${data.job.scrape_mode})`);
-                xFlasLog('checkServerJobs-POLL-JOB-ALDI', 'id=' + data.job.job_id + ' mod=' + data.job.scrape_mode);
                 processServerJob(data.job, origin);
               } else if (data.status === "no_job" && data.close_browser) {
                 logToServer(`[checkServerJobs] Görev yok, tarayıcı kapatılıyor...`);
@@ -1727,7 +1700,6 @@ function processServerJob(job, origin) {
           logToServer(`[processServerJob] Mevcut sekme yönlendiriliyor. Tab ID: ${workerTab.id}, URL: ${targetUrl}`);
           chrome.storage.local.set(saveData, () => {
             try {
-              xFlasLog('processServerJob-WORKER-NAV (X aktive)', 'tab=' + workerTab.id + ' url=' + navUrl);
               chrome.tabs.update(workerTab.id, { url: navUrl, active: true }, (tab) => {
                 if (tab) {
                   chrome.windows.update(tab.windowId, { focused: true });
