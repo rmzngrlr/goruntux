@@ -1338,9 +1338,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // Sebep bossa normal bitis/elle durdurma -> hicbir sey gonderilmez.
             if (message.sebep) taramaDurduBildir(panelTab.id, message.sebep);
             // Sonrasında otomasyon yapılan tivit sekmesini kapat
-            if (sender.tab && sender.tab.id) {
-              chrome.tabs.remove(sender.tab.id);
-            }
+            // SOSYAL SEKMEYI KAPATMA (kullanici istegi): yalnizca panele odaklan; sosyal medya
+            // sekmesi (X/Instagram vs.) ACIK kalsin. (Onceden: chrome.tabs.remove(sender.tab.id))
           });
         });
       } else {
@@ -1349,9 +1348,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         chrome.tabs.create({ url: fallbackUrl, active: true }, (newTab) => {
           if (chrome.runtime.lastError) return;
           chrome.windows.update(newTab.windowId, { focused: true }, () => {
-            if (sender.tab && sender.tab.id) {
-              chrome.tabs.remove(sender.tab.id);
-            }
+            // SOSYAL SEKMEYI KAPATMA (kullanici istegi): yalnizca panele odaklan; sosyal medya
+            // sekmesi (X/Instagram vs.) ACIK kalsin. (Onceden: chrome.tabs.remove(sender.tab.id))
           });
         });
       }

@@ -3497,7 +3497,10 @@
             await sleep(180);
         }
         xProfilDockBitir();
-        xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + eklendi + ' içerik</b> rapora eklendi' + (hata ? (' <span style="color:#536471">(' + hata + ' atlandı)</span>') : '') + (window.__xGxTaraIptal ? ' <span style="color:#536471">(durduruldu)</span>' : '') + '.<br>GörüntüX panelinde görebilirsin.</div>', true);
+        xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + eklendi + ' içerik</b> rapora eklendi' + (hata ? (' <span style="color:#536471">(' + hata + ' atlandı)</span>') : '') + (window.__xGxTaraIptal ? ' <span style="color:#536471">(durduruldu)</span>' : '') + '.<br>GörüntüX paneline yönlendiriliyorsun…</div>', true);
+        // Tarama bitince GörüntüX paneline git — sosyal medya sekmesi (X) AÇIK kalır (goToPanel kapatmaz).
+        // Kullanıcı isteği: "sadece GörüntüX paneline git". Popup kısa görünsün diye ufak gecikme.
+        setTimeout(function () { try { xNavPaneleGit(); } catch (e) {} }, 1400);
     }
     // Kart meta: başlık + link + RT grup-override (idle "Rapora Ekle" ile aynı mantık).
     function xProfilKartMeta(card, handle) {
