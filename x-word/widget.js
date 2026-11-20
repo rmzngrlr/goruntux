@@ -2904,6 +2904,8 @@
         s.textContent = `
             #x-gx-ov{ position:fixed; inset:0; z-index:2147483600; display:flex; align-items:center; justify-content:center;
                 background:rgba(0,0,0,.55); backdrop-filter:blur(2px); font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
+            /* [SS'TE POPUP OLMASIN] yakalama sürerken (<html>.x-gx-capturing) popup KESİN gizli (geç oluşsa da). */
+            html.x-gx-capturing #x-gx-ov{ display:none !important; }
             #x-gx-card{ width:min(440px,92vw); max-height:90vh; overflow:auto; background:#fff; color:#0f1419;
                 border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,.35); padding:20px 22px; box-sizing:border-box; }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; display:flex; align-items:center; gap:9px; }
@@ -2941,6 +2943,14 @@
         xProfilPopupGuncelle(handle, durum);
         var esc = function (e) { if (e.key === 'Escape') { xProfilPopupKapat(); document.removeEventListener('keydown', esc, true); } };
         document.addEventListener('keydown', esc, true);
+        // [OTO-KAPAT] Sayfa (SPA) değişince popup ASILI KALMASIN -> başka profile/tweete geçince kapat.
+        // Yoksa kalıntı popup sonraki yakalamaların (profil/Rapormatik) SS'ine giriyor. Tarama kendi
+        // akışında zaten kapatıp gerektiğinde yeniden açar (params storage'da, popup'ta değil).
+        var _acPath = location.pathname;
+        var _navT = setInterval(function () {
+            if (!document.getElementById('x-gx-ov')) { clearInterval(_navT); return; }
+            if (location.pathname !== _acPath) { clearInterval(_navT); try { xProfilPopupKapat(); } catch (e) {} }
+        }, 400);
     }
     // [#5] Popup içinde mesaj göster (yerli alert yerine). Popup kapalıysa açar.
     // ilerleme=true -> 'ilerleme' modu (Tamam butonu YOK; süren işlem göstergesi).
@@ -3653,12 +3663,14 @@
     function xGxButonlariGizle() {
         window.__xGxCaptureAktif = true;   // poller'ları duraklat (yakalama sırasında taze buton enjekte etme)
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
-        // [SS'TE POPUP OLMASIN] tarama ilerleme/popup overlay'ini (backdrop+kart) yakalama sırasında TAMAMEN
-        // gizle (display:none; visibility:hidden backdrop-filter/geç-oluşan popup'ta yetersiz kalıyordu).
+        // [SS'TE POPUP OLMASIN] KURŞUN-GEÇİRMEZ: yakalama boyunca <html>'e sınıf ekle; CSS !important ile
+        // HER #x-gx-ov (mevcut VEYA yakalama penceresinde geç oluşan) display:none olur. + inline yedek.
+        try { document.documentElement.classList.add('x-gx-capturing'); } catch (e) {}
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = 'none'; } catch (e) {}
     }
     function xGxButonlariGoster() {
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
+        try { document.documentElement.classList.remove('x-gx-capturing'); } catch (e) {}
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = ''; } catch (e) {}
         window.__xGxCaptureAktif = false;
     }
