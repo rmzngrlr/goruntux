@@ -3886,8 +3886,8 @@
                     btn = document.createElement('button');
                     btn.className = 'x-gx-tik';
                     btn.type = 'button';
-                    btn.setAttribute('aria-label', 'Rapor\'matik icin sec');
-                    btn.title = 'Rapor\'matik icin sec';
+                    btn.setAttribute('aria-label', 'Rapor\'matik için seç');
+                    btn.title = 'Rapor\'matik için seç';
                     btn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>';   // INLINE (undefined-degisken tuzagindan kacin)
                     btn.addEventListener('click', function (ev) {
                         ev.preventDefault(); ev.stopPropagation();
@@ -3918,8 +3918,8 @@
                 bar.id = 'x-gx-tik-bar';
                 bar.innerHTML =
                     '<div class="x-gx-tik-sayac" id="x-gx-tik-n">0</div>'
-                  + '<div class="x-gx-tik-mesaj"><div class="x-gx-tik-bas" id="x-gx-tik-bas">0 gonderi secildi</div><div class="x-gx-tik-alt">Rapor\'matik linklerine eklendi</div></div>'
-                  + '<button type="button" class="x-gx-tik-iptal" id="x-gx-tik-iptal">Iptal</button>'
+                  + '<div class="x-gx-tik-mesaj"><div class="x-gx-tik-bas" id="x-gx-tik-bas">0 gönderi seçildi</div><div class="x-gx-tik-alt">Rapor\'matik linklerine eklendi</div></div>'
+                  + '<button type="button" class="x-gx-tik-iptal" id="x-gx-tik-iptal">İptal</button>'
                   + '<button type="button" class="x-gx-tik-git" id="x-gx-tik-git">Rapor\'matik\'e Git <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h12M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>';
                 document.body.appendChild(bar);
                 var ib = bar.querySelector('#x-gx-tik-iptal');
@@ -3938,7 +3938,7 @@
                 requestAnimationFrame(function () { var b = document.getElementById('x-gx-tik-bar'); if (b) b.classList.add('x-gx-tik-bar-in'); });
             }
             var nn = bar.querySelector('#x-gx-tik-n'); if (nn) nn.textContent = n;
-            var bb = bar.querySelector('#x-gx-tik-bas'); if (bb) bb.textContent = n + ' gonderi secildi';
+            var bb = bar.querySelector('#x-gx-tik-bas'); if (bb) bb.textContent = n + ' gönderi seçildi';
         } catch (e) {}
     }
     function xTikInit() {

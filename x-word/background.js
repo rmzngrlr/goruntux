@@ -1186,6 +1186,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // [TIK SECIM / Step 2] Panel Baslat'a basinca tik secimini TEMIZLE: storage'i bosalt -> storage.onChanged
+  // ile TUM X sekmelerindeki widget'lar __xTikSecili'yi sifirlar (menu kapanir + tikler grilesir).
+  // Kuyruktaki (accumulatedLinks) linkler DOKUNULMAZ -> tarama onlari kullanmaya devam eder.
+  if (message.action === "tikSecimTemizle") {
+    chrome.storage.local.set({ x_secili_tweetler: [] }, () => { if (chrome.runtime.lastError) {} });
+    try { sendResponse({ status: "ok" }); } catch (_) {}
+    return false;
+  }
+
   // [TIK SECIM / Step 2] Alt menudeki "Rapor'matik'e Git!" -> paneli ONE AL/AC + Rapormatik sekmesine
   // gec + secili linkleri sagla. goToPanel ile ayni panel-bulma mantigi; ek olarak {goto:true} ile
   // panelde switchTab('tab-auto') tetiklenir. Panel kapaliysa pending_tik_goto isaretlenir ve

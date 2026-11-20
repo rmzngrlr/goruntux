@@ -107,6 +107,15 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
+  // [TIK SECIM / Step 2] Panel Baslat'a basinca tik secimini temizle sinyali -> SW storage'i bosaltir.
+  if (event.data && event.data.type === "X_RAPOR_TIK_TEMIZLE") {
+    try {
+      chrome.runtime.sendMessage({ action: "tikSecimTemizle" }, () => {
+        if (chrome.runtime.lastError) { /* ignore */ }
+      });
+    } catch(e) {}
+  }
+
   // Word taramasını DOĞRUDAN başlat (poll_job'a bağlı olmadan; SW'yi uyandırır).
   if (event.data && event.data.type === "X_RAPOR_START_WORD") {
     try {
