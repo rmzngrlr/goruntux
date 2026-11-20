@@ -16906,6 +16906,9 @@ def download_file(file_id):
         )
     return "Dosya bulunamadı", 404
 
+# === GEÇİCİ TEŞHİS: iptal "X flaşı" XFLAS loglarını tamponla + /flaslog sayfasında göster. Çözülünce kaldır. ===
+XFLAS_BUFFER = []
+
 @app.route('/api/extension/log', methods=['POST'])
 def extension_log():
     try:
@@ -16913,9 +16916,102 @@ def extension_log():
         msg = data.get('message', '')
         if msg:
             print(f"[eklenti-log] {msg}", flush=True)
+            if '[XFLAS]' in msg:
+                try:
+                    XFLAS_BUFFER.append({"t": time.strftime("%H:%M:%S"), "msg": msg})
+                    if len(XFLAS_BUFFER) > 150:
+                        del XFLAS_BUFFER[:len(XFLAS_BUFFER) - 150]
+                except Exception:
+                    pass
     except Exception:
         pass
     return jsonify({"status": "success"})
+
+
+@app.route('/api/extension/flaslog', methods=['GET'])
+def extension_flaslog():
+    return jsonify({"lines": XFLAS_BUFFER})
+
+
+@app.route('/api/extension/flaslog/clear', methods=['POST'])
+def extension_flaslog_clear():
+    try:
+        XFLAS_BUFFER.clear()
+    except Exception:
+        pass
+    return jsonify({"status": "success"})
+
+
+FLASLOG_HTML = r"""<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XFLAS Teshis</title>
+<style>
+ body{margin:0;background:#0e141f;color:#e7e9ea;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+ header{position:sticky;top:0;background:#111a2b;padding:10px 14px;border-bottom:1px solid #22304a;display:flex;gap:10px;align-items:center;flex-wrap:wrap;z-index:5}
+ header b{font-size:14px}
+ button{background:#1d9bf0;color:#fff;border:none;border-radius:6px;padding:6px 12px;font:inherit;cursor:pointer}
+ button.sec{background:#2a3a55}
+ #durum{color:#8899a6;margin-left:auto}
+ .satir{padding:4px 14px;border-bottom:1px solid #182236;white-space:pre-wrap;word-break:break-all}
+ .t{color:#5a6b85;margin-right:10px}
+ .iptal{background:#3a2a10;color:#f0a35e;font-weight:700}
+ .xaktif{background:#3a1515;color:#ff8a8a;font-weight:700}
+ .paktif{background:#113a22;color:#7ee6a8}
+ .worker{color:#ff8a8a}
+ .cap{color:#c9a7ff}
+ #liste{padding-bottom:50px}
+ .bos{padding:20px 14px;color:#8899a6}
+</style></head>
+<body>
+<header>
+ <b>XFLAS — iptal flasi teshisi</b>
+ <button onclick="temizle()">Temizle</button>
+ <button class="sec" id="otobtn" onclick="otoToggle()">Oto-yenile: ACIK</button>
+ <span id="durum">bekleniyor...</span>
+</header>
+<div id="liste"></div>
+<script>
+let oto = true;
+function renk(msg){
+  if (msg.includes("IPTAL BASLADI")) return "iptal";
+  if (msg.includes("TAB-AKTIF") && msg.includes("host=x.com")) return "xaktif";
+  if (msg.includes("TAB-AKTIF") && (msg.includes("goruntux") || msg.includes("rgmedya"))) return "paktif";
+  if (msg.includes("WORKER-NAV") || msg.includes("POLL-JOB")) return "worker";
+  if (msg.includes("capture")) return "cap";
+  return "";
+}
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+async function yukle(){
+  try{
+    const r = await fetch("/api/extension/flaslog", {cache:"no-store"});
+    const d = await r.json();
+    const lines = d.lines || [];
+    const lst = document.getElementById("liste");
+    if (!lines.length){ lst.innerHTML = "<div class=\"bos\">Henuz XFLAS logu yok. Bir tarama baslatip IPTAL et; satirlar burada belirir.</div>"; }
+    else {
+      lst.innerHTML = lines.map(function(l){
+        const c = renk(l.msg || "");
+        const m = (l.msg || "").replace("[XFLAS] ", "");
+        return "<div class=\"satir " + c + "\"><span class=\"t\">" + esc(l.t || "") + "</span>" + esc(m) + "</div>";
+      }).join("");
+    }
+    document.getElementById("durum").textContent = lines.length + " satir — " + new Date().toLocaleTimeString();
+    if (oto) window.scrollTo(0, document.body.scrollHeight);
+  }catch(e){
+    document.getElementById("durum").textContent = "hata: " + e;
+  }
+}
+async function temizle(){ try{ await fetch("/api/extension/flaslog/clear",{method:"POST"}); yukle(); }catch(e){} }
+function otoToggle(){ oto=!oto; document.getElementById("otobtn").textContent = "Oto-yenile: " + (oto?"ACIK":"KAPALI"); }
+setInterval(yukle, 800);
+yukle();
+</script>
+</body></html>"""
+
+
+@app.route('/flaslog')
+def flaslog_page():
+    return FLASLOG_HTML
 
 
 # ----------------- MAIN RUNNER -----------------
