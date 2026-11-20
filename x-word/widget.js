@@ -3166,7 +3166,14 @@
             if (window.__xGxTweetPoller) return;
             window.__xGxTweetPoller = true;
             xNavEkleGuncelle();
-            setInterval(function () { try { xNavEkleGuncelle(); } catch (e) {} }, 700);
+            setInterval(function () { try { xNavEkleGuncelle(); } catch (e) {} }, 150);   // hızlı: tweet açılır açılmaz gelsin
+            // SPA gezinmesinde (pushState/geri) poll'u BEKLEMEDEN kısa seri kontrol -> buton anında çıkar.
+            try {
+                var _seri = function () { for (var ms = 0; ms <= 450; ms += 80) { (function (d) { setTimeout(function () { try { xNavEkleGuncelle(); } catch (e) {} }, d); })(ms); } };
+                var _ps = history.pushState;
+                history.pushState = function () { var r = _ps.apply(this, arguments); _seri(); return r; };
+                window.addEventListener('popstate', _seri);
+            } catch (e) {}
         } catch (e) {}
     }
 
@@ -3217,10 +3224,10 @@
             .x-gx-nav-ekle.x-gx-ok{ background:#00ba7c; color:#fff; }
             .x-gx-nav-ekle.x-gx-warn{ background:#f5a623; color:#fff; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
-            .x-gx-nav-ekle .x-gx-tw-tip{ position:absolute; left:calc(100% + 10px); top:50%; transform:translateY(-50%) translateX(-4px);
+            /* tooltip FIXED: X nav'ının overflow:auto kabı absolute tooltip'i KIRPIYORDU -> fixed + JS konum. */
+            .x-gx-nav-ekle .x-gx-tw-tip{ position:fixed; transform:translateY(-50%);
                 background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px;
-                border-radius:6px; opacity:0; pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease, transform .12s ease; }
-            .x-gx-nav-ekle:hover .x-gx-tw-tip{ opacity:1; transform:translateY(-50%) translateX(0); }
+                border-radius:6px; opacity:0; pointer-events:none; z-index:2147483600; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease; }
             .x-gx-nav-cancel{ display:none; flex:0 0 auto; margin:0 8px 0 4px; width:26px; height:26px; border:none; border-radius:9999px;
                 background:#e0245e; color:#fff; font-size:13px; cursor:pointer; align-items:center; justify-content:center; }
             .x-gx-nav.scanning:not(.collapsed) .x-gx-nav-cancel{ display:inline-flex; }
@@ -3277,7 +3284,12 @@
         var cx1 = a.querySelector('.x-gx-nav-cancel'); if (cx1) cx1.addEventListener('click', _fwd);
         var cx2 = a.querySelector('.pop-cancel'); if (cx2) cx2.addEventListener('click', _fwd);
         var ekle = a.querySelector('#x-gx-nav-ekle');
-        if (ekle) ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
+        if (ekle) {
+            ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
+            // Tooltip FIXED olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
+            ekle.addEventListener('mouseenter', function () { try { var tip = ekle.querySelector('.x-gx-tw-tip'); if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
+            ekle.addEventListener('mouseleave', function () { try { var tip = ekle.querySelector('.x-gx-tw-tip'); if (tip) tip.style.opacity = '0'; } catch (e) {} });
+        }
         return a;
     }
     function xNavYansit() {
