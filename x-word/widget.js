@@ -3424,6 +3424,11 @@
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var addPool = function (item) { return new Promise(function (resolve) { try { chrome.runtime.sendMessage(Object.assign({ action: 'addToPool', origin: origin }, item), function (res) { resolve(res || {}); }); } catch (e) { resolve({ status: 'error' }); } }); };
         var bekle = function (kosul, ms) { return new Promise(function (resolve) { var t0 = Date.now(); (function kon() { try { if (kosul()) { resolve(true); return; } } catch (e) {} if (Date.now() - t0 > ms) { resolve(false); return; } setTimeout(kon, 150); })(); }); };
+        // YAKALAMA ZAMAN AŞIMI: captureArticle tek bir öğede (ör. yüklenmeyen görsel) ÇÖZÜLMEZSE tüm
+        // tarama sonsuza askıda kalıyordu ("1/2'de takılı"). Promise.race ile sınırla; aşarsa o öğeyi atla.
+        var YAKALA_TO = 25000;
+        var zamanAsimi = function (p, ms) { return Promise.race([Promise.resolve(p).catch(function () { return ''; }), new Promise(function (r) { setTimeout(function () { r('__TO__'); }, ms); })]); };
+        var yakalaToKurtar = function () { try { xGxButonlariGoster(); } catch (e) {} };   // flag + butonları geri yükle (hung capture kilidini aç)
         var odakArticle = function (tid) {
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
             if (tid) { for (var i = 0; i < arts.length; i++) { if (arts[i].querySelector('a[href*="/status/' + tid + '"]')) return arts[i]; } }
@@ -3441,7 +3446,8 @@
                 var _t = (document.title || '').replace(/^\(\d+\)\s*/, ''); var _m = _t.match(/^(.+?)\s*\(@[^)]+\)/); var _ad = (_m && _m[1]) ? _m[1].trim() : '';
                 var pb = _ad ? (_ad + ' (@' + handle + ')') : ('@' + handle);
                 pc.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(450);
-                var pss = await _cap(pc) || '';
+                var pss = await zamanAsimi(_cap(pc), YAKALA_TO);
+                if (pss === '__TO__') { pss = ''; yakalaToKurtar(); printLog('[GX Tıkla] profil kartı YAKALAMA ZAMAN AŞIMI'); }
                 if (pss && pss.length > 100) await addPool({ title: pb, link: 'https://x.com/' + handle, image: pss, is_profile: true, group_override: '' });
             }
         } catch (e) { printLog('[GX Tıkla] profil kartı hata: ' + (e && e.message)); }
@@ -3474,7 +3480,8 @@
                             var meta = xProfilKartMeta(detArt, handle);   // detayda socialContext VAR -> RT doğru atıf
                             detArt.scrollIntoView({ block: 'start', behavior: 'instant' }); await sleep(260);
                             var allArts = document.querySelectorAll('article[data-testid="tweet"]');
-                            var ss = (secInfo.tip === 'yorum' && typeof _capYanit === 'function') ? (await _capYanit(detArt, allArts) || '') : (await _cap(detArt) || '');
+                            var ss = (secInfo.tip === 'yorum' && typeof _capYanit === 'function') ? (await zamanAsimi(_capYanit(detArt, allArts), YAKALA_TO)) : (await zamanAsimi(_cap(detArt), YAKALA_TO));
+                            if (ss === '__TO__') { ss = ''; yakalaToKurtar(); printLog('[GX Tıkla] kart ' + secId + ' YAKALAMA ZAMAN AŞIMI'); }
                             if (ss && ss.length > 100) tampon[secId] = { image: ss, baslik: meta.baslik, link: meta.link, groupOverride: meta.groupOverride, dateMs: secInfo.dateMs };
                         }
                         history.back();
@@ -3499,6 +3506,7 @@
             if (rr && (rr.status === 'success' || rr.status === 'duplicate')) eklendi++; else hata++;
             await sleep(180);
         }
+        try { xGxButonlariGoster(); } catch (e) {}   // olası askıda-yakalama kilidini kesin aç (buton/flag geri)
         xProfilDockBitir();
         xProfilMesajGoster(handle, '<div class="x-gx-info"><b>' + eklendi + ' içerik</b> rapora eklendi' + (hata ? (' <span style="color:#536471">(' + hata + ' atlandı)</span>') : '') + (window.__xGxTaraIptal ? ' <span style="color:#536471">(durduruldu)</span>' : '') + '.<br>GörüntüX paneline yönlendiriliyorsun…</div>', true);
         // Tarama bitince GörüntüX paneline git — sosyal medya sekmesi (X) AÇIK kalır (goToPanel kapatmaz).
