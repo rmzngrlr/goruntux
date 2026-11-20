@@ -2919,6 +2919,13 @@
             #x-gx-card .x-gx-info{ background:#e8f5fe; border:1px solid #cfe9fb; color:#0f1419; border-radius:11px;
                 padding:12px 14px; font-size:13.5px; line-height:1.5; margin:4px 0 16px; }
             #x-gx-card .x-gx-info b{ color:#1d9bf0; }
+            #x-gx-card .x-gx-tiplbl{ font-size:12.5px; font-weight:700; color:#536471; margin:2px 0 6px; }
+            #x-gx-card .x-gx-tipsecler{ display:flex; flex-direction:column; gap:2px; margin-bottom:4px; }
+            #x-gx-card .x-gx-tipsec{ display:flex; align-items:center; gap:9px; font-size:14px; padding:7px 9px; border-radius:9px; cursor:pointer; user-select:none; }
+            #x-gx-card .x-gx-tipsec:hover{ background:#f2f7fb; }
+            #x-gx-card .x-gx-tipsec input{ width:17px; height:17px; accent-color:#1d9bf0; cursor:pointer; flex:0 0 auto; }
+            #x-gx-card .x-gx-tipsec b{ margin-left:auto; color:#1d9bf0; font-weight:800; }
+            #x-gx-card .x-gx-tipwarn{ color:#e0245e; font-size:12.5px; font-weight:700; margin-top:4px; }
             #x-gx-card .x-gx-act{ display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
             #x-gx-card button{ font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
             #x-gx-card .x-gx-primary{ background:#1d9bf0; color:#fff; }
@@ -3386,6 +3393,7 @@
                 + `<button class="x-gx-primary" id="x-gx-onayla">Taramayı başlat</button></div>`;
             var _ib = card.querySelector('#x-gx-iptal'); if (_ib) _ib.onclick = xProfilPopupKapat;
             var _ob = card.querySelector('#x-gx-onayla'); if (_ob) _ob.onclick = function () { try { if (durum._onayla) durum._onayla(); } catch (e) {} };
+            try { card.querySelectorAll('.x-gx-tipcb').forEach(function (cb) { cb.onchange = function () { var w = card.querySelector('#x-gx-tipwarn'); if (w) w.style.display = 'none'; try { xGxPopoverKonumla(); } catch (e) {} }; }); } catch (e) {}
             return;
         }
         if (durum.mod === 'devam') {
@@ -3461,10 +3469,25 @@
     function xProfilOnayGoster(handle, secim, sonuc, urls, tipSay) {
         var ilk = sonuc.ogeler[0], son = sonuc.ogeler[sonuc.ogeler.length - 1];
         var aralik = ilk ? (xGxTarihTR(new Date(ilk.dateMs).toISOString()) + ' → ' + xGxTarihTR(new Date(son.dateMs).toISOString())) : '';
+        // TÜR SEÇİMİ (kullanıcı isteği): yalnız istenen türleri (Paylaşım/RT/Yorum) rapora al.
+        var tipler = [{ k: 'paylasim', ad: 'Paylaşım' }, { k: 'rt', ad: 'RT' }, { k: 'yorum', ad: 'Yorum' }];
+        var secHtml = tipler.filter(function (t) { return (tipSay[t.k] || 0) > 0; }).map(function (t) {
+            return '<label class="x-gx-tipsec"><input type="checkbox" class="x-gx-tipcb" value="' + t.k + '" checked><span>' + t.ad + '</span><b>' + (tipSay[t.k] || 0) + '</b></label>';
+        }).join('');
         var html = '<div class="x-gx-info"><b>' + sonuc.ogeler.length + ' içerik</b> bulundu'
-            + (aralik ? ' <span style="color:#536471">(' + aralik + ')</span>' : '') + '<br>'
-            + 'paylaşım: <b>' + (tipSay.paylasim || 0) + '</b> · RT: <b>' + (tipSay.rt || 0) + '</b> · yorum: <b>' + (tipSay.yorum || 0) + '</b></div>';
-        var durum = { mod: 'onay', html: html, _onayla: function () { xProfilTiklaYakala(handle, secim, sonuc); } };
+            + (aralik ? ' <span style="color:#536471">(' + aralik + ')</span>' : '') + '</div>'
+            + '<div class="x-gx-tiplbl">Rapora eklenecek türler:</div>'
+            + '<div class="x-gx-tipsecler">' + secHtml + '</div>'
+            + '<div class="x-gx-tipwarn" id="x-gx-tipwarn" style="display:none">En az bir içerik türü seç.</div>';
+        var durum = {
+            mod: 'onay', html: html, _onayla: function () {
+                var secili = {};
+                try { document.querySelectorAll('.x-gx-tipcb:checked').forEach(function (cb) { secili[cb.value] = true; }); } catch (e) {}
+                var filtreli = sonuc.ogeler.filter(function (o) { return secili[o.tip]; });
+                if (!filtreli.length) { var w = document.getElementById('x-gx-tipwarn'); if (w) w.style.display = ''; return; }   // hiç tür yok -> uyar
+                xProfilTiklaYakala(handle, secim, Object.assign({}, sonuc, { ogeler: filtreli }));
+            }
+        };
         xGxPopupStilEkle();
         if (!document.getElementById('x-gx-card')) xProfilPopupAc(handle, durum); else xProfilPopupGuncelle(handle, durum);
     }
