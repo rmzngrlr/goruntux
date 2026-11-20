@@ -2926,14 +2926,15 @@
             html.x-gx-capturing #x-gx-ov{ display:none !important; }
             /* PANEL TEMASI (koyu): --bg-modal #0e141f, text #e7e9ea, secondary #8b98a5, input #111622, accent #1d9bf0. */
             #x-gx-card{ width:min(360px,calc(100vw - 24px)); max-height:85vh; overflow:auto; background:#0e141f; color:#e7e9ea;
-                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box; }
-            /* ÇOK İNCE + KOYU scrollbar. ⚠ scrollbar-width (Firefox prop'u) KULLANMA: modern Chrome'da
-               ::-webkit-scrollbar'ı DEVRE DIŞI bırakıp native KALIN scrollbar render ediyor. width<1px -> 0 (görünmez),
-               bu yüzden 2px (en ince görünür). (Chrome eklentisi; Firefox hedefi yok.) */
-            #x-gx-card::-webkit-scrollbar{ width:2px; height:2px; }
-            #x-gx-card::-webkit-scrollbar-track{ background:transparent; }
-            #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.22); border-radius:8px; }
-            #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.35); }
+                border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box;
+                scrollbar-width:none; }
+            /* ⚠ X sayfası STANDART scrollbar modelini kullanıyor (X CSS'inde scrollbar-width:none kuralları var) ->
+               Chrome ::-webkit-scrollbar'ı tüm sayfada YOK SAYAR; scrollbar-width native 11px'ten inceltilemez.
+               ÇÖZÜM: native'i gizle (scrollbar-width:none + ::-webkit display:none) + ÖZEL ince overlay thumb (xAramaScrollbar). */
+            #x-gx-card::-webkit-scrollbar{ display:none; width:0; height:0; }
+            .x-gx-sb-thumb{ position:absolute; right:3px; width:4px; border-radius:4px; background:rgba(255,255,255,.28);
+                z-index:6; cursor:pointer; opacity:0; transition:opacity .2s ease, background .15s ease, width .12s ease; }
+            .x-gx-sb-thumb:hover, .x-gx-sb-thumb.surukle{ background:rgba(255,255,255,.5); width:6px; right:2px; }
             #x-gx-card h3{ margin:0 0 2px; font-size:19px; font-weight:800; color:#e7e9ea; display:flex; align-items:center; gap:9px; }
             #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
@@ -3032,6 +3033,7 @@
     }
     function xProfilPopupKapat() {
         try { if (window.__xGxPopoverTemizle) window.__xGxPopoverTemizle(); } catch (e) {}
+        try { var _c = document.getElementById('x-gx-card'); if (_c && _c.__sbTemizle) _c.__sbTemizle(); } catch (e) {}   // özel scrollbar belge-dinleyicileri
         var o = document.getElementById('x-gx-ov'); if (o) o.remove();
         try { document.querySelectorAll('.x-gx-xcs-list').forEach(function (l) { l.remove(); }); } catch (e) {}   // açık özel-dropdown listesi varsa temizle
     }
@@ -3067,6 +3069,41 @@
                 box.classList.add('acik');
                 setTimeout(function () { try { document.addEventListener('mousedown', disKapat, true); } catch (e) {} }, 0);
             });
+        } catch (e) {}
+    }
+    // ÖZEL İNCE OVERLAY SCROLLBAR (#x-gx-ov'a eklenen thumb; native gizli — X standart-model webkit'i yok sayar).
+    function xAramaScrollbar(card) {
+        try {
+            var ov = card.parentNode; if (!ov) return;
+            var thumb = document.createElement('div'); thumb.className = 'x-gx-sb-thumb';
+            ov.appendChild(thumb);
+            var guncelle = function () {
+                try {
+                    var ch = card.clientHeight, sh = card.scrollHeight;
+                    if (sh <= ch + 2) { thumb.style.opacity = '0'; return; }
+                    var inset = 6, trackH = ch - inset * 2;
+                    var th = Math.max(24, Math.round(ch / sh * trackH));
+                    var top = inset + Math.round((card.scrollTop / (sh - ch)) * (trackH - th));
+                    thumb.style.height = th + 'px'; thumb.style.top = top + 'px'; thumb.style.opacity = '1';
+                } catch (e) {}
+            };
+            card.__sbGuncelle = guncelle;
+            card.addEventListener('scroll', guncelle, { passive: true });
+            try { new ResizeObserver(guncelle).observe(card); } catch (e) {}
+            var sur = null;
+            thumb.addEventListener('mousedown', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                var ch = card.clientHeight, sh = card.scrollHeight, inset = 6, trackH = ch - inset * 2;
+                var th = parseFloat(thumb.style.height) || 24;
+                sur = { y: e.clientY, st: card.scrollTop, trackH: trackH, th: th, sh: sh, ch: ch };
+                thumb.classList.add('surukle'); document.body.style.userSelect = 'none';
+            });
+            var mm = function (e) { if (!sur) return; var dy = e.clientY - sur.y; var oran = (sur.trackH - sur.th) > 0 ? dy / (sur.trackH - sur.th) : 0; card.scrollTop = sur.st + oran * (sur.sh - sur.ch); };
+            var mu = function () { if (sur) { sur = null; thumb.classList.remove('surukle'); document.body.style.userSelect = ''; } };
+            document.addEventListener('mousemove', mm, true);
+            document.addEventListener('mouseup', mu, true);
+            card.__sbTemizle = function () { try { document.removeEventListener('mousemove', mm, true); document.removeEventListener('mouseup', mu, true); } catch (e) {} };
+            setTimeout(guncelle, 0); setTimeout(guncelle, 150);
         } catch (e) {}
     }
     function xProfilPopupAc(handle, durum) {
@@ -3416,9 +3453,10 @@
                 + '<div class="x-gx-uclu"><div><label>Min yanıt</label><input type="number" id="ara-minrep" min="0" placeholder="0"></div><div><label>Min beğeni</label><input type="number" id="ara-minfav" min="0" placeholder="0"></div><div><label>Min RT</label><input type="number" id="ara-minrt" min="0" placeholder="0"></div></div>')
             + '<div class="x-gx-prev-h">X aramasına yazılan:</div><div class="x-gx-prev" id="x-gx-ara-prev">—</div>'
             + '<div class="x-gx-ara-act"><button type="button" class="x-gx-ghost" id="x-gx-ara-temizle">Temizle</button><button type="button" class="x-gx-primary" id="x-gx-ara-ara">Ara</button></div>';
-        card.querySelectorAll('.x-gx-akor-h').forEach(function (h) { h.addEventListener('click', function () { h.parentElement.classList.toggle('acik'); try { xGxPopoverKonumla(); } catch (e) {} }); });
+        card.querySelectorAll('.x-gx-akor-h').forEach(function (h) { h.addEventListener('click', function () { h.parentElement.classList.toggle('acik'); try { xGxPopoverKonumla(); } catch (e) {} try { if (card.__sbGuncelle) card.__sbGuncelle(); } catch (e) {} }); });
         card.querySelectorAll('input, select').forEach(function (f) { f.addEventListener('input', function () { xAramaQueryKur(true); }); f.addEventListener('change', function () { xAramaQueryKur(true); }); });
         card.querySelectorAll('select').forEach(function (s) { xAramaSelectKur(s); });   // native select'leri KOYU özel dropdown'a çevir
+        xAramaScrollbar(card);   // özel ince overlay scrollbar
         card.querySelector('#x-gx-ara-temizle').onclick = function () {
             card.querySelectorAll('input').forEach(function (i) { i.value = ''; });
             card.querySelectorAll('select').forEach(function (s) { s.selectedIndex = 0; if (s.__xcsSync) s.__xcsSync(); });
@@ -3432,6 +3470,7 @@
         // REVERSE-SYNC: açılışta X arama inputundaki mevcut query'yi popup alanlarına doldur (/search'te dolu gelir).
         try { var _xin = document.querySelector('input[data-testid="SearchBox_Search_Input"]'); if (_xin && _xin.value && _xin.value.trim()) xAramaQueryAyristir(_xin.value.trim()); } catch (e) {}
         try { card.querySelectorAll('select').forEach(function (s) { if (s.__xcsSync) s.__xcsSync(); }); } catch (e) {}   // reverse-sync sonrası özel dropdown etiketleri
+        try { if (card.__sbGuncelle) card.__sbGuncelle(); } catch (e) {}   // reverse-sync akordiyon açılınca scrollbar güncelle
         xAramaQueryKur(false);   // önizlemeyi güncelle (X'e TEKRAR yazma — zaten orada)
         xGxPopoverKonumla();
         var disTik = function (e) {
