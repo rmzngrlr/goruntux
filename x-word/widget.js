@@ -3218,14 +3218,20 @@
             /* MAVİ DAİRE (sol uç): zemin daire, içte beyaz işaret (frame+X). */
             .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:#1d9bf0; display:inline-flex; align-items:center; justify-content:center; }
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
-            .x-gx-nav-ring{ position:absolute; inset:-5px; display:none; transform:rotate(-90deg); transform-origin:50% 50%; }
+            /* HALKA = absolute HTML <span> (içinde svg %100). SVG elemanını DOĞRUDAN position:absolute+inset
+               yapmak bu tarayıcıda dikeyde ~44px kaydırıyordu (SVG replaced-element over-constraint);
+               HTML span inset:0'ı güvenilir uygular, svg %100 doldurur -> halka 40px yeşil dairede TAM ORTALI. */
+            .x-gx-nav-ring{ position:absolute; inset:0; display:none; }
             .x-gx-nav.scanning .x-gx-nav-ring{ display:block; }
+            .x-gx-nav-ring svg{ display:block; width:100%; height:100%; }
             /* Tarama halkası YEŞİL ikon üzerinde (kullanıcı isteği): tarama sürerken yeşil +'yı soluklaştır,
                halka+sayaç yeşil daire üzerinde beyaz. Mavi GörüntüX ikonu NORMAL kalır (artık soluklaşmaz). */
             .x-gx-nav.scanning .x-gx-nav-ekle .x-gx-tw-ic{ opacity:.2; }
-            .x-gx-nav-ring .trk{ fill:none; stroke:rgba(255,255,255,.3); stroke-width:3; }
-            .x-gx-nav-ring .fil{ fill:none; stroke:#fff; stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .3s ease; }
-            .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:9px; font-weight:800; color:#fff; }
+            .x-gx-nav-ring .trk{ fill:none; stroke:rgba(255,255,255,.35); stroke-width:4; }
+            /* rotate FILL circle'da (SVG elemanında değil): SVG'ye rotate uygulamak yayı yatayda kaydırıyordu.
+               transform-box:fill-box + origin:center -> yay ÜSTTEN (12 yön) saat yönünde ilerler. */
+            .x-gx-nav-ring .fil{ fill:none; stroke:#fff; stroke-width:4; stroke-linecap:round; transform:rotate(-90deg); transform-box:fill-box; transform-origin:center; transition:stroke-dashoffset .3s ease; }
+            .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
             .x-gx-nav.scanning .x-gx-nav-cnt{ display:flex; }
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
@@ -3287,7 +3293,7 @@
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><svg class="x-gx-nav-ring" width="40" height="40" viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-nav-ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg></span><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
