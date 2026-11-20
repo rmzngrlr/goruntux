@@ -2929,7 +2929,7 @@
                 border-radius:16px; box-shadow:0 12px 40px rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.08); padding:16px 18px; box-sizing:border-box;
                 scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.2) transparent; }
             /* İNCE + KOYU scrollbar (popup koyu tema; varsayılan açık/sistem scrollbar uyumsuzdu). */
-            #x-gx-card::-webkit-scrollbar{ width:4px; height:4px; }
+            #x-gx-card::-webkit-scrollbar{ width:2px; height:2px; }
             #x-gx-card::-webkit-scrollbar-track{ background:transparent; }
             #x-gx-card::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.16); border-radius:8px; }
             #x-gx-card::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.3); }
