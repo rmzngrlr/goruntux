@@ -1739,6 +1739,11 @@ HTML_TEMPLATE = """
         /* [AŞAMA 3] Devam butonu (Word ayarları -> işlem) */
         .paylas-ileri { display: block; width: 100%; margin-top: 12px; padding: 11px; background: var(--accent-color, #1565c0); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; }
         .paylas-ileri:hover { filter: brightness(1.07); }
+        /* [PAYLAŞ] "Oluştur ve İndir" butonu popover içi scroll'da ALTTA SABİT (sticky footer). Word
+           seçilince ayarlar büyüyüp kaydırınca buton hep görünür kalsın. bottom:-24 + margin -24 =
+           modal-body padding'ini (24px) telafi -> dibe oturur; var(--bg-modal) arkadaki içeriği kapatır. */
+        .paylas-pop .paylas-sabit-alt { position: sticky; bottom: -24px; margin: 14px -24px -24px; padding: 12px 24px calc(12px + env(safe-area-inset-bottom, 0px)); background: var(--bg-modal); border-top: 1px solid var(--border-color, rgba(136,153,166,.2)); z-index: 5; }
+        .paylas-pop .paylas-sabit-alt .paylas-olustur-btn { margin-top: 0; }
         /* [İNDİRİLDİ EKRANI] popup'ı kaplayan tamamlandı ekranı */
         #paylas-basari { text-align: center; padding: 34px 16px 30px; }
         .pb-ikon { margin-bottom: 14px; line-height: 0; }
@@ -3012,7 +3017,7 @@ HTML_TEMPLATE = """
                     <!-- [ÖZEL] sayı/aralık yazarak seçim (örn. 1-3, 5); yalnız "Özel" sekmesinde görünür -->
                     <div id="paylas-sec-ozel" style="display:none;"><input type="text" id="paylas-sec-ozel-inp" placeholder="örn. 1-3, 5" autocomplete="off" spellcheck="false" oninput="xPaylasSecOzelGir(this.value)"><span class="paylas-sec-ozel-ipucu">Sayfa no / aralık (virgülle ayır)</span></div>
                     <div id="paylas-sec-grid"></div>
-                    <button type="button" class="paylas-ileri paylas-olustur-btn" onclick="xPaylasOlustur()"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16h12"/></svg>Oluştur ve İndir</button>
+                    <div class="paylas-sabit-alt"><button type="button" class="paylas-ileri paylas-olustur-btn" onclick="xPaylasOlustur()"><svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:5px"><path d="M10 3v9"/><path d="M6 8.5l4 4 4-4"/><path d="M4 16h12"/></svg>Oluştur ve İndir</button></div>
                 </div>
                 <div id="paylas-asama2" style="display:none;"></div>
                 <!-- İLERLEME/İNDİRİLDİ EKRANI (aynı konum): hazırlanırken dolan halka+%, bitince tik + dosya + 5 sn geri sayım -->
