@@ -3088,7 +3088,9 @@
     function xNavEkleGuncelle() {
         try {
             var el = document.getElementById('x-gx-nav-ekle'); if (!el) return;
-            var goster = xGxTweetBtnAcik() && !window.__xGxCaptureAktif && !window.__xGxTaramaAktif
+            // Yeşil buton sol-nav'da (SS bölgesinde değil) -> yakalama sırasında GİZLEME; __xGxCaptureAktif
+            // koşulu kaldırıldı (kullanıcı isteği). Yalnız profil taraması (__xGxTaramaAktif) devredeyken gizli.
+            var goster = xGxTweetBtnAcik() && !window.__xGxTaramaAktif
                 && /\/status\/\d+/.test(location.href) && !!xGxOdakliArticle();
             el.classList.toggle('aktif', goster);
         } catch (e) {}
