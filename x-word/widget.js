@@ -3502,6 +3502,10 @@
             .x-gx-nav .x-gx-nav-inner{ display:inline-flex; align-items:center; gap:0; padding:0; background:transparent;
                 border-radius:9999px; transition:background .15s ease; max-width:100%; }
             .x-gx-nav:hover .x-gx-nav-inner{ background:rgba(29,155,240,.18); }
+            /* MAVİ İKON HİZASI: X nav ikonu 26px (sol-dolgu 12px, merkez=item+25); mavi daire 40px daha
+               büyük olduğundan sol-kenar aynı olsa bile MERKEZ 5px sola kaçıyordu. Kapsülü +5px kaydır ->
+               mavi daire merkezi = Anasayfa/Keşfet ikon merkezi (canlı ölçümle doğrulandı). Yalnız geniş mod. */
+            .x-gx-nav:not(.collapsed) .x-gx-nav-inner{ margin-left:5px; }
             /* MAVİ DAİRE (sol uç): zemin daire, içte beyaz işaret (frame+X). */
             .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:#1d9bf0; display:inline-flex; align-items:center; justify-content:center; }
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
