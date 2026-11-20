@@ -2937,9 +2937,13 @@
             #x-gx-card .x-gx-sub{ color:#8b98a5; font-size:13px; margin:8px 0 16px; }
             #x-gx-card .x-gx-row{ display:flex; flex-direction:column; gap:12px; margin:12px 0; }
             #x-gx-card label{ display:block; font-size:12.5px; font-weight:700; color:#8b98a5; margin:0 0 5px; }
-            #x-gx-card input[type=date], #x-gx-card input[type=datetime-local]{ width:100%; box-sizing:border-box; padding:9px 11px; border:1px solid rgba(255,255,255,.14);
-                border-radius:9px; font-size:14px; color:#e7e9ea; background:#111622; color-scheme:dark; }
-            #x-gx-card input[type=date]:focus, #x-gx-card input[type=datetime-local]:focus{ outline:none; border-color:#1d9bf0; box-shadow:0 0 0 3px rgba(29,155,240,.15); }
+            /* TÜM input türleri + select KOYU (yalnız date değil; X'in beyaz varsayılanını !important ezer).
+               color-scheme:dark native select açılır-listesini + date seçiciyi de koyu yapar (macOS uyumsuzluğu). */
+            #x-gx-card input, #x-gx-card select, #x-gx-card textarea{ width:100%; box-sizing:border-box; padding:9px 11px;
+                border:1px solid rgba(255,255,255,.14) !important; border-radius:9px; font-size:14px;
+                color:#e7e9ea !important; background:#111622 !important; color-scheme:dark; }
+            #x-gx-card input::placeholder{ color:#5b6b7d; opacity:1; }
+            #x-gx-card input:focus, #x-gx-card select:focus{ outline:none; border-color:#1d9bf0 !important; box-shadow:0 0 0 3px rgba(29,155,240,.15); }
             #x-gx-card .x-gx-info{ background:rgba(29,155,240,.12); border:1px solid rgba(29,155,240,.3); color:#e7e9ea; border-radius:11px;
                 padding:12px 14px; font-size:13.5px; line-height:1.5; margin:4px 0 16px; }
             #x-gx-card .x-gx-info b{ color:#5bb3f5; }
