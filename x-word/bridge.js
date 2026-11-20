@@ -107,10 +107,19 @@ window.addEventListener("message", (event) => {
     } catch(e) {}
   }
 
-  // [TIK SECIM / Step 2] Panel Baslat'a basinca tik secimini temizle sinyali -> SW storage'i bosaltir.
+  // [TIK SECIM / Step 2] Panel Baslat/Temizle -> tum tik secimini temizle -> SW storage'i bosaltir.
   if (event.data && event.data.type === "X_RAPOR_TIK_TEMIZLE") {
     try {
       chrome.runtime.sendMessage({ action: "tikSecimTemizle" }, () => {
+        if (chrome.runtime.lastError) { /* ignore */ }
+      });
+    } catch(e) {}
+  }
+
+  // [TIK SECIM / Step 2] Panelden TEK/kismi link silinince -> o linkleri X tik secimden de cikar.
+  if (event.data && event.data.type === "X_RAPOR_TIK_CIKAR" && event.data.links) {
+    try {
+      chrome.runtime.sendMessage({ action: "tikSecimCikar", links: event.data.links }, () => {
         if (chrome.runtime.lastError) { /* ignore */ }
       });
     } catch(e) {}
@@ -183,6 +192,13 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
         if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ ok: false, sebep: "panel-degil" }); } catch (e) {} return false; }
         try { window.postMessage({ type: "X_RAPOR_SECILEN_LINKLER", links: msg.links || [], goto: !!msg.goto }, "*"); sendResponse && sendResponse({ ok: true }); }
         catch (e) { try { sendResponse({ ok: false, sebep: "post-hata" }); } catch (_) {} }
+        return false;
+      }
+      // [TIK SECIM / Step 2] Widget "İptal" -> panel xWidgetTikLinks=[] sifirla (kuyruk korunur).
+      if (msg && msg.action === "gxTikReset") {
+        if (!document.querySelector('meta[name="x-rapor-panel"]')) { try { sendResponse({ ok: false }); } catch (e) {} return false; }
+        try { window.postMessage({ type: "X_RAPOR_TIK_RESET" }, "*"); sendResponse && sendResponse({ ok: true }); }
+        catch (e) { try { sendResponse({ ok: false }); } catch (_) {} }
         return false;
       }
       // [GÖRÜNTÜX İLE RAPORLA Faz4b] SW -> panele profil tarama URL listesi ilet.

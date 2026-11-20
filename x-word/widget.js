@@ -3911,7 +3911,7 @@
             if (!xTikHostX()) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
             var sec = window.__xTikSecili || {};
             var n = 0; for (var k in sec) { if (Object.prototype.hasOwnProperty.call(sec, k)) n++; }
-            if (window.__xTikMenuGizli || n === 0) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
+            if (n === 0) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
             if (!bar) {
                 xTikStilKur();
                 bar = document.createElement('div');
@@ -3925,8 +3925,12 @@
                 var ib = bar.querySelector('#x-gx-tik-iptal');
                 if (ib) ib.addEventListener('click', function (ev) {
                     ev.preventDefault(); ev.stopPropagation();
-                    window.__xTikMenuGizli = true;   // YALNIZ menuyu kapat (secim + panel kuyrugu KALIR)
-                    var b = document.getElementById('x-gx-tik-bar'); if (b && b.parentNode) b.parentNode.removeChild(b);
+                    // İptal: tik secimini SIFIRLA (tikler griler + menu kapanir) AMA linkler Rapor'matik'te KALIR.
+                    try { window.__xTikSecili = {}; } catch (e) {}
+                    try { chrome.storage.local.set({ x_secili_tweetler: [] }); } catch (e) {}   // onChanged: tum X sekmeleri sifirlanir
+                    try { chrome.runtime.sendMessage({ action: 'tikPanelReset' }, function () { if (chrome.runtime.lastError) {} }); } catch (e) {}   // panel xWidgetTikLinks=[] (kuyruk KALIR)
+                    if (window.__xTikBoya) window.__xTikBoya();
+                    if (window.__xTikMenu) window.__xTikMenu();
                 }, true);
                 var gb = bar.querySelector('#x-gx-tik-git');
                 if (gb) gb.addEventListener('click', function (ev) {
@@ -3951,7 +3955,6 @@
                 window.__xTikSecili = window.__xTikSecili || {};
                 if (window.__xTikSecili[id]) delete window.__xTikSecili[id];
                 else window.__xTikSecili[id] = link || '';
-                window.__xTikMenuGizli = false;   // herhangi bir tik -> menu yeniden aktif
                 var arr = [];
                 for (var k in window.__xTikSecili) { if (Object.prototype.hasOwnProperty.call(window.__xTikSecili, k)) arr.push({ id: k, link: window.__xTikSecili[k] }); }
                 try { chrome.storage.local.set({ x_secili_tweetler: arr }); } catch (e) {}

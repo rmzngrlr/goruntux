@@ -1195,6 +1195,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
+  // [TIK SECIM / Step 2] Panelden TEK/kismi link silinince -> x_secili_tweetler'den o linkleri cikar
+  // (kanonik karsilastirma) -> storage.onChanged ile ilgili tweet(ler) X'te tikten cikar. Boylece
+  // silinen link bir daha senkronda/panel-kayitta GERI GELMEZ.
+  if (message.action === "tikSecimCikar") {
+    const rmv = Array.isArray(message.links) ? message.links : [];
+    if (!rmv.length) { try { sendResponse({ status: "ok" }); } catch (_) {} return false; }
+    const _norm = (u) => { try { return String(u).split('#')[0].split('?')[0].replace('://twitter.com', '://x.com').replace(/\/+$/, '').toLowerCase(); } catch (e) { return String(u || '').toLowerCase(); } };
+    const rmSet = {}; rmv.forEach((l) => { rmSet[_norm(l)] = 1; });
+    chrome.storage.local.get(['x_secili_tweetler'], (res) => {
+      const cur = (res && res.x_secili_tweetler) || [];
+      const kalan = cur.filter((it) => it && it.link && !rmSet[_norm(it.link)]);
+      if (kalan.length !== cur.length) {
+        chrome.storage.local.set({ x_secili_tweetler: kalan }, () => { if (chrome.runtime.lastError) {} });
+      }
+    });
+    try { sendResponse({ status: "ok" }); } catch (_) {}
+    return false;
+  }
+
+  // [TIK SECIM / Step 2] Widget "İptal" -> panele ilet: xWidgetTikLinks=[] sifirla (kuyruk korunur).
+  // (Widget storage'i zaten sifirladi; bu yalnizca panelin diff-takibini tutarli tutar.)
+  if (message.action === "tikPanelReset") {
+    chrome.storage.local.get(['panel_tab_id'], (res) => {
+      const pid = res && res.panel_tab_id;
+      if (pid) { try { chrome.tabs.sendMessage(pid, { action: "gxTikReset" }, () => { if (chrome.runtime.lastError) {} }); } catch (e) {} }
+    });
+    try { sendResponse({ status: "ok" }); } catch (_) {}
+    return false;
+  }
+
   // [TIK SECIM / Step 2] Alt menudeki "Rapor'matik'e Git!" -> paneli ONE AL/AC + Rapormatik sekmesine
   // gec + secili linkleri sagla. goToPanel ile ayni panel-bulma mantigi; ek olarak {goto:true} ile
   // panelde switchTab('tab-auto') tetiklenir. Panel kapaliysa pending_tik_goto isaretlenir ve
