@@ -2931,6 +2931,7 @@
     }
     function xProfilPopupKapat() { var o = document.getElementById('x-gx-ov'); if (o) o.remove(); }
     function xProfilPopupAc(handle, durum) {
+        if (window.__xGxCaptureAktif) return;   // [SS'TE POPUP OLMASIN] yakalama sürerken popup OLUŞTURMA
         xGxPopupStilEkle();
         xProfilPopupKapat();
         var ov = document.createElement('div'); ov.id = 'x-gx-ov';
@@ -2955,15 +2956,21 @@
     // [İLERLEME DOCK'TA] Profil tarama ilerlemesini SAĞDAKİ DOCK halkasında göster (popup değil).
     function xProfilDockIlerleme(yapilan, toplam, msg) {
         try {
+            // Nav halkası tüm tarama boyunca KALICI (SPA dock-rebuild'de kaybolmasın): window-var'lara yaz.
+            window.__xGxTaramaAktif = true;
+            window.__xGxTaraYapilan = yapilan || 0; window.__xGxTaraToplam = toplam || 0; if (msg) window.__xGxTaraMsg = msg;
             var w = document.getElementById('x-downloader-widget'); if (w) { w.classList.add('scanning'); w.classList.remove('xdock-dialog'); }
             var ring = document.getElementById('w-scan-ring'); if (ring && toplam) { var C = 100.53, pct = Math.max(0, Math.min(100, Math.round((yapilan / toplam) * 100))); ring.setAttribute('stroke-dashoffset', String(C * (1 - pct / 100))); }
             var txt = document.getElementById('w-scan-txt'); if (txt) txt.textContent = (yapilan || 0) + '/' + (toplam || 0);
             var m = document.getElementById('w-scan-msg'); if (m && msg) m.textContent = msg;
+            try { xNavYansit(); } catch (e) {}   // nav'ı anında güncelle (observer'a güvenme)
         } catch (e) {}
     }
     function xProfilDockBitir() {
+        try { window.__xGxTaramaAktif = false; } catch (e) {}   // iş bitti -> kalıcı tarama göstergesi kapanır
         try { var w = document.getElementById('x-downloader-widget'); if (w) w.classList.remove('scanning'); } catch (e) {}
         try { var ring = document.getElementById('w-scan-ring'); if (ring) ring.setAttribute('stroke-dashoffset', '100.53'); } catch (e) {}
+        try { xNavYansit(); } catch (e) {}
     }
     // ====================== TWEET DETAY "Rapora Ekle" BUTONU ======================
     // Tweet detay sayfasında (/status/) HER tweet'in (ana + yanıtlar) Grok/… kümesinin
@@ -3204,26 +3211,35 @@
             var nav = document.getElementById('x-gx-nav-btn');
             var dock = document.getElementById('x-downloader-widget');
             if (!nav || !dock) return;
-            var scanning = dock.classList.contains('scanning');
+            // TARAMA AKTİF BAYRAĞI: toplu tarama sırasında SS alınırken SPA dock'u yeniden kurup
+            // .scanning'i düşürse de nav halkası KAYBOLMASIN; ilerleme window-var'lardan okunur
+            // (dock #w-scan-* yeniden kurulsa da kalıcı). İş bitince xProfilDockBitir temizler.
+            var taraAktif = window.__xGxTaramaAktif === true;
+            var scanning = dock.classList.contains('scanning') || taraAktif;
             var wbtn = document.getElementById('w-buton');
             var outdated = !!(wbtn && wbtn.classList.contains('outdated'));
             nav.classList.toggle('scanning', scanning);
             nav.classList.toggle('outdated', outdated && !scanning);
-            var ring = document.getElementById('w-scan-ring');
-            var navFil = nav.querySelector('.x-gx-nav-ring .fil');
-            if (ring && navFil) navFil.setAttribute('stroke-dashoffset', ring.getAttribute('stroke-dashoffset') || '100.53');
             var txt = document.getElementById('w-scan-txt');
+            var sayac = (taraAktif && window.__xGxTaraToplam) ? ((window.__xGxTaraYapilan || 0) + '/' + window.__xGxTaraToplam) : (txt ? (txt.textContent || '') : '');
+            var navFil = nav.querySelector('.x-gx-nav-ring .fil');
+            if (navFil) {
+                var dash = '100.53';
+                if (taraAktif && window.__xGxTaraToplam) { var C = 100.53, pct = Math.max(0, Math.min(100, Math.round((window.__xGxTaraYapilan || 0) / window.__xGxTaraToplam * 100))); dash = String(C * (1 - pct / 100)); }
+                else { var ring = document.getElementById('w-scan-ring'); if (ring) dash = ring.getAttribute('stroke-dashoffset') || '100.53'; }
+                navFil.setAttribute('stroke-dashoffset', dash);
+            }
             var cnt = nav.querySelector('.x-gx-nav-cnt');
-            if (txt && cnt) cnt.textContent = txt.textContent || '';
+            if (cnt) cnt.textContent = sayac;
             var msg = document.getElementById('w-scan-msg');
+            var mText = (taraAktif && window.__xGxTaraMsg) ? window.__xGxTaraMsg : ((msg && msg.textContent) ? msg.textContent : 'Taranıyor…');
             var lbl = nav.querySelector('.x-gx-nav-lbl');
             var popMsg = nav.querySelector('.x-gx-nav-pop .pop-msg');
             var popCancel = nav.querySelector('.x-gx-nav-pop .pop-cancel');
             if (scanning) {
-                var m = (msg && msg.textContent) ? msg.textContent : 'Taranıyor…';
-                var c = (txt && txt.textContent) ? (' ' + txt.textContent) : '';
-                if (lbl) lbl.textContent = m + c;
-                if (popMsg) popMsg.textContent = m + c;
+                var lblText = mText + (sayac ? (' ' + sayac) : '');
+                if (lbl) lbl.textContent = lblText;
+                if (popMsg) popMsg.textContent = lblText;
                 if (popCancel) popCancel.style.display = '';
             } else if (outdated) {
                 if (lbl) lbl.textContent = 'Güncelleme gerekli';
@@ -3637,12 +3653,13 @@
     function xGxButonlariGizle() {
         window.__xGxCaptureAktif = true;   // poller'ları duraklat (yakalama sırasında taze buton enjekte etme)
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
-        // [SS'TE POPUP OLMASIN] tarama ilerleme/popup overlay'ini (backdrop+kart) yakalama sırasında gizle
-        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = 'hidden'; } catch (e) {}
+        // [SS'TE POPUP OLMASIN] tarama ilerleme/popup overlay'ini (backdrop+kart) yakalama sırasında TAMAMEN
+        // gizle (display:none; visibility:hidden backdrop-filter/geç-oluşan popup'ta yetersiz kalıyordu).
+        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = 'none'; } catch (e) {}
     }
     function xGxButonlariGoster() {
         try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
-        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.visibility = ''; } catch (e) {}
+        try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = ''; } catch (e) {}
         window.__xGxCaptureAktif = false;
     }
 
