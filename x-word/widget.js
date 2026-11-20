@@ -3224,7 +3224,7 @@
             .x-gx-nav-ekle{ position:relative; display:none; flex:0 0 auto; align-items:center; justify-content:center;
                 width:40px; height:40px; border-radius:50%; background:#00ba7c; color:#fff; cursor:pointer; transition:filter .12s ease; }
             .x-gx-nav-ekle.aktif{ display:inline-flex; }
-            /* Tarama sürerken yeşil daire DAİMA görünür (halka+sayaç onun üzerinde); poller/`/status/` koşulunu bekleme. */
+            /* Tarama surerken yesil daire DAIMA gorunur (halka+sayac onun uzerinde); poller/status kosulunu bekleme. */
             .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; }
             .x-gx-nav-ekle:hover{ filter:brightness(1.08); }
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
