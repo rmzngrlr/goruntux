@@ -3846,12 +3846,17 @@
             '#x-gx-tik-bar .x-gx-tik-iptal{background:transparent;border:1px solid #38444d;color:#e7e9ea;padding:7px 14px;}',
             '#x-gx-tik-bar .x-gx-tik-iptal:hover{background:rgba(255,255,255,0.06);}',
             '#x-gx-tik-bar .x-gx-tik-git{background:#1d9bf0;border:0;color:#fff;font-weight:600;padding:7px 15px;display:inline-flex;align-items:center;gap:6px;}',
-            '#x-gx-tik-bar .x-gx-tik-git:hover{background:#1a8cd8;}'
+            '#x-gx-tik-bar .x-gx-tik-git:hover{background:#1a8cd8;}',
+            // [SS KADRAJ] Rapor'matik yakalamasi sirasinda (<html>.x-gx-capturing) tik UI gizli -> ekran goruntusune girmesin.
+            // Alt menu display:none (overlay, akis yok); tweet-ici tik butonu visibility:hidden (layout kaymasin, kirpma bozulmasin).
+            'html.x-gx-capturing #x-gx-tik-bar{display:none !important;}',
+            'html.x-gx-capturing .x-gx-tik-wrap{visibility:hidden !important;}'
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
     function xTikBoya() {
         try {
+            if (window.__xGxCaptureAktif) return;   // [SS KADRAJ] yakalama sirasinda DOM'a dokunma
             if (!xTikHostX()) return;
             xTikStilKur();
             if (/\/status\/\d+/.test(location.pathname)) return;   // tweet DETAY -> tik YOK
@@ -3901,6 +3906,7 @@
     }
     function xTikMenu() {
         try {
+            if (window.__xGxCaptureAktif) return;   // [SS KADRAJ] yakalama sirasinda menuyu olusturma/dokunma (CSS zaten display:none)
             var bar = document.getElementById('x-gx-tik-bar');
             if (!xTikHostX()) { if (bar && bar.parentNode) bar.parentNode.removeChild(bar); return; }
             var sec = window.__xTikSecili || {};
