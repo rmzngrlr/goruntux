@@ -958,10 +958,10 @@
             // Durum (tarama/guncelleme) gizli dock'tan nav butonuna MutationObserver ile yansir.
             if (!X_GX_DOCK_ESKI) {
                 try { widget.classList.add('x-gx-dock-yedek'); } catch (e) {}
-                try { xNavButonPollerBaslat(); } catch (e) {}
+                try { if (localStorage.getItem('x_nav_off') !== '1') xNavButonPollerBaslat(); } catch (e) {}   // [İZOLASYON] x_nav_off='1' -> nav buton enjeksiyonu KAPALI
             }
             // [TIK SECIM / Step 2] Tweet tik ikonlari + alttan kayan secim menusu (her enjekte X sayfasinda).
-            try { xTikInit(); } catch (e) {}
+            try { if (localStorage.getItem('x_tik_off') !== '1') xTikInit(); } catch (e) {}   // [İZOLASYON] x_tik_off='1' -> tweet tik ikonu enjeksiyonu KAPALI
             // [YOUTUBE SS] YouTube /watch'ta Begeni'nin soluna yesil "+" GoruntuX butonu (yalniz yt'de aktif).
             try { xYtButonInit(); } catch (e) {}
             // [INSTAGRAM SS] Her gönderinin Kaydet butonunun soluna yesil "+" GoruntuX butonu (yalniz ig'de aktif).
@@ -4416,17 +4416,18 @@
             window.addEventListener('popstate', function () {
                 try {
                     if (!_anchor || /\/status\/\d+/.test(location.href)) return;
-                    var hedef = _anchor, n = 0;
-                    var duzelt = function () {
-                        try {
-                            n++;
-                            var art = null, arts = document.querySelectorAll('article[data-testid="tweet"]');
-                            for (var i = 0; i < arts.length; i++) { if (arts[i].getAttribute('data-tweet-id') === hedef.id) { art = arts[i]; break; } }
-                            if (art) { var diff = Math.round(art.getBoundingClientRect().top) - hedef.off; if (Math.abs(diff) > 24) { try { window.scrollBy(0, diff); } catch (e) {} } }
-                        } catch (e) {}
-                        if (n < 20) setTimeout(duzelt, 100);
+                    var hedef = _anchor, until = Date.now() + 2200, duzeltiyor = false;
+                    var bulTweet = function () { var arts = document.querySelectorAll('article[data-testid="tweet"]'); for (var i = 0; i < arts.length; i++) { if (arts[i].getAttribute('data-tweet-id') === hedef.id) return arts[i]; } return null; };
+                    var fix = function () {
+                        if (duzeltiyor) return;
+                        try { var art = bulTweet(); if (art) { var diff = Math.round(art.getBoundingClientRect().top) - hedef.off; if (Math.abs(diff) > 6) { duzeltiyor = true; window.scrollTo(0, Math.max(0, window.scrollY + diff)); duzeltiyor = false; } } } catch (e) { duzeltiyor = false; }
                     };
-                    setTimeout(duzelt, 120);
+                    // KARE-KUSURSUZ: scroll olayinda (BOYAMA oncesi, capture) duzelt -> sicrama gorunmez.
+                    var onScroll = function () { if (Date.now() <= until) fix(); else { try { window.removeEventListener('scroll', onScroll, true); } catch (e) {} } };
+                    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+                    // rAF: scroll olayi olmayan anlari da kapsa (ilk yukleme, gec gelen anchor tweet).
+                    var raf = function () { if (Date.now() <= until) { fix(); try { requestAnimationFrame(raf); } catch (e) {} } };
+                    try { requestAnimationFrame(raf); } catch (e) { setTimeout(function loop() { if (Date.now() <= until) { fix(); setTimeout(loop, 32); } }, 32); }
                 } catch (e) {}
             }, { passive: true });
         } catch (e) {}
