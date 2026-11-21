@@ -188,39 +188,42 @@
     // oldugu icin kartin rect'ini GENISLETMIYOR; ata dogru olsa bile kadraj kesiyor).
     function fbFindPost(outEng) {
         try {
-            // [FB BUTON — HEDEF KART] Tiklanan gönderi butonu kartini set ettiyse onu dondur
-            // (home feed'de en-buyuk-medya yerine TIKLANAN kart yakalansin; tum ic cagrilar tutarli).
-            if (window.__xFbHedefPost && document.contains(window.__xFbHedefPost)) {
-                var _hr = window.__xFbHedefPost.getBoundingClientRect();
-                if (_hr.height > 100) return window.__xFbHedefPost;
+            var kap = null, scope, _btnKart = null;
+            // [FB BUTON — HEDEF KART] Tiklanan gönderi ⋯ butonu bir kart set ettiyse ONU KAPSAM yap:
+            // icinde normal medya+etkilesim ortak-ata hesabi (adim 2-4) kosar -> buton yolu, dock
+            // yoluyla AYNI DAR karti verir. Boylece fbBitisY etkilesim satirinda biter ve YORUM YAZMA
+            // KUTUSU ("... adıyla yorum yap") kadraja GIRMEZ (kullanici: cikti sistemimize uymuyordu).
+            // Dar hesap tutmazsa (adim 5) en kotu tiklanan kartin kendisine duser.
+            if (window.__xFbHedefPost && document.contains(window.__xFbHedefPost) &&
+                window.__xFbHedefPost.getBoundingClientRect().height > 100) {
+                _btnKart = window.__xFbHedefPost;
+                scope = _btnKart;
+            } else {
+                // 1) KAP: en icteki GORUNUR dialog (varsa) — /posts. Yoksa belge geneli — /reel.
+                //
+                // SAHA HATASI (2026-07-20, kullanici teshis ciktisi): Facebook BILDIRIMLER
+                // panelini de role="dialog" olarak DOM'a ONCEDEN basiyor ve o panel GIZLI (0x0).
+                // Eski kod "baska dialog icermeyen ilk dialog"u DOM SIRASINA gore seciyordu:
+                //   [0] 0x0     role=dialog  "Bildirimler..."   <- yaprak, DOM'da BIRINCI -> SECILIYORDU
+                //   [1] 900x718 role=dialog  "Sabah'in Gönderisi"
+                //   [2] 700x654 aria-modal   "Sabah'in Gönderisi"  <- GERCEK modal
+                // Sonuc zinciri: kap = 0x0 panel -> kapsam bos -> medya YOK, etkilesim YOK ->
+                // kart 0x0 -> kirpma dikdortgeni gecersiz -> captureAndCrop kirpamayip TUM
+                // GORUNUR SEKMEYI dondurdu -> rapora sol menu/reklamlar/arkadaki akis girdi.
+                // Cozum: (a) once GORUNUR dialoglar, (b) aria-modal="true" varsa O gercek modaldir.
+                var Dham = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
+                var D = Dham.filter(function (d) {
+                    var r = d.getBoundingClientRect();
+                    return r.width > 100 && r.height > 100;
+                });
+                if (D.length) {
+                    var am = D.filter(function (d) { return d.getAttribute('aria-modal') === 'true'; });
+                    var aday = am.length ? am : D;
+                    var inner = aday.filter(function (d) { return !aday.some(function (x) { return x !== d && d.contains(x); }); });
+                    kap = inner[0] || aday[aday.length - 1];
+                }
+                scope = kap || document.body;
             }
-            // 1) KAP: en icteki GORUNUR dialog (varsa) — /posts. Yoksa belge geneli — /reel.
-            //
-            // SAHA HATASI (2026-07-20, kullanici teshis ciktisi): Facebook BILDIRIMLER
-            // panelini de role="dialog" olarak DOM'a ONCEDEN basiyor ve o panel GIZLI (0x0).
-            // Eski kod "baska dialog icermeyen ilk dialog"u DOM SIRASINA gore seciyordu:
-            //   [0] 0x0     role=dialog  "Bildirimler..."   <- yaprak, DOM'da BIRINCI -> SECILIYORDU
-            //   [1] 900x718 role=dialog  "Sabah'in Gönderisi"
-            //   [2] 700x654 aria-modal   "Sabah'in Gönderisi"  <- GERCEK modal
-            // Sonuc zinciri: kap = 0x0 panel -> kapsam bos -> medya YOK, etkilesim YOK ->
-            // kart 0x0 -> kirpma dikdortgeni gecersiz -> captureAndCrop kirpamayip TUM
-            // GORUNUR SEKMEYI dondurdu -> rapora sol menu/reklamlar/arkadaki akis girdi.
-            // Kodda hicbir sey degismemisti; FB'nin sayfasi degisti (bildirim paneli artik
-            // onceden basiliyor).
-            // Cozum: (a) once GORUNUR dialoglar, (b) aria-modal="true" varsa O gercek modaldir.
-            var Dham = Array.prototype.slice.call(document.querySelectorAll('[role="dialog"],[aria-modal="true"]'));
-            var D = Dham.filter(function (d) {
-                var r = d.getBoundingClientRect();
-                return r.width > 100 && r.height > 100;
-            });
-            var kap = null;
-            if (D.length) {
-                var am = D.filter(function (d) { return d.getAttribute('aria-modal') === 'true'; });
-                var aday = am.length ? am : D;
-                var inner = aday.filter(function (d) { return !aday.some(function (x) { return x !== d && d.contains(x); }); });
-                kap = inner[0] || aday[aday.length - 1];
-            }
-            var scope = kap || document.body;
 
             // 2) Kapsam icinde GORUNUR en buyuk medya (viewport disindakiler baska kart olabilir:
             //    reel'de kart karuseli var, feed'de sonraki gonderiler).
@@ -285,6 +288,7 @@
                 while (c) { if (chain.has(c)) return c; c = c.parentElement; }
             }
             // 5) Yedekler
+            if (_btnKart) return _btnKart;   // buton yolu: dar hesap tutmadi -> tiklanan kartin kendisi
             if (kap) return kap;
             if (media) return media.closest('[role="article"]') || media.parentElement;
             return document.querySelector('[role="main"]');
@@ -437,11 +441,24 @@
                 return null;
             }
             // Etkilesim satirindaki EN ALT kenar (Begen/Yorum/Paylas ayni satirda).
-            var enAlt = -1;
+            var enAlt = -1, _kompTopVp = -1;
             for (var i = 0; i < list.length; i++) {
                 var el = list[i];
                 var r = el.getBoundingClientRect();
                 if (r.height <= 0 || r.width <= 0) continue;   // gizlenmis/gorunmez -> atla
+                // [YORUM YAZMA KUTUSU PLACEHOLDER — ANASAYFA FEED, role=button] Feed'de yorum kutusu
+                // bir role=textbox DEGIL, aria="<SEN> adıyla yorum yap" (EN: "Comment as <you>") olan bir
+                // role=button; *="Yorum" ile FB_BITIS_SEL'e ESLESIR ama ETKILESIM satiri DEGIL, ALTINDADIR.
+                // Textbox/FORM sarmali OLMADIGI icin asagidaki ata-kontrolu YAKALAMAZ -> bitis kutunun
+                // ALTINA kayip kutu kadraja giriyordu (kullanici: cikti sistemimize uymuyordu). Eylem-cubugu
+                // "Yorum" butonu "<POST SAHIBI>'in gönderisine yorum yap" ("adıyla" DEGIL) -> o KALIR.
+                // enAlt'e KATMA; ama baska hic etkilesim eslesmesi cikmazsa kutunun USTUNDE bitirebilmek
+                // icin en UST kutu-topunu sakla (asagidaki enAlt<0 yedegi).
+                var _elAl = (el.getAttribute('aria-label') || '');
+                if (/adıyla yorum|adiyla yorum|comment as /i.test(_elAl)) {
+                    if (r.top > 0 && (_kompTopVp < 0 || r.top < _kompTopVp)) _kompTopVp = r.top;
+                    continue;
+                }
                 // Yorumlarin ICINDEKI "Beğen" linkleri bitisi ASAGI CEKMESIN.
                 // fbYorumlariGizle onlari zaten display:none yapiyor (rect 0 -> yukarida elenir),
                 // ama buna BEL BAGLAMA: gizleme herhangi bir sebeple tutmazsa yorumlar kadraja
@@ -475,9 +492,14 @@
                 }
             }
             if (enAlt < 0) {
-                // Secici esleşti ama HICBIRI gorunur degil (hepsi rect=0 / yorum icinde).
-                if (taniOut) { taniOut.sebep = 'eslesti-ama-gorunmez(' + list.length + ' aday)'; }
-                return null;
+                // Gercek etkilesim butonu cikmadi. Eslesen TEK sey yorum YAZMA kutusu placeholder'i
+                // ise (feed'de olur) onun USTUNDE bitir -> kutu kadraja GIRMEZ (null donup tum karti
+                // almaktansa). Yoksa eskisi gibi null (gorunmez/yorum-ici adaylar).
+                if (_kompTopVp > 0) { enAlt = _kompTopVp - 6; }
+                else {
+                    if (taniOut) { taniOut.sebep = 'eslesti-ama-gorunmez(' + list.length + ' aday)'; }
+                    return null;
+                }
             }
             // Viewport koordinatindan ICERIK koordinatina cevir.
             if (scIc && sc) {
@@ -3718,8 +3740,9 @@
             '.x-gx-fb-btn .x-gx-fb-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-fb-btn .x-gx-fb-ic svg{ display:block; overflow:visible; }',
             // Sagdaki buton grubunun solunda -> tooltip SAGA yaslanirsa viewport sagindan tasabilir; SOLA ac.
-            '.x-gx-fb-btn .x-gx-fb-tip{ position:absolute; bottom:calc(100% + 8px); right:0; left:auto;',
-            '   transform:translateY(4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            // ALTA dogru ac (kullanici istegi): buton baslik ustunde -> yukari acilinca ustteki sayfaya tasiyordu.
+            '.x-gx-fb-btn .x-gx-fb-tip{ position:absolute; top:calc(100% + 8px); right:0; left:auto;',
+            '   transform:translateY(-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
             '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
             '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
             '   transition:opacity .12s ease, transform .12s ease; }',
