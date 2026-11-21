@@ -3388,14 +3388,16 @@
         function CI(cx, cy, r) { var e = document.createElementNS(NS, 'circle'); e.setAttribute('cx', cx); e.setAttribute('cy', cy); e.setAttribute('r', r); g.appendChild(e); }
         // Daire ORTAK kap (.c). Ic (.in) moda gore: ekle=cerceve+arti (IG/YT ile AYNI),
         // profil=kisi, ara=arama, ok=onay tiki. (X sol-nav butonu tum modlarda bu tasarim.)
+        // CERCEVE (kare) = GoruntuX/SS logosu, TUM capture modlarinda (kullanici: profil+ara'da da kare olsun).
+        var CERCEVE = ['M7.5 10.5V7.5h3', 'M13.5 7.5h3v3', 'M16.5 13.5v3h-3', 'M10.5 16.5H7.5v-3'];
         if (tur === 'ok') {
             P('M7.5 12.4l2.8 2.8 6-6.4');
         } else if (tur === 'profil') {
-            CI('12', '10', '1.9'); P('M8.2 16c0-2.1 1.7-3.3 3.8-3.3s3.8 1.2 3.8 3.3');
+            CERCEVE.forEach(P); CI('12', '10.6', '1.25'); P('M9.6 15c0-1.5 1.1-2.4 2.4-2.4s2.4 .9 2.4 2.4');   // cerceve + kisi
         } else if (tur === 'ara') {
-            CI('11', '11', '2.6'); P('M13 13l2.7 2.7');
+            CERCEVE.forEach(P); CI('11.3', '11.3', '1.7'); P('M12.7 12.7l1.7 1.7');   // cerceve + arama
         } else {
-            ['M7.5 10.5V7.5h3', 'M13.5 7.5h3v3', 'M16.5 13.5v3h-3', 'M10.5 16.5H7.5v-3', 'M12 10v4', 'M10 12h4'].forEach(P);
+            CERCEVE.forEach(P); P('M12 10v4'); P('M10 12h4');   // cerceve + arti (ekle)
         }
         s.appendChild(g); return s;
     }
@@ -3962,17 +3964,30 @@
     }
     // Durum/açıklama tooltip'ini hover BEKLEMEDEN kısa süre göster (yakalama sonucu "Rapora eklendi ·
     // Panoda" vb. kullanıcıya görünür olsun). Mouseenter ile aynı konumlama (fixed; nav kabı kırpıyordu).
+    // Nav tooltip konumu (kullanici): GörüntüX BASLIGI/LOGOSU ALTINA + ASLA tweet'e tasmasin
+    // (sag kenar yesil butonun sagini = nav item sagi = tweet oncesini gecmez).
+    function _xNavTipKonum(el, tip) {
+        try {
+            if (!el || !tip) return;
+            var r = el.getBoundingClientRect();
+            var nav = el.closest ? el.closest('.x-gx-nav') : null;
+            var logo = nav ? nav.querySelector('.x-gx-nav-ico') : null;
+            var solAnchor = logo ? logo.getBoundingClientRect().left : r.left;   // GörüntüX LOGOSU/BASLIGI altı
+            // ASLA tweet'e tasmasin: GENISLIK logo'dan yesil buton-sagina (=nav item sagi, tweet oncesi)
+            // ile SINIRLI + gerekirse SAR (white-space:normal). Boylece sag kenar butonu gecemez.
+            tip.style.transform = 'none';
+            tip.style.whiteSpace = 'normal';
+            tip.style.maxWidth = Math.max(90, Math.round(r.right - solAnchor)) + 'px';
+            tip.style.left = Math.round(solAnchor) + 'px';
+            tip.style.top = Math.round(r.bottom + 8) + 'px';
+        } catch (e) {}
+    }
     function xNavTipGoster(el, sure) {
         try {
             if (!el) return;
             var tip = el.__tip; if (!tip) return;
-            var r = el.getBoundingClientRect();
-            // IKON ALTINDA (eskiden sagdaydi -> tweet icerigine binip kesiliyordu; "Panele Git" tooltip'i gibi).
-            tip.style.transform = 'none';
-            tip.style.left = Math.round(r.left) + 'px';
-            tip.style.top = Math.round(r.bottom + 8) + 'px';
+            _xNavTipKonum(el, tip);
             tip.style.opacity = '1';
-            try { var tr = tip.getBoundingClientRect(); if (tr.right > window.innerWidth - 8) tip.style.left = Math.max(8, Math.round(window.innerWidth - 8 - tr.width)) + 'px'; } catch (e2) {}
             clearTimeout(el.__tipT);
             el.__tipT = setTimeout(function () { try { tip.style.opacity = '0'; } catch (e) {} }, sure || 2600);
         } catch (e) {}
@@ -4107,7 +4122,7 @@
             .x-gx-nav-ekle:hover{ transform:scale(1.06); }
             /* !important: paylasilan .x-gx-ssbtn .x-gx-ssico{24px} (SONRA enjekte -> esit ozgulluk, sonraki kazanir)
                bunu eziyordu -> buton 24px/kucuk kaliyordu. 44px ile .c dairesi 40px = MAVI. Tum modlar. */
-            .x-gx-nav-ekle .x-gx-ssico{ width:44px !important; height:44px !important; }
+            .x-gx-nav-ekle .x-gx-ssico{ width:42px !important; height:42px !important; }   /* .c dis-kenar ~39px: MAVI 40px'e denk ama outline iri durdugundan 1px kucuk -> gorsel esit. */
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
@@ -4198,7 +4213,7 @@
             } catch (e) {}
             ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
             // Tooltip FIXED + <html>'de olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
-            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.transform = 'none'; tip.style.left = Math.round(r.left) + 'px'; tip.style.top = Math.round(r.bottom + 8) + 'px'; tip.style.opacity = '1'; try { var tr = tip.getBoundingClientRect(); if (tr.right > window.innerWidth - 8) tip.style.left = Math.max(8, Math.round(window.innerWidth - 8 - tr.width)) + 'px'; } catch (e3) {} } catch (e) {} });
+            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; _xNavTipKonum(ekle, tip); tip.style.opacity = '1'; } catch (e) {} });
             ekle.addEventListener('mouseleave', function () { try { var tip = ekle.__tip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
         }
         // MAVİ İKON TOOLTIP'i (documentElement'e, ikon ALTINDA): güncelleme uyarısı burada; etiket "GörüntüX" sabit.
