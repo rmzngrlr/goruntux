@@ -14147,9 +14147,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       if(varSec && _cz && _disaAktarAcik()){   // [DIŞA AKTAR] seçimi PNG (2×) / SVG (Illustrator/Canva) olarak indir — çıktı seçimin sınır-kutusu kadar (A4 değil)
         _sep(); var _DLSVG='<svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v9"/><path d="M6.5 8.5L10 12l3.5-3.5"/><path d="M4 15.5h12"/></svg>';
         var da=document.createElement('div'); da.className='ed-ck-disa';
-        var bP=document.createElement('button'); bP.type='button'; bP.title='Seçimi PNG olarak indir (2×, şeffaf)'; bP.innerHTML=_DLSVG+'<span>PNG indir</span>'; bP.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('png'); });
-        var bS=document.createElement('button'); bS.type='button'; bS.title='Seçimi SVG olarak indir (Illustrator / Canva düzenlenebilir)'; bS.innerHTML=_DLSVG+'<span>SVG indir</span>'; bS.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('svg'); });
-        var bPdf=document.createElement('button'); bPdf.type='button'; bPdf.title='Seçimi PDF olarak indir (vektörel, baskıya uygun; Illustrator/Canva/Office açar)'; bPdf.innerHTML=_DLSVG+'<span>PDF indir</span>'; bPdf.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('pdf'); });
+        var bP=document.createElement('button'); bP.type='button'; bP.title='Seçimi PNG olarak indir (2×, şeffaf)'; bP.innerHTML=_DLSVG+'<span>PNG</span>'; bP.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('png'); });
+        var bS=document.createElement('button'); bS.type='button'; bS.title='Seçimi SVG olarak indir (Illustrator / Canva düzenlenebilir)'; bS.innerHTML=_DLSVG+'<span>SVG</span>'; bS.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('svg'); });
+        var bPdf=document.createElement('button'); bPdf.type='button'; bPdf.title='Seçimi PDF olarak indir (vektörel, baskıya uygun; Illustrator/Canva/Office açar)'; bPdf.innerHTML=_DLSVG+'<span>PDF</span>'; bPdf.addEventListener('click', function(){ _ckCtxKapat(); _secimDisaAktar('pdf'); });
         da.appendChild(bP); da.appendChild(bS); da.appendChild(bPdf); m.appendChild(da);
       }
       ov.appendChild(m); _ckCtxEl=m;
