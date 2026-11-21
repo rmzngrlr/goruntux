@@ -706,7 +706,7 @@
                     #x-downloader-widget.scanning #w-buton { display: none; }
                     #x-downloader-widget .xdock-ring-track { fill: none; stroke: var(--w-border); stroke-width: 4; }
                     #x-downloader-widget .xdock-ring-fill { fill: none; stroke: #00ba7c; stroke-width: 4; stroke-linecap: round;
-                        transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .3s ease; }
+                        transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .2s linear; }
                     #x-downloader-widget .xdock-scan-txt { position: absolute; inset: 0; display: flex; align-items: center;
                         justify-content: center; font-size: 11px; font-weight: 700; color: var(--w-text); }
                     /* Halka hover fly-out'u: SEFFAF konteyner; icinde AYRI [durum karti] + [✕ iptal].
@@ -3161,11 +3161,38 @@
             window.__xGxTaramaAktif = true;
             window.__xGxTaraYapilan = yapilan || 0; window.__xGxTaraToplam = toplam || 0; if (msg) window.__xGxTaraMsg = msg;
             var w = document.getElementById('x-downloader-widget'); if (w) { w.classList.add('scanning'); w.classList.remove('xdock-dialog'); }
-            var ring = document.getElementById('w-scan-ring'); if (ring && toplam) { var C = 100.53, pct = Math.max(0, Math.min(100, Math.round((yapilan / toplam) * 100))); ring.setAttribute('stroke-dashoffset', String(C * (1 - pct / 100))); }
+            // [İLERLEMELİ HALKA] Halka BİR ANDA değil, YUMUŞAK creep ile dolar. Hedef kesri monoton (geri gitmez);
+            // creep interval hedefe + sonraki adım payına doğru sürekli ilerler -> adımlar ARASI bile dolum sürer.
+            if (toplam) {
+                var hedef = Math.max(0, Math.min(1, (yapilan || 0) / toplam));
+                if (window.__xGxRingHedef == null || hedef > window.__xGxRingHedef) window.__xGxRingHedef = hedef;
+                window.__xGxRingAdim = 1 / toplam;
+                xGxRingCreepBaslat();
+            }
             var txt = document.getElementById('w-scan-txt'); if (txt) txt.textContent = (yapilan || 0) + '/' + (toplam || 0);
             var m = document.getElementById('w-scan-msg'); if (m && msg) m.textContent = msg;
             try { xNavYansit(); } catch (e) {}   // nav'ı anında güncelle (observer'a güvenme)
         } catch (e) {}
+    }
+    // Halkayı hedefe doğru yumuşak+sürekli ilerleten döngü (profil taraması). Tarama bitince (scanning yok) durur+sıfırlar.
+    function xGxRingCreepBaslat() {
+        if (window.__xGxRingTick) return;
+        if (window.__xGxRingGoster == null) window.__xGxRingGoster = 0;
+        window.__xGxRingTick = setInterval(function () {
+            try {
+                var w = document.getElementById('x-downloader-widget');
+                if (!w || !w.classList.contains('scanning')) { clearInterval(window.__xGxRingTick); window.__xGxRingTick = null; window.__xGxRingHedef = null; window.__xGxRingGoster = null; return; }
+                var hedef = window.__xGxRingHedef || 0, adim = window.__xGxRingAdim || 0.05;
+                var ust = Math.min(0.985, hedef + adim * 0.8);   // sonraki adımın %80'ine kadar creep; gerçek ilerleme gelince ileri çekilir
+                var g = window.__xGxRingGoster || 0;
+                g += (ust - g) * 0.08 + 0.0015;                  // ease + küçük sabit creep -> asla durağan değil
+                if (g > ust) g = ust;
+                if (g < (window.__xGxRingGoster || 0)) g = window.__xGxRingGoster || 0;   // monoton (geri gitmez)
+                window.__xGxRingGoster = g;
+                var ring = document.getElementById('w-scan-ring');
+                if (ring) { var C = 100.53; ring.setAttribute('stroke-dashoffset', (C * (1 - g)).toFixed(2)); }
+            } catch (e) { try { clearInterval(window.__xGxRingTick); } catch (_) {} window.__xGxRingTick = null; }
+        }, 110);
     }
     // Tarama BİTİNCE dock göstergesini kapat + nav halkasını temizle (profil VE Rapor'matik ortak).
     function xGxTaramaGostergeKapat() {
@@ -4185,6 +4212,7 @@
         if (typeof _cap !== 'function') { xProfilMesajGoster(handle, '<div class="x-gx-info">Yakalama motoru hazır değil — sayfayı yenileyip (F5) tekrar deneyin.</div>'); return; }
         xProfilPopupKapat();   // onay popup'ını kapat -> ilerleme SAĞDAKİ DOCK'ta
         window.__xGxTaraIptal = false;
+        try { window.__xGxRingHedef = null; window.__xGxRingGoster = 0; if (window.__xGxRingTick) { clearInterval(window.__xGxRingTick); window.__xGxRingTick = null; } } catch (e) {}   // [İLERLEMELİ HALKA] taze başla
         try { var _cbtn = document.getElementById('w-scan-cancel'); if (_cbtn) { _cbtn.onclick = function (ev) { if (ev) ev.stopPropagation(); window.__xGxTaraIptal = true; var _mm = document.getElementById('w-scan-msg'); if (_mm) _mm.textContent = 'Durduruluyor…'; }; } } catch (e) {}
         var origin = '';
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r(x.server_origin || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
@@ -4203,8 +4231,9 @@
         };
         var targets = {}; sonuc.ogeler.forEach(function (o) { targets[o.id] = o; });
         var toplam = sonuc.ogeler.length, done = {}, tampon = {};
-        // 1) PROFİL KARTI (en üst)
-        xProfilDockIlerleme(0, toplam, 'Profil kartı…');
+        var toplamT = toplam + 1;   // [PROFİL KARTI SAYILSIN] profil kartı da bir adım -> toplam = N öğe + 1
+        // 1) PROFİL KARTI (en üst) — halkada SAYILAN ilk adım olarak görünür (0/T -> alınınca 1/T)
+        xProfilDockIlerleme(0, toplamT, 'Profil kartı alınıyor…');
         try {
             window.scrollTo(0, 0); await sleep(800);
             var pc = document.querySelector('[data-testid="primaryColumn"]');
@@ -4217,6 +4246,7 @@
                 if (pss && pss.length > 100) await addPool({ title: pb, link: 'https://x.com/' + handle, image: pss, is_profile: true, group_override: '' });
             }
         } catch (e) { printLog('[GX Tıkla] profil kartı hata: ' + (e && e.message)); }
+        xProfilDockIlerleme(1, toplamT, 'Profil kartı alındı');   // profil kartı = 1. adım tamam -> halka dolmaya başladı
         // 2) ÖĞELER: /all üstten -> hedef kart GÖVDESİNE tıkla -> detay -> yakala -> back
         window.scrollTo(0, 0); await sleep(700);
         var bosTur = 0, oncekiH = 0, guvenlik = 0, limit = toplam * 4 + 80;
@@ -4255,7 +4285,7 @@
                         await sleep(750);
                     }
                 } catch (e) { printLog('[GX Tıkla] kart ' + secId + ' hata: ' + (e && e.message)); try { if (/\/status\//.test(location.href)) { history.back(); await sleep(1200); } } catch (_) {} }
-                xProfilDockIlerleme(Object.keys(tampon).length, toplam, 'Yakalanıyor…');
+                xProfilDockIlerleme(1 + Object.keys(tampon).length, toplamT, 'Yakalanıyor…');   // +1 = profil kartı
             } else {
                 window.scrollBy(0, Math.round(window.innerHeight * 0.85)); await sleep(600);
                 var h = document.documentElement.scrollHeight;
@@ -4266,7 +4296,7 @@
         var liste = Object.keys(tampon).map(function (k) { return tampon[k]; }).sort(function (a, b) { return a.dateMs - b.dateMs; });
         var eklendi = 0, hata = 0;
         for (var L = 0; L < liste.length; L++) {
-            xProfilDockIlerleme(L + 1, liste.length, 'Rapora ekleniyor…');
+            xProfilDockIlerleme(1 + (L + 1), liste.length + 1, 'Rapora ekleniyor…');   // +1 = profil kartı (sayımda tutarlı)
             var it = liste[L];
             var rr = await addPool({ title: it.baslik, link: it.link, image: it.image, is_profile: false, group_override: it.groupOverride });
             if (rr && (rr.status === 'success' || rr.status === 'duplicate')) eklendi++; else hata++;
