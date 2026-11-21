@@ -3600,6 +3600,9 @@
                 var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xGxSsIkon('ekle'));
                 var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = _X_IG_TIP;
                 btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
+                // [GECICI TESHIS] tooltip "bos" sorunu: olusturma + hover anindaki gercek durum -> /teshis.
+                try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip CREATE] _X_IG_TIP.len=' + String(_X_IG_TIP || '').length + ' tipText=' + JSON.stringify(tip.textContent) + ' igStyle=' + !!document.getElementById('x-gx-ig-style') + ' ssStyle=' + !!document.getElementById('x-gx-ss-style') }); } catch (e) {}
+                (function (t, b) { b.addEventListener('mouseenter', function () { try { var cs = getComputedStyle(t); var r = t.getBoundingClientRect(); chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip HOVER] text=' + JSON.stringify(t.textContent) + ' color=' + cs.color + ' opacity=' + cs.opacity + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) }); } catch (e) {} }); })(tip, btn);
                 (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
                 cell.insertBefore(btn, cell.firstChild);
             }

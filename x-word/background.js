@@ -1107,6 +1107,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // (registerPanel'den gelen) DOGRU istemcinin havuzuna duser. dedup=true -> ayni link
   // zaten varsa sunucu "duplicate" doner. (Eski generateSingleWord + generate_single yolu
   // ZATEN 410 ile emekliydi; kullanici karariyla buton havuza-ekleme oldu.)
+  // [GECICI TESHIS] Widget (IG/X/YT sekmesi) cross-origin -> /api/teshis/log'a dogrudan POST
+  // edemez (CORS). Widget bu mesaji yollar, background TESHIS ucuna iletir -> /teshis'te gorunur.
+  if (message.action === "gxTeshis") {
+    try {
+      chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+        const origin = res.server_origin || "https://goruntux.rgmedya.tr";
+        if (isValidOrigin(origin)) {
+          fetch(`${origin}/api/teshis/log`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ msg: String(message.msg || ''), lvl: message.lvl || 'op' })
+          }).catch(() => {});
+        }
+      });
+    } catch (e) {}
+    try { sendResponse({ ok: true }); } catch (e) {}
+    return true;
+  }
+
   if (message.action === "addToPool") {
     let origin = message.origin || "https://goruntux.rgmedya.tr";
     let url = `${origin}/api/manual/add`;
