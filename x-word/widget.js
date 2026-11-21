@@ -3826,7 +3826,13 @@
             '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
             '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
             '   transition:opacity .12s ease, transform .12s ease; }',
-            '.x-gx-fb-btn:hover .x-gx-fb-tip{ opacity:1; transform:translateY(0); }'
+            '.x-gx-fb-btn:hover .x-gx-fb-tip{ opacity:1; transform:translateY(0); }',
+            // REEL: sag dikey aksiyon kolonundaki (Begen/Yorum/Paylas/⋯) 48px native butonlara uy.
+            // Buton Begen'in USTUNE (kolon ilk cocuk) eklenir; tooltip SOLA acilir (sag kenarda, altta Begen'i orter).
+            '.x-gx-fb-btn.x-gx-fb-reel{ width:48px; height:48px; margin:0 0 2px 0; }',
+            '.x-gx-fb-btn.x-gx-fb-reel .x-gx-ssico{ width:42px !important; height:42px !important; }',
+            '.x-gx-fb-btn.x-gx-fb-reel .x-gx-fb-tip{ top:50%; bottom:auto; right:calc(100% + 10px); left:auto; transform:translate(4px,-50%); }',
+            '.x-gx-fb-btn.x-gx-fb-reel:hover .x-gx-fb-tip{ transform:translate(0,-50%); }'
         ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
@@ -3989,6 +3995,7 @@
                 (function (b, anchor) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xFbButonTikla(b, anchor); }); })(btn, btns[i]);
                 nokta.header.insertBefore(btn, nokta.before);
             }
+            try { _xFbReelButonKur(); } catch (e) {}   // REEL sayfasi: sag aksiyon kolonuna buton
         } catch (e) {}
     }
     // Tik: tiklanan ⋯'in gönderi kartini coz -> __xFbHedefPost -> xFbIdleYakala -> pano -> addToPool.
@@ -4026,6 +4033,90 @@
         try {
             chrome.runtime.sendMessage({
                 action: 'addToPool', origin: origin, title: _fbRes.author || yazarAria || 'Facebook Gönderisi', link: link, image: _fbRes.shot, is_profile: false, group_override: ''
+            }, function (addRes) {
+                if (addRes && addRes.status === 'success') { _xFbDurumBitir(btn, 'ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 1800, 'ok'); }
+                else if (addRes && addRes.status === 'duplicate') { _xFbDurumBitir(btn, 'warn', 'Zaten havuzda', 2000); }
+                else { _xFbDurumBitir(btn, 'warn', 'Eklenemedi' + (addRes && addRes.message ? (': ' + addRes.message) : ''), 3000); }
+            });
+        } catch (e) {
+            if (pano) { try { pano.iptal(); } catch (x) {} }
+            _xFbDurumBitir(btn, 'warn', 'Bağlantı koptu — F5 yapın', 3200);
+        }
+    }
+    // ============================================================================
+    // [FB REEL BUTON] facebook.com/reel/{id} sayfasinin sag dikey aksiyon kolonuna
+    // (Begen/Yorum/Paylas/⋯) GoruntuX butonu enjekte et. Reel ⋯ aria'si "Diğer seçenekler"
+    // (feed'deki "gönderisi için eylemler" DEGIL) -> _xFbEylemBtnlar MATCH ETMEZ -> ayri yol.
+    // Yakalama Dock ile BIREBIR: xFbIdleYakala reel modu (URL /reel/ -> _isReel), __xFbHedefPost
+    // SET EDILMEZ (reel sayfasinda tek reel -> fbFindPost kendi reel tespitini yapar). Link = sayfa
+    // permalink'i (/reel/{id}), baslik = reel yazari (fbAuthor reel dali -> "Sahibin Profilini Gör").
+    // ============================================================================
+    function _xFbReelStackBul() {
+        try {
+            // Reel ⋯ ("Diğer seçenekler"): sag yarida, gorunur. (More options = EN yedegi.)
+            var ell = null;
+            var cand = document.querySelectorAll('[aria-label*="Diğer seçenekler" i], [aria-label*="More options" i]');
+            for (var i = 0; i < cand.length; i++) {
+                var r = cand[i].getBoundingClientRect();
+                if (r.width >= 20 && r.height >= 20 && r.left > window.innerWidth * 0.55 && r.top > 0 && r.top < window.innerHeight) { ell = cand[i]; break; }
+            }
+            if (!ell) return null;
+            // ⋯'ten tirman: ilk >=3-cocuklu, dar (<=90px) + uzun (>120px) DIKEY-KOLON ata = aksiyon yigini.
+            var n = ell, g = 0;
+            while (n && g < 9) {
+                try {
+                    var cs = getComputedStyle(n), rr = n.getBoundingClientRect();
+                    if (n.children.length >= 3 && cs.display === 'flex' && cs.flexDirection === 'column' && rr.width <= 90 && rr.height > 120) return n;
+                } catch (x) {}
+                n = n.parentElement; g++;
+            }
+        } catch (e) {}
+        return null;
+    }
+    function _xFbReelButonKur() {
+        try {
+            if (xPlatform() !== 'fb') return;
+            if (location.pathname.indexOf('/reel/') !== 0) return;   // YALNIZ reel sayfasi
+            if (window.__xGxCaptureAktif) return;
+            xGxFbStilEkle();
+            var stack = _xFbReelStackBul();
+            if (!stack) return;
+            if (stack.querySelector('.x-gx-fb-reel')) return;        // zaten var
+            var btn = document.createElement('div');
+            btn.className = 'x-gx-fb-btn x-gx-fb-reel x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
+            btn.setAttribute('aria-label', "Reel'i GörüntüX Raporu'na ekle");
+            var ic = document.createElement('span'); ic.className = 'x-gx-fb-ic'; ic.appendChild(_xGxSsIkon('ekle'));
+            var tip = document.createElement('span'); tip.className = 'x-gx-fb-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal
+            btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
+            btn.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xFbReelButonTikla(btn); });
+            stack.insertBefore(btn, stack.firstChild);               // Begen'in USTUNE (kolon ilk cocuk)
+        } catch (e) {}
+    }
+    // Tik: reel modu yakalama (Dock ile ayni) -> pano -> addToPool. __xFbHedefPost SET ETME.
+    async function xFbReelButonTikla(btn) {
+        if (!btn || btn.__busy) return;
+        btn.__busy = true;
+        _xFbDurum(btn, null, 'Yakalanıyor…', 'ekle');
+        var link = ''; try { link = (location.href || '').split('#')[0].split('?')[0]; } catch (e) { link = location.href || ''; }
+        if (!link) link = 'https://www.facebook.com' + location.pathname;
+        var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
+        var origin = 'https://goruntux.rgmedya.tr';
+        try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        var _fbRes = null;
+        try {
+            window.__xGxCaptureAktif = true;
+            window.__xFbHedefPost = null;   // reel: fbFindPost KENDI reel tespiti (tek reel; Dock gibi)
+            try { _fbRes = await xFbIdleYakala(); }
+            finally { window.__xFbHedefPost = null; window.__xGxCaptureAktif = false; }
+        } catch (e) { printLog('FB reel yakalama hatasi: ' + ((e && e.message) || e)); }
+        if (!_fbRes || !_fbRes.shot || _fbRes.shot.length < 100) {
+            if (pano) { try { pano.iptal(); } catch (e) {} }
+            _xFbDurumBitir(btn, 'warn', 'Yakalanamadı — tekrar deneyin', 2600); return;
+        }
+        var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(_fbRes.shot); } catch (e) {} }
+        try {
+            chrome.runtime.sendMessage({
+                action: 'addToPool', origin: origin, title: _fbRes.author || 'Facebook Reel', link: link, image: _fbRes.shot, is_profile: false, group_override: ''
             }, function (addRes) {
                 if (addRes && addRes.status === 'success') { _xFbDurumBitir(btn, 'ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 1800, 'ok'); }
                 else if (addRes && addRes.status === 'duplicate') { _xFbDurumBitir(btn, 'warn', 'Zaten havuzda', 2000); }
