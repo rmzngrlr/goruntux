@@ -3314,7 +3314,7 @@
             '.x-gx-yt-btn:hover{ transform:scale(1.06); }',
             '.x-gx-yt-btn:disabled{ cursor:default; opacity:.92; }',
             '.x-gx-yt-btn.x-gx-gizli{ display:none !important; }',
-            '.x-gx-yt-btn .x-gx-ssico{ width:30px; height:30px; }',
+            '.x-gx-yt-btn .x-gx-ssico{ width:44px; height:44px; }',   /* .c dairesi 40px = YouTube Paylas butonu (40x40) ile AYNI boyut */
             '.x-gx-yt-btn .x-gx-yt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-yt-btn .x-gx-yt-ic svg{ display:block; }',
             // ⚠ Tooltip KOKE tasindi (ytd-menu-renderer overflow:hidden KIRPIYORDU) -> standalone
