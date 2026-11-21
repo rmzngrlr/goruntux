@@ -3608,8 +3608,6 @@
                 var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xGxSsIkon('ekle'));
                 var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal: _X_IG_TIP var'i xIgButonKur ANINDA henuz undefined olabiliyordu (timing) -> tooltip bos geliyordu
                 btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
-                // [GECICI TESHIS] tooltip "bos" sorunu: olusturma + hover anindaki gercek durum -> /teshis.
-                try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip CREATE] tipText=' + JSON.stringify(tip.textContent) + ' (_X_IG_TIP.len=' + String(_X_IG_TIP || '').length + ' timing-kaniti)' }); } catch (e) {}
                 (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
                 cell.insertBefore(btn, cell.firstChild);
             }
