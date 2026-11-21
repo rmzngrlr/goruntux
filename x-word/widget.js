@@ -969,6 +969,8 @@
             // [FACEBOOK SS] Her gönderi kartinin basligindaki ⋯/X butonlarinin SOLUNA yesil "+" GoruntuX butonu
             // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
             try { xFbButonInit(); } catch (e) {}
+            // [X PROFİL GERİ-DÖNÜŞ SCROLL KORUMA] Tweet aç->geri dön OTOMATIK aşağı-kaymasını ez (bayrak x_scroll_koru).
+            try { xGxScrollKoru(); } catch (e) {}
             // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön kaymasini /teshis'e logla (yalniz x.com). KALDIRILACAK.
             try { xGxScrollTeshis(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
@@ -4386,6 +4388,49 @@
     // kaydi verir -> kaymanin ne zaman/ne kadar/hangi docH degisimiyle oldugunu gorup kokunu buluruz.
     // Yalniz x.com/twitter.com. SORUN TESHIS EDILINCE TAMAMEN KALDIRILIR.
     // ============================================================================
+    // ============================================================================
+    // [X PROFİL GERİ-DÖNÜŞ SCROLL KORUMA] Teşhis (log f04adee/9.1) kesinleştirdi: X profile DOGRU geri
+    // yukluyor (ustteki tweet @dogru konum), SONRA tweet'ler yuklendikce (twN 4->14) OTOMATIK bir asagi-
+    // kayma (~378px) olup kullaniciyi birakti tweet'in ALTINA tasiyor (eklenti yokken YOK). Cozum: profil
+    // scroll'unda ustteki tweet'i ANCHOR (id+ekran-ofseti) sakla; geri donuste o tweet'i eski konumuna
+    // ~2sn boyunca sik sik (100ms) geri getir -> surukleyen kaymayi aninda ez. Yalniz x.com; bayrak
+    // x_scroll_koru='0' -> kapat. (Kok-neden X<->eklenti etkilesimi; bu dogrudan+saglam telafi.)
+    // ============================================================================
+    function xGxScrollKoru() {
+        try {
+            if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(location.hostname)) return;
+            try { if (localStorage.getItem('x_scroll_koru') === '0') return; } catch (e) {}
+            if (window.__xGxScrollKoruKuruldu) return; window.__xGxScrollKoruKuruldu = true;
+            var _anchor = null, _st = null;
+            var ustTweet = function () {
+                try {
+                    var arts = document.querySelectorAll('article[data-testid="tweet"]'), b = null, bt = 99999;
+                    for (var i = 0; i < arts.length; i++) { var r = arts[i].getBoundingClientRect(); if (r.top > -80 && r.top < bt && r.height > 20) { bt = r.top; b = arts[i]; } }
+                    if (!b) return null; var id = b.getAttribute('data-tweet-id'); if (!id) return null;
+                    return { id: id, off: Math.round(b.getBoundingClientRect().top) };
+                } catch (e) { return null; }
+            };
+            window.addEventListener('scroll', function () {
+                try { if (/\/status\/\d+/.test(location.href)) return; clearTimeout(_st); _st = setTimeout(function () { var a = ustTweet(); if (a) _anchor = a; }, 120); } catch (e) {}
+            }, { passive: true });
+            window.addEventListener('popstate', function () {
+                try {
+                    if (!_anchor || /\/status\/\d+/.test(location.href)) return;
+                    var hedef = _anchor, n = 0;
+                    var duzelt = function () {
+                        try {
+                            n++;
+                            var art = null, arts = document.querySelectorAll('article[data-testid="tweet"]');
+                            for (var i = 0; i < arts.length; i++) { if (arts[i].getAttribute('data-tweet-id') === hedef.id) { art = arts[i]; break; } }
+                            if (art) { var diff = Math.round(art.getBoundingClientRect().top) - hedef.off; if (Math.abs(diff) > 24) { try { window.scrollBy(0, diff); } catch (e) {} } }
+                        } catch (e) {}
+                        if (n < 20) setTimeout(duzelt, 100);
+                    };
+                    setTimeout(duzelt, 120);
+                } catch (e) {}
+            }, { passive: true });
+        } catch (e) {}
+    }
     function xGxScrollTeshis() {
         try {
             if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(location.hostname)) return;
