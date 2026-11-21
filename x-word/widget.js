@@ -3377,8 +3377,14 @@
         s.setAttribute('class', 'x-gx-ssico'); s.setAttribute('viewBox', '0 0 24 24');
         var c = document.createElementNS(NS, 'circle');
         c.setAttribute('class', 'c'); c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '11');
+        // INLINE FALLBACK: paylasilan CSS (x-gx-ss-style) gec/eksik olsa bile SVG varsayilani fill:black
+        // -> SIYAH DAIRE/"bos" olurdu. Inline fill/stroke ile base DAIMA yesil outline render olur;
+        // CSS (varsa) presentation-attribute'u ezer -> hover/durum yine calisir.
+        c.setAttribute('fill', 'none'); c.setAttribute('stroke', '#00ba7c'); c.setAttribute('stroke-width', '1.6');
         s.appendChild(c);
         var g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'in');
+        g.setAttribute('fill', 'none'); g.setAttribute('stroke', '#00ba7c'); g.setAttribute('stroke-width', '1.7');
+        g.setAttribute('stroke-linecap', 'round'); g.setAttribute('stroke-linejoin', 'round');
         function P(d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); }
         function CI(cx, cy, r) { var e = document.createElementNS(NS, 'circle'); e.setAttribute('cx', cx); e.setAttribute('cy', cy); e.setAttribute('r', r); g.appendChild(e); }
         // Daire ORTAK kap (.c). Ic (.in) moda gore: ekle=cerceve+arti (IG/YT ile AYNI),
@@ -3705,6 +3711,7 @@
     function xNavEkleIkonKur(el, mod) {
         try {
             if (!el) return;
+            try { xGxSsStilEkle(); } catch (e) {}   // paylasilan nested-ikon CSS (hover/durum) X'te de enjekte olsun
             el.classList.remove('x-gx-ok', 'x-gx-warn');
             var ic = el.querySelector('.x-gx-tw-ic');
             // IKON = ortak nested tasarim (IG/YT ile AYNI): yesil outline daire + mod ici
