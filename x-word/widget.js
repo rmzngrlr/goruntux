@@ -188,6 +188,12 @@
     // oldugu icin kartin rect'ini GENISLETMIYOR; ata dogru olsa bile kadraj kesiyor).
     function fbFindPost(outEng) {
         try {
+            // [FB BUTON — HEDEF KART] Tiklanan gönderi butonu kartini set ettiyse onu dondur
+            // (home feed'de en-buyuk-medya yerine TIKLANAN kart yakalansin; tum ic cagrilar tutarli).
+            if (window.__xFbHedefPost && document.contains(window.__xFbHedefPost)) {
+                var _hr = window.__xFbHedefPost.getBoundingClientRect();
+                if (_hr.height > 100) return window.__xFbHedefPost;
+            }
             // 1) KAP: en icteki GORUNUR dialog (varsa) — /posts. Yoksa belge geneli — /reel.
             //
             // SAHA HATASI (2026-07-20, kullanici teshis ciktisi): Facebook BILDIRIMLER
@@ -938,6 +944,9 @@
             try { xYtButonInit(); } catch (e) {}
             // [INSTAGRAM SS] Her gönderinin Kaydet butonunun soluna yesil "+" GoruntuX butonu (yalniz ig'de aktif).
             try { xIgButonInit(); } catch (e) {}
+            // [FACEBOOK SS] Her gönderi kartinin basligindaki ⋯/X butonlarinin SOLUNA yesil "+" GoruntuX butonu
+            // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
+            try { xFbButonInit(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -2119,6 +2128,8 @@
                     await new Promise(function (r) { setTimeout(r, 300); });
                     [document.getElementById('x-downloader-widget'), document.getElementById('w-cb-container')]
                         .forEach(function (el) { if (el) { _fbGorunur.push([el, el.style.visibility]); el.style.visibility = 'hidden'; } });
+                    // [FB PER-POST BUTON] Kart basligindaki yesil GoruntuX butonumuz (kart icinde) SS'e GIRMESIN.
+                    try { document.querySelectorAll('.x-gx-fb-btn').forEach(function (b) { _fbGorunur.push([b, b.style.visibility]); b.style.setProperty('visibility', 'hidden', 'important'); }); } catch (e) {}
                     await new Promise(function (r) { setTimeout(r, 120); });
                     var _mode = _isReel ? 'reel' : 'posts';
                     var sc = fbScroller(card);
@@ -3680,6 +3691,172 @@
         try { xGxIgStilEkle(); } catch (e) {}
         try { xIgButonKur(); } catch (e) {}
         setInterval(function () { try { xIgButonKur(); } catch (e) {} }, 700);
+    }
+
+    // ============================================================================
+    // [FACEBOOK SS] Her gönderi kartinin basliginda, sagdaki ⋯ (ve varsa X kapat) butonlarinin
+    // SOLUNA yesil "+" GoruntuX butonu -> anasayfa feed'inde de kart SS'i alinabilir. Tiklayinca
+    // __xFbHedefPost = tiklanan kart -> fbFindPost guard'i onu doner -> xFbIdleYakala DOGRU karti
+    // yakalar (en-buyuk-medya degil). LINK: FB header'inda temiz permalink <a> YOK (zaman-damgasi
+    // JS-gezinme) -> icerik-hash SENTETIK link (xmanual://fb-<hash>) -> dedup + gorsel anahtari eslesir
+    // (sunucu normalize_link_key default dali, kirpma yok). SS'te butonumuz xFbIdleYakala'da
+    // .x-gx-fb-btn visibility:hidden ile gizlenir (kart icinde oldugundan).
+    // ============================================================================
+    function xGxFbStilEkle() {
+        xGxSsStilEkle();   // ortak ic-ice daire+kare+arti ikon + hover/durum
+        if (document.getElementById('x-gx-fb-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-fb-style';
+        // ⋯/X butonlari ile AYNI 36x36 kutu; arka plan seffaf (yesil daire ikonun parcasi).
+        s.textContent = [
+            '.x-gx-fb-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center;',
+            '   justify-content:center; width:36px; height:36px; padding:0; margin:0; border:none; background:transparent;',
+            '   cursor:pointer; opacity:1; flex:0 0 auto; vertical-align:middle;',
+            '   -webkit-appearance:none; appearance:none; transition:transform .12s ease; }',
+            '.x-gx-fb-btn:hover{ transform:scale(1.06); }',
+            '.x-gx-fb-btn.x-gx-gizli{ display:none !important; }',
+            '.x-gx-fb-btn .x-gx-ssico{ width:38px !important; height:38px !important; }',   // daire ~34px = ⋯/X hover dairesine yakin
+            '.x-gx-fb-btn .x-gx-fb-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
+            '.x-gx-fb-btn .x-gx-fb-ic svg{ display:block; overflow:visible; }',
+            // Sagdaki buton grubunun solunda -> tooltip SAGA yaslanirsa viewport sagindan tasabilir; SOLA ac.
+            '.x-gx-fb-btn .x-gx-fb-tip{ position:absolute; bottom:calc(100% + 8px); right:0; left:auto;',
+            '   transform:translateY(4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
+            '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
+            '   transition:opacity .12s ease, transform .12s ease; }',
+            '.x-gx-fb-btn:hover .x-gx-fb-tip{ opacity:1; transform:translateY(0); }'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+    // Icerik-hash (djb2) -> SENTETIK link (FB header'inda temiz permalink <a> yok).
+    function _xFbHash(str) {
+        var h = 5381; str = String(str || '');
+        for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; }
+        return (h >>> 0).toString(36);
+    }
+    // Kartin gorunur metninden DETERMINISTIK sentetik link (dedup + gorsel anahtari icin BENZERSIZ).
+    function _xFbLink(card) {
+        var t = '';
+        try { t = (card.innerText || card.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 240); } catch (e) {}
+        if (!t) { try { t = location.pathname + '|' + Math.round(card.getBoundingClientRect().top); } catch (e) { t = location.pathname || 'fb'; } }
+        return 'xmanual://fb-' + _xFbHash(t);
+    }
+    function _xFbDurum(btn, renk, mesaj, ikonTur) {
+        try {
+            btn.classList.remove('x-gx-ok', 'x-gx-warn');
+            if (renk === 'ok') btn.classList.add('x-gx-ok');
+            else if (renk === 'warn') btn.classList.add('x-gx-warn');
+            var ic = btn.querySelector('.x-gx-fb-ic');
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(ikonTur || 'ekle')); }
+            if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
+        } catch (e) {}
+    }
+    function _xFbDurumBitir(btn, renk, mesaj, sure, ikonTur) {
+        _xFbDurum(btn, renk, mesaj, ikonTur || 'ekle');
+        setTimeout(function () { btn.__busy = false; _xFbDurum(btn, null, "GörüntüX Raporu'na ekle", 'ekle'); }, sure || 1800);
+    }
+    // ⋯ (gönderi eylemleri) butonunun 36x36 sarmalayicisini + onun basligini (dogrudan ebeveyn
+    // flex satir) bul. Climb: n KUCUK (<80px) + ebeveyni GENIS (>260px, baslik satiri) -> {header, before}.
+    function _xFbEkleNoktasi(eylemBtn) {
+        try {
+            var n = eylemBtn, guard = 0;
+            while (n && n.parentElement && guard < 10) {
+                var nr = n.getBoundingClientRect(), pr = n.parentElement.getBoundingClientRect();
+                if (pr.width > 260 && nr.width > 0 && nr.width < 80) return { header: n.parentElement, before: n };
+                n = n.parentElement; guard++;
+            }
+        } catch (e) {}
+        return null;
+    }
+    // GORUNUR ⋯ (gönderi icin eylemler) butonlari (gizli 0x0 ikizleri ele).
+    function _xFbEylemBtnlar() {
+        var sel = '[aria-label*="gönderisi için eylemler" i], [aria-label*="actions for this post" i], [aria-label*="options for this post" i]';
+        var out = [];
+        try {
+            document.querySelectorAll(sel).forEach(function (el) {
+                try { var r = el.getBoundingClientRect(); if (r.width >= 16 && r.height >= 16) out.push(el); } catch (e) {}
+            });
+        } catch (e) {}
+        return out;
+    }
+    // ⋯ butonundan gönderi KARTINI tirman: begen/yorum/paylas ortak atasi olan yeterince buyuk kap.
+    function _xFbKartBul(eylemBtn) {
+        try {
+            var n = eylemBtn, guard = 0;
+            while (n && guard < 28) {
+                var r = n.getBoundingClientRect();
+                if (r.height > 240 && r.width > 300 && n.querySelector(FB_ENG_SEL)) return n;
+                n = n.parentElement; guard++;
+            }
+        } catch (e) {}
+        try {   // Fallback: eylem butonunun yeterince buyuk en yakin atasi
+            var m = eylemBtn, g2 = 0;
+            while (m && g2 < 28) { var rr = m.getBoundingClientRect(); if (rr.height > 300 && rr.width > 300) return m; m = m.parentElement; g2++; }
+        } catch (e) {}
+        return null;
+    }
+    function xFbButonKur() {
+        try {
+            if (xPlatform() !== 'fb') return;
+            if (window.__xGxCaptureAktif) return;   // yakalama sirasinda DOM'a dokunma
+            xGxFbStilEkle();
+            var btns = _xFbEylemBtnlar();
+            for (var i = 0; i < btns.length; i++) {
+                var nokta = _xFbEkleNoktasi(btns[i]);
+                if (!nokta) continue;
+                if (nokta.header.querySelector('.x-gx-fb-btn')) continue;   // bu baslikta zaten var
+                var btn = document.createElement('div');
+                btn.className = 'x-gx-fb-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
+                btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
+                var ic = document.createElement('span'); ic.className = 'x-gx-fb-ic'; ic.appendChild(_xGxSsIkon('ekle'));
+                var tip = document.createElement('span'); tip.className = 'x-gx-fb-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal (var timing BOS verebilir)
+                btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
+                (function (b, anchor) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xFbButonTikla(b, anchor); }); })(btn, btns[i]);
+                nokta.header.insertBefore(btn, nokta.before);
+            }
+        } catch (e) {}
+    }
+    // Tik: tiklanan ⋯'in gönderi kartini coz -> __xFbHedefPost -> xFbIdleYakala -> pano -> addToPool.
+    async function xFbButonTikla(btn, eylemBtn) {
+        if (!btn || btn.__busy) return;
+        btn.__busy = true;
+        _xFbDurum(btn, null, 'Yakalanıyor…', 'ekle');
+        var card = null; try { card = _xFbKartBul(eylemBtn); } catch (e) {}
+        if (!card) { _xFbDurumBitir(btn, 'warn', 'Kart bulunamadı — tekrar deneyin', 2600); return; }
+        var link = _xFbLink(card);
+        var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
+        var origin = 'https://goruntux.rgmedya.tr';
+        try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        var _fbRes = null;
+        try {
+            window.__xGxCaptureAktif = true;   // tum pollerlari duraklat (hassas scroll/stitch sirasinda DOM'a dokunulmasin)
+            window.__xFbHedefPost = card;      // fbFindPost guard'i -> tum ic kadraj/gizleme hedef karta kilitlenir
+            try { _fbRes = await xFbIdleYakala(); }
+            finally { window.__xFbHedefPost = null; window.__xGxCaptureAktif = false; }
+        } catch (e) { printLog('FB buton yakalama hatasi: ' + ((e && e.message) || e)); }
+        if (!_fbRes || !_fbRes.shot || _fbRes.shot.length < 100) {
+            if (pano) { try { pano.iptal(); } catch (e) {} }
+            _xFbDurumBitir(btn, 'warn', 'Yakalanamadı — tekrar deneyin', 2600); return;
+        }
+        var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(_fbRes.shot); } catch (e) {} }
+        try {
+            chrome.runtime.sendMessage({
+                action: 'addToPool', origin: origin, title: _fbRes.author || 'Facebook Gönderisi', link: link, image: _fbRes.shot, is_profile: false, group_override: ''
+            }, function (addRes) {
+                if (addRes && addRes.status === 'success') { _xFbDurumBitir(btn, 'ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 1800, 'ok'); }
+                else if (addRes && addRes.status === 'duplicate') { _xFbDurumBitir(btn, 'warn', 'Zaten havuzda', 2000); }
+                else { _xFbDurumBitir(btn, 'warn', 'Eklenemedi' + (addRes && addRes.message ? (': ' + addRes.message) : ''), 3000); }
+            });
+        } catch (e) {
+            if (pano) { try { pano.iptal(); } catch (x) {} }
+            _xFbDurumBitir(btn, 'warn', 'Bağlantı koptu — F5 yapın', 3200);
+        }
+    }
+    // Baslangic: yalniz Facebook'ta; stil + hemen dene + poller (SPA + feed'de yeni kartlar kaydikca).
+    function xFbButonInit() {
+        if (xPlatform() !== 'fb') return;
+        try { xGxFbStilEkle(); } catch (e) {}
+        try { xFbButonKur(); } catch (e) {}
+        setInterval(function () { try { xFbButonKur(); } catch (e) {} }, 700);
     }
 
     // AÇIK (odaklı) tweet'i bul = URL'deki /status/<id> ile KENDİ zaman-damgası (permalink) linki eşleşen
