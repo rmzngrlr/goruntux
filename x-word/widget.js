@@ -3117,6 +3117,7 @@
             #x-gx-card .x-gx-ekstra{ display:none; }
             #x-gx-card .x-gx-ekstra.acik{ display:block; animation:xgxgecis .2s ease; }
             #x-gx-card .x-gx-ekstra input{ margin-top:7px; }
+            #x-gx-card .x-gx-ekstra label{ margin-top:12px; }   /* ekstra içine taşınan Dil etiketi (akor-b doğrudan-çocuk kuralı artık uygulanmaz) */
             #x-gx-card .x-gx-ikili{ display:flex; gap:8px; align-items:flex-start; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
             #x-gx-card .x-gx-uclu{ display:flex; gap:7px; margin-top:6px; align-items:flex-start; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
             /* Min satırı etiketleri TEK SATIR (2 satıra kayıp inputları yamultmasın) + label alt boşluğu eşit. */
@@ -4396,8 +4397,7 @@
                 + '<input id="ara-tam" placeholder="Tam olarak bu ifade" style="margin-top:7px">'
                 + '<input id="ara-herhangi" placeholder="Herhangi biri (a b c)" style="margin-top:7px">'
                 + '<button type="button" class="x-gx-dahafazla" id="x-gx-kelime-toggle"><span class="t">+ Daha fazla seçenek</span></button>'
-                + '<div class="x-gx-ekstra" id="x-gx-kelime-ekstra"><input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)"><input id="ara-etiket" placeholder="Etiketler (#konu)"></div>'
-                + '<label>Dil</label><select id="ara-dil">' + dilOpt + '</select>')
+                + '<div class="x-gx-ekstra" id="x-gx-kelime-ekstra"><input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)"><input id="ara-etiket" placeholder="Etiketler (#konu)"><label>Dil</label><select id="ara-dil">' + dilOpt + '</select></div>')
             + akor('Tarihler', true,
                 '<div class="x-gx-ikili"><div><label>Kaçtan</label><input type="date" id="ara-since"></div><div><label>Kaça</label><input type="date" id="ara-until"></div></div>')
             + akor('Hesaplar', false,
@@ -4438,7 +4438,7 @@
                 };
                 _ktog.onclick = function () { _ekUygula(!_keks.classList.contains('acik'), true); };
                 var _kayitAcik = false; try { _kayitAcik = localStorage.getItem('x_ara_dahafazla') === '1'; } catch (e) {}
-                var _dolu = false; try { _dolu = !!(((card.querySelector('#ara-hicbiri') || {}).value) || ((card.querySelector('#ara-etiket') || {}).value)); } catch (e) {}
+                var _dolu = false; try { _dolu = !!(((card.querySelector('#ara-hicbiri') || {}).value) || ((card.querySelector('#ara-etiket') || {}).value) || ((card.querySelector('#ara-dil') || {}).value)); } catch (e) {}
                 _ekUygula(_kayitAcik || _dolu, false);
             }
         } catch (e) {}
