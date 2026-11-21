@@ -3972,6 +3972,14 @@
         _xFbDurum(btn, null, 'Yakalanıyor…', 'ekle');
         var card = null; try { card = _xFbKartBul(eylemBtn); } catch (e) {}
         if (!card) { _xFbDurumBitir(btn, 'warn', 'Kart bulunamadı — tekrar deneyin', 2600); return; }
+        // [POST SAYFASI MODAL] Link'le acilan FB post MODAL'da acilir; MODAL'in ICINDE gercek (descendant)
+        // scroller var -> fbFindPost dialog-tespiti kap=MODAL verince scIc=true ve scroll-stitch CALISIR.
+        // Ama __xFbHedefPost = IC kart verirsek fbScroller ANCESTOR scroller bulur -> scIc=card.contains(sc)=FALSE
+        // -> window-scroll yolu (modali kaydirmaz) -> kart KESIK kalir (kullanici: link'le acilan postta scroll
+        // sorunu suruyor). Cozum: ⋯ GORUNUR bir modal/dialog icindeyse __xFbHedefPost BIRAKMA (null) -> fbFindPost
+        // KENDI modal yolunu kullansin (kap=modal, scIc=true). Feed'de modal YOK -> kart (window-scroll-stitch).
+        var _modalIci = false;
+        try { var _md = eylemBtn && eylemBtn.closest('[aria-modal="true"], [role="dialog"]'); if (_md) { var _mr = _md.getBoundingClientRect(); _modalIci = (_mr.width > 100 && _mr.height > 100); } } catch (e) {}
         var yazarAria = _xFbYazarAria(eylemBtn);   // ANASAYFADA fbAuthor BOS doner -> ⋯ aria'dan yazar
         var link = _xFbPostLink(card, eylemBtn, yazarAria);
         var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
@@ -3980,7 +3988,7 @@
         var _fbRes = null;
         try {
             window.__xGxCaptureAktif = true;   // tum pollerlari duraklat (hassas scroll/stitch sirasinda DOM'a dokunulmasin)
-            window.__xFbHedefPost = card;      // fbFindPost guard'i -> tum ic kadraj/gizleme hedef karta kilitlenir
+            window.__xFbHedefPost = _modalIci ? null : card;   // MODAL -> null (fbFindPost kap=modal, scIc scroll-stitch); feed -> kart (window-scroll)
             try { _fbRes = await xFbIdleYakala(); }
             finally { window.__xFbHedefPost = null; window.__xGxCaptureAktif = false; }
         } catch (e) { printLog('FB buton yakalama hatasi: ' + ((e && e.message) || e)); }
