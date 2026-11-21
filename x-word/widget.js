@@ -3317,14 +3317,13 @@
             '.x-gx-yt-btn .x-gx-ssico{ width:30px; height:30px; }',
             '.x-gx-yt-btn .x-gx-yt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-yt-btn .x-gx-yt-ic svg{ display:block; }',
-            // YT butonu Begeni'nin solunda = satir SOL tarafi. Tooltip SOLA yasli (left:0) ->
-            // SAGA acilir, ortaliyken sola tasma/kesilme olmaz (IG sag-yaslinin aynasi).
-            '.x-gx-yt-btn .x-gx-yt-tip{ position:absolute; top:calc(100% + 8px); left:0; right:auto;',
-            '   transform:translateY(-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            // ⚠ Tooltip KOKE tasindi (ytd-menu-renderer overflow:hidden KIRPIYORDU) -> standalone
+            // .x-gx-yt-tip + position:FIXED; konum+opacity JS-hover ile (xYtButonKur mouseenter).
+            '.x-gx-yt-tip{ position:fixed; background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
             '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
-            '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
-            '   transition:opacity .12s ease, transform .12s ease; }',
-            '.x-gx-yt-btn:hover .x-gx-yt-tip{ opacity:1; transform:translateY(0); }'
+            '   pointer-events:none; z-index:2147483600; box-shadow:0 2px 10px rgba(0,0,0,.3);',
+            '   transition:opacity .12s ease; }',
+            'html.x-gx-capturing .x-gx-yt-tip{ opacity:0 !important; }'
         ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
@@ -3434,6 +3433,7 @@
             if (xPlatform() !== 'yt') return;
             if (location.pathname.toLowerCase() !== '/watch') {
                 var esk = document.querySelectorAll('.x-gx-yt-btn'); for (var k = 0; k < esk.length; k++) { try { esk[k].remove(); } catch (e) {} }
+                document.querySelectorAll('.x-gx-yt-tip').forEach(function (t) { try { t.remove(); } catch (e) {} });   // koke tasinan tooltip'leri de temizle
                 return;
             }
             if (document.querySelector('.x-gx-yt-btn')) return;   // zaten var (display:none olsa bile -> capture sirasinda yeniden enjekte etme)
@@ -3444,8 +3444,14 @@
             btn.type = 'button';
             btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
             var ikonSar = document.createElement('span'); ikonSar.className = 'x-gx-yt-ic'; ikonSar.appendChild(_xGxSsIkon('ekle'));
-            var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = "Bu videoyu GörüntüX Raporu'na ekle";   // INLINE literal (var timing -> bos tooltip)
-            btn.appendChild(ikonSar); btn.appendChild(tip); btn.__tip = tip;
+            btn.appendChild(ikonSar);
+            // ⚠ Tooltip KOKE (documentElement): YouTube'da ytd-menu-renderer overflow-y:hidden ->
+            // buton-ici absolute tooltip KIRPILIYOR (gorunmez). Koke tasinip position:fixed + JS-hover
+            // ile konumlanir (X-nav tooltip deseni). INLINE literal (var timing -> bos tooltip).
+            var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = "Bu videoyu GörüntüX Raporu'na ekle";
+            document.documentElement.appendChild(tip); btn.__tip = tip;
+            btn.addEventListener('mouseenter', function () { try { var r = btn.getBoundingClientRect(); tip.style.left = Math.round(r.left) + 'px'; tip.style.top = Math.round(r.bottom + 8) + 'px'; tip.style.opacity = '1'; var tr = tip.getBoundingClientRect(); if (tr.right > window.innerWidth - 8) tip.style.left = Math.max(8, Math.round(window.innerWidth - 8 - tr.width)) + 'px'; } catch (e) {} });
+            btn.addEventListener('mouseleave', function () { try { tip.style.opacity = '0'; } catch (e) {} });
             btn.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xYtButonTikla(btn); });
             if (hedef.once && hedef.once.parentElement === hedef.host) hedef.host.insertBefore(btn, hedef.once);
             else hedef.host.insertBefore(btn, hedef.host.firstChild);
@@ -4099,7 +4105,9 @@
             /* Tarama: yesil daire GERI GELIR (beyaz halka seffaf uzerinde gorunmez; halka+sayac yesilde). */
             .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; background:#00ba7c; }
             .x-gx-nav-ekle:hover{ transform:scale(1.06); }
-            .x-gx-nav-ekle .x-gx-ssico{ width:44px; height:44px; }   /* yesil daire = MAVI daire (40px) ile AYNI boyut (olculu: ssico44 -> .c 40px). Tum modlarda. overflow:visible ile 40px daire 40px butona ortali sigar. */
+            /* !important: paylasilan .x-gx-ssbtn .x-gx-ssico{24px} (SONRA enjekte -> esit ozgulluk, sonraki kazanir)
+               bunu eziyordu -> buton 24px/kucuk kaliyordu. 44px ile .c dairesi 40px = MAVI. Tum modlar. */
+            .x-gx-nav-ekle .x-gx-ssico{ width:44px !important; height:44px !important; }
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
