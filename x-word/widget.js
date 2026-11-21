@@ -4855,6 +4855,11 @@
                         try { if (window.__xTikToggle) window.__xTikToggle(this.getAttribute('data-id'), this.getAttribute('data-link')); } catch (e) {}
                     }, true);
                     wrap.appendChild(btn);
+                    // [SCROLL KAYMA FIX — kök-neden] Tik 34px eylem-cubugu satirini ~2px itiyor; sanallastirilmis
+                    // ~70 tweet'te birikip (docH +150) X profil geri-donusunde OTOMATIK asagi-kaymaya yol aciyordu
+                    // (teshis: tikN 0->10 TAM kaymayla eslesti). Cozum: tik'i Grok butonuyla AYNI yukseklige sabitle
+                    // -> satir YUKSELMEZ -> tweet yuksekligi degismez -> kayma kokten gider.
+                    try { var _gh = grok.getBoundingClientRect().height; if (_gh > 12 && _gh < 60) { var _gp = Math.round(_gh) + 'px'; btn.style.height = _gp; btn.style.width = _gp; btn.style.minWidth = _gp; } } catch (e) {}
                     row.insertBefore(wrap, row.firstChild);   // Grok'un SOLUNA
                 }
                 btn.setAttribute('data-id', id);
