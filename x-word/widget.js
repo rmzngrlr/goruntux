@@ -3705,19 +3705,13 @@
             if (!el) return;
             el.classList.remove('x-gx-ok', 'x-gx-warn');
             var ic = el.querySelector('.x-gx-tw-ic');
-            // İKONLAR INLINE (değişken yerine): değişken-referansı bazı enjeksiyon/zamanlama durumlarında
-            // "undefined" basıyordu (geçmiş tuzak, commit 7b6179f) -> SVG'leri doğrudan göm, bulletproof.
-            var _svgFrame = '<svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/>';
-            if (mod === 'profil') {
-                if (ic) ic.innerHTML = _svgFrame + '<circle cx="16" cy="14" r="2.6"/><path d="M11.8 22.6c0-2.7 1.9-4.3 4.2-4.3s4.2 1.6 4.2 4.3"/></g></svg>';
-                if (el.__tip) el.__tip.textContent = "Bu profil için GörüntüX";
-            } else if (mod === 'ara') {
-                if (ic) ic.innerHTML = _svgFrame + '<circle cx="15" cy="15" r="3.2"/><path d="M17.3 17.3l2.3 2.3"/></g></svg>';
-                if (el.__tip) el.__tip.textContent = "Gelişmiş arama";
-            } else {
-                if (ic) ic.innerHTML = _svgFrame + '<path d="M16 11.5v9M11.5 16h9"/></g></svg>';
-                if (el.__tip) el.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
-            }
+            // IKON = ortak nested tasarim (IG/YT ile AYNI): yesil outline daire + mod ici
+            // (ekle=cerceve+arti, profil=kisi, ara=arama). DOM-API (_xGxSsIkon) -> undefined
+            // tuzagi YOK (fonksiyon hoist'li, hep tanimli; degisken-string referansi degil).
+            var tur = (mod === 'profil') ? 'profil' : (mod === 'ara') ? 'ara' : 'ekle';
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(tur)); }
+            if (el.__tip) el.__tip.textContent = (mod === 'profil') ? "Bu profil için GörüntüX"
+                : (mod === 'ara') ? "Gelişmiş arama" : "Bu paylaşımı GörüntüX Raporu'na ekle!";
             el.__mod = (mod === 'profil' || mod === 'ara') ? mod : 'ekle';
         } catch (e) {}
     }
@@ -3956,9 +3950,12 @@
             if (!el) return;
             var tip = el.__tip; if (!tip) return;
             var r = el.getBoundingClientRect();
-            tip.style.left = Math.round(r.right + 10) + 'px';
-            tip.style.top = Math.round(r.top + r.height / 2) + 'px';
+            // IKON ALTINDA (eskiden sagdaydi -> tweet icerigine binip kesiliyordu; "Panele Git" tooltip'i gibi).
+            tip.style.transform = 'none';
+            tip.style.left = Math.round(r.left) + 'px';
+            tip.style.top = Math.round(r.bottom + 8) + 'px';
             tip.style.opacity = '1';
+            try { var tr = tip.getBoundingClientRect(); if (tr.right > window.innerWidth - 8) tip.style.left = Math.max(8, Math.round(window.innerWidth - 8 - tr.width)) + 'px'; } catch (e2) {}
             clearTimeout(el.__tipT);
             el.__tipT = setTimeout(function () { try { tip.style.opacity = '0'; } catch (e) {} }, sure || 2600);
         } catch (e) {}
@@ -3969,8 +3966,9 @@
             var t = btn.__tip; if (t && tip) t.textContent = tip;
             var ic = btn.querySelector('.x-gx-tw-ic');
             if (ic) {
-                if (sinif === 'x-gx-ok') ic.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
-                else if (sinif === 'x-gx-warn') ic.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>';
+                // Nested tasarim: ok=onay tiki, warn=cerceve+arti (renk .x-gx-ssbtn.x-gx-ok/.warn CSS'inde).
+                if (sinif === 'x-gx-ok') { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon('ok')); }
+                else if (sinif === 'x-gx-warn') { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon('ekle')); }
                 else ic.innerHTML = _X_GX_ICO;
             }
             if (sinif) xNavTipGoster(btn);   // durumu hover beklemeden göster
@@ -4082,16 +4080,17 @@
             .x-gx-nav.collapsed .x-gx-nav-inner{ flex-direction:column; gap:4px; padding:0; background:transparent; }
             /* YEŞİL DAİRE (sağ uç): kapsül içinde, mavinin İKİZİ; daire zemin BURADA, içte beyaz işaret (frame+ARTI).
                Yalnız /status/ + açık tweet varken (.aktif). Tık=o tweeti yakala. */
+            /* YENI TASARIM (IG/YT ile ortak nested ikon): arka plan SEFFAF (daire ikonun parcasi,
+               .x-gx-ssbtn paylasilan CSS'i renk/hover/durumu yonetir). */
             .x-gx-nav-ekle{ position:relative; display:none; flex:0 0 auto; align-items:center; justify-content:center;
-                width:40px; height:40px; border-radius:50%; background:#00ba7c; color:#fff; cursor:pointer; transition:filter .12s ease; }
+                width:40px; height:40px; border-radius:50%; background:transparent; color:#00ba7c; cursor:pointer; transition:transform .12s ease; }
             .x-gx-nav-ekle.aktif{ display:inline-flex; }
-            /* Tarama surerken yesil daire DAIMA gorunur (halka+sayac onun uzerinde); poller/status kosulunu bekleme. */
-            .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; }
-            .x-gx-nav-ekle:hover{ filter:brightness(1.08); }
+            /* Tarama: yesil daire GERI GELIR (beyaz halka seffaf uzerinde gorunmez; halka+sayac yesilde). */
+            .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; background:#00ba7c; }
+            .x-gx-nav-ekle:hover{ transform:scale(1.06); }
+            .x-gx-nav-ekle .x-gx-ssico{ width:26px; height:26px; }
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
-            .x-gx-nav-ekle.x-gx-ok{ background:#00ba7c; color:#fff; }
-            .x-gx-nav-ekle.x-gx-warn{ background:#f5a623; color:#fff; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
             /* tooltip FIXED + documentElement'e taşınır: X nav'ında TRANSFORM'lu ata (translateZ/scale vb.)
                fixed tooltip'i o ataya hapsedip overflow ile KIRPIYORDU -> span <html>'e taşınır (ata yok),
@@ -4147,7 +4146,7 @@
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-nav-ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg></span><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle x-gx-ssbtn" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-nav-ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg></span><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
@@ -4180,7 +4179,7 @@
             } catch (e) {}
             ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
             // Tooltip FIXED + <html>'de olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
-            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.left = Math.round(r.right + 10) + 'px'; tip.style.top = Math.round(r.top + r.height / 2) + 'px'; tip.style.opacity = '1'; } catch (e) {} });
+            ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; var r = ekle.getBoundingClientRect(); tip.style.transform = 'none'; tip.style.left = Math.round(r.left) + 'px'; tip.style.top = Math.round(r.bottom + 8) + 'px'; tip.style.opacity = '1'; try { var tr = tip.getBoundingClientRect(); if (tr.right > window.innerWidth - 8) tip.style.left = Math.max(8, Math.round(window.innerWidth - 8 - tr.width)) + 'px'; } catch (e3) {} } catch (e) {} });
             ekle.addEventListener('mouseleave', function () { try { var tip = ekle.__tip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
         }
         // MAVİ İKON TOOLTIP'i (documentElement'e, ikon ALTINDA): güncelleme uyarısı burada; etiket "GörüntüX" sabit.
