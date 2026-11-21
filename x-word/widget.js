@@ -4384,6 +4384,7 @@
             return '<div class="x-gx-akor' + (acik ? ' acik' : '') + '"><button type="button" class="x-gx-akor-h">' + baslik + '<span class="x-gx-akor-ch">▾</span></button><div class="x-gx-akor-b">' + govde + '</div></div>';
         };
         card.innerHTML = '<h3>' + logo + ' Gelişmiş Arama</h3><p class="x-gx-sub">Alanları doldur → X arama kutusuna otomatik yazılır</p>'
+            + '<div class="x-gx-prev-h">X aramasına yazılan:</div><div class="x-gx-prev" id="x-gx-ara-prev">—</div>'   // ÜSTTE (kullanıcı isteği)
             + akor('Kelimeler', true,
                 '<input id="ara-tumu" placeholder="Bu kelimelerin tümü">'
                 + '<input id="ara-tam" placeholder="Tam olarak bu ifade" style="margin-top:7px">'
@@ -4400,7 +4401,6 @@
                 '<div class="x-gx-ikili"><div><label>Yanıtlar</label><select id="ara-yanit"><option value="">Hepsi</option><option value="only">Yalnız yanıt</option><option value="exclude">Yanıt hariç</option></select></div>'
                 + '<div><label>Bağlantılar</label><select id="ara-link"><option value="">Hepsi</option><option value="only">Yalnız linkli</option><option value="exclude">Link hariç</option></select></div></div>'
                 + '<div class="x-gx-uclu"><div><label>Min yanıt</label><input type="number" id="ara-minrep" min="0" placeholder="0"></div><div><label>Min beğeni</label><input type="number" id="ara-minfav" min="0" placeholder="0"></div><div><label>Min RT</label><input type="number" id="ara-minrt" min="0" placeholder="0"></div></div>')
-            + '<div class="x-gx-prev-h">X aramasına yazılan:</div><div class="x-gx-prev" id="x-gx-ara-prev">—</div>'
             + '<div class="x-gx-ara-act"><button type="button" class="x-gx-ghost" id="x-gx-ara-temizle">Temizle</button><button type="button" class="x-gx-primary" id="x-gx-ara-ara">Ara</button></div>';
         card.querySelectorAll('.x-gx-akor-h').forEach(function (h) { h.addEventListener('click', function () { h.parentElement.classList.toggle('acik'); try { xGxPopoverKonumla(); } catch (e) {} try { if (card.__sbGuncelle) card.__sbGuncelle(); } catch (e) {} }); });
         card.querySelectorAll('input, select').forEach(function (f) { f.addEventListener('input', function () { xAramaQueryKur(true); }); f.addEventListener('change', function () { xAramaQueryKur(true); }); });
@@ -4648,8 +4648,8 @@
             .x-gx-pp-tx b{ font-size:14px; font-weight:600; line-height:1.25; }
             .x-gx-pp-tx i{ font-size:12px; font-style:normal; color:#8b98a5; }
             /* Seçim → takvim ŞIK GEÇİŞ (içerik değişince kısa fade/yukarı-kayma). */
-            #x-gx-card.x-gx-gecis{ animation:xgxgecis .2s ease; }
-            @keyframes xgxgecis{ from{ opacity:.35; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+            #x-gx-card.x-gx-gecis{ animation:xgxgecis .22s ease; }
+            @keyframes xgxgecis{ from{ opacity:.25; } to{ opacity:1; } }
             /* [SS'TE GÖRÜNMESİN] Yakalama sürerken yeşil buton tooltip'i + tarama popover'ı gizli (pc'ye taşıp
                kadraja giriyordu). Rapor/seçim popup'ı #x-gx-ov zaten html.x-gx-capturing ile gizli. */
             html.x-gx-capturing .x-gx-nav-tip,
@@ -5055,10 +5055,17 @@
             if (_sk) _sk.onclick = function () { xProfilPopupKapat(); try { xProfilKartYakala(document.getElementById('x-gx-nav-ekle')); } catch (e) {} };
             var _sr = card.querySelector('#x-gx-sec-rapor');
             if (_sr) _sr.onclick = function () {
-                // ŞIK GEÇİŞ: aynı popup'ta takvim/durum'a geç (yeni popup açma; hafif fade).
-                try { card.classList.remove('x-gx-gecis'); void card.offsetWidth; card.classList.add('x-gx-gecis'); } catch (e) {}
-                xProfilPopupGuncelle(handle, { mod: 'yukleniyor' });
-                xPanelRaporDurumSorgula(handle, function (durum2) { xProfilPopupGuncelle(handle, durum2); });
+                // ŞIK GEÇİŞ (titreme fix): (1) "yukleniyor" spinner'ını HEMEN gösterme -> yalnız 220ms'de
+                // hâlâ yanıt gelmezse (yavaş panel). Hızlı yanıtta secim DOĞRUDAN takvime geçer, ara-flash yok.
+                // (2) fade yalnız final render'dan hemen önce tetiklenir -> içerik opak crossfade ile girer,
+                // sert pop + konum sıçraması maskelenir (eskiden fade tek sefer oynayıp takvim sert geliyordu).
+                var _cozuldu = false;
+                var _loadTmr = setTimeout(function () { if (!_cozuldu) xProfilPopupGuncelle(handle, { mod: 'yukleniyor' }); }, 220);
+                xPanelRaporDurumSorgula(handle, function (durum2) {
+                    _cozuldu = true; clearTimeout(_loadTmr);
+                    try { card.classList.remove('x-gx-gecis'); void card.offsetWidth; card.classList.add('x-gx-gecis'); } catch (e) {}
+                    xProfilPopupGuncelle(handle, durum2);
+                });
             };
             return;
         }
