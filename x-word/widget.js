@@ -2233,10 +2233,65 @@
                     } catch (e) {} }
                     var segs = [];
                     if (!scIc) {
-                        var top = Math.max(0, Math.round(kr.top));
-                        var h = Math.round(Math.min(window.innerHeight - top, fullH));
-                        var res = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve); });
-                        if (res && res.status === "success" && res.dataUrl) { segs.push(res.dataUrl); }
+                        var _vpH = window.innerHeight;
+                        if (kr.top >= 0 && kr.top + fullH <= _vpH + 1) {
+                            // Kart TAMAMEN viewport'ta -> TEK KARE (mevcut davranis; sigan kartlarda regresyon yok).
+                            var top = Math.max(0, Math.round(kr.top));
+                            var h = Math.round(Math.min(_vpH - top, fullH));
+                            var res = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: top, left: cropLeft, width: cropWidth, height: h }, dpr: dpr }, resolve); });
+                            if (res && res.status === "success" && res.dataUrl) { segs.push(res.dataUrl); }
+                        } else {
+                            // [FEED/UZUN KART — PENCERE-SCROLL-STITCH] Kart viewport'a SIGMIYOR (feed'de ic-scroller
+                            // YOK -> scIc=false). Eski tek-kare uzun karti KESIYOR / viewport sonraki posta tasiyordu
+                            // (kullanici: "kartin tamamini gormek icin scroll olmuyor"). captureArticle'in IG yolu gibi
+                            // PENCERE'yi kaydirip kartin dilimlerini viewport TEPESINE getirip yakala + dikey birlestir.
+                            // (1) Ust-bar (role=banner) viewport 0'da kartla ortusur -> gecici visibility:hidden.
+                            // (2) Spacer: son dilime scroll icin yer. (3) FB feed VIRTUALIZE -> her dilimde karti
+                            // YENIDEN OLC (scrollBy ile dilimi 0'a getir); kart DOM'dan kalkarsa dur. Sonda scroll+banner geri.
+                            // Ust/alt SABIT bar(lar)i gizle (FB ust-bari [role=banner] DEGIL, fixed/sticky div).
+                            // elementsFromPoint ile ucuz tespit: viewport orta-ust ve orta-alt'taki fixed/sticky,
+                            // yeterince genis (>%40) ve bar-boyutlu (20-200px) ogeler.
+                            var _bannerEls = [];
+                            try {
+                                var _barAday = [];
+                                [[Math.round(window.innerWidth / 2), 3], [Math.round(window.innerWidth / 2), _vpH - 3]].forEach(function (pt) {
+                                    try {
+                                        (document.elementsFromPoint(pt[0], pt[1]) || []).forEach(function (el) {
+                                            try { var cs = getComputedStyle(el); if (cs.position !== 'fixed' && cs.position !== 'sticky') return;
+                                                var r = el.getBoundingClientRect();
+                                                if (r.width > window.innerWidth * 0.4 && r.height >= 20 && r.height <= 200 && _barAday.indexOf(el) < 0) _barAday.push(el);
+                                            } catch (x) {}
+                                        });
+                                    } catch (x) {}
+                                });
+                                _barAday.forEach(function (el) { _bannerEls.push([el, el.style.getPropertyValue('visibility'), el.style.getPropertyPriority('visibility')]); el.style.setProperty('visibility', 'hidden', 'important'); });
+                            } catch (e) {}
+                            var _spacer = null; try { _spacer = document.createElement('div'); _spacer.setAttribute('aria-hidden', 'true'); _spacer.style.cssText = 'height:' + (Math.ceil(fullH) + _vpH + 400) + 'px;width:1px;pointer-events:none;'; document.body.appendChild(_spacer); } catch (e) {}
+                            var _oncekiWY = window.scrollY || document.documentElement.scrollTop || 0;
+                            var _captured = 0, _wg = 0;
+                            while (_captured < fullH && _wg < 32) {
+                                _wg++;
+                                if (!document.contains(card)) break;
+                                var _cVpTop = card.getBoundingClientRect().top;
+                                var _segVp = _cVpTop + _captured;   // kart-ofset _captured'in su anki viewport-y'si
+                                if (_segVp < -1 || _segVp > 1) {     // dilimi viewport TEPESINE getir (re-ground -> virtualization kaymasina bagisik)
+                                    window.scrollBy(0, Math.round(_segVp));
+                                    await new Promise(function (r) { setTimeout(r, 260); });
+                                    if (!document.contains(card)) break;
+                                    _cVpTop = card.getBoundingClientRect().top;
+                                }
+                                var _capTop = Math.max(0, Math.round(_cVpTop + _captured));   // ~0
+                                var _sliceH = Math.round(Math.min(_vpH - _capTop, fullH - _captured));
+                                if (_sliceH <= 2) break;
+                                var _sr = await new Promise(function (resolve) { swSendReliable({ action: "captureAndCrop", vw: window.innerWidth, rect: { top: _capTop, left: cropLeft, width: cropWidth, height: _sliceH }, dpr: dpr }, resolve); });
+                                if (!_sr || _sr.status !== "success" || !_sr.dataUrl) break;
+                                if (segs.length && segs[segs.length - 1] === _sr.dataUrl) break;   // ayni kare -> scroll takildi
+                                segs.push(_sr.dataUrl); _captured += _sliceH;
+                            }
+                            try { if (_spacer) _spacer.remove(); } catch (e) {}
+                            try { _bannerEls.forEach(function (p) { try { if (p[1]) p[0].style.setProperty('visibility', p[1], p[2] || ''); else p[0].style.removeProperty('visibility'); } catch (x) {} }); } catch (e) {}
+                            try { window.scrollTo(0, _oncekiWY); } catch (e) {}
+                        }
                     } else {
                         var oncekiTop = sc.scrollTop, maxScroll = Math.max(0, fullH - pencere);
                         var y = 0, guard = 0;
