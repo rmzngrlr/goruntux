@@ -4086,8 +4086,10 @@
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; width:42px; height:42px; overflow:visible; }
             .x-gx-nav-ico .x-gx-nav-logo .c{ fill:none; stroke:#1d9bf0; stroke-width:1.6; transition:fill .12s ease; }
             .x-gx-nav-ico .x-gx-nav-logo .in{ fill:none; stroke:#1d9bf0; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:stroke .12s ease; }
-            .x-gx-nav-ico:hover .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
-            .x-gx-nav-ico:hover .x-gx-nav-logo .in{ stroke:#fff; }
+            /* HOVER bolgesi = .x-gx-nav-inner (MAVI ikon + "GörüntüX" ETIKETI; yesil buton inner DISINDA).
+               -> GörüntüX yazisina gelince de mavi dolar; yesil bagimsiz (bos) kalir. */
+            .x-gx-nav-inner:hover .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
+            .x-gx-nav-inner:hover .x-gx-nav-logo .in{ stroke:#fff; }
             /* HALKA = absolute HTML <span> (içinde svg %100). SVG elemanını DOĞRUDAN position:absolute+inset
                yapmak bu tarayıcıda dikeyde ~44px kaydırıyordu (SVG replaced-element over-constraint);
                HTML span inset:0'ı güvenilir uygular, svg %100 doldurur -> halka 40px yeşil dairede TAM ORTALI. */
