@@ -3475,6 +3475,21 @@
         ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
+    // IG ikonu (kullanici secimi C): RAFINE cerceve+arti — GoruntuX kimligi, IG cizgi kalinligine
+    // uyarlanmis (viewBox 24, stroke 2.1, yuvarlak uc). tur 'ok' = onay tiki.
+    function _xIgIkonSvg(tur) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 24 24');
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('fill', 'none'); g.setAttribute('stroke', 'currentColor'); g.setAttribute('stroke-width', '2.1');
+        g.setAttribute('stroke-linecap', 'round'); g.setAttribute('stroke-linejoin', 'round');
+        var paths = (tur === 'ok')
+            ? ['M6 12.5l3.8 3.8 8.2-9']
+            : ['M8 10V8h2', 'M16 8h2v2', 'M18 16v2h-2', 'M10 18H8v-2', 'M12 9v6', 'M9 12h6'];
+        paths.forEach(function (d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); });
+        svg.appendChild(g); return svg;
+    }
     // Kaydet svg'sinin aksiyon-cubugu hucresi (section'in dogrudan cocugu, yalniz-Kaydet).
     function _xIgSaveCell(saveSvg) {
         try {
@@ -3492,7 +3507,7 @@
             if (renk === 'ok') btn.classList.add('x-gx-ok');
             else if (renk === 'warn') btn.classList.add('x-gx-warn');
             var ic = btn.querySelector('.x-gx-ig-ic');
-            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xYtIkonSvg(ikonTur || 'ekle')); }
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xIgIkonSvg(ikonTur || 'ekle')); }
             if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
         } catch (e) {}
     }
@@ -3505,13 +3520,20 @@
             xGxIgStilEkle();
             var saves = document.querySelectorAll('svg[aria-label="Kaydet"], svg[aria-label="Save"]');
             for (var i = 0; i < saves.length; i++) {
-                var cell = _xIgSaveCell(saves[i]);
+                var save = saves[i];
+                // [ANASAYFA FEED'DE GOSTERME — kullanici istegi 2026-11-21, "simdilik"] Butonu YALNIZ
+                // capture'in TEMIZ oldugu yuzeylerde goster: modal ([role=dialog]) VEYA gönderinin KENDI
+                // sayfasi (/p/,/reel/ -> <article> YOK). Home feed inline <article> gönderileri HARIC —
+                // feed yakalamasi "usulune uygun" degildi + flassiz yeni-sekme yakalamasi Chrome'da mumkun
+                // degil (captureVisibleTab yalniz on sekme; debugger=banner). Temiz cozum gelene dek feed kapali.
+                if (!(save.closest('[role="dialog"]') || !save.closest('article'))) continue;
+                var cell = _xIgSaveCell(save);
                 if (!cell || cell.querySelector('.x-gx-ig-btn')) continue;
                 try { cell.style.setProperty('display', 'flex'); cell.style.setProperty('align-items', 'center'); cell.style.setProperty('gap', '4px'); } catch (e) {}
                 var btn = document.createElement('div');
                 btn.className = 'x-gx-ig-btn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                 btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
-                var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xYtIkonSvg('ekle'));
+                var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xIgIkonSvg('ekle'));
                 var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = _X_IG_TIP;
                 btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                 (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
