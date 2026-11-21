@@ -3586,6 +3586,25 @@
             }
         } catch (e) {}
     }
+    // IG gönderi KANONIK permalinki = sunucunun x_temizle_link'i ile BIREBIR AYNI uretir:
+    // 'https://www.instagram.com/p/<shortcode>'. ⚠KRITIK: querySelector('a[href*="/p/"]') bir
+    // YORUM linki ('.../p/CODE/c/<id>/') cekebiliyor -> sunucu meta'yi /p/CODE'a indirir ama
+    // GORSEL anahtari (normalize_link_key, IG'de yalniz kucuk-harf) /c/...'li kalir -> ANAHTAR
+    // ESLESMEZ -> rapor dogru link+baslik ama GORSELSIZ cikar. Shortcode'u regex'le cek (yorum
+    // linki de dogru code verir), reel/tv de /p/'ye indir (sunucu da oyle) -> anahtarlar esit.
+    function _xIgPostLink(post) {
+        function kanon(u) {
+            try { var m = String(u || '').match(/\/(?:p|reel|reels|tv)\/([^/?#]+)/i); if (m) return 'https://www.instagram.com/p/' + m[1]; } catch (e) {}
+            return null;
+        }
+        var fromLoc = kanon(location.pathname) || kanon(location.href);
+        if (fromLoc) return fromLoc;
+        try {
+            var as = (post || document).querySelectorAll('a[href*="/p/"], a[href*="/reel/"]');
+            for (var i = 0; i < as.length; i++) { var k = kanon(as[i].getAttribute('href') || as[i].href); if (k) return k; }
+        } catch (e) {}
+        try { return location.href.split('?')[0].split('#')[0]; } catch (e) { return location.href; }
+    }
     // Tik: tiklanan butonun gönderisini coz -> __xIgHedefPost -> captureArticle -> pano -> addToPool.
     async function xIgButonTikla(btn) {
         if (!btn || btn.__busy) return;
@@ -3593,10 +3612,8 @@
         _xIgDurum(btn, null, 'Yakalanıyor…', 'ekle');
         var post = null; try { post = btn.closest('article'); } catch (e) {}
         if (!post) { try { post = igFindPost(); } catch (e) {} }
-        // Link = gönderinin KENDI permalinki (feed'de location ana sayfa olur).
-        var link = '';
-        try { var la = (post || document).querySelector('a[href*="/p/"], a[href*="/reel/"]'); if (la) link = (la.href || '').split('?')[0]; } catch (e) {}
-        if (!link) { try { link = location.href.split('?')[0]; } catch (e) {} }
+        // Link = gönderinin KANONIK permalinki (sunucu x_temizle_link ile AYNI -> gorsel anahtari eslesir).
+        var link = _xIgPostLink(post);
         var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
         var origin = 'https://goruntux.rgmedya.tr';
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
