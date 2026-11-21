@@ -3152,22 +3152,48 @@
         var ov = document.getElementById('x-gx-ov'); if (!ov) return;
         var card = ov.querySelector('#x-gx-card');
         var nav = document.getElementById('x-gx-nav-btn');
-        var left, top;
-        // SOL menüde, GörüntüX butonunun ALTINDA + sol-hizalı.
+        // [NAV SÜTUNU ALANI — kullanıcı isteği] Popup, X sol nav sütununun alanını doldurur:
+        //   üst = GörüntüX butonunun altı · alt = "Gönderi yayınla" (SideNav_NewTweet_Button) butonunun ALT sınırı
+        //   sol = nav sütunu solu (header[role=banner]) · sağ = içerik sütunu (primaryColumn) solu.
+        // 85vh YERİNE max-height = bu alanın yüksekliği -> kısa içerik (profil) kadar uzar, uzun içerik
+        // (arama) scroll eder + sticky footer altta (post butonu hizasında) kalır. İki popup da bu fn'i kullanır.
+        var postBtn = document.querySelector('[data-testid="SideNav_NewTweet_Button"]');
+        var prim = document.querySelector('[data-testid="primaryColumn"]');
+        var banner = document.querySelector('header[role="banner"]');
+        if (nav && card && postBtn && prim) {
+            try {
+                var nr = nav.getBoundingClientRect();
+                var pbr = postBtn.getBoundingClientRect();
+                var contentLeft = prim.getBoundingClientRect().left;
+                var navLeft = banner ? Math.max(4, Math.round(banner.getBoundingClientRect().left)) : Math.round(nr.left);
+                var top = Math.round(nr.bottom + 6);
+                var altSinir = Math.round(pbr.bottom);                 // "Gönderi yayınla" alt sınırı
+                var width = Math.max(240, Math.round(contentLeft - navLeft - 12));
+                var maxH = Math.max(160, altSinir - top);              // nav sütunu yüksekliği (85vh değil)
+                if (width > 200 && maxH > 120 && contentLeft > navLeft + 60) {   // makul: sütun daralmamış
+                    card.style.width = width + 'px';
+                    card.style.maxHeight = maxH + 'px';
+                    ov.style.left = navLeft + 'px';
+                    ov.style.top = top + 'px';
+                    return;
+                }
+            } catch (e) {}
+        }
+        // --- FALLBACK (nav/post butonu yok ya da sütun fazla dar): eski yüzen-kart davranışı ---
+        var left, top2;
         if (nav) {
-            var r = nav.getBoundingClientRect(); left = r.left; top = r.bottom + 6;
-            // TWEET'E TAŞMASIN: kart genişliğini içerik sütununun (primaryColumn) sol kenarıyla sınırla.
+            var r = nav.getBoundingClientRect(); left = r.left; top2 = r.bottom + 6;
             if (card) {
-                var prim = document.querySelector('[data-testid="primaryColumn"]');
                 var solSinir = prim ? prim.getBoundingClientRect().left : window.innerWidth;
                 card.style.width = Math.max(230, Math.min(360, solSinir - left - 12)) + 'px';
+                card.style.maxHeight = '';   // CSS 85vh'e dön
             }
-        } else { left = 12; top = 60; if (card) card.style.width = ''; }
+        } else { left = 12; top2 = 60; if (card) { card.style.width = ''; card.style.maxHeight = ''; } }
         var ow = (card && card.offsetWidth) || 360, oh = (card && card.offsetHeight) || 300;
         if (left + ow > window.innerWidth - 10) left = Math.max(10, window.innerWidth - ow - 10);
-        if (top + oh > window.innerHeight - 10) top = Math.max(10, window.innerHeight - oh - 10);
-        if (top < 10) top = 10;
-        ov.style.left = Math.round(left) + 'px'; ov.style.top = Math.round(top) + 'px';
+        if (top2 + oh > window.innerHeight - 10) top2 = Math.max(10, window.innerHeight - oh - 10);
+        if (top2 < 10) top2 = 10;
+        ov.style.left = Math.round(left) + 'px'; ov.style.top = Math.round(top2) + 'px';
     }
     function xProfilPopupKapat() {
         try { if (window.__xGxPopoverTemizle) window.__xGxPopoverTemizle(); } catch (e) {}
