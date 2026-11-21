@@ -934,6 +934,9 @@
             }
             // [TIK SECIM / Step 2] Tweet tik ikonlari + alttan kayan secim menusu (her enjekte X sayfasinda).
             try { xTikInit(); } catch (e) {}
+            // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
+            // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
+            try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
 
             function cropScreenshot(dataUrl, rect) {
                 return new Promise((resolve, reject) => {
@@ -3188,9 +3191,10 @@
                 // kalkıp geliyordu, creep durup sıfırlanıyor (ring dolmaz). __xGxTaramaAktif profil boyunca stabil.
                 if (!w || !window.__xGxTaramaAktif) { clearInterval(window.__xGxRingTick); window.__xGxRingTick = null; window.__xGxRingHedef = null; window.__xGxRingGoster = null; return; }
                 var hedef = window.__xGxRingHedef || 0, adim = window.__xGxRingAdim || 0.05;
-                var ust = Math.min(0.985, hedef + adim * 0.92);  // sonraki adımın %92'sine kadar creep; gerçek ilerleme gelince ileri çekilir
+                var ust = Math.min(0.985, hedef + adim * 0.9);   // sonraki adımın %90'ına kadar creep; gerçek ilerleme gelince ileri çekilir
                 var g = window.__xGxRingGoster || 0;
-                g += (ust - g) * 0.11 + 0.0025;                  // ease + sabit creep -> belirgin, sürekli dolum (asla durağan değil)
+                // YAVAŞ, SÜREKLİ dolum: bir adımı ~birkaç saniyede doldurur (hızlı değil) -> adım adım İZLENEBİLİR.
+                g += (ust - g) * 0.03 + Math.max(0.0006, adim * 0.004);
                 if (g > ust) g = ust;
                 if (g < (window.__xGxRingGoster || 0)) g = window.__xGxRingGoster || 0;   // monoton (geri gitmez)
                 window.__xGxRingGoster = g;
@@ -3207,6 +3211,32 @@
         try { if (typeof xNavYansit === 'function') xNavYansit(); } catch (e) {}
     }
     function xProfilDockBitir() { xGxTaramaGostergeKapat(); }
+    // [GÜNCELLEME F5] Eklenti ↻ (reload/update) olunca AÇIK sekmelerdeki içerik-script KOPAR: chrome.runtime.id
+    // undefined olur, chrome.* çağrıları "Extension context invalidated" atar -> SS/Rapora Ekle butonları "Hata"
+    // verir. Kullanıcı F5 yapana dek bozuk. Çözüm: kopukluğu periyodik sez -> sayfaya (X + tüm sosyal medya)
+    // "GörüntüX güncellendi — Yenile (F5)" toast'ı koy. Tık/F5 -> taze script yüklenir.
+    function xGxBaglantiKopuk() {
+        try { return !(typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id); } catch (e) { return true; }
+    }
+    function xGxF5ToastGoster() {
+        try {
+            if (!document.body || document.getElementById('x-gx-f5-toast')) return;
+            var t = document.createElement('div');
+            t.id = 'x-gx-f5-toast';
+            t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:2147483600;background:#15202b;border:1px solid #1d9bf0;border-radius:12px;padding:10px 14px;color:#e7e9ea;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-height:1.3;box-shadow:0 8px 26px rgba(0,0,0,.45);display:flex;align-items:center;gap:12px;max-width:92vw;';
+            var s = document.createElement('span'); s.textContent = 'GörüntüX güncellendi — bu sayfayı yenileyin';
+            var b = document.createElement('button'); b.type = 'button'; b.textContent = 'Yenile (F5)';
+            b.style.cssText = 'background:#1d9bf0;border:0;color:#fff;border-radius:9999px;padding:7px 15px;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;white-space:nowrap;';
+            b.addEventListener('click', function () { try { location.reload(); } catch (e) {} });
+            t.appendChild(s); t.appendChild(b);
+            document.body.appendChild(t);
+        } catch (e) {}
+    }
+    function xGxGuncellemeKontrolBaslat() {
+        if (window.__xGxF5Kontrol) return;
+        window.__xGxF5Kontrol = true;
+        setInterval(function () { try { if (xGxBaglantiKopuk()) xGxF5ToastGoster(); } catch (e) {} }, 2500);
+    }
     // ====================== TWEET DETAY "Rapora Ekle" BUTONU ======================
     // Tweet detay sayfasında (/status/) HER tweet'in (ana + yanıtlar) Grok/… kümesinin
     // SOLUNA GörüntüX butonu; tooltip "Bu paylaşımı GörüntüX Raporu'na ekle!". Tıklayınca
