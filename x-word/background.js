@@ -862,6 +862,19 @@ function captureVisibleWithRetry(windowId, opts, attempt, maxAttempts, cb) {
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // [GEÇİCİ SCROLL TEŞHİSİ] Widget (x.com çapraz-origin) -> /teshis log köprüsü (server_origin'e POST).
+  // Panel xTeshisLog ile ayni route. Sorun teshis edilince KALDIRILIR.
+  if (message.action === "gxTeshis") {
+    try {
+      chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, (r) => {
+        const origin = (r && r.server_origin) || 'https://goruntux.rgmedya.tr';
+        try { fetch(origin + '/api/teshis/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msg: String(message.msg || '').slice(0, 2000), lvl: message.lvl || 'scroll' }) }).catch(() => {}); } catch (e) {}
+      });
+    } catch (e) {}
+    try { sendResponse({ ok: true }); } catch (e) {}
+    return false;
+  }
+
   if (message.action === "forcePollJobs") {
     // Panelden gelen dürtme. SW uykudan uyanmış veya yoklama döngüsü ölmüş olabilir;
     // bu yüzden SADECE bir kez yoklamak yetmiyor — F5'in yaptığı gibi 2 sn'lik yoklama

@@ -969,6 +969,8 @@
             // [FACEBOOK SS] Her gönderi kartinin basligindaki ⋯/X butonlarinin SOLUNA yesil "+" GoruntuX butonu
             // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
             try { xFbButonInit(); } catch (e) {}
+            // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön kaymasini /teshis'e logla (yalniz x.com). KALDIRILACAK.
+            try { xGxScrollTeshis(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -4377,6 +4379,63 @@
             else if (res && res.status === 'duplicate') xTweetBtnDurum(btn, 'x-gx-warn', panoOk ? 'Zaten havuzda · 📋 Panoda' : 'Zaten havuzda');
             else xTweetBtnDurum(btn, 'x-gx-warn', 'Eklenemedi');
         } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} xTweetBtnDurum(btn, 'x-gx-warn', 'Hata'); printLog('[GX Tweet Btn] hata: ' + (e && e.message)); }
+    }
+    // ============================================================================
+    // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön KAYMASI: nav olaylari + scroll ornekleme
+    // /teshis'e loglar (background gxTeshis kopru -> /api/teshis/log). Kullanici /teshis Kopyala ile
+    // kaydi verir -> kaymanin ne zaman/ne kadar/hangi docH degisimiyle oldugunu gorup kokunu buluruz.
+    // Yalniz x.com/twitter.com. SORUN TESHIS EDILINCE TAMAMEN KALDIRILIR.
+    // ============================================================================
+    function xGxScrollTeshis() {
+        try {
+            if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(location.hostname)) return;
+            if (window.__xGxScrollTeshisKuruldu) return; window.__xGxScrollTeshisKuruldu = true;
+            var L = function (m) { try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'scroll', msg: '[SCROLL] ' + m }); } catch (e) {} };
+            var ttId = function () {
+                try {
+                    var arts = document.querySelectorAll('article[data-testid="tweet"]'), b = null, bt = 99999;
+                    arts.forEach(function (a) { var r = a.getBoundingClientRect(); if (r.top > -60 && r.top < bt) { bt = r.top; b = a; } });
+                    if (!b) return '-'; return (b.getAttribute('data-tweet-id') || '?') + '@' + Math.round(b.getBoundingClientRect().top);
+                } catch (e) { return '-'; }
+            };
+            var _save = null;
+            var _ps = history.pushState;
+            history.pushState = function () {
+                try { if (!/\/status\/\d+/.test(location.href)) { _save = { y: Math.round(window.scrollY), url: location.href, tt: ttId() }; L('AWAY ' + location.pathname + ' y=' + _save.y + ' top=' + _save.tt + ' docH=' + document.documentElement.scrollHeight); } } catch (e) {}
+                return _ps.apply(this, arguments);
+            };
+            window.addEventListener('popstate', function () {
+                try {
+                    L('BACK -> ' + location.pathname + ' y=' + Math.round(window.scrollY) + ' kayitli=' + (_save ? _save.y : '-') + ' rest=' + history.scrollRestoration);
+                    [100, 300, 600, 1000, 1800, 3000, 4500].forEach(function (d) {
+                        setTimeout(function () { try { L('  +' + d + 'ms y=' + Math.round(window.scrollY) + ' docH=' + document.documentElement.scrollHeight + ' top=' + ttId() + (_save ? (' SAPMA=' + (Math.round(window.scrollY) - _save.y)) : '')); } catch (e) {} }, d);
+                    });
+                } catch (e) {}
+            });
+            // [KULLANICI mi OTOMATIK mi — ayirt et] Kullanici girdisi (wheel/touch/klavye/fare) zaman
+            // damgasini sakla; bir scroll burst'u girdiden ~250ms icinde geldiyse 'kullanici', GIRDISIZ
+            // geldiyse 'OTOMATIK⚠' = HATALI (bug'in kaydirmasi). Boylece log'da ikisi ayrilir.
+            var _lastInput = 0;
+            ['wheel', 'touchstart', 'touchmove', 'keydown', 'pointerdown', 'mousedown'].forEach(function (ev) {
+                try { window.addEventListener(ev, function () { _lastInput = Date.now(); }, { passive: true, capture: true }); } catch (e) {}
+            });
+            var _bStartY = 0, _bUser = false, _bOn = false, _bTimer = null;
+            window.addEventListener('scroll', function () {
+                try {
+                    var now = Date.now();
+                    if (!_bOn) { _bOn = true; _bStartY = Math.round(window.scrollY); _bUser = false; }
+                    if (now - _lastInput < 250) _bUser = true;
+                    clearTimeout(_bTimer);
+                    _bTimer = setTimeout(function () {
+                        try {
+                            var endY = Math.round(window.scrollY), dy = endY - _bStartY; _bOn = false;
+                            if (Math.abs(dy) >= 5) L('SCROLL ' + (_bUser ? 'kullanici' : 'OTOMATIK⚠') + ' dy=' + dy + ' -> y=' + endY + ' top=' + ttId() + ' (' + location.pathname + ')');
+                        } catch (e) {}
+                    }, 150);
+                } catch (e) {}
+            }, { passive: true });
+            L('kuruldu @ ' + location.pathname + ' rest=' + history.scrollRestoration);
+        } catch (e) {}
     }
     function xTweetButonPollerBaslat() {
         try {
