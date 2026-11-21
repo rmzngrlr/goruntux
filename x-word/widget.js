@@ -3121,7 +3121,13 @@
             #x-gx-card .x-gx-prev-h{ font-size:11px; color:#8b98a5; margin:14px 0 5px; }
             #x-gx-card .x-gx-prev{ background:rgba(29,155,240,.1); border:1px solid rgba(29,155,240,.28); border-radius:10px; padding:9px 11px;
                 font-size:12.5px; color:#cfe3f5; word-break:break-all; font-family:ui-monospace,Menlo,Consolas,monospace; min-height:18px; line-height:1.45; }
-            #x-gx-card .x-gx-ara-act{ display:flex; gap:9px; margin-top:14px; }
+            /* Temizle+Ara butonları popup altına SABİT (scroll'dan bağımsız). Kart scroll konteyneri
+               (#x-gx-card overflow:auto) -> footer position:sticky bottom:0 ile scroll'da hep altta durur.
+               Kartın alt padding'i footer'a devredildi (alt-padding:0) -> doğal/pinned konum aynı, kayma yok;
+               full-bleed (margin yanları -18 = kart yatay padding'i iptal) + solid zemin + üst çizgi. */
+            #x-gx-card.x-gx-ara-card{ padding-bottom:0; }
+            #x-gx-card .x-gx-ara-act{ position:sticky; bottom:0; z-index:5; display:flex; gap:9px;
+                margin:14px -18px 0; padding:12px 18px 16px; background:#0e141f; border-top:1px solid rgba(255,255,255,.09); }
             #x-gx-card .x-gx-ara-act button{ flex:1; font-weight:800; font-size:14px; border-radius:9999px; padding:10px 20px; cursor:pointer; border:1px solid transparent; }
             /* ÖZEL KOYU DROPDOWN (native <select> açılır-listesi macOS'ta AÇIK render; color-scheme:dark native
                menüyü koyartmıyor -> panel gibi xcs). Kapalı kutu = .x-gx-xcs, açık liste = .x-gx-xcs-list (<html>'de). */
