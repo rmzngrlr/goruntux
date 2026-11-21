@@ -3111,6 +3111,12 @@
             #x-gx-card .x-gx-akor.acik .x-gx-akor-b{ display:block; animation:xgxgecis .18s ease; }
             /* Akordiyon gövdesinin DOĞRUDAN-çocuğu başlıklar (Dil, Bahseden) bir önceki input/satıra yapışmasın. */
             #x-gx-card .x-gx-akor-b > label{ margin-top:12px; }
+            /* [DAHA FAZLA] az kullanılan alanlar (Hiçbiri/Etiketler) gizli; toggle ile aç/kapa, son durum hatırlanır. */
+            #x-gx-card .x-gx-dahafazla{ display:block; width:100%; text-align:left; background:transparent; border:none; color:#1d9bf0; font-size:13px; font-weight:700; cursor:pointer; padding:9px 2px 2px; }
+            #x-gx-card .x-gx-dahafazla:hover .t{ text-decoration:underline; }
+            #x-gx-card .x-gx-ekstra{ display:none; }
+            #x-gx-card .x-gx-ekstra.acik{ display:block; animation:xgxgecis .2s ease; }
+            #x-gx-card .x-gx-ekstra input{ margin-top:7px; }
             #x-gx-card .x-gx-ikili{ display:flex; gap:8px; align-items:flex-start; } #x-gx-card .x-gx-ikili>div{ flex:1; min-width:0; }
             #x-gx-card .x-gx-uclu{ display:flex; gap:7px; margin-top:6px; align-items:flex-start; } #x-gx-card .x-gx-uclu>div{ flex:1; min-width:0; }
             /* Min satırı etiketleri TEK SATIR (2 satıra kayıp inputları yamultmasın) + label alt boşluğu eşit. */
@@ -4389,8 +4395,8 @@
                 '<input id="ara-tumu" placeholder="Bu kelimelerin tümü">'
                 + '<input id="ara-tam" placeholder="Tam olarak bu ifade" style="margin-top:7px">'
                 + '<input id="ara-herhangi" placeholder="Herhangi biri (a b c)" style="margin-top:7px">'
-                + '<input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)" style="margin-top:7px">'
-                + '<input id="ara-etiket" placeholder="Etiketler (#konu)" style="margin-top:7px">'
+                + '<button type="button" class="x-gx-dahafazla" id="x-gx-kelime-toggle"><span class="t">+ Daha fazla seçenek</span></button>'
+                + '<div class="x-gx-ekstra" id="x-gx-kelime-ekstra"><input id="ara-hicbiri" placeholder="Hiçbiri (istenmeyen)"><input id="ara-etiket" placeholder="Etiketler (#konu)"></div>'
                 + '<label>Dil</label><select id="ara-dil">' + dilOpt + '</select>')
             + akor('Tarihler', true,
                 '<div class="x-gx-ikili"><div><label>Kaçtan</label><input type="date" id="ara-since"></div><div><label>Kaça</label><input type="date" id="ara-until"></div></div>')
@@ -4418,6 +4424,24 @@
         };
         // REVERSE-SYNC: açılışta X arama inputundaki mevcut query'yi popup alanlarına doldur (/search'te dolu gelir).
         try { var _xin = document.querySelector('input[data-testid="SearchBox_Search_Input"]'); if (_xin && _xin.value && _xin.value.trim()) xAramaQueryAyristir(_xin.value.trim()); } catch (e) {}
+        // [DAHA FAZLA] Hiçbiri+Etiketler gizli; toggle aç/kapa + son durum hatırla (localStorage x_ara_dahafazla).
+        // reverse-sync SONRASI kurulur -> gizli alana değer geldiyse (ya da son durum açıksa) otomatik AÇIK gelir.
+        try {
+            var _ktog = card.querySelector('#x-gx-kelime-toggle'), _keks = card.querySelector('#x-gx-kelime-ekstra');
+            if (_ktog && _keks) {
+                var _ekUygula = function (acik, kaydet) {
+                    _keks.classList.toggle('acik', acik);
+                    var _t = _ktog.querySelector('.t'); if (_t) _t.textContent = acik ? '− Daha az' : '+ Daha fazla seçenek';
+                    if (kaydet) { try { localStorage.setItem('x_ara_dahafazla', acik ? '1' : '0'); } catch (e) {} }
+                    try { xGxPopoverKonumla(); } catch (e) {}
+                    try { if (card.__sbGuncelle) card.__sbGuncelle(); } catch (e) {}
+                };
+                _ktog.onclick = function () { _ekUygula(!_keks.classList.contains('acik'), true); };
+                var _kayitAcik = false; try { _kayitAcik = localStorage.getItem('x_ara_dahafazla') === '1'; } catch (e) {}
+                var _dolu = false; try { _dolu = !!(((card.querySelector('#ara-hicbiri') || {}).value) || ((card.querySelector('#ara-etiket') || {}).value)); } catch (e) {}
+                _ekUygula(_kayitAcik || _dolu, false);
+            }
+        } catch (e) {}
         try { card.querySelectorAll('select').forEach(function (s) { if (s.__xcsSync) s.__xcsSync(); }); } catch (e) {}   // reverse-sync sonrası özel dropdown etiketleri
         try { if (card.__sbGuncelle) card.__sbGuncelle(); } catch (e) {}   // reverse-sync akordiyon açılınca scrollbar güncelle
         xAramaQueryKur(false);   // önizlemeyi güncelle (X'e TEKRAR yazma — zaten orada)
