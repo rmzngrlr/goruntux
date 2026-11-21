@@ -1620,6 +1620,9 @@
             // 6) Eğer tweet viewport'a sığıyorsa tek ekran görüntüsü kırp, sığmıyorsa aşağı kaydırıp Screenshot 2'yi al ve birleştir (Stitch)
             async function captureArticle(element, opts) {
                 opts = opts || {};   // v4.5: opts.tamYukseklik -> parent (saat başlıkta) için footer-gizleme + saat-kırpması ATLA
+                // [SCROLL GERİ-YÜKLE] Yakalama BAŞLAMADAN önceki scroll'u sakla; finally'de BURAYA dön (eski
+                // kod top:0'a ZIPLIYORDU -> /status/ tweet detaydan profile dönüşte gereksiz kayma hissi).
+                const _origScrollY = window.scrollY || document.documentElement.scrollTop || 0;
                 // Disable smooth scrolling temporarily to prevent animation delays
                 const disableSmoothScrollStyles = document.createElement('style');
                 disableSmoothScrollStyles.innerHTML = '* { scroll-behavior: auto !important; }';
@@ -2101,8 +2104,8 @@
                             item.el.style.display = item.origDisplay;
                         }
                     }
-                    // Eski scroll konumuna geri kaydır
-                    window.scrollTo({ top: 0, behavior: 'instant' });
+                    // Eski scroll konumuna geri kaydır (top:0 DEĞİL -> kullanicinin oldugu yere)
+                    try { window.scrollTo({ top: _origScrollY, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
                 }
             }
 
@@ -4052,7 +4055,7 @@
             // tuzagi YOK (fonksiyon hoist'li, hep tanimli; degisken-string referansi degil).
             var tur = (mod === 'profil') ? 'profil' : (mod === 'ara') ? 'ara' : 'ekle';
             if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(tur)); }
-            if (el.__tip) el.__tip.textContent = (mod === 'profil') ? "Bu profil için GörüntüX"
+            if (el.__tip) el.__tip.textContent = (mod === 'profil') ? "Bu profilin GörüntüX Raporu'nu oluştur!"
                 : (mod === 'ara') ? "Gelişmiş arama" : "Bu paylaşımı GörüntüX Raporu'na ekle!";
             el.__mod = (mod === 'profil' || mod === 'ara') ? mod : 'ekle';
         } catch (e) {}
