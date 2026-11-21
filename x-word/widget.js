@@ -2470,8 +2470,10 @@
 
                 if (!box || !gorev || !gorev.aktif) {
                     if (box) box.style.display = 'none';
-                    // Tarama bitti/yok: dock'taki "taranıyor" isigini kapat.
-                    if (widgetEl) widgetEl.classList.remove('scanning');
+                    // Tarama bitti/yok: dock'taki "taranıyor" isigini kapat. ⚠ PROFİL TARAMASINDA DEĞİL: profil
+                    // taraması addToPool kullanır (sunucu-işi yok) -> burası 'scanning'i kaldırıp halkayı/creep'i
+                    // bozuyordu. __xGxTaramaAktif açıkken DOKUNMA (profil göstergesini xGxTaramaGostergeKapat kapatır).
+                    if (widgetEl && !window.__xGxTaramaAktif) widgetEl.classList.remove('scanning');
                     return;
                 }
 
@@ -3181,11 +3183,14 @@
         window.__xGxRingTick = setInterval(function () {
             try {
                 var w = document.getElementById('x-downloader-widget');
-                if (!w || !w.classList.contains('scanning')) { clearInterval(window.__xGxRingTick); window.__xGxRingTick = null; window.__xGxRingHedef = null; window.__xGxRingGoster = null; return; }
+                // ⚠ GATE = __xGxTaramaAktif (scanning DEĞİL): Rapor'matik poll'ü (2474) sunucu-işi yoksa 'scanning'i
+                // kaldırıyor; profil taraması addToPool kullandığından sunucu-işi YOK -> 'scanning' sayaç-sayaç
+                // kalkıp geliyordu, creep durup sıfırlanıyor (ring dolmaz). __xGxTaramaAktif profil boyunca stabil.
+                if (!w || !window.__xGxTaramaAktif) { clearInterval(window.__xGxRingTick); window.__xGxRingTick = null; window.__xGxRingHedef = null; window.__xGxRingGoster = null; return; }
                 var hedef = window.__xGxRingHedef || 0, adim = window.__xGxRingAdim || 0.05;
-                var ust = Math.min(0.985, hedef + adim * 0.8);   // sonraki adımın %80'ine kadar creep; gerçek ilerleme gelince ileri çekilir
+                var ust = Math.min(0.985, hedef + adim * 0.92);  // sonraki adımın %92'sine kadar creep; gerçek ilerleme gelince ileri çekilir
                 var g = window.__xGxRingGoster || 0;
-                g += (ust - g) * 0.08 + 0.0015;                  // ease + küçük sabit creep -> asla durağan değil
+                g += (ust - g) * 0.11 + 0.0025;                  // ease + sabit creep -> belirgin, sürekli dolum (asla durağan değil)
                 if (g > ust) g = ust;
                 if (g < (window.__xGxRingGoster || 0)) g = window.__xGxRingGoster || 0;   // monoton (geri gitmez)
                 window.__xGxRingGoster = g;
