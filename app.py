@@ -26,7 +26,7 @@ client_jobs = {}
 # ----------------- TESHIS (kalici, sifre korumali tani sayfasi) -----------------
 # Panel [teshis] loglarini buraya POST eder; /teshis sayfasi (sifre ile) gosterir. Konsol yerine
 # buradan bakilir. Sifre: env TESHIS_SIFRE varsa o (duz), yoksa asagidaki HASH (repo'da yalniz hash).
-TESHIS_SIFRE_HASH = "16d1402677e0d2eedfc032ca45ff5c57ae5ae3811867b4cc1dea137d0b58e57e"
+TESHIS_SIFRE_HASH = "9c0ab34c3c185ee8de74b1b7dcb34c1cf8c4fb03eb16bd81e8b5022437bf0067"
 _teshis_log = []   # [{t, lvl, msg}] — son 800 kayit (RAM; docker restart'ta sifirlanir)
 _TESHIS_MAX = 800
 
