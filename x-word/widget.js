@@ -3300,20 +3300,21 @@
     // #top-level-buttons-computed (0x0 gizli ikizi degil) -> butonu onun basina (seg'den once) koy.
     // ============================================================================
     function xGxYtStilEkle() {
+        xGxSsStilEkle();   // ortak ic-ice daire+kare+arti ikon + hover/durum
         if (document.getElementById('x-gx-yt-style')) return;
         var s = document.createElement('style'); s.id = 'x-gx-yt-style';
         // NOT: backtick template-literal yerine dizi+join -> backtick-tuzagi riski yok.
+        // Arka plan SEFFAF: daire artik ikonun parcasi (nested tasarim). Ikon 30px (YouTube satiri kalin).
         s.textContent = [
             '.x-gx-yt-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center;',
             '   justify-content:center; width:40px; height:40px; margin:0 8px 0 0; padding:0; border:none;',
-            '   border-radius:9999px; background:#00ba7c; color:#fff; cursor:pointer; opacity:1; flex:0 0 auto;',
+            '   border-radius:9999px; background:transparent; cursor:pointer; opacity:1; flex:0 0 auto;',
             '   vertical-align:middle; -webkit-appearance:none; appearance:none;',
-            '   transition:transform .12s ease, filter .12s ease, background .12s ease; }',
-            '.x-gx-yt-btn:hover{ filter:brightness(1.07); transform:scale(1.06); }',
+            '   transition:transform .12s ease; }',
+            '.x-gx-yt-btn:hover{ transform:scale(1.06); }',
             '.x-gx-yt-btn:disabled{ cursor:default; opacity:.92; }',
             '.x-gx-yt-btn.x-gx-gizli{ display:none !important; }',
-            '.x-gx-yt-btn.x-gx-ok{ background:#00ba7c; }',
-            '.x-gx-yt-btn.x-gx-warn{ background:#f5a623; }',
+            '.x-gx-yt-btn .x-gx-ssico{ width:30px; height:30px; }',
             '.x-gx-yt-btn .x-gx-yt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-yt-btn .x-gx-yt-ic svg{ display:block; }',
             '.x-gx-yt-btn .x-gx-yt-tip{ position:absolute; top:calc(100% + 8px); left:50%;',
@@ -3339,6 +3340,49 @@
         paths.forEach(function (d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); });
         svg.appendChild(g); return svg;
     }
+
+    // ============================================================================
+    // [TEKLI SS BUTON IKONU — ORTAK] Kullanici tasarimi (2026-11-21): ic ice 3 kat —
+    // (1) yesil konturlu DAIRE, (2) SS anlamli tarama-KARESI (logomuz), (3) kucuk ARTI.
+    // Normal: hepsi yesil outline (daire ici seffaf). Hover: daire YESIL DOLAR (kontur
+    // yesil kalir), kare+arti BEYAZ olur. 'ok' durumunda ic = beyaz onay tiki (dolu daire).
+    // Tum TEKLI-SS butonlarinda ortak (.x-gx-ssbtn): IG + YouTube. (X tekli-SS = sol-nav
+    // butonu, kullanici haric tuttu; X'te ayri per-tweet buton zaten olusturulmuyor.)
+    // Renkler CSS'te (.c=daire, .in=ic) -> currentColor degil; hover/durum CSS ile.
+    // ============================================================================
+    function xGxSsStilEkle() {
+        if (document.getElementById('x-gx-ss-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-ss-style';
+        s.textContent = [
+            '.x-gx-ssbtn .x-gx-ssico{ display:block; width:24px; height:24px; overflow:visible; }',
+            '.x-gx-ssbtn .x-gx-ssico .c{ fill:none; stroke:#00ba7c; stroke-width:1.6; transition:fill .12s ease, stroke .12s ease; }',
+            '.x-gx-ssbtn .x-gx-ssico .in{ fill:none; stroke:#00ba7c; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:stroke .12s ease; }',
+            '.x-gx-ssbtn:hover .x-gx-ssico .c{ fill:#00ba7c; stroke:#00ba7c; }',   /* daire dolar, KONTUR yesil kalir */
+            '.x-gx-ssbtn:hover .x-gx-ssico .in{ stroke:#fff; }',                   /* kare+arti beyaz */
+            '.x-gx-ssbtn.x-gx-ok .x-gx-ssico .c{ fill:#00ba7c; stroke:#00ba7c; }',
+            '.x-gx-ssbtn.x-gx-ok .x-gx-ssico .in{ stroke:#fff; }',
+            '.x-gx-ssbtn.x-gx-warn .x-gx-ssico .c{ fill:none; stroke:#f5a623; }',
+            '.x-gx-ssbtn.x-gx-warn .x-gx-ssico .in{ stroke:#f5a623; }',
+            '.x-gx-ssbtn.x-gx-warn:hover .x-gx-ssico .c{ fill:#f5a623; stroke:#f5a623; }',
+            '.x-gx-ssbtn.x-gx-warn:hover .x-gx-ssico .in{ stroke:#fff; }'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+    // Ortak ikon (DOM-API, Trusted Types guvenli). tur 'ok' = ic onay tiki, aksi = kare+arti.
+    function _xGxSsIkon(tur) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var s = document.createElementNS(NS, 'svg');
+        s.setAttribute('class', 'x-gx-ssico'); s.setAttribute('viewBox', '0 0 24 24');
+        var c = document.createElementNS(NS, 'circle');
+        c.setAttribute('class', 'c'); c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '11');
+        s.appendChild(c);
+        var g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'in');
+        var paths = (tur === 'ok')
+            ? ['M7.5 12.4l2.8 2.8 6-6.4']
+            : ['M7.5 10.5V7.5h3', 'M13.5 7.5h3v3', 'M16.5 13.5v3h-3', 'M10.5 16.5H7.5v-3', 'M12 10v4', 'M10 12h4'];
+        paths.forEach(function (d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); });
+        s.appendChild(g); return s;
+    }
     // Begeni segmentinin GORUNUR ebeveyni (asil #top-level-buttons-computed). Butonu bunun basina koyariz.
     function _xYtLikeHedef() {
         try {
@@ -3362,7 +3406,7 @@
             btn.classList.remove('x-gx-ok', 'x-gx-warn');
             if (sinif) btn.classList.add(sinif);
             var ic = btn.querySelector('.x-gx-yt-ic');
-            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xYtIkonSvg(ikonTur || 'ekle')); }
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(ikonTur || 'ekle')); }
             if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
         } catch (e) {}
     }
@@ -3379,10 +3423,10 @@
             var hedef = _xYtLikeHedef(); if (!hedef || !hedef.host) return;
             xGxYtStilEkle();
             var btn = document.createElement('button');
-            btn.className = 'x-gx-yt-btn';
+            btn.className = 'x-gx-yt-btn x-gx-ssbtn';
             btn.type = 'button';
             btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
-            var ikonSar = document.createElement('span'); ikonSar.className = 'x-gx-yt-ic'; ikonSar.appendChild(_xYtIkonSvg('ekle'));
+            var ikonSar = document.createElement('span'); ikonSar.className = 'x-gx-yt-ic'; ikonSar.appendChild(_xGxSsIkon('ekle'));
             var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = _X_YT_TIP;
             btn.appendChild(ikonSar); btn.appendChild(tip); btn.__tip = tip;
             btn.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xYtButonTikla(btn); });
@@ -3453,17 +3497,18 @@
     // Ikon DOM-API ile (_xYtIkonSvg yeniden kullanildi); IG light-tema -> yesil OUTLINE (IG ikon stili).
     // ============================================================================
     function xGxIgStilEkle() {
+        xGxSsStilEkle();   // ortak ic-ice daire+kare+arti ikon + hover/durum
         if (document.getElementById('x-gx-ig-style')) return;
         var s = document.createElement('style'); s.id = 'x-gx-ig-style';
+        // Buton Kaydet (bookmark) ile AYNI boyut: 24x24; arka plan seffaf (daire ikonun parcasi).
         s.textContent = [
             '.x-gx-ig-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center;',
-            '   justify-content:center; width:40px; height:40px; padding:0; margin:0; border:none; background:transparent;',
-            '   color:#00ba7c; cursor:pointer; opacity:1; flex:0 0 auto; vertical-align:middle;',
-            '   -webkit-appearance:none; appearance:none; transition:transform .12s ease, filter .12s ease; }',
-            '.x-gx-ig-btn:hover{ filter:brightness(1.1); transform:scale(1.08); }',
-            '.x-gx-ig-btn.x-gx-ok{ color:#00ba7c; }',
-            '.x-gx-ig-btn.x-gx-warn{ color:#f5a623; }',
+            '   justify-content:center; width:24px; height:24px; padding:0; margin:0; border:none; background:transparent;',
+            '   cursor:pointer; opacity:1; flex:0 0 auto; vertical-align:middle;',
+            '   -webkit-appearance:none; appearance:none; transition:transform .12s ease; }',
+            '.x-gx-ig-btn:hover{ transform:scale(1.06); }',
             '.x-gx-ig-btn.x-gx-gizli{ display:none !important; }',
+            '.x-gx-ig-btn .x-gx-ssico{ width:24px; height:24px; }',
             '.x-gx-ig-btn .x-gx-ig-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-ig-btn .x-gx-ig-ic svg{ display:block; }',
             '.x-gx-ig-btn .x-gx-ig-tip{ position:absolute; bottom:calc(100% + 8px); left:50%;',
@@ -3507,7 +3552,7 @@
             if (renk === 'ok') btn.classList.add('x-gx-ok');
             else if (renk === 'warn') btn.classList.add('x-gx-warn');
             var ic = btn.querySelector('.x-gx-ig-ic');
-            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xIgIkonSvg(ikonTur || 'ekle')); }
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(ikonTur || 'ekle')); }
             if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
         } catch (e) {}
     }
@@ -3531,9 +3576,9 @@
                 if (!cell || cell.querySelector('.x-gx-ig-btn')) continue;
                 try { cell.style.setProperty('display', 'flex'); cell.style.setProperty('align-items', 'center'); cell.style.setProperty('gap', '4px'); } catch (e) {}
                 var btn = document.createElement('div');
-                btn.className = 'x-gx-ig-btn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
+                btn.className = 'x-gx-ig-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                 btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
-                var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xIgIkonSvg('ekle'));
+                var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xGxSsIkon('ekle'));
                 var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = _X_IG_TIP;
                 btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                 (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
