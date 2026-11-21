@@ -4408,7 +4408,11 @@
                 try {
                     L('BACK -> ' + location.pathname + ' y=' + Math.round(window.scrollY) + ' kayitli=' + (_save ? _save.y : '-') + ' rest=' + history.scrollRestoration);
                     [100, 300, 600, 1000, 1800, 3000, 4500].forEach(function (d) {
-                        setTimeout(function () { try { L('  +' + d + 'ms y=' + Math.round(window.scrollY) + ' docH=' + document.documentElement.scrollHeight + ' top=' + ttId() + (_save ? (' SAPMA=' + (Math.round(window.scrollY) - _save.y)) : '')); } catch (e) {} }, d);
+                        setTimeout(function () { try {
+                            var tw = document.querySelectorAll('article[data-testid="tweet"]'), sh = 0; tw.forEach(function (t) { sh += Math.round(t.getBoundingClientRect().height); });
+                            var navH = 0; try { var nb = document.getElementById('x-gx-nav-btn'); if (nb) navH = Math.round(nb.getBoundingClientRect().height); } catch (x) {}
+                            L('  +' + d + 'ms y=' + Math.round(window.scrollY) + ' docH=' + document.documentElement.scrollHeight + ' twN=' + tw.length + ' twH=' + sh + ' tikN=' + document.querySelectorAll('.x-gx-tik').length + ' navH=' + navH + ' top=' + ttId() + (_save ? (' SAPMA=' + (Math.round(window.scrollY) - _save.y)) : ''));
+                        } catch (e) {} }, d);
                     });
                 } catch (e) {}
             });
