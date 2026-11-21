@@ -3444,7 +3444,7 @@
             btn.type = 'button';
             btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
             var ikonSar = document.createElement('span'); ikonSar.className = 'x-gx-yt-ic'; ikonSar.appendChild(_xGxSsIkon('ekle'));
-            var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = _X_YT_TIP;
+            var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = "Bu videoyu GörüntüX Raporu'na ekle";   // INLINE literal (var timing -> bos tooltip)
             btn.appendChild(ikonSar); btn.appendChild(tip); btn.__tip = tip;
             btn.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xYtButonTikla(btn); });
             if (hedef.once && hedef.once.parentElement === hedef.host) hedef.host.insertBefore(btn, hedef.once);
@@ -3456,7 +3456,7 @@
         if (!btn || btn.__busy) return;
         if (location.pathname.toLowerCase() !== '/watch') {
             _xYtDurum(btn, 'x-gx-warn', 'Yalnız video (/watch)', 'ekle');
-            setTimeout(function () { _xYtDurum(btn, null, _X_YT_TIP, 'ekle'); }, 2200); return;
+            setTimeout(function () { _xYtDurum(btn, null, "Bu videoyu GörüntüX Raporu'na ekle", 'ekle'); }, 2200); return;
         }
         btn.__busy = true; btn.disabled = true;
         _xYtDurum(btn, null, 'Yakalanıyor…', 'ekle');
@@ -3466,7 +3466,7 @@
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var _bitir = function (sinif, mesaj, ikonTur, sure) {
             _xYtDurum(btn, sinif, mesaj, ikonTur);
-            setTimeout(function () { btn.__busy = false; btn.disabled = false; _xYtDurum(btn, null, _X_YT_TIP, 'ekle'); }, sure || 1800);
+            setTimeout(function () { btn.__busy = false; btn.disabled = false; _xYtDurum(btn, null, "Bu videoyu GörüntüX Raporu'na ekle", 'ekle'); }, sure || 1800);
         };
         var _ytRes = null;
         try { _ytRes = await xYtIdleYakala(); }
@@ -3575,7 +3575,7 @@
             if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
         } catch (e) {}
     }
-    var _X_IG_TIP = 'GörüntüX Raporu\'na ekle';
+    var _X_IG_TIP = "GörüntüX Raporu'na ekle";   // ⚠ ÇİFT TIRNAK + DÜZ apostrof: tek-tırnak+\' bir yerde BOŞ string veriyor ([[html-template-escape-tuzagi]])
     // Tum gorunur Kaydet butonlari icin (coklu-post): hucreyi flex yap + butonu Kaydet'in soluna koy.
     function xIgButonKur() {
         try {
@@ -3598,11 +3598,10 @@
                 btn.className = 'x-gx-ig-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                 btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
                 var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xGxSsIkon('ekle'));
-                var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = _X_IG_TIP;
+                var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal: _X_IG_TIP var'i xIgButonKur ANINDA henuz undefined olabiliyordu (timing) -> tooltip bos geliyordu
                 btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                 // [GECICI TESHIS] tooltip "bos" sorunu: olusturma + hover anindaki gercek durum -> /teshis.
-                try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip CREATE] _X_IG_TIP.len=' + String(_X_IG_TIP || '').length + ' tipText=' + JSON.stringify(tip.textContent) + ' igStyle=' + !!document.getElementById('x-gx-ig-style') + ' ssStyle=' + !!document.getElementById('x-gx-ss-style') }); } catch (e) {}
-                (function (t, b) { b.addEventListener('mouseenter', function () { try { var cs = getComputedStyle(t); var r = t.getBoundingClientRect(); chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip HOVER] text=' + JSON.stringify(t.textContent) + ' color=' + cs.color + ' opacity=' + cs.opacity + ' w=' + Math.round(r.width) + ' h=' + Math.round(r.height) }); } catch (e) {} }); })(tip, btn);
+                try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'op', msg: '[ig-tip CREATE] tipText=' + JSON.stringify(tip.textContent) + ' (_X_IG_TIP.len=' + String(_X_IG_TIP || '').length + ' timing-kaniti)' }); } catch (e) {}
                 (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
                 cell.insertBefore(btn, cell.firstChild);
             }
@@ -3641,7 +3640,7 @@
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
         var _bitir = function (renk, mesaj, ikonTur, sure) {
             _xIgDurum(btn, renk, mesaj, ikonTur);
-            setTimeout(function () { btn.__busy = false; _xIgDurum(btn, null, _X_IG_TIP, 'ekle'); }, sure || 1800);
+            setTimeout(function () { btn.__busy = false; _xIgDurum(btn, null, "GörüntüX Raporu'na ekle", 'ekle'); }, sure || 1800);
         };
         var ss = '', baslik = 'Instagram Gönderisi';
         try {
@@ -4100,7 +4099,7 @@
             /* Tarama: yesil daire GERI GELIR (beyaz halka seffaf uzerinde gorunmez; halka+sayac yesilde). */
             .x-gx-nav.scanning .x-gx-nav-ekle{ display:inline-flex; background:#00ba7c; }
             .x-gx-nav-ekle:hover{ transform:scale(1.06); }
-            .x-gx-nav-ekle .x-gx-ssico{ width:26px; height:26px; }
+            .x-gx-nav-ekle .x-gx-ssico{ width:44px; height:44px; }   /* yesil daire = MAVI daire (40px) ile AYNI boyut (olculu: ssico44 -> .c 40px). Tum modlarda. overflow:visible ile 40px daire 40px butona ortali sigar. */
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
