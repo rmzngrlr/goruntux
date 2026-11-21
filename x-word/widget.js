@@ -2209,6 +2209,28 @@
                     var _bitis = (_mode !== 'reel') ? fbBitisY(card, sc, scIc, {}) : null;
                     var _bitisPay = 8;
                     if (_bitis && _bitis + _bitisPay < fullH) { fullH = _bitis + _bitisPay; }
+                    // [YORUM KUTUSU — KART DISI GORSEL ORTUSME, !scIc] Post sayfasinda/feed'de yorum YAZMA
+                    // kutusu ("<SEN> adıyla yorum yap", role=textbox) kartin DOM cocugu DEGIL (SIBLING) ama
+                    // kart bbox'inin ALT kenariyla GORSEL ortusuyor (olcum: eylem-cubugu 665-697, kutu
+                    // 691-711, kart alt 703 -> kutu kadraja giriyordu). fbBitisY KART-SINIRLI oldugu icin bu
+                    // kart-disi kutuyu GORMEZ. Cozum: SAYFA genelinde kutuyu bul; bu kartin alt bolgesine
+                    // denk geliyorsa kadraji kutunun TAM TOPUNDA bitir (eylem-cubugu gorsel olarak ustte
+                    // kalir). Modal/scIc yolu: kutu kart ICINDE -> fbBitisY textbox/"adıyla yorum" ile zaten
+                    // eler; orada bu KAPALI (koordinat farkli + gereksiz).
+                    if (!scIc && _mode !== 'reel') { try {
+                        var _kompTopVp = null;
+                        document.querySelectorAll('[role="textbox"],[contenteditable="true"],[aria-label*="adıyla yorum" i],[aria-label*="comment as" i]').forEach(function (tb) {
+                            var _tr = tb.getBoundingClientRect();
+                            if (_tr.height <= 0 || _tr.width <= 0) return;
+                            // yalniz BU kartin alt bolgesine denk gelen kutu (status kutusu/baska gönderi HARIC)
+                            if (_tr.top < kr.top + 60 || _tr.top > kr.bottom + 80) return;
+                            _kompTopVp = (_kompTopVp == null) ? _tr.top : Math.min(_kompTopVp, _tr.top);
+                        });
+                        if (_kompTopVp != null) {
+                            var _kompH = Math.round(_kompTopVp - kr.top) - 2;   // 2px pay: kutu topu kesirli olabilir
+                            if (_kompH > 80 && _kompH < fullH) fullH = _kompH;
+                        }
+                    } catch (e) {} }
                     var segs = [];
                     if (!scIc) {
                         var top = Math.max(0, Math.round(kr.top));
@@ -4281,13 +4303,19 @@
             /* MAVI ikon = YESIL'in birebir MAVI versiyonu (kullanici): normal mavi-outline daire+cerceve+X,
                hover'da daire MAVI dolar + ic BEYAZ. Cerceve/boyut yesil ile AYNI (viewBox 24, 42px -> .c 39px). */
             .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
-            .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; width:42px; height:42px; overflow:visible; }
+            .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; width:42px; height:42px; overflow:visible; transform-origin:center; transition:transform .12s ease; }
             .x-gx-nav-ico .x-gx-nav-logo .c{ fill:none; stroke:#1d9bf0; stroke-width:1.6; transition:fill .12s ease; }
             .x-gx-nav-ico .x-gx-nav-logo .in{ fill:none; stroke:#1d9bf0; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:stroke .12s ease; }
             /* HOVER bolgesi = .x-gx-nav-inner (MAVI ikon + "GörüntüX" ETIKETI; yesil buton inner DISINDA).
                -> GörüntüX yazisina gelince de mavi dolar; yesil bagimsiz (bos) kalir. */
             .x-gx-nav-inner:hover .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
             .x-gx-nav-inner:hover .x-gx-nav-logo .in{ stroke:#fff; }
+            /* [BÜYÜME — kullanici] Mavi ikon hover'da bir tik BÜYÜR (yesil buton gibi). Iki tetik: MAVI'ye
+               hover (.x-gx-nav-inner) VE YESIL'e hover (.x-gx-nav-ekle; DOM'da mavinin SONRASINDA -> onceki
+               kardes CSS'te secilemez, :has ile). DOLGU yalniz mavi-hover'da (yukarida); yesil-hover'da mavi
+               BUYUR ama BOS kalir (renk degismez). */
+            .x-gx-nav-inner:hover .x-gx-nav-logo,
+            .x-gx-nav:has(.x-gx-nav-ekle:hover) .x-gx-nav-logo{ transform:scale(1.06); }
             /* HALKA = absolute HTML <span> (içinde svg %100). SVG elemanını DOĞRUDAN position:absolute+inset
                yapmak bu tarayıcıda dikeyde ~44px kaydırıyordu (SVG replaced-element over-constraint);
                HTML span inset:0'ı güvenilir uygular, svg %100 doldurur -> halka 40px yeşil dairede TAM ORTALI. */
