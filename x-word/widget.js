@@ -3377,10 +3377,19 @@
         c.setAttribute('class', 'c'); c.setAttribute('cx', '12'); c.setAttribute('cy', '12'); c.setAttribute('r', '11');
         s.appendChild(c);
         var g = document.createElementNS(NS, 'g'); g.setAttribute('class', 'in');
-        var paths = (tur === 'ok')
-            ? ['M7.5 12.4l2.8 2.8 6-6.4']
-            : ['M7.5 10.5V7.5h3', 'M13.5 7.5h3v3', 'M16.5 13.5v3h-3', 'M10.5 16.5H7.5v-3', 'M12 10v4', 'M10 12h4'];
-        paths.forEach(function (d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); });
+        function P(d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); }
+        function CI(cx, cy, r) { var e = document.createElementNS(NS, 'circle'); e.setAttribute('cx', cx); e.setAttribute('cy', cy); e.setAttribute('r', r); g.appendChild(e); }
+        // Daire ORTAK kap (.c). Ic (.in) moda gore: ekle=cerceve+arti (IG/YT ile AYNI),
+        // profil=kisi, ara=arama, ok=onay tiki. (X sol-nav butonu tum modlarda bu tasarim.)
+        if (tur === 'ok') {
+            P('M7.5 12.4l2.8 2.8 6-6.4');
+        } else if (tur === 'profil') {
+            CI('12', '10', '1.9'); P('M8.2 16c0-2.1 1.7-3.3 3.8-3.3s3.8 1.2 3.8 3.3');
+        } else if (tur === 'ara') {
+            CI('11', '11', '2.6'); P('M13 13l2.7 2.7');
+        } else {
+            ['M7.5 10.5V7.5h3', 'M13.5 7.5h3v3', 'M16.5 13.5v3h-3', 'M10.5 16.5H7.5v-3', 'M12 10v4', 'M10 12h4'].forEach(P);
+        }
         s.appendChild(g); return s;
     }
     // Begeni segmentinin GORUNUR ebeveyni (asil #top-level-buttons-computed). Butonu bunun basina koyariz.
@@ -3511,12 +3520,14 @@
             '.x-gx-ig-btn .x-gx-ssico{ width:24px; height:24px; }',
             '.x-gx-ig-btn .x-gx-ig-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-ig-btn .x-gx-ig-ic svg{ display:block; }',
-            '.x-gx-ig-btn .x-gx-ig-tip{ position:absolute; bottom:calc(100% + 8px); left:50%;',
-            '   transform:translate(-50%,4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            // Buton Kaydet'in solunda = post SAG kenarina yakin. Ortali tooltip sagdan TASIP kesiliyordu.
+            // Cozum: SAGA yasla (right:0) -> tooltip SOLA acilir, viewport sagindan tasmaz.
+            '.x-gx-ig-btn .x-gx-ig-tip{ position:absolute; bottom:calc(100% + 8px); right:0; left:auto;',
+            '   transform:translateY(4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
             '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
             '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
             '   transition:opacity .12s ease, transform .12s ease; }',
-            '.x-gx-ig-btn:hover .x-gx-ig-tip{ opacity:1; transform:translate(-50%,0); }'
+            '.x-gx-ig-btn:hover .x-gx-ig-tip{ opacity:1; transform:translateY(0); }'
         ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
