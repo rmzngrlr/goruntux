@@ -936,6 +936,8 @@
             try { xTikInit(); } catch (e) {}
             // [YOUTUBE SS] YouTube /watch'ta Begeni'nin soluna yesil "+" GoruntuX butonu (yalniz yt'de aktif).
             try { xYtButonInit(); } catch (e) {}
+            // [INSTAGRAM SS] Her gönderinin Kaydet butonunun soluna yesil "+" GoruntuX butonu (yalniz ig'de aktif).
+            try { xIgButonInit(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -1189,6 +1191,9 @@
             // 'main article' bazen yanlis/tam-genislik element donduruyordu; medyayi iceren article'i tercih et.
             function igFindPost() {
                 try {
+                    // [YT/IG BUTON — HEDEF GÖNDERİ] Tıklanan Kaydet butonunun gönderisi set edilmişse onu döndür
+                    // (çoklu-feed'de en-büyük-medya yerine TIKLANAN gönderi yakalansın; tüm iç igFindPost çağrıları tutarlı).
+                    if (window.__xIgHedefPost && document.contains(window.__xIgHedefPost)) return window.__xIgHedefPost;
                     // 1) En büyük medyayı (video/img) bul.
                     var media = null, best = 0;
                     document.querySelectorAll('video, img').forEach(function (m) {
@@ -3437,6 +3442,135 @@
         setInterval(function () { try { xYtButonKur(); } catch (e) {} }, 700);
     }
 
+    // ============================================================================
+    // [INSTAGRAM SS BUTONU] Her gönderinin Kaydet (bookmark) butonunun SOLUNA yesil "+"
+    // GoruntuX butonu — feed + post-sayfasi + profil-modali (hepsi ayni <section grid> aksiyon
+    // cubugu). Tik = O gönderiyi captureArticle ile yakalar -> panelin havuzuna ekler (+ pano).
+    // Anchor: save.closest('section') + save'i iceren hucre (yalniz-Kaydet). Hucre flex yapilir,
+    // buton Kaydet'in soluna (4px) girer. Capture dogru gönderiyi alsin diye __xIgHedefPost set
+    // edilir (igFindPost guard'i onu doner). SS kosulu: captureArticle xGxButonlariGizle ile
+    // .x-gx-ig-btn'i (listede) + DM balonu/yorum-avatari/begenenler'i gizler -> butonumuz SS'e girmez.
+    // Ikon DOM-API ile (_xYtIkonSvg yeniden kullanildi); IG light-tema -> yesil OUTLINE (IG ikon stili).
+    // ============================================================================
+    function xGxIgStilEkle() {
+        if (document.getElementById('x-gx-ig-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-ig-style';
+        s.textContent = [
+            '.x-gx-ig-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center;',
+            '   justify-content:center; width:40px; height:40px; padding:0; margin:0; border:none; background:transparent;',
+            '   color:#00ba7c; cursor:pointer; opacity:1; flex:0 0 auto; vertical-align:middle;',
+            '   -webkit-appearance:none; appearance:none; transition:transform .12s ease, filter .12s ease; }',
+            '.x-gx-ig-btn:hover{ filter:brightness(1.1); transform:scale(1.08); }',
+            '.x-gx-ig-btn.x-gx-ok{ color:#00ba7c; }',
+            '.x-gx-ig-btn.x-gx-warn{ color:#f5a623; }',
+            '.x-gx-ig-btn.x-gx-gizli{ display:none !important; }',
+            '.x-gx-ig-btn .x-gx-ig-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
+            '.x-gx-ig-btn .x-gx-ig-ic svg{ display:block; }',
+            '.x-gx-ig-btn .x-gx-ig-tip{ position:absolute; bottom:calc(100% + 8px); left:50%;',
+            '   transform:translate(-50%,4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
+            '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
+            '   transition:opacity .12s ease, transform .12s ease; }',
+            '.x-gx-ig-btn:hover .x-gx-ig-tip{ opacity:1; transform:translate(-50%,0); }'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+    // Kaydet svg'sinin aksiyon-cubugu hucresi (section'in dogrudan cocugu, yalniz-Kaydet).
+    function _xIgSaveCell(saveSvg) {
+        try {
+            var sec = saveSvg.closest('section'); if (!sec) return null;
+            var cell = saveSvg, guard = 0;
+            while (cell && cell.parentElement !== sec && guard < 12) { cell = cell.parentElement; guard++; }
+            if (!cell || cell.parentElement !== sec) return null;
+            if (cell.querySelector('svg[aria-label="Beğen"], svg[aria-label="Like"]')) return null;   // yalniz-Kaydet hucresi olmali
+            return cell;
+        } catch (e) { return null; }
+    }
+    function _xIgDurum(btn, renk, mesaj, ikonTur) {
+        try {
+            btn.classList.remove('x-gx-ok', 'x-gx-warn');
+            if (renk === 'ok') btn.classList.add('x-gx-ok');
+            else if (renk === 'warn') btn.classList.add('x-gx-warn');
+            var ic = btn.querySelector('.x-gx-ig-ic');
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xYtIkonSvg(ikonTur || 'ekle')); }
+            if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
+        } catch (e) {}
+    }
+    var _X_IG_TIP = 'GörüntüX Raporu\'na ekle';
+    // Tum gorunur Kaydet butonlari icin (coklu-post): hucreyi flex yap + butonu Kaydet'in soluna koy.
+    function xIgButonKur() {
+        try {
+            if (xPlatform() !== 'ig') return;
+            if (window.__xGxCaptureAktif) return;   // yakalama sirasinda DOM'a dokunma
+            xGxIgStilEkle();
+            var saves = document.querySelectorAll('svg[aria-label="Kaydet"], svg[aria-label="Save"]');
+            for (var i = 0; i < saves.length; i++) {
+                var cell = _xIgSaveCell(saves[i]);
+                if (!cell || cell.querySelector('.x-gx-ig-btn')) continue;
+                try { cell.style.setProperty('display', 'flex'); cell.style.setProperty('align-items', 'center'); cell.style.setProperty('gap', '4px'); } catch (e) {}
+                var btn = document.createElement('div');
+                btn.className = 'x-gx-ig-btn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
+                btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
+                var ic = document.createElement('span'); ic.className = 'x-gx-ig-ic'; ic.appendChild(_xYtIkonSvg('ekle'));
+                var tip = document.createElement('span'); tip.className = 'x-gx-ig-tip'; tip.textContent = _X_IG_TIP;
+                btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
+                (function (b) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xIgButonTikla(b); }); })(btn);
+                cell.insertBefore(btn, cell.firstChild);
+            }
+        } catch (e) {}
+    }
+    // Tik: tiklanan butonun gönderisini coz -> __xIgHedefPost -> captureArticle -> pano -> addToPool.
+    async function xIgButonTikla(btn) {
+        if (!btn || btn.__busy) return;
+        btn.__busy = true;
+        _xIgDurum(btn, null, 'Yakalanıyor…', 'ekle');
+        var post = null; try { post = btn.closest('article'); } catch (e) {}
+        if (!post) { try { post = igFindPost(); } catch (e) {} }
+        // Link = gönderinin KENDI permalinki (feed'de location ana sayfa olur).
+        var link = '';
+        try { var la = (post || document).querySelector('a[href*="/p/"], a[href*="/reel/"]'); if (la) link = (la.href || '').split('?')[0]; } catch (e) {}
+        if (!link) { try { link = location.href.split('?')[0]; } catch (e) {} }
+        var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
+        var origin = 'https://goruntux.rgmedya.tr';
+        try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        var _bitir = function (renk, mesaj, ikonTur, sure) {
+            _xIgDurum(btn, renk, mesaj, ikonTur);
+            setTimeout(function () { btn.__busy = false; _xIgDurum(btn, null, _X_IG_TIP, 'ekle'); }, sure || 1800);
+        };
+        var ss = '', baslik = 'Instagram Gönderisi';
+        try {
+            window.__xIgHedefPost = post || null;   // igFindPost guard'i -> tum ic kadraj/gizleme hedef gönderiye kilitlenir
+            try {
+                ss = (await captureArticle(post || document.querySelector('article') || document.body)) || '';
+                baslik = xIgYazar() || baslik;       // xIgYazar da igFindPost kullanir -> hedef gönderi yazari
+            } finally { window.__xIgHedefPost = null; }
+        } catch (e) { printLog('IG buton yakalama hatasi: ' + ((e && e.message) || e)); }
+        if (!ss || ss.length < 100) {
+            if (pano) { try { pano.iptal(); } catch (e) {} }
+            _bitir('warn', 'Yakalanamadı — tekrar deneyin', 'ekle', 2600); return;
+        }
+        var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(ss); } catch (e) {} }
+        try {
+            chrome.runtime.sendMessage({
+                action: 'addToPool', origin: origin, title: baslik, link: link, image: ss, is_profile: false, group_override: ''
+            }, function (addRes) {
+                if (addRes && addRes.status === 'success') { _bitir('ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 'ok', 1800); }
+                else if (addRes && addRes.status === 'duplicate') { _bitir('warn', 'Zaten havuzda', 'ekle', 2000); }
+                else { _bitir('warn', 'Eklenemedi' + (addRes && addRes.message ? (': ' + addRes.message) : ''), 'ekle', 3000); }
+            });
+        } catch (e) {
+            if (pano) { try { pano.iptal(); } catch (x) {} }
+            _bitir('warn', 'Bağlantı koptu — F5 yapın', 'ekle', 3200);
+        }
+    }
+    // Baslangic: yalniz Instagram'da; stil + hemen dene + poller (SPA + akista yeni gönderiler kaydikca).
+    function xIgButonInit() {
+        if (xPlatform() !== 'ig') return;
+        try { xGxIgStilEkle(); } catch (e) {}
+        try { xIgButonKur(); } catch (e) {}
+        setInterval(function () { try { xIgButonKur(); } catch (e) {} }, 700);
+    }
+
     // AÇIK (odaklı) tweet'i bul = URL'deki /status/<id> ile KENDİ zaman-damgası (permalink) linki eşleşen
     // article. NOT: X tweet satırını [role=link] ile sarabiliyor (permalink dahil) -> [role=link] eleme HATALI;
     // <time> linkinin id'si = focusId doğru ayrım (parent/yanıt kendi id'leriyle; alıntı da kendi id'si).
@@ -4627,14 +4761,14 @@
     // başında display:none (akış içi -> boşluk bırakmaz), finally'de geri. Tek seferlik (stitch bozulmaz).
     function xGxButonlariGizle() {
         window.__xGxCaptureAktif = true;   // poller'ları duraklat (yakalama sırasında taze buton enjekte etme)
-        try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
+        try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn, .x-gx-ig-btn').forEach((b) => b.classList.add('x-gx-gizli')); } catch (e) {}
         // [SS'TE POPUP OLMASIN] KURŞUN-GEÇİRMEZ: yakalama boyunca <html>'e sınıf ekle; CSS !important ile
         // HER #x-gx-ov (mevcut VEYA yakalama penceresinde geç oluşan) display:none olur. + inline yedek.
         try { document.documentElement.classList.add('x-gx-capturing'); } catch (e) {}
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = 'none'; } catch (e) {}
     }
     function xGxButonlariGoster() {
-        try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
+        try { document.querySelectorAll('.x-gx-rapor-btn, .x-gx-tw-btn, .x-gx-ig-btn').forEach((b) => b.classList.remove('x-gx-gizli')); } catch (e) {}
         try { document.documentElement.classList.remove('x-gx-capturing'); } catch (e) {}
         try { var ov = document.getElementById('x-gx-ov'); if (ov) ov.style.display = ''; } catch (e) {}
         window.__xGxCaptureAktif = false;
