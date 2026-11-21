@@ -934,6 +934,8 @@
             }
             // [TIK SECIM / Step 2] Tweet tik ikonlari + alttan kayan secim menusu (her enjekte X sayfasinda).
             try { xTikInit(); } catch (e) {}
+            // [YOUTUBE SS] YouTube /watch'ta Begeni'nin soluna yesil "+" GoruntuX butonu (yalniz yt'de aktif).
+            try { xYtButonInit(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -2334,7 +2336,7 @@
             // örtü katmanlarını gizle, kadraj=oynatıcı+başlık+kanal+istatistik (yorumlara taşmaz, sağ=oynatıcı
             // kenarı), widget çakışıyorsa gizle, tek-kare (+ taşarsa 2 dilim). Yazar=kanal adı (DOM). {shot,author}|hata.
             async function xYtIdleYakala() {
-                var _ytGorunur = [], _ytGizli = [];
+                var _ytGorunur = [], _ytGizli = [], _ytBtnGizli = [];
                 try {
                     if (location.pathname.toLowerCase() !== '/watch') {
                         throw new Error("yalniz normal video (/watch) destekleniyor — Shorts/topluluk henuz yok");
@@ -2369,6 +2371,10 @@
                      '.ytp-gradient-top', '.ytp-gradient-bottom', '.ytp-large-play-button', '.ytp-play-button-overlay'].forEach(function (sel) {
                         document.querySelectorAll(sel).forEach(function (el) { var r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) return; _ytGizli.push([el, el.style.display]); el.style.setProperty('display', 'none', 'important'); });
                     });
+                    // [YT BUTONUMUZ SS'E GIRMESIN] Kadraj OLCUMUNDEN ONCE yesil "+" butonunu display:none yap
+                    // (satir reflow -> kadrajda bosluk birakmaz; poller display:none'i yine querySelector'la bulup
+                    // yeniden enjekte etmez). finally'de geri alinir.
+                    try { document.querySelectorAll('.x-gx-yt-btn').forEach(function (b) { _ytBtnGizli.push([b, b.style.display]); b.style.setProperty('display', 'none', 'important'); }); } catch (e) {}
                     await new Promise(function (r) { setTimeout(r, 250); });
                     var parcalar = [];
                     var ekle = function (sel) { var hepsi = document.querySelectorAll(sel); for (var qi = 0; qi < hepsi.length; qi++) { var r = hepsi[qi].getBoundingClientRect(); if (r.width > 1 && r.height > 1) { parcalar.push(r); return; } } };
@@ -2431,6 +2437,7 @@
                     return { shot: shot, author: _kanal };
                 } finally {
                     try { _ytGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} }); } catch (e) {}
+                    try { _ytBtnGizli.forEach(function (p) { try { p[0].style.display = p[1] || ''; } catch (e) {} }); } catch (e) {}
                     try { _ytGorunur.forEach(function (p) { try { p[0].style.visibility = p[1] || ''; } catch (e) {} }); } catch (e) {}
                 }
             }
@@ -3277,6 +3284,159 @@
         `;
         (document.head || document.documentElement).appendChild(s);
     }
+
+    // ============================================================================
+    // [YOUTUBE SS BUTONU] YouTube /watch sayfasinda Begeni'nin SOLUNA yesil "+" GoruntuX
+    // butonu. Dock sol-nav'a tasininca YouTube'da gorunur tetikleyici kalmamisti (nav X-ozel).
+    // Buton bu videoyu xYtIdleYakala ile yakalar -> panelin havuzuna ekler (+ panoya kopya).
+    // ⚠ YouTube Trusted Types CSP uygular -> innerHTML YASAK; DOM createElement/NS ile kurulur.
+    // (Icerik-script izole-dunya CSP'den muaf olsa da TrustedHTML icin DOM-API garanti-guvenli.)
+    // Begeni segmenti = segmented-like-dislike-button-view-model; GORUNUR ebeveyni asil
+    // #top-level-buttons-computed (0x0 gizli ikizi degil) -> butonu onun basina (seg'den once) koy.
+    // ============================================================================
+    function xGxYtStilEkle() {
+        if (document.getElementById('x-gx-yt-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-yt-style';
+        // NOT: backtick template-literal yerine dizi+join -> backtick-tuzagi riski yok.
+        s.textContent = [
+            '.x-gx-yt-btn{ box-sizing:border-box; position:relative; display:inline-flex; align-items:center;',
+            '   justify-content:center; width:40px; height:40px; margin:0 8px 0 0; padding:0; border:none;',
+            '   border-radius:9999px; background:#00ba7c; color:#fff; cursor:pointer; opacity:1; flex:0 0 auto;',
+            '   vertical-align:middle; -webkit-appearance:none; appearance:none;',
+            '   transition:transform .12s ease, filter .12s ease, background .12s ease; }',
+            '.x-gx-yt-btn:hover{ filter:brightness(1.07); transform:scale(1.06); }',
+            '.x-gx-yt-btn:disabled{ cursor:default; opacity:.92; }',
+            '.x-gx-yt-btn.x-gx-gizli{ display:none !important; }',
+            '.x-gx-yt-btn.x-gx-ok{ background:#00ba7c; }',
+            '.x-gx-yt-btn.x-gx-warn{ background:#f5a623; }',
+            '.x-gx-yt-btn .x-gx-yt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
+            '.x-gx-yt-btn .x-gx-yt-ic svg{ display:block; }',
+            '.x-gx-yt-btn .x-gx-yt-tip{ position:absolute; top:calc(100% + 8px); left:50%;',
+            '   transform:translate(-50%,-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
+            '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
+            '   transition:opacity .12s ease, transform .12s ease; }',
+            '.x-gx-yt-btn:hover .x-gx-yt-tip{ opacity:1; transform:translate(-50%,0); }'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+    // Ikon SVG'si DOM-API ile (Trusted Types guvenli). tur: 'ekle' = cerceve+arti, 'ok' = onay tiki.
+    function _xYtIkonSvg(tur) {
+        var NS = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('width', '24'); svg.setAttribute('height', '24'); svg.setAttribute('viewBox', '0 0 32 32');
+        var g = document.createElementNS(NS, 'g');
+        g.setAttribute('fill', 'none'); g.setAttribute('stroke', 'currentColor'); g.setAttribute('stroke-width', '2.4');
+        g.setAttribute('stroke-linecap', 'round'); g.setAttribute('stroke-linejoin', 'round');
+        var paths = (tur === 'ok')
+            ? ['M9 16.5l5 5 9-10']
+            : ['M9 12V9h3', 'M20 9h3v3', 'M23 20v3h-3', 'M12 23H9v-3', 'M16 11.5v9M11.5 16h9'];
+        paths.forEach(function (d) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', d); g.appendChild(p); });
+        svg.appendChild(g); return svg;
+    }
+    // Begeni segmentinin GORUNUR ebeveyni (asil #top-level-buttons-computed). Butonu bunun basina koyariz.
+    function _xYtLikeHedef() {
+        try {
+            var seg = document.querySelector('segmented-like-dislike-button-view-model')
+                   || document.querySelector('like-button-view-model');
+            if (seg && seg.parentElement) {
+                var pr = seg.parentElement.getBoundingClientRect();
+                if (pr.width > 1 && pr.height > 1) return { host: seg.parentElement, once: seg };
+            }
+            var all = document.querySelectorAll('#top-level-buttons-computed');
+            for (var i = 0; i < all.length; i++) {
+                var r = all[i].getBoundingClientRect();
+                if (r.width > 10 && r.height > 10) return { host: all[i], once: all[i].firstElementChild };
+            }
+        } catch (e) {}
+        return null;
+    }
+    // Buton gorsel durumu: sinif ('x-gx-ok'|'x-gx-warn'|null), tooltip metni, ikon turu.
+    function _xYtDurum(btn, sinif, mesaj, ikonTur) {
+        try {
+            btn.classList.remove('x-gx-ok', 'x-gx-warn');
+            if (sinif) btn.classList.add(sinif);
+            var ic = btn.querySelector('.x-gx-yt-ic');
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xYtIkonSvg(ikonTur || 'ekle')); }
+            if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
+        } catch (e) {}
+    }
+    var _X_YT_TIP = 'Bu videoyu GörüntüX Raporu\'na ekle';
+    // Butonu /watch'ta Begeni'nin soluna kur (yoksa). /watch disinda kaldir.
+    function xYtButonKur() {
+        try {
+            if (xPlatform() !== 'yt') return;
+            if (location.pathname.toLowerCase() !== '/watch') {
+                var esk = document.querySelectorAll('.x-gx-yt-btn'); for (var k = 0; k < esk.length; k++) { try { esk[k].remove(); } catch (e) {} }
+                return;
+            }
+            if (document.querySelector('.x-gx-yt-btn')) return;   // zaten var (display:none olsa bile -> capture sirasinda yeniden enjekte etme)
+            var hedef = _xYtLikeHedef(); if (!hedef || !hedef.host) return;
+            xGxYtStilEkle();
+            var btn = document.createElement('button');
+            btn.className = 'x-gx-yt-btn';
+            btn.type = 'button';
+            btn.setAttribute('aria-label', 'GörüntüX Raporu\'na ekle');
+            var ikonSar = document.createElement('span'); ikonSar.className = 'x-gx-yt-ic'; ikonSar.appendChild(_xYtIkonSvg('ekle'));
+            var tip = document.createElement('span'); tip.className = 'x-gx-yt-tip'; tip.textContent = _X_YT_TIP;
+            btn.appendChild(ikonSar); btn.appendChild(tip); btn.__tip = tip;
+            btn.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xYtButonTikla(btn); });
+            if (hedef.once && hedef.once.parentElement === hedef.host) hedef.host.insertBefore(btn, hedef.once);
+            else hedef.host.insertBefore(btn, hedef.host.firstChild);
+        } catch (e) {}
+    }
+    // Buton tiklama: yakala (xYtIdleYakala) -> pano -> addToPool -> geri bildirim.
+    async function xYtButonTikla(btn) {
+        if (!btn || btn.__busy) return;
+        if (location.pathname.toLowerCase() !== '/watch') {
+            _xYtDurum(btn, 'x-gx-warn', 'Yalnız video (/watch)', 'ekle');
+            setTimeout(function () { _xYtDurum(btn, null, _X_YT_TIP, 'ekle'); }, 2200); return;
+        }
+        btn.__busy = true; btn.disabled = true;
+        _xYtDurum(btn, null, 'Yakalanıyor…', 'ekle');
+        var _ytLink = window.location.href;
+        var pano = null; try { pano = xPanoHazirla(_ytLink); } catch (e) {}
+        var origin = 'https://goruntux.rgmedya.tr';
+        try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        var _bitir = function (sinif, mesaj, ikonTur, sure) {
+            _xYtDurum(btn, sinif, mesaj, ikonTur);
+            setTimeout(function () { btn.__busy = false; btn.disabled = false; _xYtDurum(btn, null, _X_YT_TIP, 'ekle'); }, sure || 1800);
+        };
+        var _ytRes = null;
+        try { _ytRes = await xYtIdleYakala(); }
+        catch (e) { printLog('YT buton yakalama hatasi: ' + ((e && e.message) || e)); }
+        if (!_ytRes || !_ytRes.shot || _ytRes.shot.length < 100) {
+            if (pano) { try { pano.iptal(); } catch (e) {} }
+            _bitir('x-gx-warn', 'Yakalanamadı — tekrar deneyin', 'ekle', 2600); return;
+        }
+        var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(_ytRes.shot); } catch (e) {} }
+        try {
+            chrome.runtime.sendMessage({
+                action: 'addToPool',
+                origin: origin,
+                title: _ytRes.author || 'YouTube Videosu',
+                link: _ytLink,
+                image: _ytRes.shot,
+                is_profile: false,
+                group_override: ''
+            }, function (addRes) {
+                if (addRes && addRes.status === 'success') { _bitir('x-gx-ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 'ok', 1800); }
+                else if (addRes && addRes.status === 'duplicate') { _bitir('x-gx-warn', 'Zaten havuzda', 'ekle', 2000); }
+                else { _bitir('x-gx-warn', 'Eklenemedi' + (addRes && addRes.message ? (': ' + addRes.message) : ''), 'ekle', 3000); }
+            });
+        } catch (e) {
+            if (pano) { try { pano.iptal(); } catch (x) {} }
+            _bitir('x-gx-warn', 'Bağlantı koptu — F5 yapın', 'ekle', 3200);
+        }
+    }
+    // Baslangic: yalniz YouTube'da; stil kur + hemen dene + SPA/yeniden-render icin poller.
+    function xYtButonInit() {
+        if (xPlatform() !== 'yt') return;
+        try { xGxYtStilEkle(); } catch (e) {}
+        try { xYtButonKur(); } catch (e) {}
+        setInterval(function () { try { xYtButonKur(); } catch (e) {} }, 700);
+    }
+
     // AÇIK (odaklı) tweet'i bul = URL'deki /status/<id> ile KENDİ zaman-damgası (permalink) linki eşleşen
     // article. NOT: X tweet satırını [role=link] ile sarabiliyor (permalink dahil) -> [role=link] eleme HATALI;
     // <time> linkinin id'si = focusId doğru ayrım (parent/yanıt kendi id'leriyle; alıntı da kendi id'si).
