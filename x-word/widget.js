@@ -970,7 +970,8 @@
             // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
             try { xFbButonInit(); } catch (e) {}
             // [X PROFİL GERİ-DÖNÜŞ SCROLL KORUMA] Tweet aç->geri dön OTOMATIK aşağı-kaymasını ez (bayrak x_scroll_koru).
-            try { xGxScrollKoru(); } catch (e) {}
+            // ⚠TEŞHİS MODU: kök-neden bulunana dek telafi KAPALI (ham kayma + tetikleyici teshise yazilsin).
+            try { if (localStorage.getItem('x_scroll_koru') === '1') xGxScrollKoru(); } catch (e) {}
             // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön kaymasini /teshis'e logla (yalniz x.com). KALDIRILACAK.
             try { xGxScrollTeshis(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
@@ -4469,17 +4470,38 @@
             ['wheel', 'touchstart', 'touchmove', 'keydown', 'pointerdown', 'mousedown'].forEach(function (ev) {
                 try { window.addEventListener(ev, function () { _lastInput = Date.now(); }, { passive: true, capture: true }); } catch (e) {}
             });
-            var _bStartY = 0, _bUser = false, _bOn = false, _bTimer = null;
+            // [TETİKLEYİCİ KORELASYON] MutationObserver: inject.js (tweet data-* attribute), tik (.x-gx-tik),
+            // nav (#x-gx-nav-btn) enjeksiyonlarinin SON zaman damgasi. OTOMATIK scroll satirinda "ondan ONCE
+            // hangisi oldu" yazilir -> TEK reproda tetikleyici gorunur (manuel F5-toggle gerekmeden).
+            var _injT = 0, _tikT = 0, _navT = 0;
+            try {
+                var _obs = new MutationObserver(function (muts) {
+                    var nw = Date.now();
+                    for (var i = 0; i < muts.length; i++) {
+                        var m = muts[i];
+                        if (m.type === 'attributes') { _injT = nw; continue; }
+                        if (m.addedNodes) for (var j = 0; j < m.addedNodes.length; j++) {
+                            var nd = m.addedNodes[j]; if (!nd || nd.nodeType !== 1) continue;
+                            try {
+                                if ((nd.classList && nd.classList.contains('x-gx-tik')) || (nd.querySelector && nd.querySelector('.x-gx-tik'))) _tikT = nw;
+                                if (nd.id === 'x-gx-nav-btn' || (nd.querySelector && nd.querySelector('#x-gx-nav-btn'))) _navT = nw;
+                            } catch (e) {}
+                        }
+                    }
+                });
+                _obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-tweet-id', 'data-react-tagged', 'data-author-username'] });
+            } catch (e) {}
+            var _bStartY = 0, _bUser = false, _bOn = false, _bTimer = null, _bInj = false, _bTik = false, _bNav = false;
             window.addEventListener('scroll', function () {
                 try {
                     var now = Date.now();
-                    if (!_bOn) { _bOn = true; _bStartY = Math.round(window.scrollY); _bUser = false; }
+                    if (!_bOn) { _bOn = true; _bStartY = Math.round(window.scrollY); _bUser = false; _bInj = (now - _injT < 300); _bTik = (now - _tikT < 300); _bNav = (now - _navT < 300); }
                     if (now - _lastInput < 250) _bUser = true;
                     clearTimeout(_bTimer);
                     _bTimer = setTimeout(function () {
                         try {
                             var endY = Math.round(window.scrollY), dy = endY - _bStartY; _bOn = false;
-                            if (Math.abs(dy) >= 5) L('SCROLL ' + (_bUser ? 'kullanici' : 'OTOMATIK⚠') + ' dy=' + dy + ' -> y=' + endY + ' top=' + ttId() + ' (' + location.pathname + ')');
+                            if (Math.abs(dy) >= 5) L('SCROLL ' + (_bUser ? 'kullanici' : 'OTOMATIK⚠') + ' dy=' + dy + ' -> y=' + endY + ' [once300ms: inject=' + (_bInj ? 'EVET' : '-') + ' tik=' + (_bTik ? 'EVET' : '-') + ' nav=' + (_bNav ? 'EVET' : '-') + '] top=' + ttId());
                         } catch (e) {}
                     }, 150);
                 } catch (e) {}
