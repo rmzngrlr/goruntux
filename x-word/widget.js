@@ -3854,8 +3854,12 @@
     // ⚠Feed'de temiz permalink <a> YOK (FB JS-nav + __cft__ query-token) -> cogu feed gönderide (3) girer.
     function _xFbPostLink(card, eylemBtn, yazar) {
         function temiz(h) {
-            try { if (!h) return ''; var yol = String(h).replace(/^https?:\/\/[^/]+/i, '').split('?')[0].split('#')[0];
-                if (!yol || yol === '/') return ''; return 'https://www.facebook.com' + yol; } catch (e) { return ''; }
+            try {
+                if (!h) return ''; var abs = String(h).replace(/^https?:\/\/[^/]+/i, '');
+                var yol = abs.split('?')[0].split('#')[0]; if (!yol || yol === '/') return '';
+                if (/^\/profile\.php$/i.test(yol)) { var mi = abs.match(/[?&](id=\d+)/i); return 'https://www.facebook.com/profile.php' + (mi ? '?' + mi[1] : ''); }   // profil ?id= KORU
+                return 'https://www.facebook.com' + yol;
+            } catch (e) { return ''; }
         }
         try {   // 1) Post sayfasi (permalink URL'de)
             var lp = location.pathname || '';
@@ -3863,14 +3867,36 @@
                 return location.href.split('#')[0];
             }
         } catch (e) {}
-        try {   // 2) Kartta gercek post permalink <a> (yol-tabanli; query gereksiz olanlar)
+        try {   // 2) Kartta GERCEK post permalink <a> (coklu format). ⚠FEED'de temiz /posts/ permalinki her
+            //    zaman YOK; ama cogu feed postu (foto/link-share/video) icin /photo/?fbid veya /watch?v GERCEK
+            //    paylasilabilir post linki verir (canli dogrulandi: /photo/?fbid postu+etkilesimi aciyor).
+            //    TEMIZ yol-permalink tercih; yoksa FOTO permalinki yedek. __cft__ tracking ATILIR, fbid/set/v/
+            //    story_fbid/id KORUNUR. ⚠/stories/{pageId}/{id} = hikaye-goruntuleyici (post DEGIL) -> HARIC.
             var as = card ? card.querySelectorAll('a[href]') : [];
+            var _foto = null;
             for (var i = 0; i < as.length; i++) {
-                var yol = (as[i].getAttribute('href') || '').replace(/^https?:\/\/[^/]+/i, '');
+                var raw = as[i].getAttribute('href') || '';
+                var abs = raw.replace(/^https?:\/\/[^/]+/i, '');
+                var yol = abs.split('?')[0].split('#')[0];
+                var qs = (abs.indexOf('?') >= 0) ? abs.slice(abs.indexOf('?') + 1).split('#')[0] : '';
+                // 2a) TEMIZ yol-permalink: /{slug}/posts|videos/{id}, /reel/{id}, /permalink/{id}, /groups/{g}/posts|permalink/{id}
                 if (/^\/(?:[^/?#]+\/(?:posts|videos)\/[^/?#]|reel\/[^/?#]|permalink\/[^/?#]|groups\/[^/?#]+\/(?:posts|permalink)\/[^/?#])/i.test(yol)) {
-                    var t = temiz(as[i].getAttribute('href')); if (t) return t;
+                    return 'https://www.facebook.com' + yol;
+                }
+                // 2b) permalink.php / story.php: story_fbid(+id) KORU
+                if (/^\/(?:permalink|story)\.php$/i.test(yol) && /(?:^|&)story_fbid=\d/i.test(qs)) {
+                    var _kp = []; qs.split('&').forEach(function (p) { if (/^(?:story_fbid|id)=\d/i.test(p)) _kp.push(p); });
+                    if (_kp.length) return 'https://www.facebook.com' + yol + '?' + _kp.join('&');
+                }
+                // 2c) watch: v KORU
+                if (/^\/watch\/?$/i.test(yol)) { var _vm = qs.match(/(?:^|&)(v=\d+)/i); if (_vm) return 'https://www.facebook.com/watch/?' + _vm[1]; }
+                // 2d) FOTO: fbid(+set) KORU -> YEDEK (temiz permalink yoksa). Cogu feed postunda var; gercek post linki.
+                if (!_foto && /^\/photo(?:\.php)?\/?$/i.test(yol) && /(?:^|&)fbid=\d/i.test(qs)) {
+                    var _kp2 = []; qs.split('&').forEach(function (p) { if (/^(?:fbid|set)=/i.test(p)) _kp2.push(p); });
+                    if (_kp2.length) _foto = 'https://www.facebook.com/photo/?' + _kp2.join('&');
                 }
             }
+            if (_foto) return _foto;
         } catch (e) {}
         try {   // 3) Feed yedegi: yazar adiyla eslesen profil/grup-uye linki (gercek https)
             if (yazar && card) {
