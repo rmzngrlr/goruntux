@@ -3317,12 +3317,14 @@
             '.x-gx-yt-btn .x-gx-ssico{ width:30px; height:30px; }',
             '.x-gx-yt-btn .x-gx-yt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
             '.x-gx-yt-btn .x-gx-yt-ic svg{ display:block; }',
-            '.x-gx-yt-btn .x-gx-yt-tip{ position:absolute; top:calc(100% + 8px); left:50%;',
-            '   transform:translate(-50%,-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
+            // YT butonu Begeni'nin solunda = satir SOL tarafi. Tooltip SOLA yasli (left:0) ->
+            // SAGA acilir, ortaliyken sola tasma/kesilme olmaz (IG sag-yaslinin aynasi).
+            '.x-gx-yt-btn .x-gx-yt-tip{ position:absolute; top:calc(100% + 8px); left:0; right:auto;',
+            '   transform:translateY(-4px); background:rgba(15,20,25,.96); color:#fff; font-weight:600;',
             '   font-size:12px; line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0;',
             '   pointer-events:none; z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3);',
             '   transition:opacity .12s ease, transform .12s ease; }',
-            '.x-gx-yt-btn:hover .x-gx-yt-tip{ opacity:1; transform:translate(-50%,0); }'
+            '.x-gx-yt-btn:hover .x-gx-yt-tip{ opacity:1; transform:translateY(0); }'
         ].join('\n');
         (document.head || document.documentElement).appendChild(s);
     }
