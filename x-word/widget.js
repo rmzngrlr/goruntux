@@ -3964,22 +3964,20 @@
     }
     // Durum/açıklama tooltip'ini hover BEKLEMEDEN kısa süre göster (yakalama sonucu "Rapora eklendi ·
     // Panoda" vb. kullanıcıya görünür olsun). Mouseenter ile aynı konumlama (fixed; nav kabı kırpıyordu).
-    // Nav tooltip konumu (kullanici): GörüntüX BASLIGI/LOGOSU ALTINA + ASLA tweet'e tasmasin
-    // (sag kenar yesil butonun sagini = nav item sagi = tweet oncesini gecmez).
+    // Nav tooltip konumu (kullanici): SAGA DAYALI, YESIL IKON ALTINDAN -> tooltip SAG kenari =
+    // yesil ikon SAG kenari, SOLA acilir (tek satir/nowrap). Sagda tweet var -> ASLA tasmaz;
+    // sola sidebar bos. (Viewport sol kenarindan da tasmasin: min 6px.)
     function _xNavTipKonum(el, tip) {
         try {
             if (!el || !tip) return;
-            var r = el.getBoundingClientRect();
-            var nav = el.closest ? el.closest('.x-gx-nav') : null;
-            var logo = nav ? nav.querySelector('.x-gx-nav-ico') : null;
-            var solAnchor = logo ? logo.getBoundingClientRect().left : r.left;   // GörüntüX LOGOSU/BASLIGI altı
-            // ASLA tweet'e tasmasin: GENISLIK logo'dan yesil buton-sagina (=nav item sagi, tweet oncesi)
-            // ile SINIRLI + gerekirse SAR (white-space:normal). Boylece sag kenar butonu gecemez.
+            var r = el.getBoundingClientRect();   // yesil ikon (nav-ekle)
             tip.style.transform = 'none';
-            tip.style.whiteSpace = 'normal';
-            tip.style.maxWidth = Math.max(90, Math.round(r.right - solAnchor)) + 'px';
-            tip.style.left = Math.round(solAnchor) + 'px';
+            tip.style.whiteSpace = 'nowrap';
+            tip.style.maxWidth = 'none';
             tip.style.top = Math.round(r.bottom + 8) + 'px';
+            tip.style.left = '0px';   // olcum icin
+            var tw = Math.round(tip.getBoundingClientRect().width);
+            tip.style.left = Math.max(6, Math.round(r.right - tw)) + 'px';   // SAG kenar = ikon sagi
         } catch (e) {}
     }
     function xNavTipGoster(el, sure) {
@@ -4082,8 +4080,14 @@
                mavi daire merkezi = Anasayfa/Keşfet ikon merkezi (canlı ölçümle doğrulandı). Yalnız geniş mod. */
             .x-gx-nav:not(.collapsed) .x-gx-nav-inner{ margin-left:5px; }
             /* MAVİ DAİRE (sol uç): zemin daire, içte beyaz işaret (frame+X). */
-            .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:#1d9bf0; display:inline-flex; align-items:center; justify-content:center; }
-            .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; transition:opacity .15s ease; }
+            /* MAVI ikon = YESIL'in birebir MAVI versiyonu (kullanici): normal mavi-outline daire+cerceve+X,
+               hover'da daire MAVI dolar + ic BEYAZ. Cerceve/boyut yesil ile AYNI (viewBox 24, 42px -> .c 39px). */
+            .x-gx-nav-ico{ position:relative; flex:0 0 auto; width:40px; height:40px; border-radius:50%; background:transparent; display:inline-flex; align-items:center; justify-content:center; }
+            .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; width:42px; height:42px; overflow:visible; }
+            .x-gx-nav-ico .x-gx-nav-logo .c{ fill:none; stroke:#1d9bf0; stroke-width:1.6; transition:fill .12s ease; }
+            .x-gx-nav-ico .x-gx-nav-logo .in{ fill:none; stroke:#1d9bf0; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:stroke .12s ease; }
+            .x-gx-nav-ico:hover .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
+            .x-gx-nav-ico:hover .x-gx-nav-logo .in{ stroke:#fff; }
             /* HALKA = absolute HTML <span> (içinde svg %100). SVG elemanını DOĞRUDAN position:absolute+inset
                yapmak bu tarayıcıda dikeyde ~44px kaydırıyordu (SVG replaced-element over-constraint);
                HTML span inset:0'ı güvenilir uygular, svg %100 doldurur -> halka 40px yeşil dairede TAM ORTALI. */
@@ -4176,7 +4180,7 @@
         a.innerHTML = ''
             + '<span class="x-gx-nav-inner">'
             +   '<span class="x-gx-nav-ico">'
-            +     '<svg class="x-gx-nav-logo" width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M13 13l6 6M19 13l-6 6"/></g></svg>'
+            +     '<svg class="x-gx-nav-logo x-gx-ssico" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle class="c" cx="12" cy="12" r="11" fill="none" stroke="#1d9bf0" stroke-width="1.6"/><g class="in" fill="none" stroke="#1d9bf0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 10.5V7.5h3"/><path d="M13.5 7.5h3v3"/><path d="M16.5 13.5v3h-3"/><path d="M10.5 16.5H7.5v-3"/><path d="M10 10l4 4"/><path d="M14 10l-4 4"/></g></svg>'
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
