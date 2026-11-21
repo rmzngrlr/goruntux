@@ -4,9 +4,6 @@
   console.log("X-Rapor Helper inject.js MAIN world script initialized.");
 
   function tagTweets() {
-    // [İZOLASYON] localStorage.x_inject_off='1' -> bu MAIN-world React-Fiber etiketleme KAPALI.
-    // X profil geri-dönüş scroll kaymasini izole etmek icin (bu kapaliyken kayma gidiyorsa sebep BU).
-    try { if (localStorage.getItem('x_inject_off') === '1') return; } catch (e) {}
     const articles = document.querySelectorAll('article[data-testid="tweet"]:not([data-react-tagged])');
     if (articles.length === 0) return;
 

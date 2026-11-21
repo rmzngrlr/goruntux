@@ -958,10 +958,10 @@
             // Durum (tarama/guncelleme) gizli dock'tan nav butonuna MutationObserver ile yansir.
             if (!X_GX_DOCK_ESKI) {
                 try { widget.classList.add('x-gx-dock-yedek'); } catch (e) {}
-                try { if (localStorage.getItem('x_nav_off') !== '1') xNavButonPollerBaslat(); } catch (e) {}   // [İZOLASYON] x_nav_off='1' -> nav buton enjeksiyonu KAPALI
+                try { xNavButonPollerBaslat(); } catch (e) {}
             }
             // [TIK SECIM / Step 2] Tweet tik ikonlari + alttan kayan secim menusu (her enjekte X sayfasinda).
-            try { if (localStorage.getItem('x_tik_off') !== '1') xTikInit(); } catch (e) {}   // [İZOLASYON] x_tik_off='1' -> tweet tik ikonu enjeksiyonu KAPALI
+            try { xTikInit(); } catch (e) {}
             // [YOUTUBE SS] YouTube /watch'ta Begeni'nin soluna yesil "+" GoruntuX butonu (yalniz yt'de aktif).
             try { xYtButonInit(); } catch (e) {}
             // [INSTAGRAM SS] Her gönderinin Kaydet butonunun soluna yesil "+" GoruntuX butonu (yalniz ig'de aktif).
@@ -969,11 +969,6 @@
             // [FACEBOOK SS] Her gönderi kartinin basligindaki ⋯/X butonlarinin SOLUNA yesil "+" GoruntuX butonu
             // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
             try { xFbButonInit(); } catch (e) {}
-            // [X PROFİL GERİ-DÖNÜŞ SCROLL KORUMA] Tweet aç->geri dön OTOMATIK aşağı-kaymasını ez (bayrak x_scroll_koru).
-            // ⚠TEŞHİS MODU: kök-neden bulunana dek telafi KAPALI (ham kayma + tetikleyici teshise yazilsin).
-            try { if (localStorage.getItem('x_scroll_koru') === '1') xGxScrollKoru(); } catch (e) {}
-            // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön kaymasini /teshis'e logla (yalniz x.com). KALDIRILACAK.
-            try { xGxScrollTeshis(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -4382,132 +4377,6 @@
             else if (res && res.status === 'duplicate') xTweetBtnDurum(btn, 'x-gx-warn', panoOk ? 'Zaten havuzda · 📋 Panoda' : 'Zaten havuzda');
             else xTweetBtnDurum(btn, 'x-gx-warn', 'Eklenemedi');
         } catch (e) { try { if (pano) pano.iptal(); } catch (x) {} xTweetBtnDurum(btn, 'x-gx-warn', 'Hata'); printLog('[GX Tweet Btn] hata: ' + (e && e.message)); }
-    }
-    // ============================================================================
-    // [GEÇİCİ SCROLL TEŞHİSİ] X profilde tweet aç->geri dön KAYMASI: nav olaylari + scroll ornekleme
-    // /teshis'e loglar (background gxTeshis kopru -> /api/teshis/log). Kullanici /teshis Kopyala ile
-    // kaydi verir -> kaymanin ne zaman/ne kadar/hangi docH degisimiyle oldugunu gorup kokunu buluruz.
-    // Yalniz x.com/twitter.com. SORUN TESHIS EDILINCE TAMAMEN KALDIRILIR.
-    // ============================================================================
-    // ============================================================================
-    // [X PROFİL GERİ-DÖNÜŞ SCROLL KORUMA] Teşhis (log f04adee/9.1) kesinleştirdi: X profile DOGRU geri
-    // yukluyor (ustteki tweet @dogru konum), SONRA tweet'ler yuklendikce (twN 4->14) OTOMATIK bir asagi-
-    // kayma (~378px) olup kullaniciyi birakti tweet'in ALTINA tasiyor (eklenti yokken YOK). Cozum: profil
-    // scroll'unda ustteki tweet'i ANCHOR (id+ekran-ofseti) sakla; geri donuste o tweet'i eski konumuna
-    // ~2sn boyunca sik sik (100ms) geri getir -> surukleyen kaymayi aninda ez. Yalniz x.com; bayrak
-    // x_scroll_koru='0' -> kapat. (Kok-neden X<->eklenti etkilesimi; bu dogrudan+saglam telafi.)
-    // ============================================================================
-    function xGxScrollKoru() {
-        try {
-            if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(location.hostname)) return;
-            try { if (localStorage.getItem('x_scroll_koru') === '0') return; } catch (e) {}
-            if (window.__xGxScrollKoruKuruldu) return; window.__xGxScrollKoruKuruldu = true;
-            var _anchor = null, _st = null;
-            var ustTweet = function () {
-                try {
-                    var arts = document.querySelectorAll('article[data-testid="tweet"]'), b = null, bt = 99999;
-                    for (var i = 0; i < arts.length; i++) { var r = arts[i].getBoundingClientRect(); if (r.top > -80 && r.top < bt && r.height > 20) { bt = r.top; b = arts[i]; } }
-                    if (!b) return null; var id = b.getAttribute('data-tweet-id'); if (!id) return null;
-                    return { id: id, off: Math.round(b.getBoundingClientRect().top) };
-                } catch (e) { return null; }
-            };
-            window.addEventListener('scroll', function () {
-                try { if (/\/status\/\d+/.test(location.href)) return; clearTimeout(_st); _st = setTimeout(function () { var a = ustTweet(); if (a) _anchor = a; }, 120); } catch (e) {}
-            }, { passive: true });
-            window.addEventListener('popstate', function () {
-                try {
-                    if (!_anchor || /\/status\/\d+/.test(location.href)) return;
-                    var hedef = _anchor, until = Date.now() + 2200, duzeltiyor = false;
-                    var bulTweet = function () { var arts = document.querySelectorAll('article[data-testid="tweet"]'); for (var i = 0; i < arts.length; i++) { if (arts[i].getAttribute('data-tweet-id') === hedef.id) return arts[i]; } return null; };
-                    var fix = function () {
-                        if (duzeltiyor) return;
-                        try { var art = bulTweet(); if (art) { var diff = Math.round(art.getBoundingClientRect().top) - hedef.off; if (Math.abs(diff) > 6) { duzeltiyor = true; window.scrollTo(0, Math.max(0, window.scrollY + diff)); duzeltiyor = false; } } } catch (e) { duzeltiyor = false; }
-                    };
-                    // KARE-KUSURSUZ: scroll olayinda (BOYAMA oncesi, capture) duzelt -> sicrama gorunmez.
-                    var onScroll = function () { if (Date.now() <= until) fix(); else { try { window.removeEventListener('scroll', onScroll, true); } catch (e) {} } };
-                    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
-                    // rAF: scroll olayi olmayan anlari da kapsa (ilk yukleme, gec gelen anchor tweet).
-                    var raf = function () { if (Date.now() <= until) { fix(); try { requestAnimationFrame(raf); } catch (e) {} } };
-                    try { requestAnimationFrame(raf); } catch (e) { setTimeout(function loop() { if (Date.now() <= until) { fix(); setTimeout(loop, 32); } }, 32); }
-                } catch (e) {}
-            }, { passive: true });
-        } catch (e) {}
-    }
-    function xGxScrollTeshis() {
-        try {
-            if (!/(^|\.)x\.com$|(^|\.)twitter\.com$/i.test(location.hostname)) return;
-            if (window.__xGxScrollTeshisKuruldu) return; window.__xGxScrollTeshisKuruldu = true;
-            var L = function (m) { try { chrome.runtime.sendMessage({ action: 'gxTeshis', lvl: 'scroll', msg: '[SCROLL] ' + m }); } catch (e) {} };
-            var ttId = function () {
-                try {
-                    var arts = document.querySelectorAll('article[data-testid="tweet"]'), b = null, bt = 99999;
-                    arts.forEach(function (a) { var r = a.getBoundingClientRect(); if (r.top > -60 && r.top < bt) { bt = r.top; b = a; } });
-                    if (!b) return '-'; return (b.getAttribute('data-tweet-id') || '?') + '@' + Math.round(b.getBoundingClientRect().top);
-                } catch (e) { return '-'; }
-            };
-            var _save = null;
-            var _ps = history.pushState;
-            history.pushState = function () {
-                try { if (!/\/status\/\d+/.test(location.href)) { _save = { y: Math.round(window.scrollY), url: location.href, tt: ttId() }; L('AWAY ' + location.pathname + ' y=' + _save.y + ' top=' + _save.tt + ' docH=' + document.documentElement.scrollHeight); } } catch (e) {}
-                return _ps.apply(this, arguments);
-            };
-            window.addEventListener('popstate', function () {
-                try {
-                    L('BACK -> ' + location.pathname + ' y=' + Math.round(window.scrollY) + ' kayitli=' + (_save ? _save.y : '-') + ' rest=' + history.scrollRestoration);
-                    [100, 300, 600, 1000, 1800, 3000, 4500].forEach(function (d) {
-                        setTimeout(function () { try {
-                            var tw = document.querySelectorAll('article[data-testid="tweet"]'), sh = 0; tw.forEach(function (t) { sh += Math.round(t.getBoundingClientRect().height); });
-                            var navH = 0; try { var nb = document.getElementById('x-gx-nav-btn'); if (nb) navH = Math.round(nb.getBoundingClientRect().height); } catch (x) {}
-                            L('  +' + d + 'ms y=' + Math.round(window.scrollY) + ' docH=' + document.documentElement.scrollHeight + ' twN=' + tw.length + ' twH=' + sh + ' tikN=' + document.querySelectorAll('.x-gx-tik').length + ' navH=' + navH + ' top=' + ttId() + (_save ? (' SAPMA=' + (Math.round(window.scrollY) - _save.y)) : ''));
-                        } catch (e) {} }, d);
-                    });
-                } catch (e) {}
-            });
-            // [KULLANICI mi OTOMATIK mi — ayirt et] Kullanici girdisi (wheel/touch/klavye/fare) zaman
-            // damgasini sakla; bir scroll burst'u girdiden ~250ms icinde geldiyse 'kullanici', GIRDISIZ
-            // geldiyse 'OTOMATIK⚠' = HATALI (bug'in kaydirmasi). Boylece log'da ikisi ayrilir.
-            var _lastInput = 0;
-            ['wheel', 'touchstart', 'touchmove', 'keydown', 'pointerdown', 'mousedown'].forEach(function (ev) {
-                try { window.addEventListener(ev, function () { _lastInput = Date.now(); }, { passive: true, capture: true }); } catch (e) {}
-            });
-            // [TETİKLEYİCİ KORELASYON] MutationObserver: inject.js (tweet data-* attribute), tik (.x-gx-tik),
-            // nav (#x-gx-nav-btn) enjeksiyonlarinin SON zaman damgasi. OTOMATIK scroll satirinda "ondan ONCE
-            // hangisi oldu" yazilir -> TEK reproda tetikleyici gorunur (manuel F5-toggle gerekmeden).
-            var _injT = 0, _tikT = 0, _navT = 0;
-            try {
-                var _obs = new MutationObserver(function (muts) {
-                    var nw = Date.now();
-                    for (var i = 0; i < muts.length; i++) {
-                        var m = muts[i];
-                        if (m.type === 'attributes') { _injT = nw; continue; }
-                        if (m.addedNodes) for (var j = 0; j < m.addedNodes.length; j++) {
-                            var nd = m.addedNodes[j]; if (!nd || nd.nodeType !== 1) continue;
-                            try {
-                                if ((nd.classList && nd.classList.contains('x-gx-tik')) || (nd.querySelector && nd.querySelector('.x-gx-tik'))) _tikT = nw;
-                                if (nd.id === 'x-gx-nav-btn' || (nd.querySelector && nd.querySelector('#x-gx-nav-btn'))) _navT = nw;
-                            } catch (e) {}
-                        }
-                    }
-                });
-                _obs.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['data-tweet-id', 'data-react-tagged', 'data-author-username'] });
-            } catch (e) {}
-            var _bStartY = 0, _bUser = false, _bOn = false, _bTimer = null, _bInj = false, _bTik = false, _bNav = false;
-            window.addEventListener('scroll', function () {
-                try {
-                    var now = Date.now();
-                    if (!_bOn) { _bOn = true; _bStartY = Math.round(window.scrollY); _bUser = false; _bInj = (now - _injT < 300); _bTik = (now - _tikT < 300); _bNav = (now - _navT < 300); }
-                    if (now - _lastInput < 250) _bUser = true;
-                    clearTimeout(_bTimer);
-                    _bTimer = setTimeout(function () {
-                        try {
-                            var endY = Math.round(window.scrollY), dy = endY - _bStartY; _bOn = false;
-                            if (Math.abs(dy) >= 5) L('SCROLL ' + (_bUser ? 'kullanici' : 'OTOMATIK⚠') + ' dy=' + dy + ' -> y=' + endY + ' [once300ms: inject=' + (_bInj ? 'EVET' : '-') + ' tik=' + (_bTik ? 'EVET' : '-') + ' nav=' + (_bNav ? 'EVET' : '-') + '] top=' + ttId());
-                        } catch (e) {}
-                    }, 150);
-                } catch (e) {}
-            }, { passive: true });
-            L('kuruldu @ ' + location.pathname + ' rest=' + history.scrollRestoration);
-        } catch (e) {}
     }
     function xTweetButonPollerBaslat() {
         try {
