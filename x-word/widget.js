@@ -3778,12 +3778,55 @@
         for (var i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; }
         return (h >>> 0).toString(36);
     }
-    // Kartin gorunur metninden DETERMINISTIK sentetik link (dedup + gorsel anahtari icin BENZERSIZ).
-    function _xFbLink(card) {
-        var t = '';
-        try { t = (card.innerText || card.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 240); } catch (e) {}
-        if (!t) { try { t = location.pathname + '|' + Math.round(card.getBoundingClientRect().top); } catch (e) { t = location.pathname || 'fb'; } }
-        return 'xmanual://fb-' + _xFbHash(t);
+    // YAZAR (ANASAYFA FEED): ⋯ aria-label'inda yazar adi GOMULU — "<AD>'in bu gönderisi için eylemler"
+    // / "<AD> adlı kişinin ... gönderisi için eylemler". Anasayfada URL "/" oldugundan fbAuthor() BOS
+    // doner ("Facebook Gönderisi" fallback'a duser); bu her yuzeyde (feed+post sayfasi) yazari verir.
+    function _xFbYazarAria(eylemBtn) {
+        try {
+            var al = (eylemBtn && eylemBtn.getAttribute('aria-label')) || '';
+            var m = al.match(/^(.*?)(?:['’’][a-zçğıöşü]{1,3})?\s*(?:adlı kişinin\s*)?(?:bu\s+)?gönderisi için eylemler/i);
+            if (m && m[1] && m[1].trim()) return m[1].trim();
+            var me = al.match(/(?:post by|post from)\s+(.+?)(?:'s)?$/i); if (me && me[1]) return me[1].trim();
+        } catch (e) {}
+        return '';
+    }
+    // POST LINKI (katmanli): (1) post SAYFASINDAYSA location permalink; (2) kartta GERCEK post permalink
+    // <a> (yol: /{x}/posts|videos/, /reel/, /permalink/, /groups/{g}/posts|permalink/); (3) FEED yedegi:
+    // yazar adiyla eslesen profil/grup-uye linki (gercek https kaynak); (4) sentetik (dedup icin).
+    // ⚠Feed'de temiz permalink <a> YOK (FB JS-nav + __cft__ query-token) -> cogu feed gönderide (3) girer.
+    function _xFbPostLink(card, eylemBtn, yazar) {
+        function temiz(h) {
+            try { if (!h) return ''; var yol = String(h).replace(/^https?:\/\/[^/]+/i, '').split('?')[0].split('#')[0];
+                if (!yol || yol === '/') return ''; return 'https://www.facebook.com' + yol; } catch (e) { return ''; }
+        }
+        try {   // 1) Post sayfasi (permalink URL'de)
+            var lp = location.pathname || '';
+            if (/\/(?:posts|permalink|videos|reel)\/[^/]/i.test(lp) || /\/groups\/[^/]+\/(?:posts|permalink)\//i.test(lp) || /\/watch\//i.test(lp)) {
+                return location.href.split('#')[0];
+            }
+        } catch (e) {}
+        try {   // 2) Kartta gercek post permalink <a> (yol-tabanli; query gereksiz olanlar)
+            var as = card ? card.querySelectorAll('a[href]') : [];
+            for (var i = 0; i < as.length; i++) {
+                var yol = (as[i].getAttribute('href') || '').replace(/^https?:\/\/[^/]+/i, '');
+                if (/^\/(?:[^/?#]+\/(?:posts|videos)\/[^/?#]|reel\/[^/?#]|permalink\/[^/?#]|groups\/[^/?#]+\/(?:posts|permalink)\/[^/?#])/i.test(yol)) {
+                    var t = temiz(as[i].getAttribute('href')); if (t) return t;
+                }
+            }
+        } catch (e) {}
+        try {   // 3) Feed yedegi: yazar adiyla eslesen profil/grup-uye linki (gercek https)
+            if (yazar && card) {
+                var as2 = card.querySelectorAll('a[href]');
+                for (var j = 0; j < as2.length; j++) {
+                    var tx = (as2[j].innerText || '').replace(/\s+/g, ' ').trim();
+                    if (tx && tx === yazar) { var t2 = temiz(as2[j].getAttribute('href')); if (t2) return t2; }
+                }
+            }
+        } catch (e) {}
+        // 4) Sentetik (gorsel anahtari + dedup icin benzersiz)
+        var hbase = (yazar || '') + '|';
+        try { hbase += (card.innerText || card.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 220); } catch (e) { hbase += (location.pathname || 'fb'); }
+        return 'xmanual://fb-' + _xFbHash(hbase);
     }
     function _xFbDurum(btn, renk, mesaj, ikonTur) {
         try {
@@ -3829,13 +3872,17 @@
             var n = eylemBtn, guard = 0;
             while (n && guard < 28) {
                 var r = n.getBoundingClientRect();
-                if (r.height > 240 && r.width > 300 && n.querySelector(FB_ENG_SEL)) return n;
+                // İLK (en kucuk) etkilesim-iceren post-boyutlu ata = TEK gönderi (climb en-ustte durur).
+                // ⚠esik 80 (240 DEGIL): kisa METIN postlari 240'in altinda kalinca climb tek-postu ATLAYIP
+                // SONRAKI postu da kapsayan kaba tasiyordu (kullanici: ustteki posta tikladim, alttaki reklam
+                // da kadraja girdi). ⋯'ten tirmanip ILK eng-iceren ata zaten o tek postun sarmalayicisi.
+                if (r.height > 80 && r.width > 300 && n.querySelector(FB_ENG_SEL)) return n;
                 n = n.parentElement; guard++;
             }
         } catch (e) {}
         try {   // Fallback: eylem butonunun yeterince buyuk en yakin atasi
             var m = eylemBtn, g2 = 0;
-            while (m && g2 < 28) { var rr = m.getBoundingClientRect(); if (rr.height > 300 && rr.width > 300) return m; m = m.parentElement; g2++; }
+            while (m && g2 < 28) { var rr = m.getBoundingClientRect(); if (rr.height > 120 && rr.width > 300) return m; m = m.parentElement; g2++; }
         } catch (e) {}
         return null;
     }
@@ -3867,7 +3914,8 @@
         _xFbDurum(btn, null, 'Yakalanıyor…', 'ekle');
         var card = null; try { card = _xFbKartBul(eylemBtn); } catch (e) {}
         if (!card) { _xFbDurumBitir(btn, 'warn', 'Kart bulunamadı — tekrar deneyin', 2600); return; }
-        var link = _xFbLink(card);
+        var yazarAria = _xFbYazarAria(eylemBtn);   // ANASAYFADA fbAuthor BOS doner -> ⋯ aria'dan yazar
+        var link = _xFbPostLink(card, eylemBtn, yazarAria);
         var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
         var origin = 'https://goruntux.rgmedya.tr';
         try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
@@ -3885,7 +3933,7 @@
         var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(_fbRes.shot); } catch (e) {} }
         try {
             chrome.runtime.sendMessage({
-                action: 'addToPool', origin: origin, title: _fbRes.author || 'Facebook Gönderisi', link: link, image: _fbRes.shot, is_profile: false, group_override: ''
+                action: 'addToPool', origin: origin, title: _fbRes.author || yazarAria || 'Facebook Gönderisi', link: link, image: _fbRes.shot, is_profile: false, group_override: ''
             }, function (addRes) {
                 if (addRes && addRes.status === 'success') { _xFbDurumBitir(btn, 'ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 1800, 'ok'); }
                 else if (addRes && addRes.status === 'duplicate') { _xFbDurumBitir(btn, 'warn', 'Zaten havuzda', 2000); }
@@ -4306,16 +4354,16 @@
             .x-gx-nav-ico > svg.x-gx-nav-logo{ display:block; width:42px; height:42px; overflow:visible; transform-origin:center; transition:transform .12s ease; }
             .x-gx-nav-ico .x-gx-nav-logo .c{ fill:none; stroke:#1d9bf0; stroke-width:1.6; transition:fill .12s ease; }
             .x-gx-nav-ico .x-gx-nav-logo .in{ fill:none; stroke:#1d9bf0; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; transition:stroke .12s ease; }
-            /* HOVER bolgesi = .x-gx-nav-inner (MAVI ikon + "GörüntüX" ETIKETI; yesil buton inner DISINDA).
-               -> GörüntüX yazisina gelince de mavi dolar; yesil bagimsiz (bos) kalir. */
-            .x-gx-nav-inner:hover .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
-            .x-gx-nav-inner:hover .x-gx-nav-logo .in{ stroke:#fff; }
-            /* [BÜYÜME — kullanici] Mavi ikon hover'da bir tik BÜYÜR (yesil buton gibi). Iki tetik: MAVI'ye
-               hover (.x-gx-nav-inner) VE YESIL'e hover (.x-gx-nav-ekle; DOM'da mavinin SONRASINDA -> onceki
-               kardes CSS'te secilemez, :has ile). DOLGU yalniz mavi-hover'da (yukarida); yesil-hover'da mavi
-               BUYUR ama BOS kalir (renk degismez). */
-            .x-gx-nav-inner:hover .x-gx-nav-logo,
-            .x-gx-nav:has(.x-gx-nav-ekle:hover) .x-gx-nav-logo{ transform:scale(1.06); }
+            /* DOLGU = yalniz MAVI ikon + "GörüntüX" ETIKET hover'inda. ⚠YESIL buton (#x-gx-nav-ekle) de
+               nav-inner ICINDE (ayni kapsul; HTML 4415) oldugundan ona hover da .x-gx-nav-inner:hover'i
+               tetikliyordu -> mavi YANLISLIKLA doluyordu. :not(:has(yesil:hover)) -> yesil-hover'da mavi
+               DOLMAZ (kullanici: yesile gidince mavi saydam kalsin, SADECE buyusun). */
+            .x-gx-nav-inner:hover:not(:has(.x-gx-nav-ekle:hover)) .x-gx-nav-logo .c{ fill:#1d9bf0; stroke:#1d9bf0; }
+            .x-gx-nav-inner:hover:not(:has(.x-gx-nav-ekle:hover)) .x-gx-nav-logo .in{ stroke:#fff; }
+            /* [BÜYÜME — kullanici] Mavi ikon hover'da bir tik BÜYÜR (yesil buton gibi). Yesil de mavi de
+               nav-inner ICINDE -> .x-gx-nav-inner:hover ikisine de hover'da mavi ikonu buyutur. DOLGU
+               yukaridaki kuralla ayrisir: maviye->mavi dolar+buyur, yesile->mavi BOS buyur. */
+            .x-gx-nav-inner:hover .x-gx-nav-logo{ transform:scale(1.06); }
             /* HALKA = absolute HTML <span> (içinde svg %100). SVG elemanını DOĞRUDAN position:absolute+inset
                yapmak bu tarayıcıda dikeyde ~44px kaydırıyordu (SVG replaced-element over-constraint);
                HTML span inset:0'ı güvenilir uygular, svg %100 doldurur -> halka 40px yeşil dairede TAM ORTALI. */
