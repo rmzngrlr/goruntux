@@ -388,6 +388,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
       let isTiktokPost = xIsTtPostUrl(temizUrl);     // Faz TT-1
       let isYoutubePost = xIsYtPostUrl(temizUrl);    // Faz YT-1
       let tivitMi = /^https?:\/\/(?:x|twitter)\.com\/[^/]+\/status\/\d+/.test(temizUrl) || isInstagramPost || isFacebookPost || isTiktokPost || isYoutubePost;
+      // [IG ILK-YUK FIX] IG per-gönderi butonu (/p/,/reel/ + modal) icin widget+poller'in HAZIR
+      // olmasi gerekir. Eskiden widget yalniz /p/,/reel/'de enjekte oluyordu -> anasayfadan bir
+      // gönderiye SPA ile gecince (URL /p/ olur ama render yarisir) buton ILK ACILISTA gelmiyor,
+      // F5 gerekiyordu. Cozum: TUM IG icerik sayfalarinda enjekte et (dock gizli yedek, buton
+      // zaten yalniz modal+/p/'de gate'li) -> 700ms poller hep calisir, gönderi acilinca aninda
+      // yakalar. Giris/DM/checkpoint vb. HARIC.
+      let isInstagramGenel = /(?:^|\.)instagram\.com$/i.test(urlObj.hostname)
+        && !/^\/(?:accounts|challenge|checkpoint|direct|emails|session|oauth|developer|api|legal|about|privacy|terms)(?:\/|$)/i.test(path);
       let retweetSayfasiMi = temizUrl.endsWith('/retweets') || temizUrl.endsWith('/reposts') || temizUrl.endsWith('/quotes') || temizUrl.endsWith('/likes');
       // v3.88: FOTOGRAF/medya alt sayfasi (x.com/user/status/123/photo/1, /media). tivitMi
       // regex'i ONEK eslestigi icin bunlari da yakaliyor -> widget aciliyordu; kullanici
@@ -584,7 +592,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // v3.88: fotograf/medya alt sayfalari HARIC. Ayrica GECERSIZ sayfaya (anasayfa,
             // foto, alakasiz) gidilince mevcut widget KALDIRILIR -> SPA gezinmede widget
             // yanlis sayfada kalmaz (kullanici: profil/tweet widget'i baska sayfaya gidince kapansin).
-            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi || homeMi || digerTweetYuzeyiMi) && !fotografMi));
+            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi || homeMi || digerTweetYuzeyiMi || isInstagramGenel) && !fotografMi));
             if (_gecerliWidgetSayfasi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
