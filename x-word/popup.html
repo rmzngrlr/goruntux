@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; width:264px; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:#0e141f; color:#e7e9ea; padding:14px; }
+  .gx-bas { display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; margin-bottom:5px; }
+  .gx-logo { width:22px; height:22px; border-radius:6px; background:#1d9bf0; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:13px; }
+  .gx-alt { font-size:11px; color:#8b98a5; margin-bottom:12px; line-height:1.35; }
+  button { width:100%; border:0; border-radius:10px; padding:11px 12px; font-size:13.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:9px; margin-top:8px; transition:background .15s, transform .05s; color:#e7e9ea; text-align:left; }
+  button:active { transform:translateY(1px); }
+  .gx-yakala { background:#1d9bf0; color:#fff; }
+  .gx-yakala:hover { background:#1a8cd8; }
+  .gx-panel { background:#1c2732; }
+  .gx-panel:hover { background:#24303d; }
+  button svg { flex:0 0 auto; }
+</style>
+</head>
+<body>
+  <div class="gx-bas"><span class="gx-logo">G</span> GörüntüX</div>
+  <div class="gx-alt">Bu sayfanın ekran görüntüsünü alıp kırparak rapora ekleyin.</div>
+  <button class="gx-yakala" id="gx-yakala">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 7l1.4-2.1a1 1 0 0 1 .83-.45h9.14a1 1 0 0 1 .83.45L16.8 7"/><rect x="2.5" y="7" width="15" height="9" rx="2"/><circle cx="10" cy="11.5" r="3"/></svg>
+    Ekran Görüntüsü Al
+  </button>
+  <button class="gx-panel" id="gx-panel">
+    <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M3 8h14M8 8v8"/></svg>
+    Panele Git
+  </button>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -357,9 +357,50 @@ function logToServer(message) {
   } catch (err) {}
 }
 
+// ===== [WEBSHOT] Sosyal-disi sitelerde toolbar popup'i (Panele Git + Ekran Goruntusu Al) =====
+// action.default_popup GLOBAL olur -> sosyal sitelerde de cikardi. Bu yuzden popup'i SADECE
+// sosyal-disi normal http/https sayfalarda, TAB BAZINDA setPopup ile acariz; sosyal/panel/
+// chrome: sayfalarinda popup='' -> onClicked (panele git) eski davranisi aynen surer.
+// Bayrak x_webshot_acik=false -> hic kurulmaz (eski davranisa doner). Bkz app.py planindaki Faz 1.
+function xSosyalMi(url) {
+  const u = xUrlOf(url);
+  if (!u) return false;
+  const h = u.hostname;
+  if (/(^|\.)(x|twitter)\.com$/i.test(h)) return true;
+  if (/(^|\.)instagram\.com$/i.test(h)) return true;
+  if (xIsFbHost(h)) return true;
+  if (xIsTtHost(h)) return true;
+  if (xIsYtHost(h)) return true;
+  return false;
+}
+function xWebshotPopupOlmali(url, cb) {
+  const u = xUrlOf(url);
+  if (!u || (u.protocol !== 'http:' && u.protocol !== 'https:')) { cb(false); return; }   // chrome:, about:, file: -> yok
+  if (xSosyalMi(url)) { cb(false); return; }   // 5 platform -> eski davranis
+  chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", x_webshot_acik: true }, (res) => {
+    if (res.x_webshot_acik === false) { cb(false); return; }   // bayrak kapali
+    let ph = ''; try { ph = new URL(res.server_origin).hostname; } catch (e) {}
+    if (ph && u.hostname === ph) { cb(false); return; }   // panelin kendi host'u -> popup yok (onClicked zaten panele gider)
+    if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') { cb(false); return; }
+    cb(true);
+  });
+}
+function xWebshotSetPopup(tabId, url) {
+  xWebshotPopupOlmali(url, (ok) => {
+    try { chrome.action.setPopup({ tabId: tabId, popup: ok ? 'popup.html' : '' }, () => { if (chrome.runtime.lastError) { /* sekme kapanmis olabilir */ } }); } catch (e) {}
+  });
+}
+// SW uyandiginda / ilk kurulumda MEVCUT sekmelerin popup durumunu ayarla (onUpdated gelmeyen eski sekmeler icin).
+try { chrome.tabs.query({}, (tabs) => { try { (tabs || []).forEach((t) => { if (t && t.id != null && t.url) xWebshotSetPopup(t.id, t.url); }); } catch (e) {} }); } catch (e) {}
+// Zaten yuklu bir sekmeye GECINCE (onUpdated tetiklenmez) popup durumunu tazele.
+chrome.tabs.onActivated.addListener((info) => {
+  try { chrome.tabs.get(info.tabId, (t) => { if (chrome.runtime.lastError || !t || !t.url) return; xWebshotSetPopup(t.id, t.url); }); } catch (e) {}
+});
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   try {
     if ((changeInfo.status === 'complete' || changeInfo.url) && tab.url) {
+      xWebshotSetPopup(tabId, tab.url);   // [WEBSHOT] gezinmede/ilk yukte sosyal-disi sayfalarda popup'i ac (sosyal/panel -> '')
       // SILINDI (v3.62): 'config_role.html' URL koklayicisi. HERHANGI bir sayfa
       // ?role=link_only&server_token=... ile acildiginda server_origin'i KENDI origin'ine
       // yaziyordu — yani ziyaret edilen bir site eklentinin "is sunucusunu" ele gecirebilirdi.
@@ -871,7 +912,7 @@ function captureVisibleWithRetry(windowId, opts, attempt, maxAttempts, cb) {
 let _icerikHashCache = null;
 async function _eklentiIcerikHash() {
   if (_icerikHashCache) return _icerikHashCache;
-  const dosyalar = ["manifest.json", "bridge.js", "inject.js", "background.js", "widget.js"];
+  const dosyalar = ["manifest.json", "bridge.js", "inject.js", "background.js", "widget.js", "webshot.js", "popup.js", "popup.html"];
   const chunks = [];
   for (const f of dosyalar) {
     try {
@@ -1173,7 +1214,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         is_profile: !!message.is_profile,
         group_override: message.group_override || "",
         local: true,
-        dedup: true
+        dedup: message.dedup !== false   // [WEBSHOT] web yakalamada dedup:false -> ayni sayfadan cok kirpma engellenmez (sosyal yol dedup gondermez -> true kalir)
       })
     })
     .then(r => r.json())
