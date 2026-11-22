@@ -5005,7 +5005,9 @@
             // [SS KADRAJ] Rapor'matik yakalamasi sirasinda (<html>.x-gx-capturing) tik UI gizli -> ekran goruntusune girmesin.
             // Alt menu display:none (overlay, akis yok); tweet-ici tik butonu visibility:hidden (layout kaymasin, kirpma bozulmasin).
             'html.x-gx-capturing #x-gx-tik-bar{display:none !important;}',
-            'html.x-gx-capturing .x-gx-tik-wrap{visibility:hidden !important;}'
+            'html.x-gx-capturing .x-gx-tik-wrap{visibility:hidden !important;}',
+            '.x-gx-tik-sec{outline:2px solid #1d9bf0 !important;outline-offset:-2px !important;}',   // [TIK ÇERÇEVE] seçili tweet kartına mavi kenarlık (içi BOŞ; outline=layout kaymaz)
+            'html.x-gx-capturing .x-gx-tik-sec{outline:none !important;}'   // yakalamada çerçeve SS\'e girmesin
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
@@ -5016,6 +5018,7 @@
             xTikStilKur();
             if (/\/status\/\d+/.test(location.pathname)) return;   // tweet DETAY -> tik YOK
             var sec = window.__xTikSecili || {};
+            var cerceve = true; try { cerceve = localStorage.getItem('x_tik_cerceve') !== '0'; } catch (e) {}   // [TIK ÇERÇEVE] bayrak (x_tik_cerceve='0' kapatır)
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
             for (var i = 0; i < arts.length; i++) {
                 var a = arts[i];
@@ -5061,6 +5064,7 @@
                 var on = !!sec[id];
                 btn.style.color = on ? '#1d9bf0' : gc;
                 if (on) btn.classList.add('x-gx-tik-on'); else btn.classList.remove('x-gx-tik-on');
+                if (on && cerceve) a.classList.add('x-gx-tik-sec'); else a.classList.remove('x-gx-tik-sec');   // [TIK ÇERÇEVE] seçili tweet kartına mavi kenarlık
             }
         } catch (e) {}
     }
