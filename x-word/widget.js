@@ -2400,13 +2400,13 @@
                     } catch (e) {}
                     await new Promise(function (r) { setTimeout(r, 350); });
                     var parcalar = [];
-                    var _vr = video ? video.getBoundingClientRect() : null;
-                    // ⚠Yorum-paneli layout'u (arama→tıkla): desc/avatar/aksiyonlar video'nun UZAĞINDA (yan panelde).
-                    // Kadraj yan panele TAŞMASIN -> yalnız video'ya YATAY YAKIN parçaları dahil et (overlay ray video
-                    // ÜSTÜNDE = yakın -> dahil; yan panel = uzak -> hariç -> bu layout'ta kadraj = sade video).
-                    var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width <= 1 || r.height <= 1) return; if (_vr && (r.left > _vr.right + 240 || r.right < _vr.left - 240)) return; parcalar.push(r); };
-                    ekle('video'); ekle('[data-e2e="video-desc"]'); ekle('[data-e2e="video-author-avatar"]');
-                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
+                    // ⚠Yorum-paneli layout'u (arama→tıkla): desc/avatar/aksiyonlar video'nun YANINDAKİ sağ panelde.
+                    // Kullanıcı bu SAĞ PANELİ DE kadrajda istiyor ("sağdaki bölümü de almalı") -> mesafe filtresi YOK;
+                    // sağ paneldeki browse-* sayaçlar + desc de dahil. Kadraj yine kart'a (modal) clamp'lenir (aşağıda),
+                    // sayfa/sidebar dışına taşmaz. Overlay/For You'da parçalar zaten video üstünde -> davranış değişmez.
+                    var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width <= 1 || r.height <= 1) return; parcalar.push(r); };
+                    ekle('video'); ekle('[data-e2e="video-desc"]'); ekle('[data-e2e="browse-video-desc"]'); ekle('[data-e2e="video-author-avatar"]');
+                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); ekle('[data-e2e="browse-' + k + '-count"]'); });
                     ekle('[data-e2e="video-music"]');
                     if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
                     var PAY = 8;
@@ -4250,10 +4250,10 @@
                     var grup = like.parentElement, g = 0, es = null;
                     while (grup && g < 12) { es = grup.querySelector('[data-e2e="comment-icon"], [data-e2e="browse-comment-icon"]'); if (es) break; grup = grup.parentElement; g++; }
                     if (!grup || !es) return;
-                    if (grup.querySelector('.x-gx-tt-btn')) return;   // bu grupta zaten var
                     var kart = grup, g2 = 0;
                     while (kart && g2 < 16 && !kart.querySelector('video')) { kart = kart.parentElement; g2++; }
                     if (!kart || !kart.querySelector('video')) return;
+                    if (kart.querySelector('.x-gx-tt-btn')) return;   // bu kartta zaten var (ray VEYA ok-kabı fark etmez)
                     var btn = document.createElement('div');
                     btn.className = 'x-gx-tt-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                     btn.setAttribute('aria-label', "Bu videoyu GörüntüX Raporu'na ekle");
@@ -4261,12 +4261,29 @@
                     var tip = document.createElement('span'); tip.className = 'x-gx-tt-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal
                     btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                     (function (b, k) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xTtButonTikla(b, k); }); })(btn, kart);
-                    // Konum: grubun BAŞINDA profil avatarı varsa (video-detay overlay) onun ÜSTÜNE (kullanıcı isteği);
-                    // avatar yoksa (For You feed'de grup like ile başlıyor + Üstünde feed-navigation okları var,
-                    // başa koyunca okla çakışıp arkada kalıyordu) EN ALTA koy -> çakışma yok.
+                    // KONUM: buton DİKEY RAYIN EN ÜSTÜNDE (kullanıcı tekrar istedi: "bu hizanın en üstünde"). İki düzen:
+                    //  (a) Video-detay overlay: avatar/profil rayın tepesinde GÖRÜNÜR -> avatarın (ray-içi üst
+                    //      sarmalının) ÜSTÜNE. (b) For You feed: avatar rayda gizli (0x0) + feed-navigation okları
+                    //      rayın hemen üstünde aynı kolonda -> okların dikey kabına, prev'in ÜSTÜNE ("yön tuşlarının
+                    //      üstünde"); yoksa çakışıp arkada kalıyordu. Ok da yoksa rayın ilk öğesinin üstüne.
                     var _tav = grup.querySelector('[data-e2e="video-author-avatar"]');
-                    if (_tav && _tav.parentElement === grup) grup.insertBefore(btn, _tav);
-                    else grup.appendChild(btn);
+                    var _tavGor = false; try { if (_tav) { var _tr = _tav.getBoundingClientRect(); _tavGor = _tr.width > 1 && _tr.height > 1; } } catch (e) {}
+                    if (_tavGor) {
+                        var _tw = _tav; while (_tw && _tw.parentElement !== grup) _tw = _tw.parentElement;
+                        if (_tw) grup.insertBefore(btn, _tw); else grup.insertBefore(btn, grup.firstElementChild);
+                    } else {
+                        // Rayın üstündeki (aynı kolon: yatay yakın + rayın tepesinin üstünde) feed-navigation-prev'i bul
+                        var _gr = grup.getBoundingClientRect(), _ok = null;
+                        try {
+                            var _oklar = kart.querySelectorAll('[data-e2e="feed-navigation-prev"]');
+                            for (var _oi = 0; _oi < _oklar.length; _oi++) { var _or = _oklar[_oi].getBoundingClientRect(); if (_or.width > 1 && Math.abs(_or.left - _gr.left) < 140 && _or.top < _gr.top + 12) { _ok = _oklar[_oi]; break; } }
+                        } catch (e) {}
+                        var _okKap = null;
+                        if (_ok) { var _w = _ok.parentElement, _wi = 0; while (_w && _wi < 6) { if (_w.querySelector('[data-e2e="feed-navigation-next"]')) { _okKap = _w; break; } _w = _w.parentElement; _wi++; } }
+                        if (_okKap) { _okKap.insertBefore(btn, _okKap.firstChild); }
+                        else if (grup.firstElementChild) { grup.insertBefore(btn, grup.firstElementChild); }
+                        else { grup.appendChild(btn); }
+                    }
                 } catch (e) {}
             });
         } catch (e) {}
