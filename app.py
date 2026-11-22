@@ -3233,10 +3233,9 @@ HTML_TEMPLATE = """
             const uyari = document.getElementById('ext-modal-warning');
             if (uyari) {
                 if (window.extensionOutdated) {
-                    // Sürüm numarası GÖSTERME (kullanıcı isteği): kafa karıştırıcı + gereksiz.
-                    uyari.innerHTML = '&#9888;&#65039; Eklentiniz güncel değil. Tarama başlatılamaz. '
-                        + 'Aşağıdaki <b>Güncelle</b> adımıyla son sürüme geçin (.zip\\'i indir → aynı klasörün '
-                        + 'üzerine aç → <code>chrome://extensions</code>\\'ta &#8635; yenile → X sekmesini F5).';
+                    // Sürüm numarası + uzun metin GÖSTERME (kullanıcı isteği): sadece "Güncelleme gerekli".
+                    // Nasıl güncellenir adımları modalın kendi "Güncelle" bölümünde zaten var.
+                    uyari.innerHTML = '&#9888;&#65039; Güncelleme gerekli.';
                     uyari.style.display = 'block';
                 } else {
                     uyari.style.display = 'none';
