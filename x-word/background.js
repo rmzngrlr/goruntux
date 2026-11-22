@@ -1641,13 +1641,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
-  // [WEBSHOT] Sosyal-disi http/https sayfa -> sayfa-ustu SAYDAM menuyu enjekte et (webshot.js; ikinci
-  // tiklamada kendini kapatir/toggle). Sosyal/panel/chrome -> asagidaki panele-git davranisi.
-  xWebshotPopupOlmali(tab && tab.url, (webshotOlsun) => {
-   if (webshotOlsun && tab && tab.id != null) {
-     chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, () => { void chrome.runtime.lastError; });
-     return;
-   }
+  // [WEBSHOT: SAĞ-TIK] Toolbar butonu ARTIK TÜM sayfalarda DOĞRUDAN PANELE gider (webshot yakalama sağ-tık
+  // menüsüne taşındı; yüzen menü/popup kaldırıldı). Sosyal/web farkı yok -> her sayfada panele git.
   chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", panel_tab_id: null }, (res) => {
     let panelUrl = (res.server_origin || "https://goruntux.rgmedya.tr") + '/';
     const focusTab = (t) => {
@@ -1671,13 +1666,17 @@ chrome.action.onClicked.addListener((tab) => {
       findOrOpen();
     }
   });
-  });
 });
 
-// [WEBSHOT SAĞ-TIK] Sosyal-disi web sayfalarinda sag-tik menusune "Ekran Goruntusu Al" ekler.
-// Toolbar yolunun AYNISI: xWebshotPopupOlmali uygun ise webshot.js enjekte + DOGRUDAN yakalama baslat
-// (yuzen menuyu atla). Menu YALNIZ webshot-uygun sayfalarda gorunur (sosyal/panel/localhost'ta gizli).
+// [WEBSHOT SAĞ-TIK] HER web sayfasinda (google.com dahil) sag-tik menusune "Ekran Goruntusu Al" ekler.
+// YALNIZ sosyal medyada (X/IG/FB/TikTok/YouTube) GORUNMEZ (kullanici karari: sosyalde ASLA; orada ozel akis var).
+// Tiklayinca webshot.js enjekte + DOGRUDAN yakalama (yuzen menuyu atla). Gorunurluk SENKRON xSosyalMi ile
+// (xWebshotPopupOlmali async'ti -> google.com'da gec/kacak gorunurluk olabiliyordu; sync -> guvenilir).
+// Toolbar butonu artik HER yerde panele gider (yuzen menu/popup kaldirildi).
 var XW_MENU_ID = 'gx-webshot-capture';
+function xWebshotSagTikGizle(tab) {   // true = menu GIZLI (sosyal veya http/https disi); false = GOSTER
+  try { return !tab || !tab.url || !/^https?:\/\//i.test(tab.url) || xSosyalMi(tab.url); } catch (e) { return false; }
+}
 function xWebshotMenuKur() {
   try {
     chrome.contextMenus.removeAll(function () {
@@ -1689,21 +1688,14 @@ function xWebshotMenuKur() {
           contexts: ['page'],
           documentUrlPatterns: ['http://*/*', 'https://*/*']
         }, function () { void chrome.runtime.lastError;
-          // Olusturulur olusturulmaz AKTIF sekmeye gore gorunurlugu ayarla (acilista sosyal sayfada gorunmesin).
           try { chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) { if (tabs && tabs[0]) xWebshotMenuGorunur(tabs[0]); }); } catch (e) {}
         });
       } catch (e) {}
     });
   } catch (e) {}
 }
-// Menu gorunurlugunu aktif/guncel sekmeye gore ayarla (yalniz webshot-uygun sayfada gorunur).
 function xWebshotMenuGorunur(tab) {
-  try {
-    if (!tab || !tab.url) { try { chrome.contextMenus.update(XW_MENU_ID, { visible: false }, function () { void chrome.runtime.lastError; }); } catch (e) {} return; }
-    xWebshotPopupOlmali(tab.url, function (ok) {
-      try { chrome.contextMenus.update(XW_MENU_ID, { visible: !!ok }, function () { void chrome.runtime.lastError; }); } catch (e) {}
-    });
-  } catch (e) {}
+  try { chrome.contextMenus.update(XW_MENU_ID, { visible: !xWebshotSagTikGizle(tab) }, function () { void chrome.runtime.lastError; }); } catch (e) {}
 }
 try { chrome.runtime.onInstalled.addListener(xWebshotMenuKur); } catch (e) {}
 try { chrome.runtime.onStartup.addListener(xWebshotMenuKur); } catch (e) {}
@@ -1713,13 +1705,11 @@ try { chrome.tabs.onUpdated.addListener(function (tabId, ci, tab) { if (ci && (c
 try {
   chrome.contextMenus.onClicked.addListener(function (info, tab) {
     if (!info || info.menuItemId !== XW_MENU_ID || !tab || tab.id == null) return;
-    xWebshotPopupOlmali(tab && tab.url, function (webshotOlsun) {
-      if (!webshotOlsun) return;   // sosyal/panel -> no-op (menu zaten gizli olmali)
-      // Enjeksiyondan ONCE "dogrudan yakala" bayragini kur (ayni ISOLATED world), sonra webshot.js enjekte.
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, func: function () { try { window.__xWebshotDogrudanIstek = true; } catch (e) {} } }, function () {
-        void chrome.runtime.lastError;
-        chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, function () { void chrome.runtime.lastError; });
-      });
+    if (xWebshotSagTikGizle(tab)) return;   // sosyalde / uygunsuz sayfada ASLA
+    // Enjeksiyondan ONCE "dogrudan yakala" bayragini kur (ayni ISOLATED world), sonra webshot.js enjekte.
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: function () { try { window.__xWebshotDogrudanIstek = true; } catch (e) {} } }, function () {
+      void chrome.runtime.lastError;
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, function () { void chrome.runtime.lastError; });
     });
   });
 } catch (e) {}
