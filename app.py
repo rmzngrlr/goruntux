@@ -2001,7 +2001,7 @@ HTML_TEMPLATE = """
             color: var(--success-color);
             border: 1px solid rgba(0, 186, 124, 0.2);
             box-shadow: 0 0 16px var(--success-glow);
-            cursor: default;
+            cursor: pointer;
         }
         .ext-status-box.ext-warn {
             background: rgba(255, 176, 32, 0.12);
@@ -2016,6 +2016,7 @@ HTML_TEMPLATE = """
             border: 1px solid rgba(224, 36, 94, 0.25);
             cursor: pointer;
         }
+        .ext-status-box.ext-ok:hover,
         .ext-status-box.ext-warn:hover,
         .ext-status-box.ext-err:hover {
             transform: translateY(-2px);
@@ -3125,16 +3126,52 @@ HTML_TEMPLATE = """
             <div class="modal-body">
                 <!-- Eklenti ESKI iken (sarı durum) gösterilir; openExtModal doldurur. -->
                 <div id="ext-modal-warning" style="display: none; background: rgba(255, 176, 32, 0.12); border: 1px solid rgba(255, 176, 32, 0.35); color: #ffb020; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; font-size: 13px; line-height: 1.5; font-weight: 600;"></div>
-                <div style="text-align: center; margin-bottom: 22px;">
+                <div id="ext-download-section" style="text-align: center; margin-bottom: 22px;">
                     <a href="/api/extension/download_zip" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg> Eklentiyi İndir (.zip)</a>
                 </div>
                 <h3 class="x-shead" style="margin: 0 0 10px;"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.5S8.5 4 4 4v11c4.5 0 6 1.5 6 1.5S11.5 15 16 15V4c-4.5 0-6 1.5-6 1.5z"/><path d="M10 5.5v11"/></svg>Kurulum ve Kullanım Kılavuzu</h3>
-                <ol style="font-size: 13px; line-height: 1.75; color: var(--text-secondary); padding-left: 20px; margin: 0;">
-                    <li><b>İndir:</b> Yukarıdaki <b>Eklentiyi İndir</b> ile <code>x-word.zip</code> iner. Sabit bir klasöre çıkar (ör. Masaüstü/GörüntüX). <b>Klasörü taşıma ya da silme</b> — Chrome eklentiyi bu klasör yolundan tanır.</li>
-                    <li><b>Kur (ilk kez):</b> Chrome'da <code>chrome://extensions</code> aç → sağ üstten <b>Geliştirici modu</b>'nu aç → <b>Paketlenmemiş öğe yükle</b> → çıkardığın klasörü seç. GörüntüX listeye eklenir.</li>
-                    <li><b>Güncelle (yeni sürüm çıkınca):</b> Yeni .zip'i <b>aynı klasörün üzerine</b> çıkar → <code>chrome://extensions</code>'ta GörüntüX kartındaki <b>↻ (yenile)</b> düğmesine bas → açık bir X sekmen varsa <b>F5</b> ile yenile.</li>
-                    <li><b>Kullan:</b> Bir gönderi sayfasında (X, Instagram, Facebook, TikTok, YouTube) sağ alttaki <b>Rapora Ekle</b> ile havuza ekle; ya da bu panele link yapıştırıp <b>Başlat</b> ile otomatik taramayı çalıştır.</li>
-                </ol>
+                <div style="font-size: 13px; line-height: 1.7; color: var(--text-secondary);">
+
+                    <div style="font-weight: 800; color: #1d9bf0; margin: 4px 0 6px; font-size: 12.5px; letter-spacing: .02em;">1 · KURULUM (ilk kez)</div>
+                    <ol style="padding-left: 20px; margin: 0 0 6px;">
+                        <li><b>İndir ve çıkar:</b> <b>Eklentiyi İndir</b> ile <code>x-word.zip</code> iner. <b>Sabit bir klasöre</b> çıkar (ör. Masaüstü/GörüntüX). Bu klasörü sonradan <b>taşıma ya da silme</b> — Chrome eklentiyi bu yoldan tanır.</li>
+                        <li><b>Geliştirici modu:</b> Chrome'da <code>chrome://extensions</code> adresini aç → sağ üstten <b>Geliştirici modu</b>'nu <b>açık</b> konuma getir.</li>
+                        <li><b>Yükle:</b> <b>Paketlenmemiş öğe yükle</b>'ye bas → çıkardığın <b>klasörü</b> seç (içindeki dosyayı değil, klasörün kendisini). GörüntüX listeye eklenir.</li>
+                        <li><b>Sabitle (önerilir):</b> Chrome araç çubuğundaki <b>puzzle</b> simgesinden GörüntüX'i <b>sabitle</b> — düğmesi hep görünür olur.</li>
+                        <li><b>Hazır:</b> Bu paneldeki sağ-üst kutu <b>yeşil “Eklenti bağlandı (Hazır)”</b> olunca kurulum tamamdır.</li>
+                    </ol>
+
+                    <div style="font-weight: 800; color: #1d9bf0; margin: 16px 0 6px; font-size: 12.5px; letter-spacing: .02em;">2 · GÜNCELLEME (yeni sürüm çıkınca)</div>
+                    <ol style="padding-left: 20px; margin: 0 0 6px;">
+                        <li>Sağ-üst kutu <b>turuncu</b> olduğunda <b>Eklentiyi İndir</b> ile yeni <code>.zip</code>'i al.</li>
+                        <li>Yeni dosyaları <b>aynı klasörün üzerine</b> çıkar (klasör yolu <b>değişmesin</b>; “hepsini değiştir” de).</li>
+                        <li><code>chrome://extensions</code>'ta GörüntüX kartındaki <b>↻ (yenile)</b> düğmesine bas.</li>
+                        <li>Açık sosyal medya sekmelerini <b>F5</b> ile yenile — düğmeler yeni sürümle gelir.</li>
+                    </ol>
+
+                    <div style="font-weight: 800; color: #00ba7c; margin: 16px 0 6px; font-size: 12.5px; letter-spacing: .02em;">3 · SOSYAL MEDYADAN YAKALAMA</div>
+                    <div style="margin: 0 0 4px;">X (Twitter), Instagram, Facebook, TikTok ve YouTube'da:</div>
+                    <ul style="padding-left: 20px; margin: 0 0 6px;">
+                        <li><b>Tek gönderi:</b> Gönderinin üzerinde beliren <b>yeşil “+”</b> düğmesi (veya dock'taki <b>Rapora Ekle</b>) ile doğrudan havuza ekle.</li>
+                        <li><b>Profil / toplu:</b> Profil sayfasındaki <b>GörüntüX</b> düğmesiyle ya da bu panele link yapıştırıp <b>Başlat</b> ile otomatik taramayı çalıştır — tüm gönderiler sırayla yakalanır.</li>
+                        <li><b>Seçerek:</b> Akışta tweet'lerin yanındaki <b>tik</b> ikonuyla birden çok gönderi seç → <b>Rapor'matik'e Git</b>.</li>
+                    </ul>
+
+                    <div style="font-weight: 800; color: #00ba7c; margin: 16px 0 6px; font-size: 12.5px; letter-spacing: .02em;">4 · DİĞER WEB SİTELERİNDEN YAKALAMA</div>
+                    <ul style="padding-left: 20px; margin: 0 0 6px;">
+                        <li>Sosyal medya dışındaki <b>herhangi bir sayfada</b> Chrome araç çubuğundaki <b>GörüntüX düğmesine</b> tıkla → açılan menüden <b>Ekran Görüntüsü Al</b>.</li>
+                        <li>Sayfanın üstünde <b>kırpma aracı</b> belirir: köşe/kenar tutamaçlarıyla istediğin alanı seç (kutuyu kenara dayayınca aşağı/yukarı uzar). <b>Enter</b> = ekle, <b>Esc</b> = iptal.</li>
+                        <li><b>Kırp ve Ekle</b> dediğinde sonuç hem <b>havuza</b> hem <b>panoya</b> geçer; sayfanın <b>linki</b> ve <b>başlığı</b> otomatik eklenir.</li>
+                        <li>Aynı menüdeki <b>GörüntüX'e Git</b> ile bu panele dönebilirsin.</li>
+                    </ul>
+
+                    <div style="font-weight: 800; color: #1d9bf0; margin: 16px 0 6px; font-size: 12.5px; letter-spacing: .02em;">5 · RAPOR OLUŞTURMA (panel)</div>
+                    <ul style="padding-left: 20px; margin: 0;">
+                        <li>Yakaladıkların <b>havuzda</b> toplanır. <b>Önizle</b> ile editörü aç: metin/başlık ekle, öğeleri sırala, görselleri <b>kırp</b> ve işaretle (ok/kutu/kalem).</li>
+                        <li><b>Paylaş</b> ile <b>Word</b> veya <b>PDF</b> indir. Kaydettiğin raporlar <b>Raporlarım</b>'da 1 hafta saklanır; tekrar açıp düzenleyebilirsin.</li>
+                    </ul>
+
+                </div>
             </div>
         </div>
     </div>
@@ -3228,11 +3265,14 @@ HTML_TEMPLATE = """
         function openExtModal() {
             const m = document.getElementById('extModal');
             if (!m) { return; }
-            // Eklenti ESKI ise (sarı durum) dinamik güncelleme uyarısını göster (eski ext-version-warning
-            // metninin karşılığı). KIRMIZI (kurulu değil) durumda güncelleme değil kurulum söz konusu -> gizle.
+            // YEŞİL (hazır) iken modal KILAVUZ amaçlı açılır -> indirme bölümü + güncelleme uyarısı GİZLİ.
+            // Kırmızı (kur) / sarı (güncelle) iken indirme GÖSTERİLİR.
+            const hazir = !!window.extensionReady;
+            const indir = document.getElementById('ext-download-section');
+            if (indir) { indir.style.display = hazir ? 'none' : ''; }
             const uyari = document.getElementById('ext-modal-warning');
             if (uyari) {
-                if (window.extensionOutdated) {
+                if (!hazir && window.extensionOutdated) {
                     // Sürüm numarası GÖSTERME (kullanıcı isteği). Nasıl güncellenir ADIMLARI modalın
                     // kendi "Güncelle" bölümünde zaten var -> banner kısa tutuldu.
                     uyari.innerHTML = '&#9888;&#65039; Eklentiniz güncel değil. Tarama başlatılamaz. Aşağıdaki <b>Güncelle</b> adımıyla son sürüme geçin.';
@@ -7189,18 +7229,21 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         kutu.className = 'ext-status-box ext-err';
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti yok — kur';
                         window.extBoxClickable = true;
+                        window.extensionReady = false;
                     } else if (eskiMi) {
                         kutu.className = 'ext-status-box ext-warn';
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> GörüntüX Eklentisinin Güncellenmesi Gerekir!';
                         window.extBoxClickable = true;
+                        window.extensionReady = false;
                     } else {
                         kutu.className = 'ext-status-box ext-ok';
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti bağlandı (Hazır)';
-                        window.extBoxClickable = false;
-                        // Eklenti (yeni) HAZIR: kırmızı/sarıda açılmış modal artık anlamsız -> otomatik
-                        // kapat. (Kullanıcı güncelleyip panele dönünce açık modal takılı kalmasın.)
-                        // closeExtModal idempotent -> zaten kapalıysa no-op; kırmızı/sarı dallarına dokunulmaz.
-                        closeExtModal();
+                        window.extBoxClickable = true;   // YEŞİL de tıklanır -> Kurulum/Kullanım Kılavuzu (indirme gizli)
+                        window.extensionReady = true;
+                        // Modal AÇIKSA içeriğini yeşil (indirme gizli) hâline tazele; kullanıcı kılavuzu
+                        // okuyor olabilir -> otomatik KAPATMA yok (eski auto-close kaldırıldı).
+                        var _em = document.getElementById('extModal');
+                        if (_em && _em.classList.contains('active')) { openExtModal(); }
                     }
                 }
 
