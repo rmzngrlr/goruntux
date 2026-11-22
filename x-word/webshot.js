@@ -374,9 +374,22 @@
       var out; try { out = oc.toDataURL('image/png'); } catch (e) { bildir('Görsel üretilemedi.', true); return; }
       var panoVar = false;
       try { if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) { panoVar = true; var bp = new Promise(function (res) { try { oc.toBlob(function (b) { res(b); }, 'image/png'); } catch (e) { res(null); } }); navigator.clipboard.write([new ClipboardItem({ 'image/png': bp })]).catch(function () {}); } } catch (e) { panoVar = false; }
-      var link = location.href, baslik = baslikBul(); okBtn.disabled = true; okBtn.textContent = 'Ekleniyor…';
+      // [WEBSHOT ÇOKLU-GÖRSEL] Aynı sayfadan (aynı başlık+link) birden çok SS alınabilsin diye her
+      // yakalamaya BENZERSİZ kimlik linki ver: xmanual://ws-<uid>?u=<gerçek sayfa URL'si>. Böylece
+      //  - havuz/IndexedDB anahtarı (normalize sonrası xmanual://ws-<uid>) ÇAKIŞMAZ -> 2. görsel 1.yi
+      //    EZMEZ, 2.yi silmek 1.yi silmez (eski kök-neden: link=sayfa URL -> tek anahtar).
+      //  - group_override='mc-ws:'+sayfaURL -> aynı sayfanın tüm SS'leri TEK bölümde toplanır (başlık=
+      //    sayfa başlığı). 'mc-' = ELLE grup -> komşuluktan bağımsız TAM birleş (RT-SS deseninin aynısı).
+      //  - Gerçek URL '?u=' ile linkte taşınır; x_temizle_link xmanual'ı olduğu gibi geçirir, normalize
+      //    '?'yi keser (anahtar yine benzersiz), xRaporLinkGoster '?u='yi çözüp raporda GERÇEK linki gösterir.
+      // Sosyal yola (widget.js, dedup:true, gerçek permalink) HİÇ dokunulmaz -> mükerrer-engeli aynen durur.
+      var sayfaUrl = location.origin + location.pathname + location.search;   // hash HARİÇ temiz sayfa URL'si
+      var uid = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      var link = 'xmanual://ws-' + uid + '?u=' + encodeURIComponent(sayfaUrl);
+      var grup = 'mc-ws:' + sayfaUrl.toLowerCase();
+      var baslik = baslikBul(); okBtn.disabled = true; okBtn.textContent = 'Ekleniyor…';
       originAl(function (org) {
-        try { chrome.runtime.sendMessage({ action: 'addToPool', origin: org, title: baslik, link: link, image: out, is_profile: false, group_override: '', dedup: false }, function (resp) { void chrome.runtime.lastError; temizle(); if (resp && resp.status === 'success') bildir('Panele eklendi' + (panoVar ? ' · panoya kopyalandı' : '') + ' ✓'); else bildir('Eklenemedi' + (resp && resp.message ? ': ' + resp.message : ''), true); }); }
+        try { chrome.runtime.sendMessage({ action: 'addToPool', origin: org, title: baslik, link: link, image: out, is_profile: false, group_override: grup, dedup: false }, function (resp) { void chrome.runtime.lastError; temizle(); if (resp && resp.status === 'success') bildir('Panele eklendi' + (panoVar ? ' · panoya kopyalandı' : '') + ' ✓'); else bildir('Eklenemedi' + (resp && resp.message ? ': ' + resp.message : ''), true); }); }
         catch (e) { temizle(); bildir('Eklenemedi.', true); }
       });
     }
