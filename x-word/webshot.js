@@ -287,14 +287,21 @@
       function geriDon() { pkapat(); ov.style.display = 'flex'; window.__xWebshotMenuTemiz = temizle; }
       function onayla() {
         if (!secili.length) { geriDon(); ciz(); return; }
-        var L = Infinity, T = Infinity, R = -Infinity, B = -Infinity, dY = window.scrollY - Y0;
+        var L = Infinity, T = Infinity, R = -Infinity, B = -Infinity, curY = window.scrollY;
         secili.forEach(function (el) { var r = el.getBoundingClientRect(); L = Math.min(L, r.left); T = Math.min(T, r.top); R = Math.max(R, r.right); B = Math.max(B, r.bottom); });
-        crop = { x: Math.max(0, L * ratioX), y: Math.max(0, (T + dY) * ratioY), w: (R - L) * ratioX, h: (B - T) * ratioY };
-        crop.x = Math.min(crop.x, iw); crop.y = Math.min(crop.y, ih);
-        crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
-        try { window.scrollTo(0, Y0); } catch (e) {}
-        geriDon(); ciz();
-        try { sar.scrollTop = Math.max(0, S(crop.y) - 40); } catch (e) {}
+        var uT = T + curY, uB = B + curY;   // birleşiğin SAYFA koordinatı (CSS), scroll'dan bağımsız
+        geriDon();   // picker kapat -> kırp UI'a dön
+        function kapsaVeKirp() {   // görsel, union'u KAPSAYANA kadar uzat; sonra kırp kutusunu kur
+          var imgBot = imgTopPage + ih / ratioY;
+          if (!_mesgul && uB > imgBot + 1 && imgBot < docH() - 1) { _uzat('alt', kapsaVeKirp); return; }   // alta eksik -> uzat
+          if (!_mesgul && uT < imgTopPage - 1 && imgTopPage > 1) { _uzat('ust', kapsaVeKirp); return; }    // üste eksik -> uzat
+          crop = { x: Math.max(0, L * ratioX), y: Math.max(0, (uT - imgTopPage) * ratioY), w: (R - L) * ratioX, h: (uB - uT) * ratioY };
+          crop.x = Math.min(crop.x, iw); crop.y = Math.min(crop.y, ih);
+          crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
+          ciz();
+          try { sar.scrollTop = Math.max(0, S(crop.y) - 40); } catch (e) {}
+        }
+        kapsaVeKirp();
       }
       function mm(e) { lx = e.clientX; ly = e.clientY; hover(e.clientX, e.clientY); }
       function clk(e) { e.preventDefault(); e.stopPropagation(); if (hoverEl) toggle(hoverEl); }
