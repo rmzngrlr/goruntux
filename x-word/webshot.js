@@ -273,8 +273,8 @@
         secili.forEach(function (el) { var r = el.getBoundingClientRect(); var b = document.createElement('div'); b.style.cssText = 'position:fixed;border:2px solid #1d9bf0;background:rgba(29,155,240,0.22);border-radius:3px;pointer-events:none;left:' + r.left + 'px;top:' + r.top + 'px;width:' + Math.max(0, r.width) + 'px;height:' + Math.max(0, r.height) + 'px;'; kat.appendChild(b); secBoxlar.push(b); });
         bilgi.textContent = secili.length ? (secili.length + ' öğe seçili · tıkla ekle/çıkar') : 'Öğelere tıkla (birden çok seçebilirsin) · ↑/↓ büyüt-küçült';
       }
-      function _union() { var L = Infinity, T = Infinity, R = -Infinity, B = -Infinity; secili.forEach(function (s) { var r = s.getBoundingClientRect(); L = Math.min(L, r.left); T = Math.min(T, r.top); R = Math.max(R, r.right); B = Math.max(B, r.bottom); }); return { L: L, T: T, R: R, B: B }; }
-      function komsuMu(el) { if (!secili.length) return true; var r = el.getBoundingClientRect(), u = _union(), g = 44; return (r.left <= u.R + g && r.right >= u.L - g) && (r.top <= u.B + g && r.bottom >= u.T - g); }   // seçili birleşiğe g toleransında komşu mu
+      function bitisik(a, b) { var g = 24, vOv = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top), hOv = Math.min(a.right, b.right) - Math.max(a.left, b.left); if (vOv > 12 && (Math.max(a.left, b.left) - Math.min(a.right, b.right)) <= g) return true; if (hOv > 12 && (Math.max(a.top, b.top) - Math.min(a.bottom, b.bottom)) <= g) return true; return false; }   // a,b KENAR paylaşan komşu mu: bir eksende örtüşme (>12) + diğerinde küçük boşluk (<=24)
+      function komsuMu(el) { if (!secili.length) return true; var r = el.getBoundingClientRect(); for (var k = 0; k < secili.length; k++) { if (bitisik(r, secili[k].getBoundingClientRect())) return true; } return false; }   // seçili ÖĞELERDEN BİRİNE kenar-komşu mu (union DEĞİL)
       function toggle(el) {
         var i = secili.indexOf(el);
         if (i >= 0) { secili.splice(i, 1); secCiz(); return; }   // çıkarma serbest
