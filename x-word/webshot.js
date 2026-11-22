@@ -7,10 +7,19 @@
 // Onayla -> havuz + pano (link=URL, başlık=og:title). Trusted-Types güvenli (createElement).
 // ============================================================================
 (function () {
+  // [SAĞ-TIK] Sağ-tık menüsünden gelen "doğrudan yakala" modu: yüzen menüyü ATLA, direkt kırpma yakalamasını
+  // başlat. background, webshot.js enjekte etmeden ÖNCE window.__xWebshotDogrudanIstek=true kuruyor (aynı ISOLATED world).
+  var _dogrudan = false; try { _dogrudan = !!window.__xWebshotDogrudanIstek; window.__xWebshotDogrudanIstek = false; } catch (e) {}
   if (window.__xWebshotAktif) {
     var _m0 = document.getElementById('x-webshot-menu') || document.getElementById('x-webshot-ov') || document.getElementById('x-webshot-blocker');
-    if (_m0) { try { if (window.__xWebshotMenuTemiz) window.__xWebshotMenuTemiz(); else _m0.remove(); } catch (e) {} window.__xWebshotAktif = false; }
-    return;
+    if (_dogrudan) {
+      // Zaten açık (menü/UI) -> temizle ve TAZE yakalamaya geç (toolbar gibi toggle-KAPAT değil).
+      try { if (window.__xWebshotMenuTemiz) window.__xWebshotMenuTemiz(); else if (_m0) _m0.remove(); } catch (e) {}
+      window.__xWebshotAktif = false;
+    } else {
+      if (_m0) { try { if (window.__xWebshotMenuTemiz) window.__xWebshotMenuTemiz(); else _m0.remove(); } catch (e) {} window.__xWebshotAktif = false; }
+      return;
+    }
   }
   window.__xWebshotAktif = true;
 
@@ -60,8 +69,8 @@
     } catch (e) {}
   }
 
-  // --- ENTRY: sağ-üst SAYDAM menü ---
-  menuKur();
+  // --- ENTRY: toolbar -> sağ-üst SAYDAM menü; sağ-tık -> doğrudan yakalama (menüsüz) ---
+  if (_dogrudan) { baslatYakala(); } else { menuKur(); }
   function _svgIkon(tur) {
     var NS = 'http://www.w3.org/2000/svg';
     var s = document.createElementNS(NS, 'svg');
