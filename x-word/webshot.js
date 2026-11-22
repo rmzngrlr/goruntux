@@ -261,7 +261,12 @@
       var p = noktaSrc(e);
       if (!drag) { canvas.style.cursor = imlec(cropTut(p)); return; }
       var m = drag.mod, b = drag.o;
-      if (m.tasi) { crop.x = b.x + (p.x - drag.sx); crop.y = b.y + (p.y - drag.sy); }
+      if (m.tasi) {
+        crop.x = b.x + (p.x - drag.sx); crop.y = b.y + (p.y - drag.sy);
+        // [TAŞIMA] boyut SABİT: konumu [0, iw-w]/[0, ih-h]'e kıstır (kenara dayayınca kutu KÜÇÜLMESİN)
+        crop.x = Math.max(0, Math.min(crop.x, Math.max(0, iw - crop.w)));
+        crop.y = Math.max(0, Math.min(crop.y, Math.max(0, ih - crop.h)));
+      }
       else {
         var x1 = b.x, y1 = b.y, x2 = b.x + b.w, y2 = b.y + b.h;
         if (m.kenar) { if (m.kenar === 'w') x1 = p.x; else if (m.kenar === 'e') x2 = p.x; else if (m.kenar === 'n') y1 = p.y; else if (m.kenar === 's') y2 = p.y; }
@@ -275,9 +280,10 @@
           if (movR) x2 = nx; else x1 = nx; if (movB) y2 = ny; else y1 = ny;
         }
         crop.x = Math.min(x1, x2); crop.y = Math.min(y1, y2); crop.w = Math.abs(x2 - x1); crop.h = Math.abs(y2 - y1);
+        // [BOYUTLANDIR] kutuyu görsel sınırına kıstır (bu dalda w/h daralması DOĞRU)
+        crop.x = Math.max(0, Math.min(crop.x, iw)); crop.y = Math.max(0, Math.min(crop.y, ih));
+        crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
       }
-      crop.x = Math.max(0, Math.min(crop.x, iw)); crop.y = Math.max(0, Math.min(crop.y, ih));
-      crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
       ciz();
     }
     function pu(e) { drag = null; try { canvas.releasePointerCapture(e.pointerId); } catch (_) {} }

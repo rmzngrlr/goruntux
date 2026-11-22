@@ -3262,11 +3262,12 @@ HTML_TEMPLATE = """
         function onExtStatusClick() {
             if (window.extBoxClickable) { openExtModal(); }
         }
-        function openExtModal() {
+        // İçerik görünürlüğü (indirme bölümü + güncelleme uyarısı) — KAYDIRMAZ, aç/kapat YAPMAZ.
+        // YEŞİL (hazır) iken: indirme + uyarı GİZLİ (sadece kılavuz). Kırmızı/sarı iken indirme GÖSTERİLİR.
+        // Poll tazelemesinde (modal açıkken durum değişince) bu çağrılır -> kaydırma KAÇMAZ.
+        function _extModalIcerik() {
             const m = document.getElementById('extModal');
             if (!m) { return; }
-            // YEŞİL (hazır) iken modal KILAVUZ amaçlı açılır -> indirme bölümü + güncelleme uyarısı GİZLİ.
-            // Kırmızı (kur) / sarı (güncelle) iken indirme GÖSTERİLİR.
             const hazir = !!window.extensionReady;
             const indir = document.getElementById('ext-download-section');
             if (indir) { indir.style.display = hazir ? 'none' : ''; }
@@ -3281,8 +3282,14 @@ HTML_TEMPLATE = """
                     uyari.style.display = 'none';
                 }
             }
+        }
+        function openExtModal() {
+            const m = document.getElementById('extModal');
+            if (!m) { return; }
+            _extModalIcerik();
             m.classList.add('active');
-            // Kılavuz HER açılışta en ÜSTTEN başlasın (önceki açılışta aşağı kaydırılmış olabilir).
+            // Kılavuz en ÜSTTEN başlasın — YALNIZ gerçek açılışta (openExtModal). Poll tazelemesi
+            // _extModalIcerik çağırır (kaydırmaz) -> sürekli yukarı atma olmaz.
             try { var _mc = m.querySelector('.modal-content'); if (_mc) _mc.scrollTop = 0; var _mb = m.querySelector('.modal-body'); if (_mb) _mb.scrollTop = 0; } catch (e) {}
         }
         function closeExtModal() {
@@ -7247,9 +7254,10 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         var _em = document.getElementById('extModal');
                         if (_em && _em.classList.contains('active')) {
                             // Turuncu/kırmızı -> YEŞİL GEÇİŞİ (güncelleme bitti): açık modalı KAPAT.
-                            // Zaten yeşilken açıksa (kullanıcı kılavuzu kendi açtı) -> içeriği yeşil tut.
+                            // Zaten yeşilken açıksa (kullanıcı kılavuzu kendi açtı) -> içeriği tazele ama
+                            // KAYDIRMA (openExtModal DEĞİL -> sürekli yukarı atmaz).
                             if (window.__extSonDurum && window.__extSonDurum !== 'ok') { closeExtModal(); }
-                            else { openExtModal(); }
+                            else { _extModalIcerik(); }
                         }
                         window.__extSonDurum = 'ok';
                     }
@@ -14243,7 +14251,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       }
       if(drag.tip==='marquee'){ marq={x:Math.min(drag.sx,p.x), y:Math.min(drag.sy,p.y), w:Math.abs(p.x-drag.sx), h:Math.abs(p.y-drag.sy)}; ciz(); return; }
       if(drag.tip==='crop'){ var m=drag.mod, b2=drag.o;
-        if(m.tasi){ crop.x=b2.x+(p.x-drag.sx); crop.y=b2.y+(p.y-drag.sy); }
+        if(m.tasi){ crop.x=b2.x+(p.x-drag.sx); crop.y=b2.y+(p.y-drag.sy);
+          crop.x=Math.max(0,Math.min(crop.x,Math.max(0,baseW-crop.w))); crop.y=Math.max(0,Math.min(crop.y,Math.max(0,baseH-crop.h))); }   // [TAŞIMA] boyut SABİT, yalnız konum kıstır (kenara dayayınca kutu küçülmesin)
         else { var x1=b2.x, y1=b2.y, x2=b2.x+b2.w, y2=b2.y+b2.h;
           if(m.kenar){ if(m.kenar==='w') x1=p.x; else if(m.kenar==='e') x2=p.x; else if(m.kenar==='n') y1=p.y; else if(m.kenar==='s') y2=p.y; }   // [MAC KIRP] tek-eksen kenar tutamacı
           else { var _movR=(m.kose.indexOf('xw')===0), _movB=(m.kose.indexOf('yh')>=0), _nx=p.x, _ny=p.y;
@@ -14255,9 +14264,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
             if(_movR) x2=_nx; else x1=_nx; if(_movB) y2=_ny; else y1=_ny;
           }
           crop.x=Math.min(x1,x2); crop.y=Math.min(y1,y2); crop.w=Math.abs(x2-x1); crop.h=Math.abs(y2-y1);
+          crop.x=Math.max(0,Math.min(crop.x,baseW)); crop.y=Math.max(0,Math.min(crop.y,baseH));   // [BOYUTLANDIR] sınıra kıstır (w/h daralması doğru)
+          crop.w=Math.max(1,Math.min(crop.w,baseW-crop.x)); crop.h=Math.max(1,Math.min(crop.h,baseH-crop.y));
         }
-        crop.x=Math.max(0,Math.min(crop.x,baseW)); crop.y=Math.max(0,Math.min(crop.y,baseH));
-        crop.w=Math.max(1,Math.min(crop.w,baseW-crop.x)); crop.h=Math.max(1,Math.min(crop.h,baseH-crop.y));
         ciz(); return;
       }
       if(drag.tip==='ciz'){ var o5=drag.o; if(o5.t==='ok'){ o5.x2=p.x; o5.y2=p.y; } else { o5.w=p.x-o5.x; o5.h=p.y-o5.y; } ciz(); return; }
