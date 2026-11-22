@@ -1040,6 +1040,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // [WEBSHOT CDP] "Devamını Al" -> sayfayı KAYDIRMADAN (git-gel yok) görünür-ötesi bölgeyi yakala.
+  // chrome.debugger attach -> Page.captureScreenshot {captureBeyondViewport, clip} -> detach. Sarı
+  // "hata ayıklama" bandı attach boyunca kullanıcı EKRANINDA görünür ama ÇIKTIYA (sayfa görseline)
+  // GİRMEZ. clip CSS-px, scale=DPR -> device-px (captureVisibleTab ile aynı çözünürlük). Sadece
+  // webshot "Devamını Al" kullanır; varsayılan yakalama hâlâ bant-sız captureTab.
+  if (message.action === "captureCDP") {
+    const cdpTabId = sender.tab ? sender.tab.id : null;
+    if (cdpTabId == null) { try { sendResponse({ status: "error", message: "sekme yok" }); } catch (_) {} return true; }
+    const dbg = { tabId: cdpTabId };
+    const clip = message.clip || {};
+    try {
+      chrome.debugger.attach(dbg, "1.3", () => {
+        if (chrome.runtime.lastError) {
+          try { sendResponse({ status: "error", message: chrome.runtime.lastError.message }); } catch (_) {}
+          try { chrome.debugger.detach(dbg, () => { void chrome.runtime.lastError; }); } catch (_) {}
+          return;
+        }
+        chrome.debugger.sendCommand(dbg, "Page.captureScreenshot", {
+          format: "png",
+          captureBeyondViewport: true,
+          clip: { x: clip.x || 0, y: clip.y || 0, width: clip.width || 1, height: clip.height || 1, scale: message.scale || 1 }
+        }, (res) => {
+          const err = chrome.runtime.lastError;
+          try { chrome.debugger.detach(dbg, () => { void chrome.runtime.lastError; }); } catch (_) {}
+          if (err || !res || !res.data) { try { sendResponse({ status: "error", message: err ? err.message : "veri yok" }); } catch (_) {} return; }
+          try { sendResponse({ status: "success", dataUrl: "data:image/png;base64," + res.data }); } catch (_) {}
+        });
+      });
+    } catch (e) { try { sendResponse({ status: "error", message: String(e && e.message || e) }); } catch (_) {} }
+    return true;
+  }
+
   // captureAndCrop: Yakalama ve kırpmayı tek mesajda birleştir.
   // İki ayrı mesaj (captureTab + cropImage) arasında service worker uykuya geçerse
   // ikinci yanıt null gelir ve kırpma yapılamaz. Bu action her ikisini tek seferde yapar.
