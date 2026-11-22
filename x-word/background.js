@@ -1006,8 +1006,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     }
 
-    if (message.fast) { doCaptureVisible(); return true; }   // [WEBSHOT] aktif sekme -> odak/aktifleştirme+800ms gecikmesi ATLA (extend'de flash kısa olsun)
-
     if (tabId && windowId) {
       chrome.windows.update(windowId, { focused: true }, () => {
         if (chrome.runtime.lastError) {

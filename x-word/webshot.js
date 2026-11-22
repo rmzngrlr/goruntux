@@ -49,9 +49,9 @@
     try { if (document.title && document.title.trim()) return document.title.trim().slice(0, 200); } catch (e) {}
     return "";
   }
-  function yakala(cb, fast) {
+  function yakala(cb) {
     try {
-      chrome.runtime.sendMessage({ action: 'captureTab', fast: !!fast }, function (resp) {
+      chrome.runtime.sendMessage({ action: 'captureTab' }, function (resp) {
         if (chrome.runtime.lastError || !resp || resp.status !== 'success' || !resp.dataUrl) { cb(null); return; }
         cb(resp.dataUrl);
       });
@@ -134,7 +134,7 @@
       raw.onload = function () { if (!raw.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(raw)); };
       raw.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
       raw.src = dataUrl;
-    }, true);   // aktif sekme -> hızlı (800ms odak gecikmesi yok)
+    });
   }
 
   // ======================= KIRP OVERLAY (editör portu) =======================
@@ -351,7 +351,7 @@
       var hedef = (yon === 'alt') ? (Yorig + vhCss + altOfsetCss) : (Yorig - ustOfsetCss - vhCss);
       hedef = Math.max(0, hedef);
       var oncekiScroll = window.scrollY;
-      // overlay GÖRÜNÜR kalır -> sayfa kayması kullanıcıya GÖRÜNMEZ ("git gel" yok); yalnız capture anında kısa gizlenir.
+      ov.style.visibility = 'hidden';   // captureVisibleTab overlay'i ALMASIN
       try { window.scrollTo(0, hedef); } catch (e) {}
       var gercekTop = window.scrollY;   // clamp sonrası viewport tepesi (sayfa sonu/başı)
       var yeniUstCss, yeniAltCss;       // şeritte YENİ olan [üst,alt] CSS aralığı (örtüşme atılır)
@@ -365,12 +365,11 @@
         yeniAltCss = vhCss - Math.max(0, (gercekTop + vhCss) - kapsamUst);
       }
       var yeniYukCss = yeniAltCss - yeniUstCss;
-      if (yeniYukCss < 2) { try { window.scrollTo(0, oncekiScroll); } catch (e) {} _mesgul = false; return; }   // uzatacak yer yok (sayfa ucu)
+      if (yeniYukCss < 2) { ov.style.visibility = ''; try { window.scrollTo(0, oncekiScroll); } catch (e) {} _mesgul = false; return; }   // uzatacak yer yok (sayfa ucu)
       requestAnimationFrame(function () { requestAnimationFrame(function () {
-        ov.style.visibility = 'hidden';   // SADECE yakalama anı (çok kısa; fast capture)
         yakala(function (dataUrl) {
-          ov.style.visibility = '';        // hemen geri göster -> sayfa geri kaydırması da örtülür
-          try { window.scrollTo(0, oncekiScroll); } catch (e) {}
+          try { window.scrollTo(0, oncekiScroll); } catch (e) {}   // sayfayı eski yerine getir (overlay örtüyor)
+          ov.style.visibility = '';
           if (!dataUrl) { _mesgul = false; return; }
           var strip = new Image();
           strip.onload = function () {
@@ -383,7 +382,7 @@
           };
           strip.onerror = function () { _mesgul = false; };
           strip.src = dataUrl;
-        }, true);   // fast capture -> hidden penceresi minimum
+        });
       }); });
     }
     function serideEkle(yon, strip, yeniUstCss, yeniAltCss, vhCss) {
