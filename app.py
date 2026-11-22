@@ -7191,7 +7191,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         window.extBoxClickable = true;
                     } else if (eskiMi) {
                         kutu.className = 'ext-status-box ext-warn';
-                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Güncelleme gerekli';
+                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> GörüntüX Eklentisinin Güncellenmesi Gerekir!';
                         window.extBoxClickable = true;
                     } else {
                         kutu.className = 'ext-status-box ext-ok';
