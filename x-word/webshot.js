@@ -136,7 +136,7 @@
     ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(devBtn);
 
     var sar = document.createElement('div');
-    sar.style.cssText = 'flex:1 1 auto;width:100%;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:#000;';
+    sar.style.cssText = 'flex:1 1 auto;width:100%;overflow-x:hidden;overflow-y:auto;display:flex;justify-content:center;align-items:flex-start;background:#000;';
     var canvas = document.createElement('canvas');
     canvas.style.cssText = 'display:block;flex:0 0 auto;touch-action:none;cursor:crosshair;';
     sar.appendChild(canvas); var ctx = canvas.getContext('2d');
@@ -153,8 +153,8 @@
 
     var blurCv = document.createElement('canvas');
     function _olcekle() {
-      var vw = window.innerWidth;
-      scale = Math.min(vw / iw, 16000 / ih, 1);   // TAM GENİŞLİK (büyütme yok); yükseklik sar'da dikey scroll
+      var availW = document.documentElement.clientWidth || window.innerWidth;   // scrollbar HARİÇ içerik genişliği -> gereksiz yatay scroll olmaz
+      scale = Math.min(availW / iw, 16000 / ih, 1);   // tam genişlik (büyütme yok); yükseklik sar'da dikey scroll
       cw = Math.max(1, Math.round(iw * scale)); ch = Math.max(1, Math.round(ih * scale));
       canvas.width = cw; canvas.height = ch;
     }
