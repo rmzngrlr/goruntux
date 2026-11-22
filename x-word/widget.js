@@ -2399,24 +2399,17 @@
                         if (btn) { ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(function (tip) { btn.dispatchEvent(new MouseEvent(tip, { bubbles: true, cancelable: true, view: window })); }); }
                     } catch (e) {}
                     await new Promise(function (r) { setTimeout(r, 350); });
-                    // KADRAJ = kadraja GİRMESİ GEREKEN öğelerin BİRLEŞİMİ (Dock/tarama TT bloğuyla İKİZ, ~7413 —
-                    // "uygun sınırlar" orada). Sabit koordinat YOK; TikTok yerleşimi ekran boyutuna göre değişir.
-                    // Parçalar: video + açıklama + avatar + sayaç ray + müzik → birleşim, kart'a + viewport'a hapsedilir.
-                    var parcalar = [];
-                    var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width > 1 && r.height > 1) parcalar.push(r); };
-                    ekle('video');
-                    ekle('[data-e2e="video-desc"]');
-                    ekle('[data-e2e="video-author-avatar"]');
-                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
-                    ekle('[data-e2e="video-music"]');
-                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
-                    var PAY = 8;
-                    var L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - PAY;
-                    var T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
-                    var R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
-                    var B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
-                    var _kr = kart.getBoundingClientRect();
-                    L = Math.max(L, _kr.left - PAY); T = Math.max(T, _kr.top - PAY); R = Math.min(R, _kr.right + PAY); B = Math.min(B, _kr.bottom);
+                    // KADRAJ = VİDEO ÖĞESİNİN rect'i = videonun TAM GÖRÜNÜR SINIRI (kullanıcı: "tam sınırdan al,
+                    // sağ/solunu kesme"; yorum-paneli/landscape ekranda sağ panel + yan siyah bantlar ÖĞE DIŞINDA
+                    // kalır -> kadraja girmez). Parça-BİRLEŞİMİ KULLANMIYORUZ (desc/sayaç yan panelde olunca kadraj
+                    // panele taşıyordu); object-fit KIRPMASI YOK (videonun kendi kenarını kesiyordu). TikTok video
+                    // öğesi object-fit:cover + öğe-AR = video-AR -> öğe rect'i görünen videoyu TAM kaplar, içinde
+                    // pillarbox yok (canlı ölçüldü: kenar parlaklıkları 120+). Feed/immersive'de ray+caption video
+                    // ÜSTÜNE bindiği için öğe içinde -> dahil olur. (Dock/tarama bloğu ~7413 feed için parça-birleşimi
+                    // KALIR; bu ikiz yalnız per-post butonda, çünkü yorum-paneli layout'unu O karşılıyor.)
+                    if (!video) throw new Error("video yok");
+                    var _vr = video.getBoundingClientRect();
+                    var L = _vr.left, T = _vr.top, R = _vr.right, B = _vr.bottom;
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
                     R = Math.min(window.innerWidth, Math.round(R)); B = Math.min(window.innerHeight, Math.round(B));
                     var cw = R - L, ch2 = B - T;
@@ -2429,7 +2422,7 @@
                         if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
                         return rr.dataUrl;
                     };
-                    var B_tam = Math.round(Math.min(Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY, _kr.bottom));
+                    var B_tam = B;   // video-rect viewport'a sığar -> _delta=0, stitch gerekmez (video öğesi tek karede görünür)
                     var _delta = Math.max(0, B_tam - window.innerHeight);
                     var _ham = null;
                     if (_delta > 0 && _delta <= 300) {
