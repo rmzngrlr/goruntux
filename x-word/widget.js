@@ -2344,7 +2344,7 @@
                         // 0) PER-POST BUTON: tıklanan container HEDEFLE (varsa). Geçerli + video+like içerene kadar bekle.
                         if (window.__xTtHedefKart && document.contains(window.__xTtHedefKart)) {
                             kart = window.__xTtHedefKart; video = kart.querySelector('video');
-                            if (video && kart.querySelector('[data-e2e="like-count"]')) break;
+                            if (video && kart.querySelector('[data-e2e="like-count"], [data-e2e="like-icon"]')) break;
                             await new Promise(function (r) { setTimeout(r, 200); }); continue;
                         }
                         // 1) Besleme/paylaşım düzeni (taramanın kullandığı; genelde oturum-KAPALI).
@@ -4198,8 +4198,8 @@
         if (document.getElementById('x-gx-tt-style')) return;
         var s = document.createElement('style'); s.id = 'x-gx-tt-style';
         s.textContent = [
-            '.x-gx-tt-btn{ box-sizing:border-box; position:relative; display:flex; flex-direction:column; align-items:center;',
-            '   justify-content:center; width:100%; padding:6px 0 2px; margin:4px 0 2px; cursor:pointer; background:transparent;',
+            '.x-gx-tt-btn{ box-sizing:border-box; position:relative; display:inline-flex; flex-direction:column; align-items:center;',
+            '   justify-content:center; padding:4px; margin:4px 6px 2px; cursor:pointer; background:transparent;',
             '   border:none; -webkit-appearance:none; appearance:none; transition:transform .12s ease; flex:0 0 auto; }',
             '.x-gx-tt-btn:hover{ transform:scale(1.06); }',
             '.x-gx-tt-btn .x-gx-ssico{ width:40px !important; height:40px !important; }',
@@ -4228,27 +4228,25 @@
         _xTtDurum(btn, renk, mesaj, ikonTur || 'ekle');
         setTimeout(function () { btn.__busy = false; _xTtDurum(btn, null, "GörüntüX Raporu'na ekle", 'ekle'); }, sure || 1800);
     }
-    // Aksiyon kolonunu bul: beğeni + paylaş ortak atası (SectionActionBarContainer, flex-column).
-    function _xTtAksiyonKolonu(kart) {
-        try {
-            var like = kart.querySelector('[data-e2e="like-count"], [data-e2e="like-icon"]');
-            var share = kart.querySelector('[data-e2e="share-count"], [data-e2e="share-icon"]');
-            if (!like || !share) return null;
-            var p = like.parentElement, g = 0;
-            while (p && g < 10) { if (p.contains(share) && p !== kart) return p; p = p.parentElement; g++; }
-        } catch (e) {}
-        return null;
-    }
     function xTtButonKur() {
         try {
             if (xPlatform() !== 'tt') return;
             if (window.__xGxCaptureAktif) return;
             xGxTtStilEkle();
-            document.querySelectorAll('[data-e2e="recommend-list-item-container"]').forEach(function (kart) {
+            // ⚠LAYOUT-BAĞIMSIZ (kullanıcı: feed + yorum-paneli sayfalarında buton yoktu). TikTok'un birden çok
+            // düzeni var ve KART KABI değişir: video-detay overlay=recommend-list-item-container, "Sizin İçin"
+            // feed=anchoring-player-column, direkt-detay=DivContentFlex, yorum-paneli=yatay satır. O yüzden
+            // recommend-list-item-container'ı DEĞİL, AKSIYON GRUBUNU (like+share ortak atası = SectionActionBar;
+            // dikey ray VEYA yatay satır) doğrudan hedefle. Kart = grup+video içeren en yakın ata (tık onu hedefler).
+            document.querySelectorAll('[data-e2e="like-icon"], [data-e2e="browse-like-icon"]').forEach(function (like) {
                 try {
-                    if (!kart.querySelector('video')) return;                  // hidrasyon bekle
-                    var kolon = _xTtAksiyonKolonu(kart);
-                    if (!kolon || kolon.querySelector('.x-gx-tt-btn')) return;   // kolon yok / zaten var
+                    var grup = like.parentElement, g = 0, share = null;
+                    while (grup && g < 12) { share = grup.querySelector('[data-e2e="share-icon"]'); if (share) break; grup = grup.parentElement; g++; }
+                    if (!grup || !share) return;
+                    if (grup.querySelector('.x-gx-tt-btn')) return;   // bu grupta zaten var
+                    var kart = grup, g2 = 0;
+                    while (kart && g2 < 16 && !kart.querySelector('video')) { kart = kart.parentElement; g2++; }
+                    if (!kart || !kart.querySelector('video')) return;
                     var btn = document.createElement('div');
                     btn.className = 'x-gx-tt-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                     btn.setAttribute('aria-label', "Bu videoyu GörüntüX Raporu'na ekle");
@@ -4256,8 +4254,8 @@
                     var tip = document.createElement('span'); tip.className = 'x-gx-tt-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal
                     btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                     (function (b, k) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xTtButonTikla(b, k); }); })(btn, kart);
-                    if (kolon.firstChild) kolon.insertBefore(btn, kolon.firstChild);   // EN ÜSTE: profil avatarının ÜSTÜNDE (kullanıcı isteği), aynı kolon hizasında
-                    else kolon.appendChild(btn);
+                    if (grup.firstChild) grup.insertBefore(btn, grup.firstChild);   // EN BAŞA: dikey ray=üst (avatar üstü), yatay satır=sol
+                    else grup.appendChild(btn);
                 } catch (e) {}
             });
         } catch (e) {}
