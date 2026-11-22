@@ -969,6 +969,9 @@
             // [FACEBOOK SS] Her gönderi kartinin basligindaki ⋯/X butonlarinin SOLUNA yesil "+" GoruntuX butonu
             // (yalniz fb'de aktif) -> anasayfa feed'inde de kart SS'i alinabilir.
             try { xFbButonInit(); } catch (e) {}
+            // [TIKTOK SS] Her video gönderisinin sağ aksiyon kolonuna (beğeni/yorum/paylaş; FB Reels deseni)
+            // yeşil "+" GoruntuX butonu (yalniz tt'de aktif).
+            try { xTtButonInit(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -2338,6 +2341,12 @@
                 try {
                     var kart = null, video = null;
                     for (var w = 0; w < 15; w++) {
+                        // 0) PER-POST BUTON: tıklanan container HEDEFLE (varsa). Geçerli + video+like içerene kadar bekle.
+                        if (window.__xTtHedefKart && document.contains(window.__xTtHedefKart)) {
+                            kart = window.__xTtHedefKart; video = kart.querySelector('video');
+                            if (video && kart.querySelector('[data-e2e="like-count"]')) break;
+                            await new Promise(function (r) { setTimeout(r, 200); }); continue;
+                        }
                         // 1) Besleme/paylaşım düzeni (taramanın kullandığı; genelde oturum-KAPALI).
                         kart = document.querySelector('[data-e2e="recommend-list-item-container"]');
                         video = kart ? kart.querySelector('video') : null;
@@ -2370,6 +2379,8 @@
                         throw new Error("dogrulama bulmacasi (captcha) cikti — once tiktok.com'da cozun");
                     }
                     document.querySelectorAll('tiktok-cookie-banner').forEach(function (b) { _ttGizli.push([b, b.style.display]); b.style.setProperty('display', 'none', 'important'); });
+                    // [PER-POST BUTON] Aksiyon kolonundaki yeşil GörüntüX butonumuz SS'e GIRMESIN (kadraja biniyor).
+                    try { document.querySelectorAll('.x-gx-tt-btn').forEach(function (b) { _ttGorunur.push([b, b.style.visibility]); b.style.setProperty('visibility', 'hidden', 'important'); }); } catch (e) {}
                     if (video) {
                         try { video.pause(); } catch (e) {}
                         await new Promise(function (res) {
@@ -4172,6 +4183,129 @@
         try { xGxFbStilEkle(); } catch (e) {}
         try { xFbButonKur(); } catch (e) {}
         setInterval(function () { try { xFbButonKur(); } catch (e) {} }, 700);
+    }
+
+    // ============================================================================
+    // [TIKTOK PER-POST BUTON] TikTok video sayfasında her gönderinin SAĞ AKSIYON
+    // KOLONUNA (SectionActionBarContainer: avatar/beğeni/yorum/favori/paylaş/müzik;
+    // FB Reels kolonuyla aynı desen) yeşil GörüntüX "+" butonu. Tık -> __xTtHedefKart
+    // = tıklanan container -> xTtIdleYakala (tek-kare, captcha-dur, çerez-shadow gizle,
+    // video karesi sıfırla) -> addToPool. Link = location.href (dock ile aynı; sunucu
+    // kanoniklestirir). Container'da temiz video permalink <a> YOK -> link odaklı videodan.
+    // ============================================================================
+    function xGxTtStilEkle() {
+        xGxSsStilEkle();   // ortak iç-içe daire+kare+artı ikon + hover/durum
+        if (document.getElementById('x-gx-tt-style')) return;
+        var s = document.createElement('style'); s.id = 'x-gx-tt-style';
+        s.textContent = [
+            '.x-gx-tt-btn{ box-sizing:border-box; position:relative; display:flex; flex-direction:column; align-items:center;',
+            '   justify-content:center; width:100%; padding:6px 0 2px; margin:4px 0 2px; cursor:pointer; background:transparent;',
+            '   border:none; -webkit-appearance:none; appearance:none; transition:transform .12s ease; flex:0 0 auto; }',
+            '.x-gx-tt-btn:hover{ transform:scale(1.06); }',
+            '.x-gx-tt-btn .x-gx-ssico{ width:40px !important; height:40px !important; }',
+            '.x-gx-tt-btn .x-gx-tt-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }',
+            '.x-gx-tt-btn .x-gx-tt-ic svg{ display:block; overflow:visible; }',
+            // Rail ekranın SAĞ kenarında -> tooltip SOLA açılır (sağa taşmasın).
+            '.x-gx-tt-btn .x-gx-tt-tip{ position:absolute; top:50%; right:calc(100% + 10px); left:auto; bottom:auto;',
+            '   transform:translate(4px,-50%); background:rgba(15,20,25,.96); color:#fff; font-weight:600; font-size:12px;',
+            '   line-height:1; white-space:nowrap; padding:6px 9px; border-radius:6px; opacity:0; pointer-events:none;',
+            '   z-index:99999; box-shadow:0 2px 10px rgba(0,0,0,.3); transition:opacity .12s ease, transform .12s ease; }',
+            '.x-gx-tt-btn:hover .x-gx-tt-tip{ opacity:1; transform:translate(0,-50%); }'
+        ].join('\n');
+        (document.head || document.documentElement).appendChild(s);
+    }
+    function _xTtDurum(btn, renk, mesaj, ikonTur) {
+        try {
+            btn.classList.remove('x-gx-ok', 'x-gx-warn');
+            if (renk === 'ok') btn.classList.add('x-gx-ok');
+            else if (renk === 'warn') btn.classList.add('x-gx-warn');
+            var ic = btn.querySelector('.x-gx-tt-ic');
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(ikonTur || 'ekle')); }
+            if (btn.__tip && typeof mesaj === 'string') btn.__tip.textContent = mesaj;
+        } catch (e) {}
+    }
+    function _xTtDurumBitir(btn, renk, mesaj, sure, ikonTur) {
+        _xTtDurum(btn, renk, mesaj, ikonTur || 'ekle');
+        setTimeout(function () { btn.__busy = false; _xTtDurum(btn, null, "GörüntüX Raporu'na ekle", 'ekle'); }, sure || 1800);
+    }
+    // Aksiyon kolonunu bul: beğeni + paylaş ortak atası (SectionActionBarContainer, flex-column).
+    function _xTtAksiyonKolonu(kart) {
+        try {
+            var like = kart.querySelector('[data-e2e="like-count"], [data-e2e="like-icon"]');
+            var share = kart.querySelector('[data-e2e="share-count"], [data-e2e="share-icon"]');
+            if (!like || !share) return null;
+            var p = like.parentElement, g = 0;
+            while (p && g < 10) { if (p.contains(share) && p !== kart) return p; p = p.parentElement; g++; }
+        } catch (e) {}
+        return null;
+    }
+    function xTtButonKur() {
+        try {
+            if (xPlatform() !== 'tt') return;
+            if (window.__xGxCaptureAktif) return;
+            xGxTtStilEkle();
+            document.querySelectorAll('[data-e2e="recommend-list-item-container"]').forEach(function (kart) {
+                try {
+                    if (!kart.querySelector('video')) return;                  // hidrasyon bekle
+                    var kolon = _xTtAksiyonKolonu(kart);
+                    if (!kolon || kolon.querySelector('.x-gx-tt-btn')) return;   // kolon yok / zaten var
+                    var share = kart.querySelector('[data-e2e="share-count"], [data-e2e="share-icon"]');
+                    var shareCocuk = share; while (shareCocuk && shareCocuk.parentElement !== kolon) shareCocuk = shareCocuk.parentElement;
+                    var btn = document.createElement('div');
+                    btn.className = 'x-gx-tt-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
+                    btn.setAttribute('aria-label', "Bu videoyu GörüntüX Raporu'na ekle");
+                    var ic = document.createElement('span'); ic.className = 'x-gx-tt-ic'; ic.appendChild(_xGxSsIkon('ekle'));
+                    var tip = document.createElement('span'); tip.className = 'x-gx-tt-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal
+                    btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
+                    (function (b, k) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xTtButonTikla(b, k); }); })(btn, kart);
+                    if (shareCocuk && shareCocuk.nextSibling) kolon.insertBefore(btn, shareCocuk.nextSibling);   // paylaş'tan SONRA
+                    else kolon.appendChild(btn);
+                } catch (e) {}
+            });
+        } catch (e) {}
+    }
+    // Tik: tıklanan container'ı hedefle -> xTtIdleYakala -> pano -> addToPool. Captcha sebebi kullanıcıya gösterilir.
+    async function xTtButonTikla(btn, kart) {
+        if (!btn || btn.__busy) return;
+        btn.__busy = true;
+        _xTtDurum(btn, null, 'Yakalanıyor…', 'ekle');
+        var link = ''; try { link = window.location.href; } catch (e) { link = location.href; }
+        var pano = null; try { pano = xPanoHazirla(link); } catch (e) {}
+        var origin = 'https://goruntux.rgmedya.tr';
+        try { origin = await new Promise(function (r) { chrome.storage.local.get({ server_origin: 'https://goruntux.rgmedya.tr' }, function (x) { r((x && x.server_origin) || 'https://goruntux.rgmedya.tr'); }); }); } catch (e) {}
+        var _res = null, _hata = '';
+        try {
+            window.__xGxCaptureAktif = true;
+            window.__xTtHedefKart = kart || null;
+            try { _res = await xTtIdleYakala(); }
+            catch (e) { _hata = (e && e.message) || ''; }
+            finally { window.__xTtHedefKart = null; window.__xGxCaptureAktif = false; }
+        } catch (e) { _hata = (e && e.message) || ''; }
+        if (_hata) printLog('TT buton yakalama hatasi: ' + _hata);
+        if (!_res || !_res.shot || _res.shot.length < 100) {
+            if (pano) { try { pano.iptal(); } catch (e) {} }
+            var _msg = /captcha|bulmaca/i.test(_hata) ? "Captcha çıktı — TikTok'ta çözüp tekrar dene" : 'Yakalanamadı — tekrar deneyin';
+            _xTtDurumBitir(btn, 'warn', _msg, 3200); return;
+        }
+        var _panoOk = false; if (pano) { try { _panoOk = await pano.gorseliVer(_res.shot); } catch (e) {} }
+        try {
+            chrome.runtime.sendMessage({
+                action: 'addToPool', origin: origin, title: _res.author || 'TikTok Gönderisi', link: link, image: _res.shot, is_profile: false, group_override: ''
+            }, function (addRes) {
+                if (addRes && addRes.status === 'success') { _xTtDurumBitir(btn, 'ok', _panoOk ? 'Eklendi · Panoda' : 'Rapora eklendi', 1800, 'ok'); }
+                else if (addRes && addRes.status === 'duplicate') { _xTtDurumBitir(btn, 'warn', 'Zaten havuzda', 2000); }
+                else { _xTtDurumBitir(btn, 'warn', 'Eklenemedi' + (addRes && addRes.message ? (': ' + addRes.message) : ''), 3000); }
+            });
+        } catch (e) {
+            if (pano) { try { pano.iptal(); } catch (x) {} }
+            _xTtDurumBitir(btn, 'warn', 'Bağlantı koptu — F5 yapın', 3200);
+        }
+    }
+    function xTtButonInit() {
+        if (xPlatform() !== 'tt') return;
+        try { xGxTtStilEkle(); } catch (e) {}
+        try { xTtButonKur(); } catch (e) {}
+        setInterval(function () { try { xTtButonKur(); } catch (e) {} }, 700);
     }
 
     // AÇIK (odaklı) tweet'i bul = URL'deki /status/<id> ile KENDİ zaman-damgası (permalink) linki eşleşen
