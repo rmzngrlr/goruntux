@@ -17587,12 +17587,14 @@ TESHIS_PAGE = r'''<!doctype html>
   <button class="sec" id="otobtn">Oto: AÇIK</button>
   <button class="sec" id="kopbtn">Kopyala</button>
   <button class="sec" id="indbtn">İndir</button>
+  <button class="sec" id="havbtn">Havuz</button>
   <button class="sec" id="tembtn">Temizle</button>
   <button class="sec" id="cikbtn">Çıkış</button>
   <span id="durum">bekleniyor...</span>
  </header>
  <div class="ozet" id="ozet"></div>
  <div id="raporlar"></div>
+ <div id="havuz" style="display:none;padding:4px 14px 10px;border-bottom:1px solid #182236;"></div>
  <div id="liste"></div>
 </div>
 <script>
@@ -17643,6 +17645,25 @@ async function kopyala(){
 function indir(){ try{ var txt=metinUret(); var b=new Blob([txt],{type:'text/plain'}); var u=URL.createObjectURL(b); var a=document.createElement('a'); a.href=u; a.download='goruntux-teshis-'+Date.now()+'.txt'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(u); },1500); }catch(e){} }
 async function tur(){ var d=await veri(); if(d&&d.ok){ sonVeri=d; renderLog(d.logs); $('durum').textContent=(d.logs?d.logs.length:0)+' satır — '+new Date().toLocaleTimeString('tr-TR'); } else if(d&&!d.ok){ cikis(); } }
 async function basla(){ await depolama(); sonMetas=await idbMetas(); ozetCiz(); await tur(); if(_poll) clearInterval(_poll); _poll=setInterval(tur,1500); }
+// [HAVUZ TEŞHİS] Bu tarayıcının havuz öğelerini göster (webshot gruplama + link teşhisi).
+// client_id localStorage'tan (panel ile aynı origin) -> /api/status manuel_list. AYNI sayfadan
+// webshot SS = AYNI grup anahtarı + AYNI normalize kök olmalı; değilse gruplama/ezme sorunu görünür.
+function hvDecodeU(link){ try{ var s=String(link||''); if(s.toLowerCase().indexOf('xmanual://')===0){ var i=s.indexOf('?u='); if(i!==-1) return decodeURIComponent(s.slice(i+3)); } }catch(e){} return ''; }
+function hvNormKey(link){ var s=String(link||'').split('#')[0].split('?')[0].trim().toLowerCase(); s=s.replace(/\/embed$/,''); if(s.length>1 && s.charAt(s.length-1)==='/') s=s.slice(0,-1); return s; }
+async function havuzGetir(){
+  var box=$('havuz'); box.style.display='block'; box.innerHTML='<div class="bos">Havuz okunuyor...</div>';
+  var cid=''; try{ cid=localStorage.getItem('x_client_id')||''; }catch(e){}
+  var url='/api/status'+(cid?('?client_id='+encodeURIComponent(cid)):'');
+  var items=[];
+  try{ var r=await fetch(url,{cache:'no-store'}); var d=await r.json(); items=(d&&d.manuel_list)||[]; }catch(e){ box.innerHTML='<div class="bos">Havuz okunamadi: '+esc(String(e&&e.message||e))+'</div>'; return; }
+  if(!items.length){ box.innerHTML='<div class="bos">Havuz bos (client_id='+esc(cid||'?')+'). Panelde bu tarayicinin havuzu dolu olmali.</div>'; return; }
+  var h='<div style="color:#8899a6;font-size:12px;margin:2px 0 6px;">Havuz: '+items.length+' oge (client_id='+esc(cid||'?')+') &mdash; ayni sayfadan webshot SS = AYNI grup anahtari + AYNI normalize kok olmali.</div>';
+  h+='<table><thead><tr><th>#</th><th>Baslik</th><th>grup anahtari (group)</th><th>normalize anahtar</th><th>Gercek URL (?u=)</th><th>Grsl</th></tr></thead><tbody>';
+  h+=items.map(function(it){ var go=it.group||''; return '<tr><td>'+it.index+'</td><td>'+esc(it.title||'(bos)')+'</td><td'+(go?'':' style="color:#ff8a8a;"')+'>'+esc(go||'(BOS)')+'</td><td style="color:#8899a6;word-break:break-all;">'+esc(hvNormKey(it.link))+'</td><td style="color:#7ee6a8;word-break:break-all;">'+esc(hvDecodeU(it.link))+'</td><td>'+(it.has_image?'OK':'-')+'</td></tr>'; }).join('');
+  h+='</tbody></table>';
+  box.innerHTML=h;
+}
+$('havbtn').addEventListener('click', havuzGetir);
 $('giris-btn').addEventListener('click', giris);
 $('sifre').addEventListener('keydown', function(e){ if(e.key==='Enter') giris(); });
 $('yenile').addEventListener('click', basla);
