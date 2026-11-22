@@ -125,9 +125,9 @@
     function S(v) { return v * scale; } function U(v) { return v / scale; }
 
     var ov = document.createElement('div'); ov.id = 'x-webshot-ov';
-    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:rgba(10,14,20,0.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:rgba(10,14,20,0.97);display:flex;flex-direction:column;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;';
 
-    var ust = document.createElement('div'); ust.style.cssText = 'display:flex;align-items:center;gap:8px;color:#e7e9ea;font-size:13px;font-weight:600;user-select:none;';
+    var ust = document.createElement('div'); ust.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 14px;background:rgba(0,0,0,0.35);color:#e7e9ea;font-size:13px;font-weight:600;user-select:none;';
     var logo = document.createElement('span'); logo.textContent = 'GörüntüX'; logo.style.cssText = 'background:#1d9bf0;color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;';
     var ogeBtn = document.createElement('button'); ogeBtn.textContent = '⊹ Öğe Seç';
     ogeBtn.style.cssText = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
@@ -136,11 +136,12 @@
     ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(devBtn);
 
     var sar = document.createElement('div');
+    sar.style.cssText = 'flex:1 1 auto;width:100%;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:#000;';
     var canvas = document.createElement('canvas');
-    canvas.style.cssText = 'display:block;touch-action:none;cursor:crosshair;';
+    canvas.style.cssText = 'display:block;flex:0 0 auto;touch-action:none;cursor:crosshair;';
     sar.appendChild(canvas); var ctx = canvas.getContext('2d');
 
-    var alt = document.createElement('div'); alt.style.cssText = 'display:flex;align-items:center;gap:10px;';
+    var alt = document.createElement('div'); alt.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:8px;background:rgba(0,0,0,0.35);';
     var iptalBtn = document.createElement('button'); iptalBtn.textContent = '✕ İptal';
     iptalBtn.style.cssText = 'border:0;border-radius:10px;padding:10px 18px;font:600 13.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#1c2732;color:#e7e9ea;';
     var okBtn = document.createElement('button'); okBtn.textContent = '✓ Kırp ve Ekle';
@@ -152,13 +153,10 @@
 
     var blurCv = document.createElement('canvas');
     function _olcekle() {
-      var vw = window.innerWidth, vh = window.innerHeight;
-      var ekW = Math.max(160, Math.min(vw - 28, 1100));
-      scale = Math.min(ekW / iw, 8000 / ih, 1);
+      var vw = window.innerWidth;
+      scale = Math.min(vw / iw, 16000 / ih, 1);   // TAM GENİŞLİK (büyütme yok); yükseklik sar'da dikey scroll
       cw = Math.max(1, Math.round(iw * scale)); ch = Math.max(1, Math.round(ih * scale));
       canvas.width = cw; canvas.height = ch;
-      var sarH = Math.max(80, vh - 42 - 56 - 14);
-      sar.style.cssText = 'overflow:auto;max-height:' + sarH + 'px;max-width:' + Math.min(vw - 28, cw) + 'px;border-radius:4px;box-shadow:0 12px 44px rgba(0,0,0,.55);background:#000;';
     }
     function blurGuncelle() {
       try { blurCv.width = cw; blurCv.height = ch; var bl = Math.max(3, Math.round(Math.min(cw, ch) * 0.012)); var bx = blurCv.getContext('2d'); bx.filter = 'blur(' + bl + 'px)'; bx.drawImage(img, 0, 0, cw, ch); bx.filter = 'none'; } catch (e) {}
