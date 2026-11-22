@@ -278,7 +278,9 @@
       function toggle(el) {
         var i = secili.indexOf(el);
         if (i >= 0) { secili.splice(i, 1); secCiz(); return; }   // çıkarma serbest
+        for (var j = 0; j < secili.length; j++) { if (secili[j].contains(el)) { bilgi.textContent = 'Bu alan zaten seçili kapsayıcının içinde'; try { setTimeout(secCiz, 1100); } catch (e) {} return; } }   // iç içe -> gereksiz, ekleme
         if (secili.length && !komsuMu(el)) { bilgi.textContent = 'Yalnız komşu öğe eklenebilir'; try { setTimeout(secCiz, 1100); } catch (e) {} return; }
+        secili = secili.filter(function (s) { return !el.contains(s); });   // el, seçili öğeleri KAPSIYORSA onları çıkar (süper-küme)
         secili.push(el); secCiz();
       }
       function pkapat() { try { blocker.remove(); kat.remove(); bar.remove(); } catch (e) {} try { blocker.removeEventListener('mousemove', mm, true); blocker.removeEventListener('click', clk, true); document.removeEventListener('keydown', pk, true); window.removeEventListener('scroll', sc2, true); } catch (e) {} }
