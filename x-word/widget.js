@@ -5006,8 +5006,8 @@
             // Alt menu display:none (overlay, akis yok); tweet-ici tik butonu visibility:hidden (layout kaymasin, kirpma bozulmasin).
             'html.x-gx-capturing #x-gx-tik-bar{display:none !important;}',
             'html.x-gx-capturing .x-gx-tik-wrap{visibility:hidden !important;}',
-            '.x-gx-tik-sec{outline:2px solid #1d9bf0 !important;outline-offset:-2px !important;}',   // [TIK ÇERÇEVE] seçili tweet kartına mavi kenarlık (içi BOŞ; outline=layout kaymaz)
-            'html.x-gx-capturing .x-gx-tik-sec{outline:none !important;}'   // yakalamada çerçeve SS\'e girmesin
+            '.x-gx-tik-sec{box-shadow:inset 0 0 0 2px #1d9bf0 !important;}',   // [TIK ÇERÇEVE] seçili tweet kartına mavi kenarlık (içi BOŞ; box-shadow inset=layout kaymaz + X outline/focus halkasıyla ÇAKIŞMAZ -> mouse gezince git-gel YOK)
+            'html.x-gx-capturing .x-gx-tik-sec{box-shadow:none !important;}'   // yakalamada çerçeve SS\'e girmesin
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
