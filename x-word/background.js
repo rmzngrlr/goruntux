@@ -1006,6 +1006,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     }
 
+    if (message.fast) { doCaptureVisible(); return true; }   // [WEBSHOT] aktif sekme -> odak/aktifleştirme+800ms gecikmesi ATLA (tam-sayfa tarama hızlansın)
+
     if (tabId && windowId) {
       chrome.windows.update(windowId, { focused: true }, () => {
         if (chrome.runtime.lastError) {
