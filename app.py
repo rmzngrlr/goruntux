@@ -17619,14 +17619,27 @@ function ozetCiz(){
 }
 function idbMetas(){ return new Promise(function(resolve){ try{ var rq=indexedDB.open('goruntux_saved_reports'); rq.onsuccess=function(){ var db=rq.result; try{ var g=db.transaction('meta','readonly').objectStore('meta').getAll(); g.onsuccess=function(){ resolve(g.result||[]); db.close(); }; g.onerror=function(){ resolve([]); db.close(); }; }catch(e){ resolve([]); try{db.close();}catch(_){} } }; rq.onerror=function(){ resolve([]); }; }catch(e){ resolve([]); } }); }
 function idbDataBoyut(id){ return new Promise(function(resolve){ try{ var rq=indexedDB.open('goruntux_saved_reports'); rq.onsuccess=function(){ var db=rq.result; try{ var g=db.transaction('data','readonly').objectStore('data').get(id); g.onsuccess=function(){ var d=g.result||{}; var imgN=d.images?Object.keys(d.images).length:0; var blobN=(d.blob&&d.blob.size)||0; var imgB=0; try{ for(var k in d.images){ if(d.images[k]&&d.images[k].dataUrl) imgB+=d.images[k].dataUrl.length; } }catch(e){} resolve({imgN:imgN,blobN:blobN,imgB:imgB}); db.close(); }; g.onerror=function(){ resolve(null); db.close(); }; }catch(e){ resolve(null); try{db.close();}catch(_){} } }; rq.onerror=function(){ resolve(null); }; }catch(e){ resolve(null); } }); }
+// [TEŞHİS] Kayıtlı raporun NIHAI item'ları (snapItems = editör overlay sonrası group_override + h2_override).
+function idbDataItems(id){ return new Promise(function(resolve){ try{ var rq=indexedDB.open('goruntux_saved_reports'); rq.onsuccess=function(){ var db=rq.result; try{ var g=db.transaction('data','readonly').objectStore('data').get(id); g.onsuccess=function(){ var d=g.result||{}; resolve(d.items||[]); db.close(); }; g.onerror=function(){ resolve([]); db.close(); }; }catch(e){ resolve([]); try{db.close();}catch(_){} } }; rq.onerror=function(){ resolve([]); }; }catch(e){ resolve([]); } }); }
+async function raporDok(id){
+  var box=$('havuz'); box.style.display='block'; box.innerHTML='<div class="bos">Rapor ogeleri okunuyor...</div>';
+  var its=await idbDataItems(id);
+  if(!its.length){ box.innerHTML='<div class="bos">Bu raporda oge yok (ya da snapItems bos).</div>'; return; }
+  var h='<div style="color:#8899a6;font-size:12px;margin:2px 0 6px;">Kayitli rapor NIHAI ogeleri ('+its.length+') &mdash; editor overlay SONRASI group_override + h2_override. Ayni sayfa webshot = AYNI group_override + h2_override YOK olmali.</div>';
+  h+='<table><thead><tr><th>#</th><th>Baslik</th><th>group_override</th><th>h2_override</th><th>normalize</th></tr></thead><tbody>';
+  h+=its.map(function(it,i){ var go=it.group_override||''; var h2=(it.h2_override!=null)?('"'+it.h2_override+'"'):'(yok)'; var h2bos=(it.h2_override!=null && String(it.h2_override)===''); return '<tr><td>'+(i+1)+'</td><td>'+esc(it.title||'(bos)')+'</td><td'+(go?'':' style="color:#ff8a8a;"')+'>'+esc(go||'(BOS)')+'</td><td'+(h2bos?' style="color:#ff8a8a;"':'')+'>'+esc(h2)+'</td><td style="color:#8899a6;word-break:break-all;">'+esc(hvNormKey(it.link))+'</td></tr>'; }).join('');
+  h+='</tbody></table>';
+  box.innerHTML=h;
+}
 function raporlarCiz(){
   var metas=sonMetas.slice().sort(function(a,b){ return (b.itemCount||0)-(a.itemCount||0); });
   if(!metas.length){ $('raporlar').innerHTML='<div class="bos">Kayıtlı rapor yok.</div>'; return; }
   var h='<table><thead><tr><th>Ad</th><th>Öğe</th><th>Tarih</th><th>Boyut</th></tr></thead><tbody>';
-  h+=metas.map(function(m){ var big=(m.itemCount||0)>=150; var t=''; try{ t=new Date(m.updatedAt||0).toLocaleDateString('tr-TR'); }catch(e){} return '<tr><td>'+esc(m.name||'(adsız)')+'</td><td>'+(big?'<span class="big">'+(m.itemCount||0)+'</span>':(m.itemCount||0))+'</td><td>'+esc(t)+'</td><td><button class="olc" data-id="'+esc(m.id)+'">ölç</button> <span id="bz-'+esc(m.id)+'"></span></td></tr>'; }).join('');
-  h+='</tbody></table><div class="bos" style="padding:6px 0 0;">150+ öğe = büyük rapor (turuncu). "ölç" o raporun görsel/blob boyutunu okur (çok büyükse ağır olabilir).</div>';
+  h+=metas.map(function(m){ var big=(m.itemCount||0)>=150; var t=''; try{ t=new Date(m.updatedAt||0).toLocaleDateString('tr-TR'); }catch(e){} return '<tr><td>'+esc(m.name||'(adsız)')+'</td><td>'+(big?'<span class="big">'+(m.itemCount||0)+'</span>':(m.itemCount||0))+'</td><td>'+esc(t)+'</td><td><button class="olc" data-id="'+esc(m.id)+'">ölç</button> <button class="olc dok" data-id="'+esc(m.id)+'">dök</button> <span id="bz-'+esc(m.id)+'"></span></td></tr>'; }).join('');
+  h+='</tbody></table><div class="bos" style="padding:6px 0 0;">150+ öğe = büyük rapor (turuncu). "ölç" = görsel/blob boyutu. "dök" = o raporun NIHAI öğelerini (group_override + h2_override) Havuz alanına döker (gruplama teşhisi).</div>';
   $('raporlar').innerHTML=h;
-  Array.prototype.forEach.call(document.querySelectorAll('.olc'), function(b){ b.addEventListener('click', async function(){ var id=b.getAttribute('data-id'); var sp=$('bz-'+id); if(sp) sp.textContent='okunuyor...'; b.disabled=true; var r=await idbDataBoyut(id); if(sp) sp.textContent=r?(r.imgN+' görsel ~'+fmtB(r.imgB)+(r.blobN?' + blob '+fmtB(r.blobN):'')):'okunamadı'; b.disabled=false; }); });
+  Array.prototype.forEach.call(document.querySelectorAll('.olc:not(.dok)'), function(b){ b.addEventListener('click', async function(){ var id=b.getAttribute('data-id'); var sp=$('bz-'+id); if(sp) sp.textContent='okunuyor...'; b.disabled=true; var r=await idbDataBoyut(id); if(sp) sp.textContent=r?(r.imgN+' görsel ~'+fmtB(r.imgB)+(r.blobN?' + blob '+fmtB(r.blobN):'')):'okunamadı'; b.disabled=false; }); });
+  Array.prototype.forEach.call(document.querySelectorAll('.dok'), function(b){ b.addEventListener('click', function(){ raporDok(b.getAttribute('data-id')); }); });
 }
 function metinUret(){
   var L=['GörüntüX Teşhis — '+new Date().toLocaleString('tr-TR')];
