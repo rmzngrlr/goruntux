@@ -131,10 +131,14 @@
     var logo = document.createElement('span'); logo.textContent = 'GörüntüX'; logo.style.cssText = 'background:#1d9bf0;color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;';
     var ogeBtn = document.createElement('button'); ogeBtn.textContent = '⊹ Öğe Seç';
     ogeBtn.style.cssText = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
-    var _ekStil = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
-    var ustBtn = document.createElement('button'); ustBtn.textContent = '↑ Üstü'; ustBtn.style.cssText = _ekStil;
-    var devBtn = document.createElement('button'); devBtn.textContent = '↓ Devamı'; devBtn.style.cssText = _ekStil;
-    ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(ustBtn); ust.appendChild(devBtn);
+    // TEK buton, iki yarım: [↑ Üstü | ↓ Devamı] (ayraçlı segment)
+    var yonBtn = document.createElement('div');
+    yonBtn.style.cssText = 'display:inline-flex;align-items:stretch;border-radius:8px;overflow:hidden;background:#2b3a4a;color:#e7e9ea;font:600 12.5px -apple-system,Segoe UI,Arial;';
+    var ustBtn = document.createElement('button'); ustBtn.type = 'button'; ustBtn.textContent = '↑ Üstü'; ustBtn.style.cssText = 'all:unset;cursor:pointer;padding:6px 12px;';
+    var _ayrac = document.createElement('span'); _ayrac.style.cssText = 'align-self:stretch;width:1px;background:rgba(255,255,255,0.18);';
+    var devBtn = document.createElement('button'); devBtn.type = 'button'; devBtn.textContent = '↓ Devamı'; devBtn.style.cssText = 'all:unset;cursor:pointer;padding:6px 12px;';
+    yonBtn.appendChild(ustBtn); yonBtn.appendChild(_ayrac); yonBtn.appendChild(devBtn);
+    ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(yonBtn);
 
     var sar = document.createElement('div');
     sar.style.cssText = 'flex:1 1 auto;width:100%;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:#000;';
