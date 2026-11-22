@@ -104,13 +104,16 @@
   // =================== GÖRÜNÜR EKRANI YAKALA -> KIRP ARAYÜZÜ ===================
   function baslatYakala() {
     var Y0 = window.scrollY;
-    yakala(function (dataUrl) {
-      if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
-      var im = new Image();
-      im.onload = function () { if (!im.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(im), Y0); };
-      im.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
-      im.src = dataUrl;
-    }, true);
+    // Menü KALDIRILMASI ekrana işlensin -> yakalamaya girmesin (fast capture, menü silinmeden yakalayabiliyordu).
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      yakala(function (dataUrl) {
+        if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
+        var im = new Image();
+        im.onload = function () { if (!im.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(im), Y0); };
+        im.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
+        im.src = dataUrl;
+      }, true);
+    }); });
   }
 
   function kirpUIKur(img, Y0) {
@@ -267,13 +270,13 @@
         crop.x = Math.min(crop.x, iw); crop.y = Math.min(crop.y, ih);
         crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
         try { window.scrollTo(0, Y0); } catch (e) {}
-        pkapat(); ov.style.display = ''; window.__xWebshotMenuTemiz = temizle; ciz();
+        pkapat(); ov.style.display = 'flex'; window.__xWebshotMenuTemiz = temizle; ciz();   // '' display'i SİLER (block olur, sola kaçar) -> 'flex'
         try { sar.scrollTop = Math.max(0, S(crop.y) - 40); } catch (e) {}
       }
       function mm(e) { lx = e.clientX; ly = e.clientY; hover(e.clientX, e.clientY); }
       function clk(e) { e.preventDefault(); e.stopPropagation(); if (hoverEl) sec(hoverEl); }
       function pk(e) {
-        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); pkapat(); ov.style.display = ''; window.__xWebshotMenuTemiz = temizle; return; }
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); pkapat(); ov.style.display = 'flex'; window.__xWebshotMenuTemiz = temizle; return; }
         if (e.key === 'ArrowUp') { e.preventDefault(); e.stopPropagation(); if (hoverEl && hoverEl.parentElement && hoverEl.parentElement !== document.documentElement) { hoverEl = hoverEl.parentElement; kutu(hoverEl.getBoundingClientRect()); } return; }
         if (e.key === 'ArrowDown') { e.preventDefault(); e.stopPropagation(); hover(lx, ly); return; }
         if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); if (hoverEl) sec(hoverEl); return; }
