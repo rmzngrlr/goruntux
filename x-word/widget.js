@@ -5147,6 +5147,36 @@
                 });
             } catch (e) {}
             setInterval(_ty, 800);
+            // [TIK ÇERÇEVE git-gel FIX v2] X, tweet'e HOVER edince article className'ini React ile YENİDEN YAZIYOR
+            // -> eklediğimiz .x-gx-tik-sec SINIFI siliniyor -> çerçeve kayboluyor, 800ms sonra (interval) geri geliyor = git-gel.
+            // (outline->box-shadow değişimi işe YARAMADI: sorun CSS DEĞİL, sınıfın SİLİNMESİ.) Çözüm: article class'ı
+            // değişince (React yazar yazmaz) seçili tweet'e sınıfı ANINDA geri koy — observer mutasyondan SONRA çalışır, React'i yener.
+            try {
+                if (window.MutationObserver) {
+                    window.__xTikCercMo = new MutationObserver(function (muts) {
+                        try {
+                            if (window.__xGxCaptureAktif) return;
+                            var sec = window.__xTikSecili || {};
+                            var bos = true; for (var _bk in sec) { if (Object.prototype.hasOwnProperty.call(sec, _bk)) { bos = false; break; } }
+                            if (bos) return;   // seçim yoksa hiç iş yapma (X'in yoğun DOM'unda ucuz kalsın)
+                            var cerceve = true; try { cerceve = localStorage.getItem('x_tik_cerceve') !== '0'; } catch (e) {}
+                            if (!cerceve) return;
+                            for (var i = 0; i < muts.length; i++) {
+                                var t = muts[i].target;
+                                if (!t || t.nodeType !== 1 || !t.classList || !t.matches) continue;
+                                if (!t.matches('article[data-testid="tweet"]')) continue;
+                                if (t.classList.contains('x-gx-tik-sec')) continue;   // zaten var -> dokunma (sonsuz döngü yok)
+                                var tEl = t.querySelector('a[href*="/status/"] time');
+                                var aEl = tEl && tEl.closest('a[href*="/status/"]');
+                                var href = aEl && aEl.getAttribute('href');
+                                var mm = href && href.match(/\/status\/(\d+)/);
+                                if (mm && sec[mm[1]]) t.classList.add('x-gx-tik-sec');   // React sildi -> ANINDA geri koy
+                            }
+                        } catch (e) {}
+                    });
+                    window.__xTikCercMo.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] });
+                }
+            } catch (e) {}
         }
         try { xTikBoya(); } catch (e) {}
         try { xTikMenu(); } catch (e) {}
