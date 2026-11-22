@@ -2399,40 +2399,24 @@
                         if (btn) { ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(function (tip) { btn.dispatchEvent(new MouseEvent(tip, { bubbles: true, cancelable: true, view: window })); }); }
                     } catch (e) {}
                     await new Promise(function (r) { setTimeout(r, 350); });
-                    // KADRAJ = VİDEO ÖĞESİNİN rect'i (kullanıcı: "sadece videonun olduğu kısım"). TikTok'ta video
-                    // öğesi görünen videoyu TAM kaplar (öğe AR'si video AR'sine eşit); koyu pillarbox / beyaz boşluk /
-                    // yorum-paneli / AYRI ray hep öğenin DIŞINDA -> otomatik hariç. Ray video ÜSTÜNE biniyorsa
-                    // (immersive / For You) öğe İÇİNDEdir -> dahil olur. object-fit:contain + farklı AR olursa iç
-                    // letterbox da kırpılır (gerçek video çerçevesi). Bayrak x_tt_kirp='0' -> eski parça-tabanlı kadraj.
-                    var L, T, R, B;
-                    var _kirpAcik = true; try { _kirpAcik = localStorage.getItem('x_tt_kirp') !== '0'; } catch (e) {}
-                    if (_kirpAcik && video) {
-                        var _vfr = video.getBoundingClientRect();
-                        var vfL = _vfr.left, vfT = _vfr.top, vfR = _vfr.right, vfB = _vfr.bottom;
-                        try {
-                            var _of = (getComputedStyle(video).objectFit || ''), _iw = video.videoWidth || 0, _ih = video.videoHeight || 0;
-                            if ((_of === 'contain' || _of === 'scale-down') && _iw > 0 && _ih > 0 && _vfr.width > 0 && _vfr.height > 0) {
-                                var _elAR = _vfr.width / _vfr.height, _vAR = _iw / _ih;
-                                if (_vAR < _elAR - 0.02) { var _cw2 = _vfr.height * _vAR, _pd = (_vfr.width - _cw2) / 2; vfL = _vfr.left + _pd; vfR = _vfr.right - _pd; }
-                                else if (_vAR > _elAR + 0.02) { var _ch3 = _vfr.width / _vAR, _pv = (_vfr.height - _ch3) / 2; vfT = _vfr.top + _pv; vfB = _vfr.bottom - _pv; }
-                            }
-                        } catch (e) {}
-                        L = vfL; T = vfT; R = vfR; B = vfB;
-                    } else {
-                        var parcalar = [];
-                        var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width <= 1 || r.height <= 1) return; parcalar.push(r); };
-                        ekle('video'); ekle('[data-e2e="video-desc"]'); ekle('[data-e2e="video-author-avatar"]');
-                        ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
-                        ekle('[data-e2e="video-music"]');
-                        if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
-                        var _pay0 = 8;
-                        L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - _pay0;
-                        T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - _pay0;
-                        R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + _pay0;
-                        B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + _pay0;
-                        var _kr0 = kart.getBoundingClientRect();
-                        L = Math.max(L, _kr0.left - _pay0); T = Math.max(T, _kr0.top - _pay0); R = Math.min(R, _kr0.right + _pay0); B = Math.min(B, _kr0.bottom);
-                    }
+                    // KADRAJ = kadraja GİRMESİ GEREKEN öğelerin BİRLEŞİMİ (Dock/tarama TT bloğuyla İKİZ, ~7413 —
+                    // "uygun sınırlar" orada). Sabit koordinat YOK; TikTok yerleşimi ekran boyutuna göre değişir.
+                    // Parçalar: video + açıklama + avatar + sayaç ray + müzik → birleşim, kart'a + viewport'a hapsedilir.
+                    var parcalar = [];
+                    var ekle = function (sel) { var e = kart.querySelector(sel); if (!e) return; var r = e.getBoundingClientRect(); if (r.width > 1 && r.height > 1) parcalar.push(r); };
+                    ekle('video');
+                    ekle('[data-e2e="video-desc"]');
+                    ekle('[data-e2e="video-author-avatar"]');
+                    ['like', 'comment', 'favorite', 'share'].forEach(function (k) { ekle('[data-e2e="' + k + '-count"]'); });
+                    ekle('[data-e2e="video-music"]');
+                    if (!parcalar.length) throw new Error("kadraj ogesi bulunamadi");
+                    var PAY = 8;
+                    var L = Math.min.apply(null, parcalar.map(function (r) { return r.left; })) - PAY;
+                    var T = Math.min.apply(null, parcalar.map(function (r) { return r.top; })) - PAY;
+                    var R = Math.max.apply(null, parcalar.map(function (r) { return r.right; })) + PAY;
+                    var B = Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY;
+                    var _kr = kart.getBoundingClientRect();
+                    L = Math.max(L, _kr.left - PAY); T = Math.max(T, _kr.top - PAY); R = Math.min(R, _kr.right + PAY); B = Math.min(B, _kr.bottom);
                     L = Math.max(0, Math.round(L)); T = Math.max(0, Math.round(T));
                     R = Math.min(window.innerWidth, Math.round(R)); B = Math.min(window.innerHeight, Math.round(B));
                     var cw = R - L, ch2 = B - T;
@@ -2445,7 +2429,7 @@
                         if (!rr || rr.status !== "success" || !rr.dataUrl) throw new Error("captureAndCrop basarisiz");
                         return rr.dataUrl;
                     };
-                    var B_tam = B;   // video-rect kadrajı viewport'a sığar -> _delta=0, stitch gerekmez (eski parça yolu için de güvenli)
+                    var B_tam = Math.round(Math.min(Math.max.apply(null, parcalar.map(function (r) { return r.bottom; })) + PAY, _kr.bottom));
                     var _delta = Math.max(0, B_tam - window.innerHeight);
                     var _ham = null;
                     if (_delta > 0 && _delta <= 300) {
