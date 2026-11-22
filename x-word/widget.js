@@ -6075,7 +6075,7 @@
 
             const warn = document.getElementById('w-conn-warn');
             if (warn) {
-                warn.innerHTML = `⚠️ <b>Güncelleme gerekli.</b><br>Sizdeki v${localVersion}, güncel v${latestVersion}.<br><span class="xdock-warn-link">Eklentiyi güncelle! →</span>`;
+                warn.innerHTML = `⚠️ <b>Güncelleme gerekli.</b><br><span class="xdock-warn-link">Eklentiyi güncelle! →</span>`;
                 warn.onclick = (e) => { e.stopPropagation(); acGuncelle(); };
             }
         } catch (e) {

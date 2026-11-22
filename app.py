@@ -3233,11 +3233,9 @@ HTML_TEMPLATE = """
             const uyari = document.getElementById('ext-modal-warning');
             if (uyari) {
                 if (window.extensionOutdated) {
-                    const kur = window.extensionInstalledVersion || '?';
-                    const son = window.extensionLatestVersion || '?';
-                    uyari.innerHTML = '&#9888;&#65039; Eklentiniz güncel değil — kurulu <b>v' + kur
-                        + '</b>, en güncel <b>v' + son + '</b>. Tarama bu sürümle başlatılamaz. '
-                        + 'Aşağıdaki <b>Güncelle</b> adımıyla yeni sürüme geçin (.zip\\'i indir → aynı klasörün '
+                    // Sürüm numarası GÖSTERME (kullanıcı isteği): kafa karıştırıcı + gereksiz.
+                    uyari.innerHTML = '&#9888;&#65039; Eklentiniz güncel değil. Tarama başlatılamaz. '
+                        + 'Aşağıdaki <b>Güncelle</b> adımıyla son sürüme geçin (.zip\\'i indir → aynı klasörün '
                         + 'üzerine aç → <code>chrome://extensions</code>\\'ta &#8635; yenile → X sekmesini F5).';
                     uyari.style.display = 'block';
                 } else {
@@ -6923,9 +6921,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             // Buton zaten kilitli (refreshStatus) ama ASIL koruma burasi: buton durumu bayat
             // kalabilir, yoklama gecikebilir; kapi tiklamanin kendisinde.
             if (window.extensionOutdated) {
-                showToast('Eklenti güncel değil (kurulu v' + (window.extensionInstalledVersion || '?')
-                    + ', en güncel v' + (window.extensionLatestVersion || '?')
-                    + '). Tarama başlatılamaz — .zip\\'i indirip eklentiyi güncelleyin.', 'danger');
+                showToast('Eklenti güncel değil. Tarama başlatılamaz — .zip\\'i indirip eklentiyi güncelleyin.', 'danger');
                 return;
             }
             processInputLinks();
@@ -7196,7 +7192,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         window.extBoxClickable = true;
                     } else if (eskiMi) {
                         kutu.className = 'ext-status-box ext-warn';
-                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Güncelleme gerekli (v' + kuruluSurum + ' → v' + sonSurum + ')';
+                        kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Güncelleme gerekli';
                         window.extBoxClickable = true;
                     } else {
                         kutu.className = 'ext-status-box ext-ok';
@@ -7460,8 +7456,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     var kilitli = (!connected) || !!window.extensionOutdated;
                     var kilitSebep = !connected
                         ? 'Eklenti bağlı değil — Chrome eklentisini kurun/aktif edin.'
-                        : ('Eklenti güncel değil (kurulu v' + (window.extensionInstalledVersion || '?')
-                           + ', en güncel v' + (window.extensionLatestVersion || '?') + ') — önce güncelleyin.');
+                        : 'Eklenti güncel değil — önce güncelleyin.';
                     var girdiEl = document.getElementById('tweet_links_input');
                     if (girdiEl) {
                         girdiEl.disabled = kilitli;
