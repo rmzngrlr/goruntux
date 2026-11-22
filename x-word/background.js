@@ -861,6 +861,48 @@ function captureVisibleWithRetry(windowId, opts, attempt, maxAttempts, cb) {
   }
 }
 
+// --- EKLENTI ICERIK-HASH DAMGASI ---
+// Manifest surumu 1.0'da DONUK (elle bump yok). Panelin "guncelle" uyarisini kod degisince
+// yine de tetikleyebilmek icin, KENDI davranis dosyalarimizin (manifest + core JS) icerigini
+// hash'leriz. Sunucu (app.py _eklenti_icerik_hash) AYNI dosyalari AYNI sirayla + 0x00 ayracla
+// SHA-256'lar -> damgalar tutar (zip dosyalari AYNEN paketler). SW ic dosyalari getURL ile
+// fetch'leyebilir. Bir kez hesaplanip onbellege alinir.
+// ⚠DOSYA LISTESI/SIRASI app.py ile BIREBIR AYNI; degistirirsen IKISINI birden guncelle.
+let _icerikHashCache = null;
+async function _eklentiIcerikHash() {
+  if (_icerikHashCache) return _icerikHashCache;
+  const dosyalar = ["manifest.json", "bridge.js", "inject.js", "background.js", "widget.js"];
+  const chunks = [];
+  for (const f of dosyalar) {
+    try {
+      const r = await fetch(chrome.runtime.getURL(f));
+      chunks.push(new Uint8Array(await r.arrayBuffer()));
+    } catch (e) {
+      chunks.push(new Uint8Array(0));
+    }
+    chunks.push(new Uint8Array([0]));   // 0x00 ayrac (app.py h.update(b"\x00") ikizi)
+  }
+  let len = 0;
+  for (const c of chunks) len += c.length;
+  const all = new Uint8Array(len);
+  let off = 0;
+  for (const c of chunks) { all.set(c, off); off += c.length; }
+  const buf = await crypto.subtle.digest("SHA-256", all);
+  _icerikHashCache = Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 8);
+  return _icerikHashCache;
+}
+// Damga = manifest surumu + icerik hash ("1.0·ab12cd34"). Hash hesaplanamazsa yalin surum
+// (sunucu da ayni fallback -> tutar). app.py EKLENTI_SURUMU ile AYNI format.
+async function _eklentiSurumDamga() {
+  const v = chrome.runtime.getManifest().version;
+  try {
+    const h = await _eklentiIcerikHash();
+    return h ? (v + "·" + h) : v;
+  } catch (e) {
+    return v;
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "forcePollJobs") {
     // Panelden gelen dürtme. SW uykudan uyanmış veya yoklama döngüsü ölmüş olabilir;
@@ -1497,9 +1539,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === "getExtensionVersion") {
-    const version = chrome.runtime.getManifest().version;
-    sendResponse({ version: version });
-    return false;
+    // Damga = manifest + icerik hash ("1.0·hash"); bridge.js bunu data-x-rapor-version'a yazar.
+    _eklentiSurumDamga().then((v) => { try { sendResponse({ version: v }); } catch (e) {} });
+    return true;   // async (icerik hash hesabi)
   }
 
   // v4.13: Widget'ın sürüm-kilidi için. KURULU eklenti sürümü (getManifest) + sunucunun
@@ -1508,15 +1550,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Cross-origin fetch: background host_permissions <all_urls> ile CORS'a takilmaz.
   // FAIL-OPEN: sunucuya ulasilamaz/latest bossa latestVersion="" doner -> widget KILITLEMEZ.
   if (message.action === "getVersionStatus") {
-    const localVersion = chrome.runtime.getManifest().version;
+    // localVersion = icerik-hash damgasi ("1.0·hash"); latestVersion = sunucunun ext_latest_version.
+    // Panel/widget bunlari STRING-ESITSIZLIGI ile kiyaslar (semver DEGIL; hash sirali degil).
     const origin = message.origin || "https://goruntux.rgmedya.tr";
     const zamanAsimi = new Promise((resolve) => setTimeout(() => resolve(""), 3000));
     const guncelGetir = fetch(`${origin}/api/status`)
       .then((r) => r.json())
       .then((data) => (data && data.ext_latest_version) || "")
       .catch(() => "");
-    Promise.race([guncelGetir, zamanAsimi]).then((latestVersion) => {
-      sendResponse({ localVersion: localVersion, latestVersion: latestVersion });
+    Promise.all([_eklentiSurumDamga(), Promise.race([guncelGetir, zamanAsimi])]).then(([localVersion, latestVersion]) => {
+      try { sendResponse({ localVersion: localVersion, latestVersion: latestVersion }); } catch (e) {}
     });
     return true;   // async sendResponse
   }

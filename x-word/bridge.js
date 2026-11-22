@@ -3,18 +3,11 @@
 // 1. Mark that the extension is installed
 document.documentElement.setAttribute('data-x-rapor-installed', 'true');
 
-// Try to set version synchronously (Chrome)
-let extVersion = "1.0";
-try {
-  if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.getManifest === "function") {
-    extVersion = chrome.runtime.getManifest().version;
-  }
-} catch (e) {
-  // Firefox does not allow getManifest in content script
-}
-document.documentElement.setAttribute('data-x-rapor-version', extVersion);
-
-// Fallback: request version from background script asynchronously (Firefox)
+// Sürüm damgası = "1.0·<içerik-hash>" -> background.js'ten iste (hash SW dosya erişimi gerektirir;
+// content script getManifest ile sadece "1.0"ı bilir). SENKRON "1.0" yazımı KALDIRILDI: hash'siz "1.0"
+// sunucunun "1.0·hash"i ile bir an FARKLI görünüp yanıltıcı "güncelle" flaşına yol açıyordu. Damga
+// gelene kadar boş bırak (boş -> panel kıyaslamayı atlar, fail-open). Eski (hash'siz) eklentiler hâlâ
+// "1.0" yazar -> doğru şekilde "güncel değil" işaretlenir (hash-farkındalı yeni sürüme geçsin).
 if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sendMessage === "function") {
   try {
     chrome.runtime.sendMessage({ action: "getExtensionVersion" }, (response) => {

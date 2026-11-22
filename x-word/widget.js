@@ -5972,7 +5972,9 @@
                     if (chrome.runtime.lastError) { return; }   // mesaj ulaşmadı -> fail-open (kilitleme)
                     var _yerel = (vres && vres.localVersion) || "";
                     var _guncel = (vres && vres.latestVersion) || "";
-                    if (_yerel && _guncel && isVersionOlder(_yerel, _guncel)) {
+                    // İÇERİK-HASH DAMGASI: sürüm "1.0·hash" -> semver (isVersionOlder) DEĞİL, STRING EŞİTSİZLİĞİ
+                    // (hash sıralı değil; sunucu daima "en güncel", kurulu farklıysa güncel değil).
+                    if (_yerel && _guncel && _yerel !== _guncel) {
                         renderVersionLockedWidget(_yerel, _guncel);
                     } else if (!buton.disabled) {
                         // Guncel/fail-open: baglanti isigi yesil kalsin (onceki .outdated'i temizle).
