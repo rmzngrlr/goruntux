@@ -357,11 +357,11 @@ function logToServer(message) {
   } catch (err) {}
 }
 
-// ===== [WEBSHOT] Sosyal-disi sitelerde toolbar popup'i (Panele Git + Ekran Goruntusu Al) =====
-// action.default_popup GLOBAL olur -> sosyal sitelerde de cikardi. Bu yuzden popup'i SADECE
-// sosyal-disi normal http/https sayfalarda, TAB BAZINDA setPopup ile acariz; sosyal/panel/
-// chrome: sayfalarinda popup='' -> onClicked (panele git) eski davranisi aynen surer.
-// Bayrak x_webshot_acik=false -> hic kurulmaz (eski davranisa doner). Bkz app.py planindaki Faz 1.
+// ===== [WEBSHOT] Sosyal-disi sitelerde sayfa-ustu SAYDAM menu (GoruntuX'e Git + Ekran Goruntusu Al) =====
+// Chrome action-popup'i opak/siyah ve konumu kontrol edilemiyordu -> onClicked'te webshot.js enjekte edip
+// sayfanin sag-ustunde SAYDAM yuzen menu gosteriyoruz. xWebshotPopupOlmali: sosyal-disi + http/https +
+// panel/localhost degil + bayrak acik ise true -> menu; aksi halde onClicked panele gider.
+// Bayrak x_webshot_acik=false -> menu hic cikmaz (eski davranisa doner).
 function xSosyalMi(url) {
   const u = xUrlOf(url);
   if (!u) return false;
@@ -385,22 +385,13 @@ function xWebshotPopupOlmali(url, cb) {
     cb(true);
   });
 }
-function xWebshotSetPopup(tabId, url) {
-  xWebshotPopupOlmali(url, (ok) => {
-    try { chrome.action.setPopup({ tabId: tabId, popup: ok ? 'popup.html' : '' }, () => { if (chrome.runtime.lastError) { /* sekme kapanmis olabilir */ } }); } catch (e) {}
-  });
-}
-// SW uyandiginda / ilk kurulumda MEVCUT sekmelerin popup durumunu ayarla (onUpdated gelmeyen eski sekmeler icin).
-try { chrome.tabs.query({}, (tabs) => { try { (tabs || []).forEach((t) => { if (t && t.id != null && t.url) xWebshotSetPopup(t.id, t.url); }); } catch (e) {} }); } catch (e) {}
-// Zaten yuklu bir sekmeye GECINCE (onUpdated tetiklenmez) popup durumunu tazele.
-chrome.tabs.onActivated.addListener((info) => {
-  try { chrome.tabs.get(info.tabId, (t) => { if (chrome.runtime.lastError || !t || !t.url) return; xWebshotSetPopup(t.id, t.url); }); } catch (e) {}
-});
+// (Toolbar tiklamasi onClicked'te ele alinir: sosyal-disi http/https sayfada webshot.js enjekte edilir
+//  -> sayfa-ustu SAYDAM menu [GoruntuX'e Git + Ekran Goruntusu Al]; sosyal/panel'de panele gider.
+//  setPopup / Chrome action-popup yolu KALDIRILDI: popup opak/siyah ve konumu kontrol edilemiyordu.)
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   try {
     if ((changeInfo.status === 'complete' || changeInfo.url) && tab.url) {
-      xWebshotSetPopup(tabId, tab.url);   // [WEBSHOT] gezinmede/ilk yukte sosyal-disi sayfalarda popup'i ac (sosyal/panel -> '')
       // SILINDI (v3.62): 'config_role.html' URL koklayicisi. HERHANGI bir sayfa
       // ?role=link_only&server_token=... ile acildiginda server_origin'i KENDI origin'ine
       // yaziyordu — yani ziyaret edilen bir site eklentinin "is sunucusunu" ele gecirebilirdi.
@@ -912,7 +903,7 @@ function captureVisibleWithRetry(windowId, opts, attempt, maxAttempts, cb) {
 let _icerikHashCache = null;
 async function _eklentiIcerikHash() {
   if (_icerikHashCache) return _icerikHashCache;
-  const dosyalar = ["manifest.json", "bridge.js", "inject.js", "background.js", "widget.js", "webshot.js", "popup.js", "popup.html"];
+  const dosyalar = ["manifest.json", "bridge.js", "inject.js", "background.js", "widget.js", "webshot.js"];
   const chunks = [];
   for (const f of dosyalar) {
     try {
@@ -1648,6 +1639,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
+  // [WEBSHOT] Sosyal-disi http/https sayfa -> sayfa-ustu SAYDAM menuyu enjekte et (webshot.js; ikinci
+  // tiklamada kendini kapatir/toggle). Sosyal/panel/chrome -> asagidaki panele-git davranisi.
+  xWebshotPopupOlmali(tab && tab.url, (webshotOlsun) => {
+   if (webshotOlsun && tab && tab.id != null) {
+     chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, () => { void chrome.runtime.lastError; });
+     return;
+   }
   chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", panel_tab_id: null }, (res) => {
     let panelUrl = (res.server_origin || "https://goruntux.rgmedya.tr") + '/';
     const focusTab = (t) => {
@@ -1670,6 +1668,7 @@ chrome.action.onClicked.addListener((tab) => {
     } else {
       findOrOpen();
     }
+  });
   });
 });
 

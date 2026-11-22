@@ -901,7 +901,7 @@ def _eklenti_icerik_hash():
     try:
         base = os.path.join(os.path.dirname(__file__), "x-word")
         h = hashlib.sha256()
-        for f in ("manifest.json", "bridge.js", "inject.js", "background.js", "widget.js", "webshot.js", "popup.js", "popup.html"):
+        for f in ("manifest.json", "bridge.js", "inject.js", "background.js", "widget.js", "webshot.js"):
             with open(os.path.join(base, f), "rb") as fh:
                 h.update(fh.read())
             h.update(b"\x00")
@@ -3282,6 +3282,8 @@ HTML_TEMPLATE = """
                 }
             }
             m.classList.add('active');
+            // Kılavuz HER açılışta en ÜSTTEN başlasın (önceki açılışta aşağı kaydırılmış olabilir).
+            try { var _mc = m.querySelector('.modal-content'); if (_mc) _mc.scrollTop = 0; var _mb = m.querySelector('.modal-body'); if (_mb) _mb.scrollTop = 0; } catch (e) {}
         }
         function closeExtModal() {
             const m = document.getElementById('extModal');
@@ -7230,20 +7232,26 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti yok — kur';
                         window.extBoxClickable = true;
                         window.extensionReady = false;
+                        window.__extSonDurum = 'err';
                     } else if (eskiMi) {
                         kutu.className = 'ext-status-box ext-warn';
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> GörüntüX Eklentisinin Güncellenmesi Gerekir!';
                         window.extBoxClickable = true;
                         window.extensionReady = false;
+                        window.__extSonDurum = 'warn';
                     } else {
                         kutu.className = 'ext-status-box ext-ok';
                         kutu.innerHTML = '<svg viewBox="0 0 10 10" fill="currentColor"><circle cx="5" cy="5" r="4"/></svg> Eklenti bağlandı (Hazır)';
                         window.extBoxClickable = true;   // YEŞİL de tıklanır -> Kurulum/Kullanım Kılavuzu (indirme gizli)
                         window.extensionReady = true;
-                        // Modal AÇIKSA içeriğini yeşil (indirme gizli) hâline tazele; kullanıcı kılavuzu
-                        // okuyor olabilir -> otomatik KAPATMA yok (eski auto-close kaldırıldı).
                         var _em = document.getElementById('extModal');
-                        if (_em && _em.classList.contains('active')) { openExtModal(); }
+                        if (_em && _em.classList.contains('active')) {
+                            // Turuncu/kırmızı -> YEŞİL GEÇİŞİ (güncelleme bitti): açık modalı KAPAT.
+                            // Zaten yeşilken açıksa (kullanıcı kılavuzu kendi açtı) -> içeriği yeşil tut.
+                            if (window.__extSonDurum && window.__extSonDurum !== 'ok') { closeExtModal(); }
+                            else { openExtModal(); }
+                        }
+                        window.__extSonDurum = 'ok';
                     }
                 }
 

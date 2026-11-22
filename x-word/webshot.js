@@ -7,7 +7,12 @@
 // Popup'taki "Ekran Görüntüsü Al" bunu executeScript ile enjekte eder (idempotent).
 // ============================================================================
 (function () {
-  if (window.__xWebshotAktif) return;   // çift-enjeksiyon guard (popup tekrar tıklanırsa)
+  // Toolbar butonuna TEKRAR basınca açık menüyü kapat (toggle). Kırp UI açıkken (menü yok) dokunma.
+  if (window.__xWebshotAktif) {
+    var _m0 = document.getElementById('x-webshot-menu');
+    if (_m0) { try { if (window.__xWebshotMenuTemiz) window.__xWebshotMenuTemiz(); else _m0.remove(); } catch (e) {} window.__xWebshotAktif = false; }
+    return;
+  }
   window.__xWebshotAktif = true;
 
   var DPR = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
@@ -64,14 +69,73 @@
     } catch (e) {}
   }
 
-  // --- başlat: yakala (overlay GÖSTERME, yoksa captureVisibleTab onu da yakalar) -> scrollbar'ı görselden kırp -> kırp UI ---
-  yakala(function (dataUrl) {
-    if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
-    var raw = new Image();
-    raw.onload = function () { if (!raw.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(raw)); };
-    raw.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
-    raw.src = dataUrl;
-  });
+  // --- ENTRY: sayfanın sağ-üstünde SAYDAM yüzen menü (2 buton) -> yakalama menüden tetiklenir ---
+  // (Chrome action popup'ı opak/siyah + konumu kontrol edilemiyordu -> sayfa-üstü menüye geçildi.)
+  menuKur();
+
+  function _svgIkon(tur) {
+    var NS = 'http://www.w3.org/2000/svg';
+    var s = document.createElementNS(NS, 'svg');
+    s.setAttribute('width', '22'); s.setAttribute('height', '22'); s.setAttribute('viewBox', '0 0 24 24');
+    s.setAttribute('fill', 'none'); s.setAttribute('stroke', '#fff'); s.setAttribute('stroke-width', '1.9');
+    s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
+    s.style.flex = '0 0 auto';
+    var d = ['M4.5 9V4.5h4.5', 'M15 4.5h4.5v4.5', 'M19.5 15v4.5h-4.5', 'M9 19.5H4.5v-4.5'];   // kare köşeler (ortak)
+    if (tur === 'x') { d.push('M9.6 9.6l4.8 4.8'); d.push('M14.4 9.6l-4.8 4.8'); }   // + X (GörüntüX)
+    else { d.push('M12 8.5v7'); d.push('M8.5 12h7'); }                               // + artı (yakala)
+    d.forEach(function (dd) { var p = document.createElementNS(NS, 'path'); p.setAttribute('d', dd); s.appendChild(p); });
+    return s;
+  }
+  function _btn(renk, bas, altMetin, ikon) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.style.cssText = 'all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;color:#fff;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:' + renk + ';box-shadow:0 6px 22px rgba(0,0,0,.30);';
+    b.appendChild(_svgIkon(ikon));
+    var txt = document.createElement('span');
+    txt.style.cssText = 'display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left;';
+    var t1 = document.createElement('span'); t1.textContent = bas; t1.style.cssText = 'font-weight:700;font-size:13.5px;';
+    txt.appendChild(t1);
+    if (altMetin) { var t2 = document.createElement('span'); t2.textContent = altMetin; t2.style.cssText = 'font-weight:500;font-size:11px;line-height:1.3;color:rgba(255,255,255,0.88);'; txt.appendChild(t2); }
+    b.appendChild(txt);
+    return b;
+  }
+  function menuKapat() {
+    try { var m = document.getElementById('x-webshot-menu'); if (m) m.remove(); } catch (e) {}
+    try { document.removeEventListener('keydown', _menuKey, true); } catch (e) {}
+    try { document.removeEventListener('mousedown', _menuDis, true); } catch (e) {}
+  }
+  window.__xWebshotMenuTemiz = menuKapat;
+  function _menuKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); menuKapat(); bitir(); } }
+  function _menuDis(e) { var m = document.getElementById('x-webshot-menu'); if (m && !m.contains(e.target)) { menuKapat(); bitir(); } }
+  function menuKur() {
+    var menu = document.createElement('div');
+    menu.id = 'x-webshot-menu';
+    menu.style.cssText = 'position:fixed;top:10px;right:10px;z-index:2147483647;width:264px;display:flex;flex-direction:column;gap:9px;';
+    var bPanel = _btn('#1d9bf0', 'GörüntüX\'e Git', '', 'x');
+    var bCap = _btn('#00ba7c', 'Ekran Görüntüsü Al', 'Bu sayfanın ekran görüntüsünü GörüntüX Raporu\'na ekleyin.', 'arti');
+    bPanel.addEventListener('click', function () {
+      menuKapat();
+      originAl(function (org) { try { chrome.runtime.sendMessage({ action: 'goToPanel', origin: org }, function () { void chrome.runtime.lastError; }); } catch (e) {} });
+      bitir();
+    });
+    bCap.addEventListener('click', function () { menuKapat(); baslatYakala(); });   // __xWebshotAktif true kalır -> kırp UI gelecek
+    menu.appendChild(bPanel); menu.appendChild(bCap);
+    document.documentElement.appendChild(menu);
+    setTimeout(function () {   // menüyü açan tık bu listener'ı hemen tetiklemesin
+      try { document.addEventListener('keydown', _menuKey, true); } catch (e) {}
+      try { document.addEventListener('mousedown', _menuDis, true); } catch (e) {}
+    }, 0);
+  }
+
+  function baslatYakala() {
+    yakala(function (dataUrl) {
+      if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
+      var raw = new Image();
+      raw.onload = function () { if (!raw.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(raw)); };
+      raw.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
+      raw.src = dataUrl;
+    });
+  }
 
   // ======================= KIRP OVERLAY (editör portu) =======================
   function kirpUIKur(img) {
