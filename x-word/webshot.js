@@ -141,12 +141,7 @@
   function kirpUIKur(img) {
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;   // Image VEYA Canvas (scrollbarKirp canvas döndürebilir)
 
-    // ekrana sığdır
-    var vw = window.innerWidth, vh = window.innerHeight;
-    var padX = 24, ustH = 44, altH = 60;
-    var availW = Math.max(60, vw - padX * 2), availH = Math.max(60, vh - ustH - altH);
-    var scale = Math.min(availW / iw, availH / ih, 1);
-    var cw = Math.max(1, Math.round(iw * scale)), ch = Math.max(1, Math.round(ih * scale));
+    var scale = 1, cw = iw, ch = ih;   // _olcekle() ekrana göre doldurur (scroll-extend ih büyüyünce yeniden çağrılır)
 
     function S(v) { return v * scale; }
     function U(v) { return v / scale; }
@@ -162,13 +157,12 @@
     logo.textContent = 'GörüntüX';
     logo.style.cssText = 'background:#1d9bf0;color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;';
     var ipuc = document.createElement('span');
-    ipuc.textContent = 'Kutuyu tutamaçlarla ayarla · Enter: ekle · Esc: iptal';
+    ipuc.textContent = 'Kenara dayayınca aşağı/yukarı uzar · Enter: ekle · Esc: iptal';
     ipuc.style.cssText = 'color:#8b98a5;font-weight:500;';
     ust.appendChild(logo); ust.appendChild(ipuc);
 
     var canvas = document.createElement('canvas');
-    canvas.width = Math.round(cw * DPR); canvas.height = Math.round(ch * DPR);
-    canvas.style.cssText = 'width:' + cw + 'px;height:' + ch + 'px;border-radius:4px;touch-action:none;cursor:crosshair;box-shadow:0 10px 40px rgba(0,0,0,.5);';
+    canvas.style.cssText = 'display:block;border-radius:4px;touch-action:none;cursor:crosshair;box-shadow:0 10px 40px rgba(0,0,0,.5);';   // boyutlar _olcekle'de (DPR + CSS)
     var ctx = canvas.getContext('2d');
 
     var alt = document.createElement('div');
@@ -184,9 +178,21 @@
     ov.appendChild(ust); ov.appendChild(canvas); ov.appendChild(alt);
     document.documentElement.appendChild(ov);
 
+    function _olcekle() {   // görseli overlaya sığdır (scroll-extend ih büyüyünce yeniden çağrılır -> rescale)
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var availW = Math.max(60, vw - 48), availH = Math.max(60, vh - 104);   // 104 = üst(44)+alt(60) bar
+      scale = Math.min(availW / iw, availH / ih, 1);
+      cw = Math.max(1, Math.round(iw * scale)); ch = Math.max(1, Math.round(ih * scale));
+      canvas.width = Math.round(cw * DPR); canvas.height = Math.round(ch * DPR);
+      canvas.style.width = cw + 'px'; canvas.style.height = ch + 'px';
+    }
+    _olcekle();
+
     // --- kırp durumu (kaynak = görsel pikselleri) ---
     var crop = { x: 0, y: 0, w: iw, h: ih };   // açılış önerisi = tüm görsel
     var drag = null;
+    var _mesgul = false;                        // [SCROLL-EXTEND] uzatma sürerken tekrar tetiklenmesin
+    var Yorig = window.scrollY, altOfsetCss = 0, ustOfsetCss = 0;   // base'in sayfa-scroll konumu + alt/üst eklenen CSS yükseklik
 
     function temizle() {
       try { document.removeEventListener('keydown', kd, true); } catch (e) {}
@@ -283,6 +289,13 @@
         // [BOYUTLANDIR] kutuyu görsel sınırına kıstır (bu dalda w/h daralması DOĞRU)
         crop.x = Math.max(0, Math.min(crop.x, iw)); crop.y = Math.max(0, Math.min(crop.y, ih));
         crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
+        // [SCROLL-EXTEND] alt/üst tutamacını görsel SINIRININ dışına sürükleyince sayfayı kaydırıp tuvali uzat
+        if (!_mesgul) {
+          var altEtki = (m.kenar === 's') || (m.kose && m.kose.indexOf('yh') >= 0);
+          var ustEtki = (m.kenar === 'n') || (m.kose === 'x_y') || (m.kose === 'xw_y');
+          if (altEtki && p.y >= ih - 1) uzat('alt');
+          else if (ustEtki && p.y <= 1) uzat('ust');
+        }
       }
       ciz();
     }
@@ -328,6 +341,69 @@
           });
         } catch (e) { temizle(); bildir('Eklenemedi.', true); }
       });
+    }
+
+    // ---- [SCROLL-EXTEND] kutuyu alt/üst kenara dayayınca sayfayı kaydır + şerit yakala + tuvali uzat ----
+    function uzat(yon) {
+      if (_mesgul) return;
+      _mesgul = true;
+      var vhCss = window.innerHeight;
+      var hedef = (yon === 'alt') ? (Yorig + vhCss + altOfsetCss) : (Yorig - ustOfsetCss - vhCss);
+      hedef = Math.max(0, hedef);
+      var oncekiScroll = window.scrollY;
+      ov.style.visibility = 'hidden';   // captureVisibleTab overlay'i ALMASIN
+      try { window.scrollTo(0, hedef); } catch (e) {}
+      var gercekTop = window.scrollY;   // clamp sonrası viewport tepesi (sayfa sonu/başı)
+      var yeniUstCss, yeniAltCss;       // şeritte YENİ olan [üst,alt] CSS aralığı (örtüşme atılır)
+      if (yon === 'alt') {
+        var kapsamAlt = Yorig + vhCss + altOfsetCss;
+        yeniUstCss = Math.max(0, kapsamAlt - gercekTop);
+        yeniAltCss = vhCss;
+      } else {
+        var kapsamUst = Yorig - ustOfsetCss;
+        yeniUstCss = 0;
+        yeniAltCss = vhCss - Math.max(0, (gercekTop + vhCss) - kapsamUst);
+      }
+      var yeniYukCss = yeniAltCss - yeniUstCss;
+      if (yeniYukCss < 2) { ov.style.visibility = ''; try { window.scrollTo(0, oncekiScroll); } catch (e) {} _mesgul = false; return; }   // uzatacak yer yok (sayfa ucu)
+      requestAnimationFrame(function () { requestAnimationFrame(function () {
+        yakala(function (dataUrl) {
+          try { window.scrollTo(0, oncekiScroll); } catch (e) {}   // sayfayı eski yerine getir (overlay örtüyor)
+          ov.style.visibility = '';
+          if (!dataUrl) { _mesgul = false; return; }
+          var strip = new Image();
+          strip.onload = function () {
+            try {
+              serideEkle(yon, scrollbarKirp(strip), yeniUstCss, yeniAltCss, vhCss);
+              if (yon === 'alt') altOfsetCss += yeniYukCss; else ustOfsetCss += yeniYukCss;
+              _olcekle(); ciz();
+            } catch (e) {}
+            _mesgul = false;
+          };
+          strip.onerror = function () { _mesgul = false; };
+          strip.src = dataUrl;
+        });
+      }); });
+    }
+    function serideEkle(yon, strip, yeniUstCss, yeniAltCss, vhCss) {
+      var sih = strip.naturalHeight || strip.height, siw = strip.naturalWidth || strip.width;
+      var pxPerCss = sih / Math.max(1, vhCss);   // şeridin device-px / CSS-px (dikey)
+      var sy0 = Math.max(0, Math.round(yeniUstCss * pxPerCss)), sy1 = Math.min(sih, Math.round(yeniAltCss * pxPerCss));
+      var yeniDev = Math.max(1, sy1 - sy0);
+      if (yeniDev < 2) return;
+      var nc = document.createElement('canvas');
+      nc.width = iw; nc.height = ih + yeniDev;
+      var nx = nc.getContext('2d');
+      if (yon === 'alt') {
+        nx.drawImage(img, 0, 0, iw, ih);
+        nx.drawImage(strip, 0, sy0, siw, yeniDev, 0, ih, iw, yeniDev);   // şeridin yeni ALT kısmı -> tuvalin altına
+      } else {
+        nx.drawImage(strip, 0, sy0, siw, yeniDev, 0, 0, iw, yeniDev);    // şeridin yeni ÜST kısmı -> tuvalin üstüne
+        nx.drawImage(img, 0, yeniDev, iw, ih);
+        crop.y += yeniDev;   // içerik aşağı kaydı -> kırp + aktif sürükleme referansları da kay
+        if (drag) { if (drag.o) drag.o.y += yeniDev; if (typeof drag.sy === 'number') drag.sy += yeniDev; }
+      }
+      img = nc; ih = nc.height;
     }
 
     canvas.addEventListener('pointerdown', pd);
