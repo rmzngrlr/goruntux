@@ -131,9 +131,10 @@
     var logo = document.createElement('span'); logo.textContent = 'GörüntüX'; logo.style.cssText = 'background:#1d9bf0;color:#fff;font-weight:800;padding:2px 8px;border-radius:6px;';
     var ogeBtn = document.createElement('button'); ogeBtn.textContent = '⊹ Öğe Seç';
     ogeBtn.style.cssText = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
-    var devBtn = document.createElement('button'); devBtn.textContent = '↓ Devamını Al';
-    devBtn.style.cssText = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
-    ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(devBtn);
+    var _ekStil = 'border:0;border-radius:8px;padding:6px 12px;font:600 12.5px -apple-system,Segoe UI,Arial;cursor:pointer;background:#2b3a4a;color:#e7e9ea;';
+    var ustBtn = document.createElement('button'); ustBtn.textContent = '↑ Üstü'; ustBtn.style.cssText = _ekStil;
+    var devBtn = document.createElement('button'); devBtn.textContent = '↓ Devamı'; devBtn.style.cssText = _ekStil;
+    ust.appendChild(logo); ust.appendChild(ogeBtn); ust.appendChild(ustBtn); ust.appendChild(devBtn);
 
     var sar = document.createElement('div');
     sar.style.cssText = 'flex:1 1 auto;width:100%;overflow:auto;display:flex;justify-content:center;align-items:flex-start;background:#000;';
@@ -165,6 +166,7 @@
 
     var crop = { x: 0, y: 0, w: iw, h: ih };
     var drag = null, _mesgul = false;
+    var imgTopPage = Y0;   // görselin sayfadaki ÜST sınırı (CSS); Üstü/Devamı ile değişir
 
     function temizle() {
       try { document.removeEventListener('keydown', kd, true); } catch (e) {}
@@ -284,13 +286,23 @@
     }
 
     // ---- Devamını Al: görünenin ALTINI yakala, görsele ekle (opsiyonel; bu an kısa kayma) ----
-    function devaminiAl() {
+    // yon: 'alt' = aşağı (Devamı), 'ust' = yukarı (Üstü). Görünenin alt/üstünü yakalayıp görsele ekler.
+    function _uzat(yon) {
       if (_mesgul) return; _mesgul = true;
-      var vh = window.innerHeight, kaplanCss = ih / ratioY, onceki = window.scrollY;
-      var hedef = Math.min(Y0 + kaplanCss, Math.max(0, docH() - vh));
+      var alt = (yon === 'alt'), vh = window.innerHeight, onceki = window.scrollY;
+      var imgBot = imgTopPage + ih / ratioY;   // görselin alt sınırı (sayfa CSS)
+      var hedef;
+      if (alt) {
+        if (docH() - imgBot < 3) { _mesgul = false; bildir('Sayfanın sonuna gelindi.', true); return; }
+        hedef = Math.min(imgBot, Math.max(0, docH() - vh));
+      } else {
+        if (imgTopPage < 3) { _mesgul = false; bildir('Sayfanın başına gelindi.', true); return; }
+        hedef = Math.max(0, imgTopPage - vh);
+      }
       try { window.scrollTo(0, hedef); } catch (e) {}
-      var gercek = window.scrollY, yeniCss = (gercek + vh) - (Y0 + kaplanCss);
-      if (yeniCss < 2) { try { window.scrollTo(0, onceki); } catch (e) {} _mesgul = false; bildir('Sayfanın sonuna gelindi.', true); return; }
+      var gercek = window.scrollY;
+      var yeniCss = alt ? ((gercek + vh) - imgBot) : (imgTopPage - gercek);   // eklenecek CSS yükseklik
+      if (yeniCss < 2) { try { window.scrollTo(0, onceki); } catch (e) {} _mesgul = false; bildir(alt ? 'Sayfanın sonuna gelindi.' : 'Sayfanın başına gelindi.', true); return; }
       ov.style.visibility = 'hidden';
       requestAnimationFrame(function () { requestAnimationFrame(function () {   // gizle PAINT olsun (overlay kadraja girmesin)
         yakala(function (dataUrl) {
@@ -300,15 +312,26 @@
           var im2 = new Image();
           im2.onload = function () {
             var sc = scrollbarKirp(im2), sh = sc.naturalHeight || sc.height, sw = sc.naturalWidth || sc.width;
-            var pxPerCss = sh / Math.max(1, vh), yeniDev = Math.max(1, Math.round(yeniCss * pxPerCss)), srcY = Math.max(0, sh - yeniDev);
-            var nc = document.createElement('canvas'); nc.width = iw; nc.height = ih + yeniDev;
-            var nx = nc.getContext('2d'); nx.drawImage(img, 0, 0, iw, ih); nx.drawImage(sc, 0, srcY, sw, yeniDev, 0, ih, iw, yeniDev);
-            img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
+            var pxPerCss = sh / Math.max(1, vh), yeniDev = Math.max(1, Math.round(yeniCss * pxPerCss));
+            var nc = document.createElement('canvas'); nc.width = iw; nc.height = ih + yeniDev; var nx = nc.getContext('2d');
+            if (alt) {
+              var srcY = Math.max(0, sh - yeniDev);
+              nx.drawImage(img, 0, 0, iw, ih); nx.drawImage(sc, 0, srcY, sw, yeniDev, 0, ih, iw, yeniDev);
+              img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
+            } else {
+              nx.drawImage(sc, 0, 0, sw, yeniDev, 0, 0, iw, yeniDev); nx.drawImage(img, 0, yeniDev, iw, ih);
+              imgTopPage -= yeniCss; crop.y += yeniDev;
+              if (drag) { if (drag.o) drag.o.y += yeniDev; if (typeof drag.sy === 'number') drag.sy += yeniDev; }
+              var eskiScroll = sar.scrollTop; img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
+              try { sar.scrollTop = eskiScroll + S(yeniDev); } catch (e) {}   // görünümü sabit tut (üste eklenince aşağı kaydır)
+            }
           };
           im2.onerror = function () {}; im2.src = dataUrl;
         }, true);
       }); });
     }
+    function devaminiAl() { _uzat('alt'); }
+    function ustunuAl() { _uzat('ust'); }
 
     function uygula() {
       if (!crop || crop.w < 2 || crop.h < 2) { bildir('Kırpma alanı çok küçük.', true); return; }
@@ -330,6 +353,7 @@
     iptalBtn.addEventListener('click', function () { temizle(); });
     okBtn.addEventListener('click', function () { uygula(); });
     ogeBtn.addEventListener('click', function () { ogeSec(); });
+    ustBtn.addEventListener('click', function () { ustunuAl(); });
     devBtn.addEventListener('click', function () { devaminiAl(); });
     window.__xWebshotMenuTemiz = temizle;
     ciz();
