@@ -15,6 +15,20 @@
 
   function bitir() { window.__xWebshotAktif = false; }
 
+  // [SCROLLBAR] Yakalama anında sayfa scrollbar'ı kadraja girmesin diye gizle -> yakala -> geri ver.
+  // (Chrome ::-webkit-scrollbar display:none; global '*' + html/body birlikte -> ana + iç kaydırıcılar.
+  //  Bkz [[fb-scrollbar-kadraj]]: global tek basina ozgulluge takilabilir, bu yuzden !important + html/body de.)
+  function scrollbarGizle() {
+    if (document.getElementById('x-webshot-sbhide')) return;
+    try {
+      var st = document.createElement('style');
+      st.id = 'x-webshot-sbhide';
+      st.textContent = 'html{scrollbar-width:none!important}html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}';
+      (document.head || document.documentElement).appendChild(st);
+    } catch (e) {}
+  }
+  function scrollbarGoster() { try { var s = document.getElementById('x-webshot-sbhide'); if (s) s.remove(); } catch (e) {} }
+
   function originAl(cb) {
     try { chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, function (r) { cb((r && r.server_origin) || "https://goruntux.rgmedya.tr"); }); }
     catch (e) { cb("https://goruntux.rgmedya.tr"); }
@@ -44,8 +58,10 @@
     } catch (e) {}
   }
 
-  // --- başlat: önce yakala (overlay GÖSTERME, yoksa captureVisibleTab onu da yakalar), sonra kırp UI ---
+  // --- başlat: scrollbar'ı gizle -> yakala (overlay GÖSTERME, yoksa captureVisibleTab onu da yakalar) -> scrollbar geri -> kırp UI ---
+  scrollbarGizle();
   yakala(function (dataUrl) {
+    scrollbarGoster();   // yakalama bitti -> scrollbar geri (overlay zaten sayfayı örtüyor)
     if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
     var img = new Image();
     img.onload = function () { if (!img.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(img); };
@@ -216,6 +232,16 @@
       catch (e) { bildir('Kırpma hatası.', true); return; }
       var out;
       try { out = oc.toDataURL('image/png'); } catch (e) { bildir('Görsel üretilemedi.', true); return; }
+      // [PANO] kırpılan görseli sistem panosuna da kopyala (best-effort; kullanıcı jesti içinde + https gerekir).
+      // ClipboardItem'a Promise<Blob> veririz -> clipboard.write jest içinde SENKRON çağrılır (transient activation korunur).
+      var panoVar = false;
+      try {
+        if (navigator.clipboard && window.ClipboardItem && window.isSecureContext) {
+          panoVar = true;
+          var blobP = new Promise(function (res) { try { oc.toBlob(function (b) { res(b); }, 'image/png'); } catch (e) { res(null); } });
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blobP })]).catch(function () {});
+        }
+      } catch (e) { panoVar = false; }
       var link = location.href, baslik = baslikBul();
       okBtn.disabled = true; okBtn.textContent = 'Ekleniyor…';
       originAl(function (org) {
@@ -223,7 +249,7 @@
           chrome.runtime.sendMessage({ action: 'addToPool', origin: org, title: baslik, link: link, image: out, is_profile: false, group_override: '', dedup: false }, function (resp) {
             void chrome.runtime.lastError;
             temizle();
-            if (resp && resp.status === 'success') bildir('Panele eklendi ✓');
+            if (resp && resp.status === 'success') bildir('Panele eklendi' + (panoVar ? ' · panoya kopyalandı' : '') + ' ✓');
             else bildir('Eklenemedi' + (resp && resp.message ? ': ' + resp.message : ''), true);
           });
         } catch (e) { temizle(); bildir('Eklenemedi.', true); }
