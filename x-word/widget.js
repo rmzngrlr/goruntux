@@ -4249,8 +4249,6 @@
                     if (!kart.querySelector('video')) return;                  // hidrasyon bekle
                     var kolon = _xTtAksiyonKolonu(kart);
                     if (!kolon || kolon.querySelector('.x-gx-tt-btn')) return;   // kolon yok / zaten var
-                    var share = kart.querySelector('[data-e2e="share-count"], [data-e2e="share-icon"]');
-                    var shareCocuk = share; while (shareCocuk && shareCocuk.parentElement !== kolon) shareCocuk = shareCocuk.parentElement;
                     var btn = document.createElement('div');
                     btn.className = 'x-gx-tt-btn x-gx-ssbtn'; btn.setAttribute('role', 'button'); btn.setAttribute('tabindex', '0');
                     btn.setAttribute('aria-label', "Bu videoyu GörüntüX Raporu'na ekle");
@@ -4258,7 +4256,7 @@
                     var tip = document.createElement('span'); tip.className = 'x-gx-tt-tip'; tip.textContent = "GörüntüX Raporu'na ekle";   // ⚠ INLINE literal
                     btn.appendChild(ic); btn.appendChild(tip); btn.__tip = tip;
                     (function (b, k) { b.addEventListener('click', function (ev) { try { ev.preventDefault(); ev.stopPropagation(); } catch (e) {} xTtButonTikla(b, k); }); })(btn, kart);
-                    if (shareCocuk && shareCocuk.nextSibling) kolon.insertBefore(btn, shareCocuk.nextSibling);   // paylaş'tan SONRA
+                    if (kolon.firstChild) kolon.insertBefore(btn, kolon.firstChild);   // EN ÜSTE: profil avatarının ÜSTÜNDE (kullanıcı isteği), aynı kolon hizasında
                     else kolon.appendChild(btn);
                 } catch (e) {}
             });
