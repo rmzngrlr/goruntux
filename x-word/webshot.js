@@ -286,33 +286,30 @@
     }
 
     // ---- Devamını Al: görünenin ALTINI yakala, görsele ekle (opsiyonel; bu an kısa kayma) ----
-    // CDP ile: sayfayı KAYDIRMADAN (git-gel YOK) görünenin altını al. Sadece bu butona basınca
-    // tarayıcı üstünde anlık sarı "hata ayıklama" bandı (ÇIKTIYA girmez). clip CSS-px, scale=DPR.
     function devaminiAl() {
       if (_mesgul) return; _mesgul = true;
-      var kaplanCss = ih / ratioY;          // base'in Y0 altında kapladığı toplam CSS yükseklik
-      var ustCss = Y0 + kaplanCss;          // sıradaki parçanın tepesi (sayfa CSS)
-      var kalan = docH() - ustCss;
-      if (kalan < 3) { _mesgul = false; bildir('Sayfanın sonuna gelindi.', true); return; }
-      var chunkCss = Math.min(window.innerHeight, kalan);
-      var DPR = Math.max(1, Math.min(window.devicePixelRatio || 1, 3));
-      var clientW = document.documentElement.clientWidth;
-      devBtn.disabled = true; var _eski = devBtn.textContent; devBtn.textContent = '↓ …';
-      try {
-        chrome.runtime.sendMessage({ action: 'captureCDP', clip: { x: 0, y: ustCss, width: clientW, height: chunkCss }, scale: DPR }, function (resp) {
-          _mesgul = false; devBtn.disabled = false; devBtn.textContent = _eski;
-          if (chrome.runtime.lastError || !resp || resp.status !== 'success' || !resp.dataUrl) { bildir('Devamı alınamadı' + (resp && resp.message ? ': ' + resp.message : ''), true); return; }
+      var vh = window.innerHeight, kaplanCss = ih / ratioY, onceki = window.scrollY;
+      var hedef = Math.min(Y0 + kaplanCss, Math.max(0, docH() - vh));
+      try { window.scrollTo(0, hedef); } catch (e) {}
+      var gercek = window.scrollY, yeniCss = (gercek + vh) - (Y0 + kaplanCss);
+      if (yeniCss < 2) { try { window.scrollTo(0, onceki); } catch (e) {} _mesgul = false; bildir('Sayfanın sonuna gelindi.', true); return; }
+      ov.style.visibility = 'hidden';
+      requestAnimationFrame(function () { requestAnimationFrame(function () {   // gizle PAINT olsun (overlay kadraja girmesin)
+        yakala(function (dataUrl) {
+          ov.style.visibility = ''; try { window.scrollTo(0, onceki); } catch (e) {}
+          _mesgul = false;
+          if (!dataUrl) { bildir('Yakalanamadı.', true); return; }
           var im2 = new Image();
           im2.onload = function () {
-            var sw = im2.naturalWidth || im2.width, sh = im2.naturalHeight || im2.height;   // CDP strip (device-px); genişlik = clientW*DPR = iw
-            var nc = document.createElement('canvas'); nc.width = iw; nc.height = ih + sh;
-            var nx = nc.getContext('2d'); nx.drawImage(img, 0, 0, iw, ih); nx.drawImage(im2, 0, 0, sw, sh, 0, ih, iw, sh);
+            var sc = scrollbarKirp(im2), sh = sc.naturalHeight || sc.height, sw = sc.naturalWidth || sc.width;
+            var pxPerCss = sh / Math.max(1, vh), yeniDev = Math.max(1, Math.round(yeniCss * pxPerCss)), srcY = Math.max(0, sh - yeniDev);
+            var nc = document.createElement('canvas'); nc.width = iw; nc.height = ih + yeniDev;
+            var nx = nc.getContext('2d'); nx.drawImage(img, 0, 0, iw, ih); nx.drawImage(sc, 0, srcY, sw, yeniDev, 0, ih, iw, yeniDev);
             img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
           };
-          im2.onerror = function () { bildir('Görsel yüklenemedi.', true); };
-          im2.src = resp.dataUrl;
-        });
-      } catch (e) { _mesgul = false; devBtn.disabled = false; devBtn.textContent = _eski; bildir('Devamı alınamadı.', true); }
+          im2.onerror = function () {}; im2.src = dataUrl;
+        }, true);
+      }); });
     }
 
     function uygula() {

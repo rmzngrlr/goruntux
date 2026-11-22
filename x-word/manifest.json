@@ -8,8 +8,7 @@
     "scripting",
     "tabs",
     "storage",
-    "unlimitedStorage",
-    "debugger"
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "<all_urls>"
