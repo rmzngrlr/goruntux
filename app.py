@@ -17630,6 +17630,8 @@ async function raporDok(id){
   h+=its.map(function(it,i){ var go=it.group_override||''; var h2=(it.h2_override!=null)?('"'+it.h2_override+'"'):'(yok)'; var h2bos=(it.h2_override!=null && String(it.h2_override)===''); return '<tr><td>'+(i+1)+'</td><td>'+esc(it.title||'(bos)')+'</td><td'+(go?'':' style="color:#ff8a8a;"')+'>'+esc(go||'(BOS)')+'</td><td'+(h2bos?' style="color:#ff8a8a;"':'')+'>'+esc(h2)+'</td><td style="color:#8899a6;word-break:break-all;">'+esc(hvNormKey(it.link))+'</td></tr>'; }).join('');
   h+='</tbody></table>';
   box.innerHTML=h;
+  // [KOPYALANABİLİR] dök özetini sunucu log'una da yaz -> Kopyala ile metin olarak alınır.
+  try{ var sum=its.map(function(it,i){ var h2=(it.h2_override!=null)?('"'+it.h2_override+'"'):'(yok)'; return '#'+(i+1)+' title='+(it.title||'(bos)')+' go='+(it.group_override||'(BOS)')+' h2ov='+h2; }).join('  ||  '); fetch('/api/teshis/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msg:'[dok] '+its.length+' oge -> '+sum, lvl:'info'})}); }catch(e){}
 }
 function raporlarCiz(){
   var metas=sonMetas.slice().sort(function(a,b){ return (b.itemCount||0)-(a.itemCount||0); });
