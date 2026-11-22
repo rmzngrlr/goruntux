@@ -15,19 +15,25 @@
 
   function bitir() { window.__xWebshotAktif = false; }
 
-  // [SCROLLBAR] Yakalama anında sayfa scrollbar'ı kadraja girmesin diye gizle -> yakala -> geri ver.
-  // (Chrome ::-webkit-scrollbar display:none; global '*' + html/body birlikte -> ana + iç kaydırıcılar.
-  //  Bkz [[fb-scrollbar-kadraj]]: global tek basina ozgulluge takilabilir, bu yuzden !important + html/body de.)
-  function scrollbarGizle() {
-    if (document.getElementById('x-webshot-sbhide')) return;
+  // [SCROLLBAR] Sayfa scrollbar'ını DOM'a DOKUNMADAN temizle: yakalanan görselin sağ/alt kenarından
+  // ölçülen scrollbar kalınlığı kadar kırp. (Eski display:none yöntemi REFLOW/flicker yapıyordu ->
+  // amatör görünüm.) Overlay scrollbar / Mac'te sbW=sbH=0 -> hiç dokunmaz. Döndürdüğü Canvas'ı kirpUIKur
+  // da Image gibi kabul eder (drawImage + width/height).
+  function scrollbarKirp(raw) {
     try {
-      var st = document.createElement('style');
-      st.id = 'x-webshot-sbhide';
-      st.textContent = 'html{scrollbar-width:none!important}html::-webkit-scrollbar,body::-webkit-scrollbar,*::-webkit-scrollbar{width:0!important;height:0!important;display:none!important}';
-      (document.head || document.documentElement).appendChild(st);
-    } catch (e) {}
+      var sbW = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+      var sbH = Math.max(0, window.innerHeight - document.documentElement.clientHeight);
+      if (sbW < 1 && sbH < 1) return raw;
+      var sx = raw.naturalWidth / Math.max(1, window.innerWidth);
+      var sy = raw.naturalHeight / Math.max(1, window.innerHeight);
+      var cw = Math.max(1, Math.round(raw.naturalWidth - sbW * sx));
+      var ch = Math.max(1, Math.round(raw.naturalHeight - sbH * sy));
+      if (cw >= raw.naturalWidth && ch >= raw.naturalHeight) return raw;
+      var tc = document.createElement('canvas'); tc.width = cw; tc.height = ch;
+      tc.getContext('2d').drawImage(raw, 0, 0, cw, ch, 0, 0, cw, ch);
+      return tc;
+    } catch (e) { return raw; }
   }
-  function scrollbarGoster() { try { var s = document.getElementById('x-webshot-sbhide'); if (s) s.remove(); } catch (e) {} }
 
   function originAl(cb) {
     try { chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, function (r) { cb((r && r.server_origin) || "https://goruntux.rgmedya.tr"); }); }
@@ -58,20 +64,18 @@
     } catch (e) {}
   }
 
-  // --- başlat: scrollbar'ı gizle -> yakala (overlay GÖSTERME, yoksa captureVisibleTab onu da yakalar) -> scrollbar geri -> kırp UI ---
-  scrollbarGizle();
+  // --- başlat: yakala (overlay GÖSTERME, yoksa captureVisibleTab onu da yakalar) -> scrollbar'ı görselden kırp -> kırp UI ---
   yakala(function (dataUrl) {
-    scrollbarGoster();   // yakalama bitti -> scrollbar geri (overlay zaten sayfayı örtüyor)
     if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
-    var img = new Image();
-    img.onload = function () { if (!img.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(img); };
-    img.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
-    img.src = dataUrl;
+    var raw = new Image();
+    raw.onload = function () { if (!raw.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(raw)); };
+    raw.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };
+    raw.src = dataUrl;
   });
 
   // ======================= KIRP OVERLAY (editör portu) =======================
   function kirpUIKur(img) {
-    var iw = img.naturalWidth, ih = img.naturalHeight;
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;   // Image VEYA Canvas (scrollbarKirp canvas döndürebilir)
 
     // ekrana sığdır
     var vw = window.innerWidth, vh = window.innerHeight;
