@@ -298,6 +298,11 @@
           crop = { x: Math.max(0, L * ratioX), y: Math.max(0, (uT - imgTopPage) * ratioY), w: (R - L) * ratioX, h: (uB - uT) * ratioY };
           crop.x = Math.min(crop.x, iw); crop.y = Math.min(crop.y, ih);
           crop.w = Math.max(1, Math.min(crop.w, iw - crop.x)); crop.h = Math.max(1, Math.min(crop.h, ih - crop.y));
+          // [ÖĞE SEÇ TEK-ONAY] Öğeleri seçip "✓ Onayla" -> kırpma fine-tune adımı ATLANIR, çıktı DOĞRUDAN rapora
+          // eklenir (kullanıcı isteği: tek onay). Bayrak x_webshot_oge_tekonay='0' -> eski 2-adım (seçim kırp
+          // kutusuna oturur, ayrıca ana "✓ Kırp ve Ekle" gerekir).
+          var _tekOnay = true; try { _tekOnay = localStorage.getItem('x_webshot_oge_tekonay') !== '0'; } catch (e) {}
+          if (_tekOnay) { uygula(); return; }
           ciz();
           try { sar.scrollTop = Math.max(0, S(crop.y) - 40); } catch (e) {}
         }
