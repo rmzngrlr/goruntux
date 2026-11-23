@@ -5293,6 +5293,19 @@
     function xVideoBarlariGeri(gizli) {
         try { (gizli || []).forEach(function (h) { try { if (h.d) h.el.style.display = h.d; else h.el.style.removeProperty('display'); } catch (e) {} }); } catch (e) {}
     }
+    // [ETKİLEŞİM GİZLE] Intro'da odaklı tweet'in ALT AKSİYON ÇUBUĞU (yanıt/RT/beğeni/yer işareti/paylaş) videoya
+    // girmesin -> yanıt/beğeni butonunu içeren [role="group"]'u display:none. ({el,d} şekli xVideoBarlariGeri ile geri açılır.)
+    function xVideoEtkilesimGizle() {
+        var gizli = [];
+        try {
+            var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
+            if (!art) return gizli;
+            var k = art.querySelector('[data-testid="reply"], [data-testid="like"], [data-testid="unlike"], [data-testid="retweet"], [data-testid="unretweet"]');
+            var ab = k && (k.closest('[role="group"]') || (k.parentElement && k.parentElement.parentElement));
+            if (ab && art.contains(ab)) { gizli.push({ el: ab, d: ab.style.display }); ab.style.setProperty('display', 'none', 'important'); }
+        } catch (e) {}
+        return gizli;
+    }
     // Video kontrolünü (#x-gx-video-ctrl) kayıt butonunun SOLUNA (içerik sütununun soluna) konumla
     // -> videoya GİRMEZ (kadraj = içerik sütunu; kontrol onun solunda kalır). Dikey: nav butonu hizası.
     function xVideoCtrlKonumla(ctrl) {
@@ -5506,6 +5519,7 @@
         var cnv = document.createElement('canvas'); var cx = cnv.getContext('2d');
         var kadrajEl = (ana && ana.el) || null;   // FAZ 1 hedef = ana tweet; FAZ 2'de liste bloğuna geçer
         var ustKlip = 0;   // [BAŞLIK HARİÇ] kadrajın ÜST sınırını bu Y'nin altına kıstır -> liste fazında "← Gönderi" + modal başlığı kadraja girmez.
+        var _barGizli = [];   // gizlenen barlar + etkileşim çubuğu (rec.onstop + FAZ 2'de geri açılır)
         function olc() {
             var r = kadrajEl ? kadrajEl.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
             var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
@@ -5525,6 +5539,14 @@
             var r = olc(); var maxW = 820, k = Math.min(1, maxW / Math.max(1, r.sw));
             cnv.width = Math.max(2, Math.round(r.sw * k)); cnv.height = Math.max(2, Math.round(r.sh * k));
         }
+        // [GENİŞLEME FIX] Kayıt BAŞLAMADAN önce her şeyi oturt: uzun metni aç, ana tweeti çerçevele, üst barları +
+        // ETKİLEŞİM çubuğunu (beğeni/yorum) gizle, Chrome paylaşım çubuğu + bar-gizleme reflow'u otursun diye bekle
+        // -> başlangıçtaki "hafif genişleme"/zıplama kayda GİRMEZ.
+        try { if (kadrajEl && typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}
+        try { _barGizli = xVideoBarlariGizle().concat(xVideoEtkilesimGizle()); } catch (e) {}
+        if (kadrajEl) { try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {} }
+        await xVideoBekle(700);
+        if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
         var raf = 0, calisiyor = true;
         function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
@@ -5537,7 +5559,7 @@
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-        var bitti = false, _barGizli = [];
+        var bitti = false;
         function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
         rec.onstop = function () {
             calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
@@ -5550,17 +5572,13 @@
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
         window.__xVideoRec = rec;
         try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}   // Chrome çubuğundan "paylaşımı durdur" -> bitir
-        try { _barGizli = xVideoBarlariGizle(); } catch (e) {}   // [BAŞLIK GİZLE] SS gibi: üst sticky barları gizle -> videoya girmez
         xVideoCtrlKayit(ctrl, durdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
         (async function akis() {
             try {
-                if (kadrajEl) {   // FAZ 1: ana tweet INTROSU = tweet SS'i gibi SABİT çerçeve (sayfa KAYDIRMA YOK -> titreme yok).
-                    // Kadraj = odaklı tweet (olc kırpar) -> YORUMLAR giremez. Süre = metin okuma + tweet'te video varsa ~5sn izlet.
-                    try { if (typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}   // uzun metni aç (SS gibi)
-                    try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {}   // TWEET ÜSTÜNDEN göster (üst bar gizlendi); sonra sabit
-                    await xVideoBekle(450);
-                    ustKlip = 0;   // üst barlar xVideoBarlariGizle ile GİZLENDİ -> klip YOK, tweet üstü TAM görünür
+                if (kadrajEl) {   // FAZ 1: ana tweet INTROSU = SABİT çerçeve (çerçeveleme + bar/etkileşim gizleme rec.start ÖNCESİ yapıldı).
+                    // Kadraj = odaklı tweet (olc kırpar) -> YORUMLAR + alt etkileşim çubuğu girmez. Süre = metin okuma + video varsa ~5sn.
+                    ustKlip = 0;   // üst barlar gizli -> klip YOK, tweet üstü TAM görünür
                     canvasBoyutla();
                     var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
                     var _videoSure = 0;
