@@ -5266,15 +5266,17 @@
             var L = Math.max(0, r.left), T = Math.max(0, r.top), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
-        var r0 = olc(); cnv.width = Math.max(2, Math.round(r0.sw)); cnv.height = Math.max(2, Math.round(r0.sh));
+        // [KÜÇÜK DOSYA] Canvas genişliğini ~820px'e sınırla (liste zaten dar -> okunur kalır, piksel/boyut düşer).
+        var r0 = olc(); var _maxW = 820, _oranK = Math.min(1, _maxW / Math.max(1, r0.sw));
+        cnv.width = Math.max(2, Math.round(r0.sw * _oranK)); cnv.height = Math.max(2, Math.round(r0.sh * _oranK));
         var raf = 0, calisiyor = true;
         function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
         ciz();
-        var cstream = cnv.captureStream(30);
+        var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps (yavaş kaydırmada yeterli -> dosya ~yarıya iner)
         var mime = 'video/webm';
         try { if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'; } catch (e) {}
         var rec;
-        try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 4500000 }); }
+        try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 1200000 }); }   // [KÜÇÜK DOSYA] 4.5->1.2 Mbps
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
@@ -5295,18 +5297,22 @@
     }
     function xVideoOtoKaydir(kap, bitir) {
         try {
-            var durgun = 0;
+            // [YAVAŞ + AKICI] Zıplamalı kaydırma yerine KÜÇÜK adımlarla PÜRÜZSÜZ kaydır -> her RT eden net görünür
+            // (zıplamada aradaki satırlar tek karede geçip kaçabiliyordu). Hız bilinçli DÜŞÜK (~55px/sn, okunur).
+            var durgun = 0, HIZ = 2.3;   // px / 40ms tik
             window.__xVideoScrollIv = setInterval(function () {
                 try {
                     if (!window.__xVideoKayitAktif) { clearInterval(window.__xVideoScrollIv); return; }
                     var el = kap || document.scrollingElement || document.documentElement;
-                    var once = el.scrollTop;
-                    var adim = Math.max(140, Math.round((el.clientHeight || window.innerHeight) * 0.55));   // okunur hız (~0.55 ekran/adım)
-                    el.scrollTop = once + adim;
-                    if (el.scrollTop <= once + 1) { durgun++; if (durgun >= 4) { clearInterval(window.__xVideoScrollIv); setTimeout(bitir, 700); } }   // ilerlemiyor -> son; birkaç deneme sonra bitir
-                    else { durgun = 0; }
+                    var maxT = (el.scrollHeight || 0) - (el.clientHeight || 0);
+                    if (el.scrollTop >= maxT - 1) {
+                        // Dibe gelindi: sanallaştırma yeni satır yüklüyor olabilir -> ~2sn büyümezse SON -> bitir
+                        // (böylece TÜM RT edenler yüklenip videoya girer, erken kesilmez).
+                        durgun++;
+                        if (durgun >= 50) { clearInterval(window.__xVideoScrollIv); setTimeout(bitir, 600); }
+                    } else { durgun = 0; el.scrollTop = Math.min(maxT, el.scrollTop + HIZ); }
                 } catch (e) {}
-            }, 700);   // ölçülü tempo: sanallaştırma yüklensin + okunur
+            }, 40);
         } catch (e) {}
     }
     function xVideoCtrlKayit(ctrl, durdur) {
