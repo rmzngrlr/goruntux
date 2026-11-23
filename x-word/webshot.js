@@ -129,7 +129,7 @@
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
     var ratioY = ih / Math.max(1, document.documentElement.clientHeight);   // device-px / CSS-px (dikey) — Devamını Al + Öğe Seç için
     var ratioX = iw / Math.max(1, document.documentElement.clientWidth);
-    var scale = 1, cw = iw, ch = ih;
+    var scale = 1, cw = iw, ch = ih, _uzatildi = false;   // _uzatildi: Devamını Al/Üstü ile uzatıldı mı (uzayınca yükseklik-sığdırma kalkar)
 
     function S(v) { return v * scale; } function U(v) { return v / scale; }
 
@@ -163,7 +163,11 @@
     var blurCv = document.createElement('canvas');
     function _olcekle() {
       var availW = document.documentElement.clientWidth || window.innerWidth;   // scrollbar HARİÇ içerik genişliği -> gereksiz yatay scroll olmaz
-      scale = Math.min(availW / iw, 16000 / ih, 1);   // tam genişlik (büyütme yok); yükseklik sar'da dikey scroll
+      // [İLK AÇILIŞ SCROLL YOK] Uzatılmamış (ilk GÖRÜNÜR-ekran) yakalamada görseli kabın (sar) YÜKSEKLİĞİNE de sığdır ->
+      // üst/alt çubuk payından doğan gereksiz küçük dikey scroll kalkar. Uzatınca (ih büyür) tam-genişlik + scroll'a döner.
+      var fitH = 1;
+      try { if (!_uzatildi) { var availH = sar.clientHeight || 0; if (availH > 60) fitH = availH / ih; } } catch (e) {}
+      scale = Math.min(availW / iw, fitH, 16000 / ih, 1);   // tam genişlik VE (ilk açılışta) tam yükseklik -> scroll yok
       cw = Math.max(1, Math.round(iw * scale)); ch = Math.max(1, Math.round(ih * scale));
       canvas.width = cw; canvas.height = ch;
     }
@@ -364,12 +368,12 @@
             if (alt) {
               var srcY = Math.max(0, sh - yeniDev);
               nx.drawImage(img, 0, 0, iw, ih); nx.drawImage(sc, 0, srcY, sw, yeniDev, 0, ih, iw, yeniDev);
-              img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
+              img = nc; ih = nc.height; _uzatildi = true; _olcekle(); blurGuncelle(); ciz();
             } else {
               nx.drawImage(sc, 0, 0, sw, yeniDev, 0, 0, iw, yeniDev); nx.drawImage(img, 0, yeniDev, iw, ih);
               imgTopPage -= yeniCss; crop.y += yeniDev;
               if (drag) { if (drag.o) drag.o.y += yeniDev; if (typeof drag.sy === 'number') drag.sy += yeniDev; }
-              var eskiScroll = sar.scrollTop; img = nc; ih = nc.height; _olcekle(); blurGuncelle(); ciz();
+              var eskiScroll = sar.scrollTop; img = nc; ih = nc.height; _uzatildi = true; _olcekle(); blurGuncelle(); ciz();
               try { sar.scrollTop = eskiScroll + S(yeniDev); } catch (e) {}   // görünümü sabit tut (üste eklenince aşağı kaydır)
             }
             bit();
