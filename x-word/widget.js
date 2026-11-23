@@ -5293,15 +5293,18 @@
     function xVideoBarlariGeri(gizli) {
         try { (gizli || []).forEach(function (h) { try { if (h.d) h.el.style.display = h.d; else h.el.style.removeProperty('display'); } catch (e) {} }); } catch (e) {}
     }
-    // Video kontrolünü (#x-gx-video-ctrl) SOL NAV butonunun ALTINA konumla (sağ-alt yerine).
+    // Video kontrolünü (#x-gx-video-ctrl) kayıt butonunun SOLUNA (içerik sütununun soluna) konumla
+    // -> videoya GİRMEZ (kadraj = içerik sütunu; kontrol onun solunda kalır). Dikey: nav butonu hizası.
     function xVideoCtrlKonumla(ctrl) {
         try {
             if (!ctrl) return;
             var nav = document.getElementById('x-gx-nav-ekle') || document.getElementById('x-gx-nav-btn');
-            if (!nav) return;
-            var r = nav.getBoundingClientRect();
-            ctrl.style.left = Math.round(Math.max(8, r.left)) + 'px';
-            ctrl.style.top = Math.round(r.bottom + 8) + 'px';
+            var cw = ctrl.offsetWidth || 44;
+            var top = nav ? nav.getBoundingClientRect().top : 120;
+            var col = document.querySelector('[data-testid="primaryColumn"]');
+            var ref = col ? col.getBoundingClientRect().left : (nav ? nav.getBoundingClientRect().left : 60);
+            ctrl.style.left = Math.round(Math.max(2, ref - cw - 8)) + 'px';   // içerik sütununun SOLU
+            ctrl.style.top = Math.round(Math.max(60, top)) + 'px';
             ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
         } catch (e) {}
     }
@@ -5562,8 +5565,36 @@
                     var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
                     var _videoSure = 0;
                     if (_vid) { try { _vid.muted = true; var _p = _vid.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _videoSure = 5000; }   // video/GIF -> oynat + ~5sn
-                    var _okuma = Math.min(9000, Math.max(2500, (ana.len || 40) * 45));   // metin uzunluğuna göre okuma süresi (~22 char/sn, 2.5-9sn)
-                    await xVideoBekle(_okuma + _videoSure);
+                    var _okuma = Math.min(10000, Math.max(2500, (ana.len || 40) * 45));   // metin uzunluğuna göre okuma süresi
+                    var _ustDur = Math.min(1600, _okuma);   // üstte kısa dur (yazar + metin başı okunur)
+                    await xVideoBekle(_ustDur);
+                    if (!window.__xVideoKayitAktif) return;
+                    // [UZUN TWEET] tweet ekrandan uzunsa ALTINI DA GÖSTER: sayfayı tweet altına kadar yavaşça pan et.
+                    // crop kadrajEl=odaklı article'a bağlı -> YORUMLAR kadraja girmez. Kalan intro süresince, en az ~110px/sn.
+                    try {
+                        var _tsc = document.scrollingElement || document.documentElement;
+                        var _ov = kadrajEl.getBoundingClientRect().bottom - window.innerHeight;
+                        if (_ov > 6) {
+                            var _panSure = Math.max(_okuma + _videoSure - _ustDur, _ov / 0.11);
+                            var _bas = _tsc.scrollTop || 0;
+                            await new Promise(function (res) {
+                                var _st = 0;
+                                function _pt(ts) {
+                                    try {
+                                        if (!window.__xVideoKayitAktif || window.__xVideoScrollStop) { res(); return; }
+                                        if (!_st) { _st = ts; requestAnimationFrame(_pt); return; }
+                                        var _pr = Math.min(1, (ts - _st) / _panSure);
+                                        _tsc.scrollTop = _bas + _ov * _pr;
+                                        if (_pr >= 1) { setTimeout(res, 500); return; }   // altta kısa dur
+                                        requestAnimationFrame(_pt);
+                                    } catch (e) { res(); }
+                                }
+                                requestAnimationFrame(_pt);
+                            });
+                        } else {
+                            await xVideoBekle(Math.max(0, _okuma + _videoSure - _ustDur));   // kısa tweet: kalan süre sabit
+                        }
+                    } catch (e) {}
                     if (!window.__xVideoKayitAktif) return;
                 }
                 // FAZ 2: repost listesini aç (yapay bekleme yok; yalnız liste DOM'u yerleşsin diye minimum settle)
