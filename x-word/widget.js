@@ -4378,6 +4378,9 @@
             if (xGxProfilModAcik() && xGxProfilRaporAcik() && xGxProfilHandle()) return 'profil';
             if (xGxKesfetAcik() && xGxKesfetMi()) return 'ara';
             if (xGxTweetBtnAcik() && /\/status\/\d+/.test(location.href) && xGxOdakliArticle()) return 'ekle';
+            // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında ODAKLI ARTICLE olmasa da butonu ENJEKTE et
+            // (video kaydı için; sağ-tık video modu). Görsel olarak SİLİK (xNavYansit x-gx-rt-silik ekler).
+            if (xGxTweetBtnAcik() && /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return 'ekle';
         } catch (e) {}
         return null;
     }
@@ -4821,8 +4824,8 @@
             /* [RT VİDEO] Video modu = YEŞİL SS butonunun AYNISI, yalnız KIRMIZI + içte + yerine DOLU NOKTA (record).
                Buton ŞEFFAF kalır (yeşildeki gibi; bg değişmez); sadece ikon renkleri kırmızıya döner. İkon
                _xGxSsIkon('kayit') ile basılır (kare çerçeve + nokta). */
-            .x-gx-nav-ekle.x-gx-videomod{ opacity:1 !important; }   /* /retweets sayfasında silik görünmesin */
-            .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico{ opacity:1 !important; }
+            /* [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında kayıt butonu ENJEKTE edilir ama SİLİK (kullanıcı isteği). */
+            .x-gx-nav-ekle.x-gx-rt-silik{ opacity:.45 !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .c{ stroke:#f4212e !important; fill:none !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in{ stroke:#f4212e !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in circle{ fill:#f4212e !important; stroke:none !important; }
@@ -4968,6 +4971,9 @@
                     // [İSTEK] sayfadan çıkınca video kontrol kutusu da kapansın (kayıt sürmüyorsa)
                     var _vc = document.getElementById('x-gx-video-ctrl'); if (_vc) { try { _vc.remove(); } catch (e) {} }
                 }
+                // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında kayıt butonu SİLİK; diğer sayfalarda net.
+                var _ekl2 = document.getElementById('x-gx-nav-ekle');
+                if (_ekl2) _ekl2.classList.toggle('x-gx-rt-silik', /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname));
             } catch (e) {}
             // TARAMA AKTİF BAYRAĞI: toplu tarama sırasında SS alınırken SPA dock'u yeniden kurup
             // .scanning'i düşürse de nav halkası KAYBOLMASIN; ilerleme window-var'lardan okunur
@@ -5306,18 +5312,16 @@
         } catch (e) {}
         return gizli;
     }
-    // Video kontrolünü (#x-gx-video-ctrl) kayıt butonunun SOLUNA (içerik sütununun soluna) konumla
-    // -> videoya GİRMEZ (kadraj = içerik sütunu; kontrol onun solunda kalır). Dikey: nav butonu hizası.
+    // Video kontrolünü (#x-gx-video-ctrl) kayıt (nav) butonunun ALTINA konumla (kullanıcı isteği).
+    // Nav butonu sol rayda olduğundan ALTI da içerik sütununun solunda kalır -> videoya girmez (+ olc sol-klip emniyet).
     function xVideoCtrlKonumla(ctrl) {
         try {
             if (!ctrl) return;
             var nav = document.getElementById('x-gx-nav-ekle') || document.getElementById('x-gx-nav-btn');
-            var cw = ctrl.offsetWidth || 44;
-            var top = nav ? nav.getBoundingClientRect().top : 120;
-            var col = document.querySelector('[data-testid="primaryColumn"]');
-            var ref = col ? col.getBoundingClientRect().left : (nav ? nav.getBoundingClientRect().left : 60);
-            ctrl.style.left = Math.round(Math.max(2, ref - cw - 8)) + 'px';   // içerik sütununun SOLU
-            ctrl.style.top = Math.round(Math.max(60, top)) + 'px';
+            if (!nav) return;
+            var r = nav.getBoundingClientRect();
+            ctrl.style.left = Math.round(Math.max(2, r.left)) + 'px';
+            ctrl.style.top = Math.round(r.bottom + 6) + 'px';
             ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
         } catch (e) {}
     }
