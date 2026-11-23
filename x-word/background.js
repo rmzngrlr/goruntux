@@ -732,6 +732,23 @@ function flushPendingLocalImages(origin) {
   });
 }
 
+// [GÖRSEL KAYBI FIX] Teslim edilememiş (pending) görseller SONSUZA kalmasın -> periyodik RETRY.
+// Kök sorun: ilk flush panel hazır değilken (tarama sırasında panel re-render/odak/navigasyon, ya da panel
+// henüz registerPanel'e gelmemiş) başarısız olursa, yeniden-deneme YOKTU -> yalnız SONRAKİ queueLocalImage
+// flush'ı tetikliyordu; son görsel takılırsa kalıcı kayıp (XLocalImages'e hiç yazılmaz -> snapshot boş -> kayıp).
+// Bu retry: pending doluysa ~3.5sn'de bir flush dener -> panel hazır olunca (REOPEN dahil) KESİN teslim ->
+// XLocalImages'e yazılır -> x-local-image-added -> oto-kayıt görseli snapshot'a alır. İdempotent (aynı link overwrite).
+try {
+  setInterval(() => {
+    try {
+      chrome.storage.local.get(['pending_local_images'], (r) => {
+        const q = (r && r.pending_local_images) || [];
+        if (q && q.length) { try { teshisLog('[img-bg] RETRY: ' + q.length + ' pending gorsel -> flush tekrar'); } catch (e) {} flushPendingLocalImages(); }
+      });
+    } catch (e) {}
+  }, 3500);
+} catch (e) {}
+
 // Paneli ARKA PLANDA ac (active:false -> kullanici X'te kalir). Zaten bir panel sekmesi
 // (3011) aciksa/yukleniyorsa YENISINI ACMA (birden cok tiklamada coklu sekme olmasin).
 function openPanelBackground(origin) {
