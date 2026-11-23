@@ -1411,22 +1411,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
   }
 
-  // Faz #1-A: widget'tan gelen ekran goruntusunu (sunucuya GITMEYECEK) panel sekmesine ilet.
+  // Faz #1-A: widget'tan gelen ekran goruntusunu (sunucuya GITMEYECEK) panele ilet.
+  // [GÖRSEL KAYBI FIX — KÖK NEDEN] ESKİDEN DOĞRUDAN chrome.tabs.sendMessage(panelTab) yapiyordu:
+  // panel_tab_id YOKSA veya panel hazir degilken sendMessage BASARISIZ olursa gorsel DROP -> KAYIP
+  // (pending/retry YOK). Tarama (Rapormatik) bu yolu kullaniyor -> aralikli gorsel kaybi buradandi.
+  // ARTIK queueLocalImage'a yonlendir -> pending_local_images'a koy + flush + PERIYODIK RETRY ->
+  // panel hazir olunca (REOPEN dahil) KESIN teslim; birakilmaz. (mime dataUrl'den turetilir.)
   if (message.action === "deliverLocalImage") {
-    chrome.storage.local.get(['panel_tab_id'], (res) => {
-      const panelTabId = res.panel_tab_id;
-      if (!panelTabId) { try { sendResponse({ status: "error", message: "panel_tab_id yok" }); } catch (_) {} return; }
-      chrome.tabs.sendMessage(panelTabId, {
-        action: "localImage",
-        link: message.link,
-        dataUrl: message.dataUrl,
-        mime: message.mime || ""
-      }, () => {
-        const err = chrome.runtime.lastError;
-        try { sendResponse({ status: err ? "error" : "success", message: err ? err.message : "" }); } catch (_) {}
+    if (message.link && message.dataUrl) {
+      try { teshisLog('[img-bg] deliverLocalImage -> queueLocalImage (pending+retry) link=...' + String(message.link).slice(-30)); } catch (e) {}
+      chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+        try { queueLocalImage(message.link, message.dataUrl, res.server_origin); } catch (e) {}
+        try { sendResponse({ status: "success" }); } catch (_) {}
       });
-    });
-    return true; // async yanit
+      return true; // async yanit
+    }
+    try { sendResponse({ status: "error", message: "link/dataUrl yok" }); } catch (_) {}
+    return false;
   }
 
   // [GÖRÜNTÜX İLE RAPORLA Faz3] Widget profil butonu -> paneldeki açık rapor durumunu sorar.
