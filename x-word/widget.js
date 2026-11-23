@@ -4821,6 +4821,8 @@
             /* [RT VİDEO] Video modu = YEŞİL SS butonunun AYNISI, yalnız KIRMIZI + içte + yerine DOLU NOKTA (record).
                Buton ŞEFFAF kalır (yeşildeki gibi; bg değişmez); sadece ikon renkleri kırmızıya döner. İkon
                _xGxSsIkon('kayit') ile basılır (kare çerçeve + nokta). */
+            .x-gx-nav-ekle.x-gx-videomod{ opacity:1 !important; }   /* /retweets sayfasında silik görünmesin */
+            .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico{ opacity:1 !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .c{ stroke:#f4212e !important; fill:none !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in{ stroke:#f4212e !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in circle{ fill:#f4212e !important; stroke:none !important; }
@@ -5303,10 +5305,11 @@
             ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
         } catch (e) {}
     }
-    // Video kontrolü için SADECE-İKON kırmızı buton (kayıt butonu tarzı; metin yok).
-    function xVideoIkonBtn(tur, baslik, onClick) {
+    // Video kontrolü için SADECE-İKON buton (kayıt butonu tarzı; metin yok). renk = ikon rengi (currentColor).
+    function xVideoIkonBtn(tur, baslik, renk, onClick) {
         var b = document.createElement('button');
         b.type = 'button'; b.className = 'x-gx-video-ikon'; b.title = baslik; b.setAttribute('aria-label', baslik);
+        if (renk) b.style.color = renk;
         b.appendChild(_xGxSsIkon(tur));
         b.addEventListener('click', onClick);
         return b;
@@ -5374,7 +5377,9 @@
                 var pcell = col && col.querySelector('[data-testid="UserCell"]');
                 if (pcell) {
                     var kap2 = xVideoKaydirKap(pcell, col);
-                    return { kadraj: (kap2 || col), scroll: (kap2 || document.scrollingElement || document.documentElement) };
+                    // kadraj = primaryColumn (tüm sütun) -> "Gönderi etkinliği" başlığı + "Yeniden gönderiler/Alıntılar"
+                    // tabları KADRAJDA kalır (kullanıcı istedi); scroll iç kap ya da sayfa.
+                    return { kadraj: col, scroll: (kap2 || document.scrollingElement || document.documentElement) };
                 }
             }
             return null;   // ne modal ne /retweets sayfası -> abort (SAYFA kaydırılmaz)
@@ -5458,13 +5463,13 @@
             // SADECE-İKON kontroller: sol nav butonunun altında, dar kolon (metin/kutular YOK).
             '#x-gx-video-ctrl{position:fixed;left:16px;top:120px;z-index:2147483600;display:flex;flex-direction:column;gap:6px;align-items:center;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;width:auto;}',
             // Kırmızı kayıt butonu tarzı: şeffaf daire, kırmızı nested ikon (renk inline-yeşili ezer).
-            '.x-gx-video-ikon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;border-radius:50%;cursor:pointer;}',
-            '.x-gx-video-ikon:hover{background:rgba(244,33,46,.14);}',
+            '.x-gx-video-ikon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;border-radius:50%;cursor:pointer;color:#f4212e;}',
+            '.x-gx-video-ikon:hover{background:rgba(127,127,127,.16);}',
             '.x-gx-video-ikon .x-gx-ssico{display:block;width:28px;height:28px;overflow:visible;}',
-            '.x-gx-video-ikon .x-gx-ssico .c{fill:none;stroke:#f4212e;stroke-width:1.6;}',
-            '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:#f4212e;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}',
-            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:#f4212e;stroke:none;}',
-            '.x-gx-video-ikon:hover .x-gx-ssico .c{fill:#f4212e;stroke:#f4212e;}',
+            '.x-gx-video-ikon .x-gx-ssico .c{fill:none;stroke:currentColor;stroke-width:1.6;}',
+            '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}',
+            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:currentColor;stroke:none;}',
+            '.x-gx-video-ikon:hover .x-gx-ssico .c{fill:currentColor;stroke:currentColor;}',
             '.x-gx-video-ikon:hover .x-gx-ssico .in{stroke:#fff;}',
             '.x-gx-video-ikon:hover .x-gx-ssico .in rect{fill:#fff;}'
         ].join('');
@@ -5503,6 +5508,13 @@
             var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
             var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
             var L = Math.max(0, r.left), T = Math.max(ustKlip, Math.max(0, r.top)), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
+            // [TOOLKIT HARİÇ] kayıt kontrol kutusu (#x-gx-video-ctrl) normalde kadrajın solunda (nav altı) kalır;
+            // dar düzende kadraja girerse videoda görünür -> dikey örtüşüyorsa sol kenarı kontrolün sağına çek
+            // (sadece soldaki boşluk+kontrol kırpılır; liste avatarları sağda korunur).
+            try {
+                var vc = document.getElementById('x-gx-video-ctrl');
+                if (vc && vc.firstChild) { var vr = vc.getBoundingClientRect(); if (vr.width > 0 && vr.bottom > T && vr.top < B && vr.right > L && vr.left < R) L = Math.min(R, vr.right + 3); }
+            } catch (e) {}
             if (B < T) B = T;
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
@@ -5562,15 +5574,13 @@
                 var liste = xVideoListeBul();
                 if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı.', true); durdur(); return; }
                 kadrajEl = liste.kadraj;
-                try { _barGizli = _barGizli.concat(xVideoBarlariGizle()); } catch (e) {}   // modal açılınca yeniden-render olan üst barları da gizle
+                // [İSTEK] RT LİSTE SAYFASININ "Gönderi etkinliği" + "Yeniden gönderiler/Alıntılar" tab barları KALSIN
+                // (videoda yer alsın) -> introda gizlenen üst barları GERİ AÇ; listede gizleme + klip YOK.
+                try { xVideoBarlariGeri(_barGizli); _barGizli = []; } catch (e) {}
+                ustKlip = 0;   // liste başlığı + tablar kadraja DAHİL
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
-                // [BAŞLIK HARİÇ] kadrajın ÜSTÜNÜ İLK RT SATIRININ üstüne kıstır -> "← Gönderi" + modal başlığı kadraja GİRMEZ.
-                try {
-                    var _ilk = (liste.scroll.querySelector && liste.scroll.querySelector('[data-testid="UserCell"]')) || (kadrajEl.querySelector && kadrajEl.querySelector('[data-testid="UserCell"]'));
-                    ustKlip = Math.max(xVideoUstBaslikAlt(), _ilk ? Math.max(0, _ilk.getBoundingClientRect().top) : 0);
-                } catch (e) {}
-                canvasBoyutla();   // kadraj -> liste (üst-klip uygulanmış; çözünürlük değişir)
+                canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
@@ -5611,8 +5621,8 @@
             xVideoStil();
             ctrl.setAttribute('data-mod', 'kayit');
             while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            // SADECE-İKON: kırmızı DURDUR butonu (metin/info YOK).
-            ctrl.appendChild(xVideoIkonBtn('durdur', 'Kaydı durdur', function () { try { durdur(); } catch (e) {} }));
+            // SADECE-İKON: DURDUR (kırmızı = stop).
+            ctrl.appendChild(xVideoIkonBtn('durdur', 'Kaydı durdur', '#f4212e', function () { try { durdur(); } catch (e) {} }));
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
@@ -5622,8 +5632,8 @@
             xVideoStil();
             ctrl.setAttribute('data-mod', 'bitti');
             while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            // SADECE-İKON: İNDİR + KAPAT (metin/MB bilgisi YOK).
-            ctrl.appendChild(xVideoIkonBtn('indir', 'Videoyu indir', function () {
+            // SADECE-İKON: İNDİR (yeşil) + KAPAT (gri) — kırmızı DEĞİL (kullanıcı: kayıt butonundan ayrışsın).
+            ctrl.appendChild(xVideoIkonBtn('indir', 'Videoyu indir', '#00ba7c', function () {
                 try {
                     var url = URL.createObjectURL(blob);
                     var a = document.createElement('a'); a.href = url;
@@ -5635,7 +5645,7 @@
                     try { ctrl.remove(); } catch (e) {}   // [İSTEK] iş bitince (indirince) kontrol KAPANIR
                 } catch (e) { xVideoToast('İndirilemedi.', true); }
             }));
-            ctrl.appendChild(xVideoIkonBtn('kapat', 'Kapat', function () { try { ctrl.remove(); } catch (e) {} }));
+            ctrl.appendChild(xVideoIkonBtn('kapat', 'Kapat', '#71767b', function () { try { ctrl.remove(); } catch (e) {} }));
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
