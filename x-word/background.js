@@ -694,7 +694,6 @@ function queueLocalImage(link, dataUrl, origin) {
     let q = (r && r.pending_local_images) || [];
     q = q.filter(x => x.link !== link);   // ayni link -> guncelle
     q.push({ link: link, dataUrl: dataUrl });
-    try { teshisLog('[img-bg] queueLocalImage link=...' + String(link || '').slice(-32) + ' | pending=' + q.length); } catch (e) {}
     chrome.storage.local.set({ pending_local_images: q }, () => {
       flushPendingLocalImages(origin);
     });
@@ -706,10 +705,9 @@ function flushPendingLocalImages(origin) {
     const q = (r && r.pending_local_images) || [];
     if (!q.length) return;
     const panelTabId = r.panel_tab_id;
-    try { teshisLog('[img-bg] flush: pending=' + q.length + ' panelTab=' + (panelTabId || 'YOK')); } catch (e) {}
     const teslim = (tid) => {
       let kalan = [], bekleyen = q.length;
-      const bitir = () => { try { teshisLog('[img-bg] flush SONUC: ' + (q.length - kalan.length) + ' teslim, ' + kalan.length + ' KALDI (panel tab=' + tid + ')'); } catch (e) {} chrome.storage.local.set({ pending_local_images: kalan }); };
+      const bitir = () => { chrome.storage.local.set({ pending_local_images: kalan }); };
       q.forEach(item => {
         try {
           chrome.tabs.sendMessage(tid, { action: "localImage", link: item.link, dataUrl: item.dataUrl, mime: "" }, () => {
@@ -722,11 +720,10 @@ function flushPendingLocalImages(origin) {
     };
     if (panelTabId) {
       chrome.tabs.get(panelTabId, (t) => {
-        if (chrome.runtime.lastError || !t) { try { teshisLog('[img-bg] panel tab ' + panelTabId + ' YOK -> arka planda acilir (gorsel pending bekliyor)'); } catch (e) {} openPanelBackground(origin || r.server_origin); }
+        if (chrome.runtime.lastError || !t) { openPanelBackground(origin || r.server_origin); }
         else { teslim(panelTabId); }
       });
     } else {
-      try { teshisLog('[img-bg] panel_tab_id YOK -> arka planda acilir (gorsel pending bekliyor)'); } catch (e) {}
       openPanelBackground(origin || r.server_origin);
     }
   });
@@ -743,7 +740,7 @@ try {
     try {
       chrome.storage.local.get(['pending_local_images'], (r) => {
         const q = (r && r.pending_local_images) || [];
-        if (q && q.length) { try { teshisLog('[img-bg] RETRY: ' + q.length + ' pending gorsel -> flush tekrar'); } catch (e) {} flushPendingLocalImages(); }
+        if (q && q.length) { flushPendingLocalImages(); }
       });
     } catch (e) {}
   }, 3500);
@@ -1419,7 +1416,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // panel hazir olunca (REOPEN dahil) KESIN teslim; birakilmaz. (mime dataUrl'den turetilir.)
   if (message.action === "deliverLocalImage") {
     if (message.link && message.dataUrl) {
-      try { teshisLog('[img-bg] deliverLocalImage -> queueLocalImage (pending+retry) link=...' + String(message.link).slice(-30)); } catch (e) {}
       chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
         try { queueLocalImage(message.link, message.dataUrl, res.server_origin); } catch (e) {}
         try { sendResponse({ status: "success" }); } catch (_) {}
