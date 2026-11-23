@@ -1641,8 +1641,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
-  // [WEBSHOT: SAĞ-TIK] Toolbar butonu ARTIK TÜM sayfalarda DOĞRUDAN PANELE gider (webshot yakalama sağ-tık
-  // menüsüne taşındı; yüzen menü/popup kaldırıldı). Sosyal/web farkı yok -> her sayfada panele git.
+  // [RT LİSTE VİDEOSU] X tweet (status) sayfasında toolbar -> widget'a "video kontrolünü göster" mesajı
+  // (sağ-altta kayıt butonları çıkar; oradan ana-tweet introlu RT listesi videosu). DİĞER her sayfada panele git.
+  try {
+    if (tab && tab.id != null && tab.url && /^https?:\/\/(www\.)?(x|twitter)\.com\/[^/]+\/status\/\d+/i.test(tab.url)) {
+      chrome.tabs.sendMessage(tab.id, { action: 'xVideoGoster' }, () => { void chrome.runtime.lastError; });
+      return;
+    }
+  } catch (e) { /* ignore -> panele düş */ }
+  // [WEBSHOT: SAĞ-TIK] Toolbar butonu diğer TÜM sayfalarda DOĞRUDAN PANELE gider (webshot yakalama sağ-tık
+  // menüsünde; yüzen menü/popup kaldırıldı).
   chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", panel_tab_id: null }, (res) => {
     let panelUrl = (res.server_origin || "https://goruntux.rgmedya.tr") + '/';
     const focusTab = (t) => {

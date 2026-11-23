@@ -5214,10 +5214,59 @@
     }
     function xVideoInit() {
         if (!xVideoHostX()) return;
-        if (window.__xVideoKuruldu) { try { xVideoBtnGuncelle(); } catch (e) {} return; }
+        if (window.__xVideoKuruldu) return;
         window.__xVideoKuruldu = true;
-        try { setInterval(function () { try { xVideoBtnGuncelle(); } catch (e) {} }, 1000); } catch (e) {}
-        try { xVideoBtnGuncelle(); } catch (e) {}
+        // [TETİK] Toolbar (Chrome eklenti) butonu X tweet (status) sayfasında -> background 'xVideoGoster' mesajı -> kontrolü göster.
+        try { chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) { try { if (msg && msg.action === 'xVideoGoster') xVideoGoster(); } catch (e) {} }); } catch (e) {}
+    }
+    function xVideoBekle(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+    // Odaklı (ana) tweet: time öğesi bir <a> İÇİNDE DEĞİL (yanıtlarda link içindedir -> onlar elenir). Metin uzunluğu da döner.
+    function xVideoAnaTweet() {
+        try {
+            var arts = document.querySelectorAll('article[data-testid="tweet"]');
+            for (var i = 0; i < arts.length; i++) {
+                var t = arts[i].querySelector('time');
+                if (t && t.closest && !t.closest('a')) {
+                    var tx = arts[i].querySelector('[data-testid="tweetText"]');
+                    var len = tx ? ((tx.textContent || '').trim().length) : 40;
+                    return { el: arts[i], len: len };
+                }
+            }
+        } catch (e) {}
+        return null;
+    }
+    function xVideoGoster() {
+        try {
+            if (window.__xVideoKayitAktif) return;
+            xVideoStil();
+            var ctrl = document.getElementById('x-gx-video-ctrl');
+            if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); }
+            ctrl.setAttribute('data-mod', 'bas');
+            while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
+            var ana = xVideoAnaTweet();
+            var info = document.createElement('div'); info.className = 'x-gx-video-info';
+            info.textContent = ana ? 'RT listesi videosu: önce ana tweet, sonra liste' : 'Ana tweet sayfasında aç';
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'x-gx-video-bas'; b.textContent = '⏺ Kaydet';
+            b.addEventListener('click', function () { try { xVideoBaslat(ctrl); } catch (e) {} });
+            var kapat = document.createElement('button'); kapat.type = 'button'; kapat.className = 'x-gx-video-bas'; kapat.style.background = '#1c2732'; kapat.textContent = '✕ Kapat';
+            kapat.addEventListener('click', function () { try { ctrl.remove(); } catch (e) {} });
+            ctrl.appendChild(info); ctrl.appendChild(b); ctrl.appendChild(kapat);
+        } catch (e) {}
+    }
+    // Repost (RT) listesini aç: zaten açıksa cb(true); değilse .../retweets linkine tıkla / URL'ye geç -> UserCell bekle.
+    function xVideoRepostAc(cb) {
+        try {
+            if (document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]')) { cb(true); return; }
+            var a = document.querySelector('a[href$="/retweets"], a[href$="/reposts"]');
+            if (a) { try { a.click(); } catch (e) {} }
+            else { try { var yeni = location.pathname.replace(/\/$/, '') + '/retweets'; history.pushState(null, '', yeni); window.dispatchEvent(new PopStateEvent('popstate')); } catch (e) {} }
+            var dn = 0;
+            var iv = setInterval(function () {
+                dn++;
+                if (document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]')) { clearInterval(iv); cb(true); }
+                else if (dn > 45) { clearInterval(iv); cb(false); }   // ~7sn
+            }, 150);
+        } catch (e) { cb(false); }
     }
     function xVideoStil() {
         if (document.getElementById('x-gx-video-style')) return;
@@ -5249,8 +5298,7 @@
     }
     async function xVideoBaslat(ctrl) {
         if (window.__xVideoKayitAktif) return;
-        var liste = xVideoListeBul();
-        if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı — RT/beğeni/alıntı listesini açıp tekrar dene.', true); return; }
+        var ana = xVideoAnaTweet();   // intro için ana tweet; yoksa faz 1 atlanır, doğrudan listeye geçilir
         var stream;
         try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true }); }
         catch (e) { xVideoToast('Kayıt iptal edildi / başlatılamadı.', true); return; }
@@ -5259,24 +5307,27 @@
         try { await vid.play(); } catch (e) {}
         await new Promise(function (res) { if (vid.videoWidth) { res(); return; } vid.onloadedmetadata = function () { res(); }; setTimeout(res, 1400); });
         var cnv = document.createElement('canvas'); var cx = cnv.getContext('2d');
+        var kadrajEl = (ana && ana.el) || null;   // FAZ 1 hedef = ana tweet; FAZ 2'de liste bloğuna geçer
         function olc() {
-            var r = liste.kadraj.getBoundingClientRect();
+            var r = kadrajEl ? kadrajEl.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
             var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
             var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
             var L = Math.max(0, r.left), T = Math.max(0, r.top), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
-        // [KÜÇÜK DOSYA] Canvas genişliğini ~820px'e sınırla (liste zaten dar -> okunur kalır, piksel/boyut düşer).
-        var r0 = olc(); var _maxW = 820, _oranK = Math.min(1, _maxW / Math.max(1, r0.sw));
-        cnv.width = Math.max(2, Math.round(r0.sw * _oranK)); cnv.height = Math.max(2, Math.round(r0.sh * _oranK));
+        function canvasBoyutla() {   // [KÜÇÜK DOSYA] canvas <=820px; faz değişince hedef boyutuna göre yeniden (çözünürlük değişir)
+            var r = olc(); var maxW = 820, k = Math.min(1, maxW / Math.max(1, r.sw));
+            cnv.width = Math.max(2, Math.round(r.sw * k)); cnv.height = Math.max(2, Math.round(r.sh * k));
+        }
+        canvasBoyutla();
         var raf = 0, calisiyor = true;
         function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
         ciz();
-        var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps (yavaş kaydırmada yeterli -> dosya ~yarıya iner)
+        var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
         var mime = 'video/webm';
         try { if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'; } catch (e) {}
         var rec;
-        try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 1200000 }); }   // [KÜÇÜK DOSYA] 4.5->1.2 Mbps
+        try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 1200000 }); }   // [KÜÇÜK DOSYA] 1.2Mbps
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
@@ -5293,13 +5344,35 @@
         window.__xVideoRec = rec;
         try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}   // Chrome çubuğundan "paylaşımı durdur" -> bitir
         xVideoCtrlKayit(ctrl, durdur);
-        xVideoOtoKaydir(liste.scroll, durdur);
+        // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
+        (async function akis() {
+            try {
+                if (kadrajEl) {   // FAZ 1: ana tweet
+                    try { kadrajEl.scrollIntoView({ block: 'center' }); } catch (e) {}
+                    await xVideoBekle(350); canvasBoyutla();
+                    var N = Math.min(9000, Math.max(2500, (ana.len || 40) * 45));   // uzunluğa göre ~22 char/sn; 2.5-9sn
+                    await xVideoBekle(N);
+                    if (!window.__xVideoKayitAktif) return;
+                }
+                // FAZ 2: repost listesini aç
+                var acildi = await new Promise(function (res) { xVideoRepostAc(res); });
+                if (!window.__xVideoKayitAktif) return;
+                if (!acildi) { xVideoToast('Repost listesi açılamadı.', true); durdur(); return; }
+                await xVideoBekle(600);
+                var liste = xVideoListeBul();
+                if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı.', true); durdur(); return; }
+                kadrajEl = liste.kadraj; canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
+                try { liste.scroll.scrollTop = 0; } catch (e) {}
+                await xVideoBekle(400);
+                xVideoOtoKaydir(liste.scroll, durdur);
+            } catch (e) { durdur(); }
+        })();
     }
     function xVideoOtoKaydir(kap, bitir) {
         try {
             // [YAVAŞ + AKICI] Zıplamalı kaydırma yerine KÜÇÜK adımlarla PÜRÜZSÜZ kaydır -> her RT eden net görünür
             // (zıplamada aradaki satırlar tek karede geçip kaçabiliyordu). Hız bilinçli DÜŞÜK (~55px/sn, okunur).
-            var durgun = 0, HIZ = 2.3;   // px / 40ms tik
+            var durgun = 0, HIZ = 9.2;   // px / 40ms tik (~230px/sn; kullanıcı: akıcı stil kalsın ama 4x hız)
             window.__xVideoScrollIv = setInterval(function () {
                 try {
                     if (!window.__xVideoKayitAktif) { clearInterval(window.__xVideoScrollIv); return; }
