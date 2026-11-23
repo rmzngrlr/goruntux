@@ -4805,10 +4805,13 @@
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
             /* [RT VİDEO] Sağ-tıkla açılan video modu: buton kırmızı + kamera; SS "+" ikonu gizlenir. */
-            .x-gx-nav-ekle.x-gx-videomod{ background:#e0245e !important; }
-            .x-gx-nav-ekle.x-gx-videomod:hover{ background:#c01e4f !important; }
+            /* [RT VİDEO] Video modu butonu = klasik nested ikon tarzı: ŞEFFAF buton + NET KIRMIZI "kare içinde
+               yuvarlak" kayıt simgesi (::before kare çerçeve, ::after dolu daire). SS "+" ikonu gizlenir. */
+            .x-gx-nav-ekle.x-gx-videomod{ background:transparent !important; }
+            .x-gx-nav-ekle.x-gx-videomod:hover{ background:rgba(244,33,46,.14) !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-tw-ic{ display:none !important; }
-            .x-gx-nav-ekle.x-gx-videomod::after{ content:'🎥'; position:absolute; left:0; top:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:19px; line-height:1; }
+            .x-gx-nav-ekle.x-gx-videomod::before{ content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:26px; height:26px; border:2.4px solid #f4212e; border-radius:7px; box-sizing:border-box; }
+            .x-gx-nav-ekle.x-gx-videomod::after{ content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; border-radius:50%; background:#f4212e; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
             /* tooltip FIXED + documentElement'e taşınır: X nav'ında TRANSFORM'lu ata (translateZ/scale vb.)
                fixed tooltip'i o ataya hapsedip overflow ile KIRPIYORDU -> span <html>'e taşınır (ata yok),
@@ -5405,11 +5408,13 @@
         await new Promise(function (res) { if (vid.videoWidth) { res(); return; } vid.onloadedmetadata = function () { res(); }; setTimeout(res, 1400); });
         var cnv = document.createElement('canvas'); var cx = cnv.getContext('2d');
         var kadrajEl = (ana && ana.el) || null;   // FAZ 1 hedef = ana tweet; FAZ 2'de liste bloğuna geçer
+        var ustKlip = 0;   // [BAŞLIK HARİÇ] kadrajın ÜST sınırını bu Y'nin altına kıstır -> liste fazında "← Gönderi" + modal başlığı kadraja girmez.
         function olc() {
             var r = kadrajEl ? kadrajEl.getBoundingClientRect() : { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
             var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
             var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
-            var L = Math.max(0, r.left), T = Math.max(0, r.top), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
+            var L = Math.max(0, r.left), T = Math.max(ustKlip, Math.max(0, r.top)), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
+            if (B < T) B = T;
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
         function canvasBoyutla() {   // [KÜÇÜK DOSYA] canvas <=820px; faz değişince hedef boyutuna göre yeniden (çözünürlük değişir)
@@ -5463,9 +5468,16 @@
                 await xVideoBekle(250);
                 var liste = xVideoListeBul();
                 if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı.', true); durdur(); return; }
-                kadrajEl = liste.kadraj; canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
+                kadrajEl = liste.kadraj;
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
-                await xVideoBekle(250);
+                await xVideoBekle(300);   // en üste dön + yerleşsin
+                // [BAŞLIK HARİÇ] kadrajın ÜSTÜNÜ İLK RT SATIRININ üstüne kıstır -> "← Gönderi" + modal başlığı kadraja GİRMEZ.
+                try {
+                    var _ilk = (liste.scroll.querySelector && liste.scroll.querySelector('[data-testid="UserCell"]')) || (kadrajEl.querySelector && kadrajEl.querySelector('[data-testid="UserCell"]'));
+                    if (_ilk) ustKlip = Math.max(0, _ilk.getBoundingClientRect().top);
+                } catch (e) {}
+                canvasBoyutla();   // kadraj -> liste (üst-klip uygulanmış; çözünürlük değişir)
+                await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
         })();
@@ -5473,7 +5485,7 @@
     function xVideoOtoKaydir(kap, bitir) {
         try {
             // [AKICI — TİTREMESİZ] Interval yerine requestAnimationFrame: kaydırma EKRAN TAZELEMESİYLE SENKRON ->
-            // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~115px/sn, yarı) -> fps'ten
+            // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~58px/sn, çok yavaş) -> fps'ten
             // bağımsız SABİT. Her RT eden net geçer; sanallaştırma scrollTop'u zıplatırsa pos gerçek konuma çekilir.
             var el = kap || document.scrollingElement || document.documentElement;
             // [GÜVENLİK] SAYFA kökünü (documentElement/body/scrollingElement) YALNIZ gerçek /retweets SAYFASINDAYKEN
@@ -5481,7 +5493,7 @@
             // sürüklerdik -> onun yerine güvenle bitir.
             var _kok = (el === document.scrollingElement || el === document.documentElement || el === document.body);
             if (_kok && !/\/status\/\d+\/(retweets|reposts)/i.test(location.pathname)) { try { bitir(); } catch (e) {} return; }
-            var HIZ = 115, pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [YARI HIZ] her RT eden daha net (eski 230)
+            var HIZ = 58, pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [%50 DAHA YAVAŞ] 230->115->58; her RT eden iyice net
             window.__xVideoScrollStop = false;
             function tik(ts) {
                 try {
