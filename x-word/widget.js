@@ -5280,16 +5280,20 @@
         try { chrome.runtime.onMessage.addListener(function (msg, sender, sendResponse) { try { if (msg && msg.action === 'xVideoGoster') xVideoGoster(); } catch (e) {} }); } catch (e) {}
     }
     function xVideoBekle(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
-    // Odaklı (ana) tweet: time öğesi bir <a> İÇİNDE DEĞİL (yanıtlarda link içindedir -> onlar elenir). Metin uzunluğu da döner.
+    // Odaklı (ana) tweet = TEK-SS aracının yakaladığı AYNI article (xGxOdakliArticle: URL /status/<id> ile
+    // kendi permalink zaman-damgası eşleşen article). Böylece intro kadrajı = SS SINIRI = yalnız odaklı tweet;
+    // YORUMLAR ayrı article'larda kaldığından video kadrajına ASLA giremez (olc() kadrajEl sınırına kırpar).
     function xVideoAnaTweet() {
         try {
+            var odak = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
+            if (odak) { var tx0 = odak.querySelector('[data-testid="tweetText"]'); return { el: odak, len: tx0 ? ((tx0.textContent || '').trim().length) : 40 }; }
+            // yedek (xGxOdakliArticle yoksa): time bir <a> İÇİNDE DEĞİL (yanıtlar elenir).
             var arts = document.querySelectorAll('article[data-testid="tweet"]');
             for (var i = 0; i < arts.length; i++) {
                 var t = arts[i].querySelector('time');
                 if (t && t.closest && !t.closest('a')) {
                     var tx = arts[i].querySelector('[data-testid="tweetText"]');
-                    var len = tx ? ((tx.textContent || '').trim().length) : 40;
-                    return { el: arts[i], len: len };
+                    return { el: arts[i], len: tx ? ((tx.textContent || '').trim().length) : 40 };
                 }
             }
         } catch (e) {}
@@ -5408,28 +5412,16 @@
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
         (async function akis() {
             try {
-                if (kadrajEl) {   // FAZ 1: ana tweet — TAM SS BOYU kadar yavaşça pan; bitince HEMEN listeye (yapay bekleme yok)
-                    try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {}
-                    await xVideoBekle(400); canvasBoyutla();
-                    await new Promise(function (res) {
-                        try {
-                            var tEl = document.scrollingElement || document.documentElement;
-                            var sonTp = 0;
-                            function panTik(ts) {
-                                try {
-                                    if (!window.__xVideoKayitAktif || window.__xVideoScrollStop) { res(); return; }
-                                    var r = kadrajEl.getBoundingClientRect();
-                                    var kalan = r.bottom - window.innerHeight;   // tweet altı ekranın altındaysa > 0
-                                    if (kalan <= 2) { setTimeout(res, 700); return; }   // tweet tamamı göründü -> kısa beklet, bitir
-                                    if (!sonTp) { sonTp = ts; requestAnimationFrame(panTik); return; }
-                                    var dt = Math.min(0.05, (ts - sonTp) / 1000); sonTp = ts;
-                                    tEl.scrollTop = (tEl.scrollTop || 0) + Math.min(kalan, 115 * dt);   // yarı hız (~115px/sn)
-                                    requestAnimationFrame(panTik);
-                                } catch (e) { res(); }
-                            }
-                            requestAnimationFrame(panTik);
-                        } catch (e) { res(); }
-                    });
+                if (kadrajEl) {   // FAZ 1: ana tweet INTROSU = tweet SS'i gibi SABİT çerçeve (sayfa KAYDIRMA YOK -> titreme yok).
+                    // Kadraj = odaklı tweet (olc kırpar) -> YORUMLAR giremez. Süre = metin okuma + tweet'te video varsa ~5sn izlet.
+                    try { if (typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}   // uzun metni aç (SS gibi)
+                    try { kadrajEl.scrollIntoView({ block: 'center' }); } catch (e) {}   // TEK sefer çerçevele; sonra sabit (pan yok)
+                    await xVideoBekle(450); canvasBoyutla();
+                    var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
+                    var _videoSure = 0;
+                    if (_vid) { try { _vid.muted = true; var _p = _vid.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _videoSure = 5000; }   // video/GIF -> oynat + ~5sn
+                    var _okuma = Math.min(9000, Math.max(2500, (ana.len || 40) * 45));   // metin uzunluğuna göre okuma süresi (~22 char/sn, 2.5-9sn)
+                    await xVideoBekle(_okuma + _videoSure);
                     if (!window.__xVideoKayitAktif) return;
                 }
                 // FAZ 2: repost listesini aç (yapay bekleme yok; yalnız liste DOM'u yerleşsin diye minimum settle)
