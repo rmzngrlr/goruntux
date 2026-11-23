@@ -5257,19 +5257,40 @@
             return !!document.querySelector('[aria-modal="true"] [data-testid="UserCell"]');
         } catch (e) { return false; }
     }
-    // Orta blok (kırpılacak eleman) + kaydırma kabı: bir UserCell'in KAYDIRILABİLİR atasını bul.
+    // Bir UserCell'in verilen sınır içindeki KAYDIRILABİLİR atasını bul (yoksa null).
+    function xVideoKaydirKap(cell, sinir) {
+        var el = cell.parentElement, kap = null;
+        while (el && el !== sinir && el.parentElement && el !== document.body) {
+            try { var st = getComputedStyle(el); if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 6) { kap = el; break; } } catch (e) {}
+            el = el.parentElement;
+        }
+        return kap;
+    }
+    // Orta blok (kırpılacak = kaydırılan liste kabı). KRİTİK: UserCell YALNIZ reposts MODAL'ı ya da gerçek
+    // /retweets SAYFASI içinden alınır. Tweet detay sayfasının KENAR ÇUBUĞUNDAKİ stray UserCell ("İlgili
+    // kişiler"/"Takip önerileri") ASLA kullanılmaz -> yoksa tüm detay sayfası (yorumlar) aşağı sürüklenir. Bulunamazsa null = abort.
     function xVideoListeBul() {
         try {
-            var cell = document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]');
-            if (!cell) return null;
-            var el = cell.parentElement, kap = null;
-            while (el && el !== document.body && el !== document.documentElement) {
-                try { var st = getComputedStyle(el); if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 6) { kap = el; break; } } catch (e) {}
-                el = el.parentElement;
+            // 1) Reposts MODAL'ı (en yaygın): modal içi kaydırma kabı.
+            var modal = document.querySelector('[aria-modal="true"]');
+            if (modal) {
+                var mcell = modal.querySelector('[data-testid="UserCell"]');
+                if (mcell) {
+                    var kap = xVideoKaydirKap(mcell, modal);
+                    if (!kap) { try { if (modal.scrollHeight > modal.clientHeight + 6) kap = modal; } catch (e) {} }
+                    if (kap) return { kadraj: kap, scroll: kap };
+                }
             }
-            var kadraj = kap || (cell.closest && (cell.closest('[aria-modal="true"]') || cell.closest('[data-testid="primaryColumn"]'))) || cell.parentElement;
-            var scroll = kap || document.scrollingElement || document.documentElement;
-            return { kadraj: kadraj, scroll: scroll };
+            // 2) Tam /retweets SAYFASI (modal yok ama URL /retweets + primaryColumn'da UserCell): sayfa=liste, yorum YOK.
+            if (/\/status\/\d+\/(retweets|reposts)/i.test(location.pathname)) {
+                var col = document.querySelector('[data-testid="primaryColumn"]');
+                var pcell = col && col.querySelector('[data-testid="UserCell"]');
+                if (pcell) {
+                    var kap2 = xVideoKaydirKap(pcell, col);
+                    return { kadraj: (kap2 || col), scroll: (kap2 || document.scrollingElement || document.documentElement) };
+                }
+            }
+            return null;   // ne modal ne /retweets sayfası -> abort (SAYFA kaydırılmaz)
         } catch (e) { return null; }
     }
     function xVideoInit() {
@@ -5317,18 +5338,29 @@
             ctrl.appendChild(info); ctrl.appendChild(b); ctrl.appendChild(kapat);
         } catch (e) {}
     }
-    // Repost (RT) listesini aç: zaten açıksa cb(true); değilse .../retweets linkine tıkla / URL'ye geç -> UserCell bekle.
+    // Repost (RT) listesini aç. "Açık" SAYILMA koşulu: reposts MODAL'ı VEYA gerçek /retweets SAYFASI
+    // (sayfadaki stray UserCell DEĞİL -> yoksa kenar çubuğu yüzünden hiç navige olmuyordu). Değilse ODAKLI
+    // tweet'in reposts sayısı linkine tıkla (yoksa /retweets URL push) -> modal/sayfa + UserCell bekle.
     function xVideoRepostAc(cb) {
+        function _acikMi() {
+            try {
+                if (document.querySelector('[aria-modal="true"] [data-testid="UserCell"]')) return true;
+                if (/\/status\/\d+\/(retweets|reposts)/i.test(location.pathname) && document.querySelector('[data-testid="primaryColumn"] [data-testid="UserCell"]')) return true;
+            } catch (e) {}
+            return false;
+        }
         try {
-            if (document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]')) { cb(true); return; }
-            var a = document.querySelector('a[href$="/retweets"], a[href$="/reposts"]');
+            if (_acikMi()) { cb(true); return; }
+            var odak = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;   // linki ODAKLI tweet'ten al (yanıtınkinden değil)
+            var a = (odak && (odak.querySelector('a[href$="/retweets"]') || odak.querySelector('a[href$="/reposts"]')))
+                 || document.querySelector('a[href$="/retweets"], a[href$="/reposts"]');
             if (a) { try { a.click(); } catch (e) {} }
             else { try { var yeni = location.pathname.replace(/\/$/, '') + '/retweets'; history.pushState(null, '', yeni); window.dispatchEvent(new PopStateEvent('popstate')); } catch (e) {} }
             var dn = 0;
             var iv = setInterval(function () {
                 dn++;
-                if (document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]')) { clearInterval(iv); cb(true); }
-                else if (dn > 45) { clearInterval(iv); cb(false); }   // ~7sn
+                if (_acikMi()) { clearInterval(iv); cb(true); }
+                else if (dn > 50) { clearInterval(iv); cb(false); }   // ~7.5sn
             }, 150);
         } catch (e) { cb(false); }
     }
@@ -5444,6 +5476,11 @@
             // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~115px/sn, yarı) -> fps'ten
             // bağımsız SABİT. Her RT eden net geçer; sanallaştırma scrollTop'u zıplatırsa pos gerçek konuma çekilir.
             var el = kap || document.scrollingElement || document.documentElement;
+            // [GÜVENLİK] SAYFA kökünü (documentElement/body/scrollingElement) YALNIZ gerçek /retweets SAYFASINDAYKEN
+            // kaydır (orada sayfa=liste, yorum yok). Aksi halde tweet detay sayfasını yorumların içinden aşağı
+            // sürüklerdik -> onun yerine güvenle bitir.
+            var _kok = (el === document.scrollingElement || el === document.documentElement || el === document.body);
+            if (_kok && !/\/status\/\d+\/(retweets|reposts)/i.test(location.pathname)) { try { bitir(); } catch (e) {} return; }
             var HIZ = 115, pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [YARI HIZ] her RT eden daha net (eski 230)
             window.__xVideoScrollStop = false;
             function tik(ts) {
