@@ -3565,6 +3565,11 @@
             CERCEVE.forEach(P); CI('12', '10.6', '1.25'); P('M9.6 15c0-1.5 1.1-2.4 2.4-2.4s2.4 .9 2.4 2.4');   // cerceve + kisi
         } else if (tur === 'ara') {
             CERCEVE.forEach(P); CI('11.3', '11.3', '1.7'); P('M12.7 12.7l1.7 1.7');   // cerceve + arama
+        } else if (tur === 'kayit') {
+            // RT VIDEO kayit modu: yesil SS butonuyla AYNI kare cerceve + ic DOLU nokta (record). Renk CSS'te (kirmizi).
+            CERCEVE.forEach(P);
+            var _dot = document.createElementNS(NS, 'circle'); _dot.setAttribute('cx', '12'); _dot.setAttribute('cy', '12'); _dot.setAttribute('r', '2.6');
+            _dot.setAttribute('stroke', 'none'); _dot.setAttribute('fill', '#f4212e'); g.appendChild(_dot);
         } else {
             CERCEVE.forEach(P); P('M12 10v4'); P('M10 12h4');   // cerceve + arti (ekle)
         }
@@ -4805,13 +4810,15 @@
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
             /* [RT VİDEO] Sağ-tıkla açılan video modu: buton kırmızı + kamera; SS "+" ikonu gizlenir. */
-            /* [RT VİDEO] Video modu butonu = klasik nested ikon tarzı: ŞEFFAF buton + NET KIRMIZI "kare içinde
-               yuvarlak" kayıt simgesi (::before kare çerçeve, ::after dolu daire). SS "+" ikonu gizlenir. */
-            .x-gx-nav-ekle.x-gx-videomod{ background:transparent !important; }
-            .x-gx-nav-ekle.x-gx-videomod:hover{ background:rgba(244,33,46,.14) !important; }
-            .x-gx-nav-ekle.x-gx-videomod .x-gx-tw-ic{ display:none !important; }
-            .x-gx-nav-ekle.x-gx-videomod::before{ content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:26px; height:26px; border:2.4px solid #f4212e; border-radius:7px; box-sizing:border-box; }
-            .x-gx-nav-ekle.x-gx-videomod::after{ content:''; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:12px; height:12px; border-radius:50%; background:#f4212e; }
+            /* [RT VİDEO] Video modu = YEŞİL SS butonunun AYNISI, yalnız KIRMIZI + içte + yerine DOLU NOKTA (record).
+               Buton ŞEFFAF kalır (yeşildeki gibi; bg değişmez); sadece ikon renkleri kırmızıya döner. İkon
+               _xGxSsIkon('kayit') ile basılır (kare çerçeve + nokta). */
+            .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .c{ stroke:#f4212e !important; fill:none !important; }
+            .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in{ stroke:#f4212e !important; }
+            .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in circle{ fill:#f4212e !important; stroke:none !important; }
+            .x-gx-nav-ekle.x-gx-videomod:hover .x-gx-ssico .c{ fill:#f4212e !important; stroke:#f4212e !important; }
+            .x-gx-nav-ekle.x-gx-videomod:hover .x-gx-ssico .in{ stroke:#fff !important; }
+            .x-gx-nav-ekle.x-gx-videomod:hover .x-gx-ssico .in circle{ fill:#fff !important; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
             /* tooltip FIXED + documentElement'e taşınır: X nav'ında TRANSFORM'lu ata (translateZ/scale vb.)
                fixed tooltip'i o ataya hapsedip overflow ile KIRPIYORDU -> span <html>'e taşınır (ata yok),
@@ -4944,6 +4951,8 @@
                     var _ekl = document.getElementById('x-gx-nav-ekle');
                     if (_ekl && _ekl.classList.contains('x-gx-videomod')) {
                         _ekl.classList.remove('x-gx-videomod');
+                        var _eic = _ekl.querySelector('.x-gx-tw-ic');
+                        if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon('ekle')); }   // "+" ikonunu geri getir
                         if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
                     }
                 }
@@ -5229,6 +5238,24 @@
     function xVideoHostX() { try { return /(^|\.)x\.com$/i.test(location.hostname) || /(^|\.)twitter\.com$/i.test(location.hostname); } catch (e) { return false; } }
     // [RT VİDEO] Tweet detay (/status/<id>) sayfası mı? Sağ-tık video modu YALNIZ burada çalışır.
     function xVideoTweetDetayMi() { try { return xVideoHostX() && /\/status\/\d+/.test(location.pathname); } catch (e) { return false; } }
+    // [BAŞLIK HARİÇ] X'in tepedeki yapışkan "← Gönderi" başlık barının ALT Y'si (yoksa 0). Kadrajın üst klibi
+    // olarak kullanılır -> ne introda ne listede bu bar videoya girer.
+    function xVideoUstBaslikAlt() {
+        try {
+            var col = document.querySelector('[data-testid="primaryColumn"]');
+            if (!col) return 0;
+            var kids = col.querySelectorAll('div');
+            for (var i = 0; i < kids.length && i < 60; i++) {
+                var el = kids[i];
+                var st = getComputedStyle(el);
+                if (st.position === 'sticky' || st.position === 'fixed') {
+                    var r = el.getBoundingClientRect();
+                    if (r.top <= 3 && r.height >= 24 && r.height <= 120 && r.width >= 150) return Math.round(r.bottom);
+                }
+            }
+        } catch (e) {}
+        return 0;
+    }
     // [RT VİDEO] Sol-nav yeşil butonun video modundaki sol-tık eylemi: RT listesi videosunu başlat.
     function xVideoBaslatNav() {
         try {
@@ -5239,14 +5266,16 @@
             xVideoBaslat(ctrl);
         } catch (e) {}
     }
-    // [RT VİDEO] Butonu video moduna sok / normale döndür (class ile; ikon+renk CSS'ten, tooltip burada).
+    // [RT VİDEO] Butonu video moduna sok / normale döndür: class (renk CSS'ten) + İKONU değiştir (ekle "+" <-> kayit "nokta").
     function xNavVideoModToggle(btn) {
         try {
             var acik = btn.classList.toggle('x-gx-videomod');
+            var ic = btn.querySelector('.x-gx-tw-ic');
+            if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(acik ? 'kayit' : 'ekle')); }
             var tip = btn.__tip;
             if (acik) {
                 if (tip) tip.textContent = "Video modu: TIKLA = RT listesi videosu · sağ-tık = geri";
-                xVideoToast("🎥 Video modu — tıkla: RT listesi videosu kaydet");
+                xVideoToast("Video modu — tıkla: RT listesi videosu kaydet");
             } else {
                 if (tip) tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
                 xVideoToast("SS moduna dönüldü");
@@ -5453,7 +5482,9 @@
                     // Kadraj = odaklı tweet (olc kırpar) -> YORUMLAR giremez. Süre = metin okuma + tweet'te video varsa ~5sn izlet.
                     try { if (typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}   // uzun metni aç (SS gibi)
                     try { kadrajEl.scrollIntoView({ block: 'center' }); } catch (e) {}   // TEK sefer çerçevele; sonra sabit (pan yok)
-                    await xVideoBekle(450); canvasBoyutla();
+                    await xVideoBekle(450);
+                    try { ustKlip = xVideoUstBaslikAlt(); } catch (e) {}   // [BAŞLIK HARİÇ] introda da "← Gönderi" barı kadraja girmesin
+                    canvasBoyutla();
                     var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
                     var _videoSure = 0;
                     if (_vid) { try { _vid.muted = true; var _p = _vid.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _videoSure = 5000; }   // video/GIF -> oynat + ~5sn
@@ -5474,7 +5505,7 @@
                 // [BAŞLIK HARİÇ] kadrajın ÜSTÜNÜ İLK RT SATIRININ üstüne kıstır -> "← Gönderi" + modal başlığı kadraja GİRMEZ.
                 try {
                     var _ilk = (liste.scroll.querySelector && liste.scroll.querySelector('[data-testid="UserCell"]')) || (kadrajEl.querySelector && kadrajEl.querySelector('[data-testid="UserCell"]'));
-                    if (_ilk) ustKlip = Math.max(0, _ilk.getBoundingClientRect().top);
+                    ustKlip = Math.max(xVideoUstBaslikAlt(), _ilk ? Math.max(0, _ilk.getBoundingClientRect().top) : 0);
                 } catch (e) {}
                 canvasBoyutla();   // kadraj -> liste (üst-klip uygulanmış; çözünürlük değişir)
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
