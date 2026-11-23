@@ -4804,6 +4804,11 @@
             .x-gx-nav-ekle .x-gx-ssico{ width:42px !important; height:42px !important; }   /* .c dis-kenar ~39px: MAVI 40px'e denk ama outline iri durdugundan 1px kucuk -> gorsel esit. */
             .x-gx-nav-ekle .x-gx-tw-ic{ display:inline-flex; align-items:center; justify-content:center; line-height:0; }
             .x-gx-nav-ekle .x-gx-tw-ic svg{ display:block; }
+            /* [RT VİDEO] Sağ-tıkla açılan video modu: buton kırmızı + kamera; SS "+" ikonu gizlenir. */
+            .x-gx-nav-ekle.x-gx-videomod{ background:#e0245e !important; }
+            .x-gx-nav-ekle.x-gx-videomod:hover{ background:#c01e4f !important; }
+            .x-gx-nav-ekle.x-gx-videomod .x-gx-tw-ic{ display:none !important; }
+            .x-gx-nav-ekle.x-gx-videomod::after{ content:'🎥'; position:absolute; left:0; top:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:19px; line-height:1; }
             /* tooltip SAĞDA (Anasayfa'nın altında kalmasın). */
             /* tooltip FIXED + documentElement'e taşınır: X nav'ında TRANSFORM'lu ata (translateZ/scale vb.)
                fixed tooltip'i o ataya hapsedip overflow ile KIRPIYORDU -> span <html>'e taşınır (ata yok),
@@ -4890,7 +4895,21 @@
                 var _tip = ekle.querySelector('.x-gx-tw-tip');
                 if (_tip) { var _esk = document.getElementById('x-gx-nav-tip'); if (_esk) _esk.remove(); _tip.id = 'x-gx-nav-tip'; document.documentElement.appendChild(_tip); ekle.__tip = _tip; }
             } catch (e) {}
-            ekle.addEventListener('click', function (ev) { ev.preventDefault(); ev.stopPropagation(); xNavEkleTikla(ekle); });
+            ekle.addEventListener('click', function (ev) {
+                ev.preventDefault(); ev.stopPropagation();
+                // [RT VİDEO] Video modundaysak (tweet detayda sağ-tıkla açılır) -> SS yerine RT listesi videosu kaydet.
+                if (ekle.classList.contains('x-gx-videomod') && xVideoTweetDetayMi()) { try { xVideoBaslatNav(); } catch (e) {} return; }
+                xNavEkleTikla(ekle);
+            });
+            // [RT VİDEO] Sağ-tık: YALNIZ tweet detay sayfasında butonu video moduna sok / normale döndür.
+            // Mod butonun class'ında tutulur -> SPA navigasyonunda buton yeniden kurulunca kendiliğinden sıfırlanır.
+            ekle.addEventListener('contextmenu', function (ev) {
+                try {
+                    if (!xVideoTweetDetayMi()) return;   // detay dışında normal tarayıcı sağ-tık menüsü kalsın
+                    ev.preventDefault(); ev.stopPropagation();
+                    xNavVideoModToggle(ekle);
+                } catch (e) {}
+            });
             // Tooltip FIXED + <html>'de olduğundan konumu hover'da JS ile ayarla (butonun sağına, dikey ortalı).
             ekle.addEventListener('mouseenter', function () { try { if (a.classList.contains('scanning')) return; var tip = ekle.__tip; if (!tip) return; _xNavTipKonum(ekle, tip); tip.style.opacity = '1'; } catch (e) {} });
             ekle.addEventListener('mouseleave', function () { try { var tip = ekle.__tip; if (tip) tip.style.opacity = '0'; } catch (e) {} });
@@ -4916,6 +4935,16 @@
             var nav = document.getElementById('x-gx-nav-btn');
             var dock = document.getElementById('x-downloader-widget');
             if (!nav || !dock) return;
+            // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera kalmasın.
+            try {
+                if (!window.__xVideoKayitAktif && !xVideoTweetDetayMi()) {
+                    var _ekl = document.getElementById('x-gx-nav-ekle');
+                    if (_ekl && _ekl.classList.contains('x-gx-videomod')) {
+                        _ekl.classList.remove('x-gx-videomod');
+                        if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+                    }
+                }
+            } catch (e) {}
             // TARAMA AKTİF BAYRAĞI: toplu tarama sırasında SS alınırken SPA dock'u yeniden kurup
             // .scanning'i düşürse de nav halkası KAYBOLMASIN; ilerleme window-var'lardan okunur
             // (dock #w-scan-* yeniden kurulsa da kalıcı). İş bitince xProfilDockBitir temizler.
@@ -5195,6 +5224,32 @@
     // akışı alınır, canvas ile liste rect'ine KIRPILIR (Region Capture content-script'te garantisiz -> canvas-kırp
     // güvenli), MediaRecorder -> .webm indir. Oto-kaydır + Durdur + İndir. Ses yok. Yalnız X (sosyal).
     function xVideoHostX() { try { return /(^|\.)x\.com$/i.test(location.hostname) || /(^|\.)twitter\.com$/i.test(location.hostname); } catch (e) { return false; } }
+    // [RT VİDEO] Tweet detay (/status/<id>) sayfası mı? Sağ-tık video modu YALNIZ burada çalışır.
+    function xVideoTweetDetayMi() { try { return xVideoHostX() && /\/status\/\d+/.test(location.pathname); } catch (e) { return false; } }
+    // [RT VİDEO] Sol-nav yeşil butonun video modundaki sol-tık eylemi: RT listesi videosunu başlat.
+    function xVideoBaslatNav() {
+        try {
+            if (window.__xVideoKayitAktif) { xVideoToast("Zaten kayıt sürüyor."); return; }
+            xVideoStil();
+            var ctrl = document.getElementById('x-gx-video-ctrl');
+            if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); }
+            xVideoBaslat(ctrl);
+        } catch (e) {}
+    }
+    // [RT VİDEO] Butonu video moduna sok / normale döndür (class ile; ikon+renk CSS'ten, tooltip burada).
+    function xNavVideoModToggle(btn) {
+        try {
+            var acik = btn.classList.toggle('x-gx-videomod');
+            var tip = btn.__tip;
+            if (acik) {
+                if (tip) tip.textContent = "Video modu: TIKLA = RT listesi videosu · sağ-tık = geri";
+                xVideoToast("🎥 Video modu — tıkla: RT listesi videosu kaydet");
+            } else {
+                if (tip) tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+                xVideoToast("SS moduna dönüldü");
+            }
+        } catch (e) {}
+    }
     function xVideoSayfaMi() {
         try {
             if (!xVideoHostX()) return false;
@@ -5308,6 +5363,7 @@
         try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true }); }
         catch (e) { xVideoToast('Kayıt iptal edildi / başlatılamadı.', true); return; }
         window.__xVideoKayitAktif = true;
+        try { window.__xVideoScrollStop = false; } catch (e) {}   // önceki kaydın durdur() bayrağı yeni FAZ 1 pan'ını atlatmasın
         var vid = document.createElement('video'); vid.muted = true; vid.playsInline = true; vid.srcObject = stream;
         try { await vid.play(); } catch (e) {}
         await new Promise(function (res) { if (vid.videoWidth) { res(); return; } vid.onloadedmetadata = function () { res(); }; setTimeout(res, 1400); });
@@ -5352,23 +5408,40 @@
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
         (async function akis() {
             try {
-                if (kadrajEl) {   // FAZ 1: ana tweet
-                    try { kadrajEl.scrollIntoView({ block: 'center' }); } catch (e) {}
-                    await xVideoBekle(350); canvasBoyutla();
-                    var N = Math.min(9000, Math.max(2500, (ana.len || 40) * 45));   // uzunluğa göre ~22 char/sn; 2.5-9sn
-                    await xVideoBekle(N);
+                if (kadrajEl) {   // FAZ 1: ana tweet — TAM SS BOYU kadar yavaşça pan; bitince HEMEN listeye (yapay bekleme yok)
+                    try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {}
+                    await xVideoBekle(400); canvasBoyutla();
+                    await new Promise(function (res) {
+                        try {
+                            var tEl = document.scrollingElement || document.documentElement;
+                            var sonTp = 0;
+                            function panTik(ts) {
+                                try {
+                                    if (!window.__xVideoKayitAktif || window.__xVideoScrollStop) { res(); return; }
+                                    var r = kadrajEl.getBoundingClientRect();
+                                    var kalan = r.bottom - window.innerHeight;   // tweet altı ekranın altındaysa > 0
+                                    if (kalan <= 2) { setTimeout(res, 700); return; }   // tweet tamamı göründü -> kısa beklet, bitir
+                                    if (!sonTp) { sonTp = ts; requestAnimationFrame(panTik); return; }
+                                    var dt = Math.min(0.05, (ts - sonTp) / 1000); sonTp = ts;
+                                    tEl.scrollTop = (tEl.scrollTop || 0) + Math.min(kalan, 115 * dt);   // yarı hız (~115px/sn)
+                                    requestAnimationFrame(panTik);
+                                } catch (e) { res(); }
+                            }
+                            requestAnimationFrame(panTik);
+                        } catch (e) { res(); }
+                    });
                     if (!window.__xVideoKayitAktif) return;
                 }
-                // FAZ 2: repost listesini aç
+                // FAZ 2: repost listesini aç (yapay bekleme yok; yalnız liste DOM'u yerleşsin diye minimum settle)
                 var acildi = await new Promise(function (res) { xVideoRepostAc(res); });
                 if (!window.__xVideoKayitAktif) return;
                 if (!acildi) { xVideoToast('Repost listesi açılamadı.', true); durdur(); return; }
-                await xVideoBekle(600);
+                await xVideoBekle(250);
                 var liste = xVideoListeBul();
                 if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı.', true); durdur(); return; }
                 kadrajEl = liste.kadraj; canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
-                await xVideoBekle(400);
+                await xVideoBekle(250);
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
         })();
@@ -5376,10 +5449,10 @@
     function xVideoOtoKaydir(kap, bitir) {
         try {
             // [AKICI — TİTREMESİZ] Interval yerine requestAnimationFrame: kaydırma EKRAN TAZELEMESİYLE SENKRON ->
-            // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~230px/sn) -> fps'ten
+            // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~115px/sn, yarı) -> fps'ten
             // bağımsız SABİT. Her RT eden net geçer; sanallaştırma scrollTop'u zıplatırsa pos gerçek konuma çekilir.
             var el = kap || document.scrollingElement || document.documentElement;
-            var HIZ = 230, pos = el.scrollTop || 0, sonT = 0, durgun = 0;
+            var HIZ = 115, pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [YARI HIZ] her RT eden daha net (eski 230)
             window.__xVideoScrollStop = false;
             function tik(ts) {
                 try {

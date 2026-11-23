@@ -1670,16 +1670,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Eklenti simgesine tiklaninca: panel ACIKSA o sekmeye git, DEGILSE yeni sekmede ac.
 chrome.action.onClicked.addListener((tab) => {
-  // [RT LİSTE VİDEOSU] X tweet (status) sayfasında toolbar -> widget'a "video kontrolünü göster" mesajı
-  // (sağ-altta kayıt butonları çıkar; oradan ana-tweet introlu RT listesi videosu). DİĞER her sayfada panele git.
-  try {
-    if (tab && tab.id != null && tab.url && /^https?:\/\/(www\.)?(x|twitter)\.com\/[^/]+\/status\/\d+/i.test(tab.url)) {
-      chrome.tabs.sendMessage(tab.id, { action: 'xVideoGoster' }, () => { void chrome.runtime.lastError; });
-      return;
-    }
-  } catch (e) { /* ignore -> panele düş */ }
-  // [WEBSHOT: SAĞ-TIK] Toolbar butonu diğer TÜM sayfalarda DOĞRUDAN PANELE gider (webshot yakalama sağ-tık
-  // menüsünde; yüzen menü/popup kaldırıldı).
+  // [RT LİSTE VİDEOSU — TETİK TAŞINDI] Video kaydı tetiği artık X sol-nav yeşil "+" SS butonunda SAĞ-TIK
+  // (tweet detayda -> video modu, sol-tık kaydeder; bkz widget.js xNavVideoModToggle). Toolbar bu yüzden
+  // ARTIK her sayfada DOĞRUDAN PANELE gider (eski status -> xVideoGoster dalı kaldırıldı).
+  // [WEBSHOT: SAĞ-TIK] Toolbar butonu diğer TÜM sayfalarda da panele gider (webshot yakalama sağ-tık menüsünde).
   chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr", panel_tab_id: null }, (res) => {
     let panelUrl = (res.server_origin || "https://goruntux.rgmedya.tr") + '/';
     const focusTab = (t) => {
