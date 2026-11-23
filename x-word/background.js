@@ -357,6 +357,18 @@ function logToServer(message) {
   } catch (err) {}
 }
 
+// [GÖRSEL TEŞHİS] /teshis log'una yaz (görsel-teslim yolunu izlemek için; logToServer /api/extension/log'a yazar, bu AYRI).
+function teshisLog(msg) {
+  try {
+    chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+      const origin = res.server_origin || "https://goruntux.rgmedya.tr";
+      if (isValidOrigin(origin)) {
+        fetch(`${origin}/api/teshis/log`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ msg: msg, lvl: 'info' }) }).catch(e => {});
+      }
+    });
+  } catch (err) {}
+}
+
 // ===== [WEBSHOT] Sosyal-disi sitelerde sayfa-ustu SAYDAM menu (GoruntuX'e Git + Ekran Goruntusu Al) =====
 // Chrome action-popup'i opak/siyah ve konumu kontrol edilemiyordu -> onClicked'te webshot.js enjekte edip
 // sayfanin sag-ustunde SAYDAM yuzen menu gosteriyoruz. xWebshotPopupOlmali: sosyal-disi + http/https +
@@ -682,6 +694,7 @@ function queueLocalImage(link, dataUrl, origin) {
     let q = (r && r.pending_local_images) || [];
     q = q.filter(x => x.link !== link);   // ayni link -> guncelle
     q.push({ link: link, dataUrl: dataUrl });
+    try { teshisLog('[img-bg] queueLocalImage link=...' + String(link || '').slice(-32) + ' | pending=' + q.length); } catch (e) {}
     chrome.storage.local.set({ pending_local_images: q }, () => {
       flushPendingLocalImages(origin);
     });
@@ -693,9 +706,10 @@ function flushPendingLocalImages(origin) {
     const q = (r && r.pending_local_images) || [];
     if (!q.length) return;
     const panelTabId = r.panel_tab_id;
+    try { teshisLog('[img-bg] flush: pending=' + q.length + ' panelTab=' + (panelTabId || 'YOK')); } catch (e) {}
     const teslim = (tid) => {
       let kalan = [], bekleyen = q.length;
-      const bitir = () => { chrome.storage.local.set({ pending_local_images: kalan }); };
+      const bitir = () => { try { teshisLog('[img-bg] flush SONUC: ' + (q.length - kalan.length) + ' teslim, ' + kalan.length + ' KALDI (panel tab=' + tid + ')'); } catch (e) {} chrome.storage.local.set({ pending_local_images: kalan }); };
       q.forEach(item => {
         try {
           chrome.tabs.sendMessage(tid, { action: "localImage", link: item.link, dataUrl: item.dataUrl, mime: "" }, () => {
@@ -708,10 +722,11 @@ function flushPendingLocalImages(origin) {
     };
     if (panelTabId) {
       chrome.tabs.get(panelTabId, (t) => {
-        if (chrome.runtime.lastError || !t) { openPanelBackground(origin || r.server_origin); }
+        if (chrome.runtime.lastError || !t) { try { teshisLog('[img-bg] panel tab ' + panelTabId + ' YOK -> arka planda acilir (gorsel pending bekliyor)'); } catch (e) {} openPanelBackground(origin || r.server_origin); }
         else { teslim(panelTabId); }
       });
     } else {
+      try { teshisLog('[img-bg] panel_tab_id YOK -> arka planda acilir (gorsel pending bekliyor)'); } catch (e) {}
       openPanelBackground(origin || r.server_origin);
     }
   });
