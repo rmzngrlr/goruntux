@@ -10391,15 +10391,23 @@ LOCAL_IMAGES_JS = r'''
       if(!_db){ resolve(); return; }
       try{
         var req=_db.transaction(STORE,'readonly').objectStore(STORE).getAll();
-        req.onsuccess=function(){ var arr=req.result||[]; for(var i=0;i<arr.length;i++) _cache[arr[i].k]={dataUrl:arr[i].dataUrl,mime:arr[i].mime}; resolve(); };
+        req.onsuccess=function(){ var arr=req.result||[]; for(var i=0;i<arr.length;i++) _cache[arr[i].k]={dataUrl:arr[i].dataUrl,mime:arr[i].mime}; try{ if(window.xTeshisLog) window.xTeshisLog('[img] loadAll: IndexedDB -> '+arr.length+' görsel yüklendi (reopen/init)'); }catch(e){} resolve(); };
         req.onerror=function(){ resolve(); };
       }catch(e){ resolve(); }
     });
   }
   function putItem(k,dataUrl,mime){
+    var _yeni=!_cache[k];
     _cache[k]={dataUrl:dataUrl,mime:mime};
-    if(!_db) return;
-    try{ _db.transaction(STORE,'readwrite').objectStore(STORE).put({k:k,dataUrl:dataUrl,mime:mime}); }catch(e){}
+    if(!_db){
+      // [TEŞHİS/RACE] _db HENÜZ AÇILMADI -> görsel YALNIZ cache'e (RAM) girdi, IndexedDB'ye YAZILMADI!
+      // Reload/reopen'da loadAll IndexedDB'den okur -> bu görsel YOK -> KAYIP. ("ilk kurulumda + aralıklı" adayı.)
+      try{ if(window.xTeshisLog) window.xTeshisLog('[img] HATA: _db-YOK put -> cache-only, IndexedDB YAZILMADI! k=...'+String(k).slice(-26)+' cache='+Object.keys(_cache).length,'error'); }catch(e){}
+      return;
+    }
+    try{ _db.transaction(STORE,'readwrite').objectStore(STORE).put({k:k,dataUrl:dataUrl,mime:mime});
+      try{ if(window.xTeshisLog) window.xTeshisLog('[img] put k=...'+String(k).slice(-26)+' ('+(_yeni?'yeni':'guncel')+') cache='+Object.keys(_cache).length); }catch(e){}
+    }catch(e){ try{ if(window.xTeshisLog) window.xTeshisLog('[img] HATA IndexedDB put: '+(e&&e.message||e),'error'); }catch(_){} }
   }
   function clearAll(){
     _cache={};
@@ -17681,18 +17689,25 @@ async function basla(){ await depolama(); sonMetas=await idbMetas(); ozetCiz(); 
 // webshot SS = AYNI grup anahtarı + AYNI normalize kök olmalı; değilse gruplama/ezme sorunu görünür.
 function hvDecodeU(link){ try{ var s=String(link||''); if(s.toLowerCase().indexOf('xmanual://')===0){ var i=s.indexOf('?u='); if(i!==-1) return decodeURIComponent(s.slice(i+3)); } }catch(e){} return ''; }
 function hvNormKey(link){ var s=String(link||'').split('#')[0].split('?')[0].trim().toLowerCase(); s=s.replace(/\/embed$/,''); if(s.length>1 && s.charAt(s.length-1)==='/') s=s.slice(0,-1); return s; }
+// [GÖRSEL TEŞHİS] Yerel görsel IndexedDB (goruntux_local_images/images) ANAHTARLARI -> havuz öğesinin görseli
+// gerçekten IndexedDB'de mi (kalıcı mı) yoksa kayıp mı, kesin görmek için.
+function idbLocalImageKeys(){ return new Promise(function(resolve){ try{ var rq=indexedDB.open('goruntux_local_images'); rq.onsuccess=function(){ var db=rq.result; try{ if(!db.objectStoreNames.contains('images')){ resolve({}); db.close(); return; } var g=db.transaction('images','readonly').objectStore('images').getAllKeys(); g.onsuccess=function(){ var m={}; (g.result||[]).forEach(function(k){ m[k]=1; }); resolve(m); db.close(); }; g.onerror=function(){ resolve({}); db.close(); }; }catch(e){ resolve({}); try{db.close();}catch(_){} } }; rq.onerror=function(){ resolve({}); }; }catch(e){ resolve({}); } }); }
 async function havuzGetir(){
-  var box=$('havuz'); box.style.display='block'; box.innerHTML='<div class="bos">Havuz okunuyor...</div>';
+  var box=$('havuz'); box.style.display='block'; box.innerHTML='<div class="bos">Havuz + görsel okunuyor...</div>';
   var cid=''; try{ cid=localStorage.getItem('x_client_id')||''; }catch(e){}
   var url='/api/status'+(cid?('?client_id='+encodeURIComponent(cid)):'');
   var items=[];
   try{ var r=await fetch(url,{cache:'no-store'}); var d=await r.json(); items=(d&&d.manuel_list)||[]; }catch(e){ box.innerHTML='<div class="bos">Havuz okunamadi: '+esc(String(e&&e.message||e))+'</div>'; return; }
-  if(!items.length){ box.innerHTML='<div class="bos">Havuz bos (client_id='+esc(cid||'?')+'). Panelde bu tarayicinin havuzu dolu olmali.</div>'; return; }
-  var h='<div style="color:#8899a6;font-size:12px;margin:2px 0 6px;">Havuz: '+items.length+' oge (client_id='+esc(cid||'?')+') &mdash; ayni sayfadan webshot SS = AYNI grup anahtari + AYNI normalize kok olmali.</div>';
-  h+='<table><thead><tr><th>#</th><th>Baslik</th><th>grup anahtari (group)</th><th>normalize anahtar</th><th>Gercek URL (?u=)</th><th>Grsl</th></tr></thead><tbody>';
-  h+=items.map(function(it){ var go=it.group||''; return '<tr><td>'+it.index+'</td><td>'+esc(it.title||'(bos)')+'</td><td'+(go?'':' style="color:#ff8a8a;"')+'>'+esc(go||'(BOS)')+'</td><td style="color:#8899a6;word-break:break-all;">'+esc(hvNormKey(it.link))+'</td><td style="color:#7ee6a8;word-break:break-all;">'+esc(hvDecodeU(it.link))+'</td><td>'+(it.has_image?'OK':'-')+'</td></tr>'; }).join('');
+  var idb={}; try{ idb=await idbLocalImageKeys(); }catch(e){}
+  var idbN=Object.keys(idb).length;
+  if(!items.length){ box.innerHTML='<div class="bos">Havuz bos (client_id='+esc(cid||'?')+'). IndexedDB yerel görsel sayısı: '+idbN+'.</div>'; return; }
+  var eksik=0; items.forEach(function(it){ if(!idb[hvNormKey(it.link)]) eksik++; });
+  var h='<div style="font-size:12px;margin:2px 0 6px;color:#8899a6;">Havuz: <b style="color:#e7e9ea;">'+items.length+'</b> oge · IndexedDB yerel görsel: <b style="color:#e7e9ea;">'+idbN+'</b> · IDB görseli <b'+(eksik?' style="color:#ff8a8a;"':' style="color:#7ee6a8;"')+'>EKSİK: '+eksik+'</b> (client_id='+esc(cid||'?')+')<br>YOK = havuzda öğe var ama görseli IndexedDB,de yok (KAYIP). </div>';
+  h+='<table><thead><tr><th>#</th><th>Baslik</th><th>grup</th><th>normalize anahtar (IDB key)</th><th>IDB görsel</th><th>Gercek URL(?u=)</th></tr></thead><tbody>';
+  h+=items.map(function(it){ var go=it.group||''; var idbVar=!!idb[hvNormKey(it.link)]; return '<tr><td>'+it.index+'</td><td>'+esc(it.title||'(bos)')+'</td><td'+(go?'':' style="color:#ff8a8a;"')+'>'+esc(go||'(BOS)')+'</td><td style="color:#8899a6;word-break:break-all;">'+esc(hvNormKey(it.link))+'</td><td'+(idbVar?' style="color:#7ee6a8;"':' style="color:#ff8a8a;font-weight:700;"')+'>'+(idbVar?'VAR':'YOK ✖')+'</td><td style="color:#7ee6a8;word-break:break-all;">'+esc(hvDecodeU(it.link))+'</td></tr>'; }).join('');
   h+='</tbody></table>';
   box.innerHTML=h;
+  try{ fetch('/api/teshis/log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msg:'[havuz] '+items.length+' oge | IndexedDB gorsel='+idbN+' | IDB-EKSIK='+eksik, lvl:(eksik?'error':'info')})}); }catch(e){}
 }
 $('havbtn').addEventListener('click', havuzGetir);
 $('giris-btn').addEventListener('click', giris);
