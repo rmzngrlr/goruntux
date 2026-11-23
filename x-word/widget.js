@@ -972,6 +972,9 @@
             // [TIKTOK SS] Her video gönderisinin sağ aksiyon kolonuna (beğeni/yorum/paylaş; FB Reels deseni)
             // yeşil "+" GoruntuX butonu (yalniz tt'de aktif).
             try { xTtButonInit(); } catch (e) {}
+            // [RT LİSTE VİDEOSU] X RT/beğeni/alıntı listesinde orta bloğu VİDEO kaydet (Region yerine canvas-kırp;
+            // getDisplayMedia preferCurrentTab -> sekme akışı -> liste rect'ine kırp -> MediaRecorder -> .webm indir).
+            try { xVideoInit(); } catch (e) {}
             // [GÜNCELLEME F5] Eklenti ↻ yenilenince bu sayfadaki içerik-script KOPAR -> chrome çağrıları patlar,
             // butonlar "Hata" verir. Kopukluğu sez -> sayfaya "Yenile (F5)" toast'ı koy (X + tüm sosyal medya).
             try { xGxGuncellemeKontrolBaslat(); } catch (e) {}
@@ -5180,6 +5183,174 @@
         }
         try { xTikBoya(); } catch (e) {}
         try { xTikMenu(); } catch (e) {}
+    }
+
+    // ============ [RT LİSTE VİDEOSU] ============
+    // X RT/beğeni/alıntı listesinde ORTA BLOĞU (liste) VİDEO kaydet. Tüm sekme DEĞİL: getDisplayMedia ile sekme
+    // akışı alınır, canvas ile liste rect'ine KIRPILIR (Region Capture content-script'te garantisiz -> canvas-kırp
+    // güvenli), MediaRecorder -> .webm indir. Oto-kaydır + Durdur + İndir. Ses yok. Yalnız X (sosyal).
+    function xVideoHostX() { try { return /(^|\.)x\.com$/i.test(location.hostname) || /(^|\.)twitter\.com$/i.test(location.hostname); } catch (e) { return false; } }
+    function xVideoSayfaMi() {
+        try {
+            if (!xVideoHostX()) return false;
+            if (/\/status\/\d+\/(retweets|likes|quotes)/i.test(location.pathname)) return true;
+            return !!document.querySelector('[aria-modal="true"] [data-testid="UserCell"]');
+        } catch (e) { return false; }
+    }
+    // Orta blok (kırpılacak eleman) + kaydırma kabı: bir UserCell'in KAYDIRILABİLİR atasını bul.
+    function xVideoListeBul() {
+        try {
+            var cell = document.querySelector('[aria-modal="true"] [data-testid="UserCell"]') || document.querySelector('[data-testid="UserCell"]');
+            if (!cell) return null;
+            var el = cell.parentElement, kap = null;
+            while (el && el !== document.body && el !== document.documentElement) {
+                try { var st = getComputedStyle(el); if ((st.overflowY === 'auto' || st.overflowY === 'scroll') && el.scrollHeight > el.clientHeight + 6) { kap = el; break; } } catch (e) {}
+                el = el.parentElement;
+            }
+            var kadraj = kap || (cell.closest && (cell.closest('[aria-modal="true"]') || cell.closest('[data-testid="primaryColumn"]'))) || cell.parentElement;
+            var scroll = kap || document.scrollingElement || document.documentElement;
+            return { kadraj: kadraj, scroll: scroll };
+        } catch (e) { return null; }
+    }
+    function xVideoInit() {
+        if (!xVideoHostX()) return;
+        if (window.__xVideoKuruldu) { try { xVideoBtnGuncelle(); } catch (e) {} return; }
+        window.__xVideoKuruldu = true;
+        try { setInterval(function () { try { xVideoBtnGuncelle(); } catch (e) {} }, 1000); } catch (e) {}
+        try { xVideoBtnGuncelle(); } catch (e) {}
+    }
+    function xVideoStil() {
+        if (document.getElementById('x-gx-video-style')) return;
+        var st = document.createElement('style'); st.id = 'x-gx-video-style';
+        st.textContent = [
+            '#x-gx-video-ctrl{position:fixed;right:16px;bottom:16px;z-index:2147483600;display:flex;flex-direction:column;gap:8px;align-items:stretch;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:230px;}',
+            '#x-gx-video-ctrl button{border:0;border-radius:9999px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}',
+            '.x-gx-video-bas{background:#1d9bf0;color:#fff;}',
+            '.x-gx-video-bas:hover{background:#1a8cd8;}',
+            '.x-gx-video-dur{background:#e0245e;color:#fff;}',
+            '.x-gx-video-ind{background:#00ba7c;color:#fff;}',
+            '.x-gx-video-info{background:#15202b;color:#e7e9ea;border:1px solid #38444d;border-radius:12px;padding:8px 12px;font-size:12px;text-align:center;}'
+        ].join('');
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function xVideoBtnGuncelle() {
+        if (window.__xGxCaptureAktif || window.__xVideoKayitAktif) return;   // yakalama/kayıt sırasında dokunma
+        var ctrl = document.getElementById('x-gx-video-ctrl');
+        if (!xVideoSayfaMi()) { if (ctrl) { try { ctrl.remove(); } catch (e) {} } return; }
+        if (ctrl && ctrl.getAttribute('data-mod') === 'bas') return;
+        if (ctrl && ctrl.getAttribute('data-mod') === 'bitti') return;   // "İndir" ekranını ezme
+        xVideoStil();
+        if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); }
+        ctrl.setAttribute('data-mod', 'bas');
+        while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'x-gx-video-bas'; b.textContent = '⏺ Liste Videosu Kaydet';
+        b.addEventListener('click', function () { try { xVideoBaslat(ctrl); } catch (e) {} });
+        ctrl.appendChild(b);
+    }
+    async function xVideoBaslat(ctrl) {
+        if (window.__xVideoKayitAktif) return;
+        var liste = xVideoListeBul();
+        if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı — RT/beğeni/alıntı listesini açıp tekrar dene.', true); return; }
+        var stream;
+        try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true }); }
+        catch (e) { xVideoToast('Kayıt iptal edildi / başlatılamadı.', true); return; }
+        window.__xVideoKayitAktif = true;
+        var vid = document.createElement('video'); vid.muted = true; vid.playsInline = true; vid.srcObject = stream;
+        try { await vid.play(); } catch (e) {}
+        await new Promise(function (res) { if (vid.videoWidth) { res(); return; } vid.onloadedmetadata = function () { res(); }; setTimeout(res, 1400); });
+        var cnv = document.createElement('canvas'); var cx = cnv.getContext('2d');
+        function olc() {
+            var r = liste.kadraj.getBoundingClientRect();
+            var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
+            var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
+            var L = Math.max(0, r.left), T = Math.max(0, r.top), R = Math.min(window.innerWidth, r.right), B = Math.min(window.innerHeight, r.bottom);
+            return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
+        }
+        var r0 = olc(); cnv.width = Math.max(2, Math.round(r0.sw)); cnv.height = Math.max(2, Math.round(r0.sh));
+        var raf = 0, calisiyor = true;
+        function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
+        ciz();
+        var cstream = cnv.captureStream(30);
+        var mime = 'video/webm';
+        try { if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'; } catch (e) {}
+        var rec;
+        try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 4500000 }); }
+        catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
+        var chunks = [];
+        rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+        var bitti = false;
+        function durdur() { if (bitti) return; bitti = true; try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
+        rec.onstop = function () {
+            calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
+            try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+            var blob = new Blob(chunks, { type: 'video/webm' });
+            window.__xVideoKayitAktif = false;
+            xVideoCtrlBitti(ctrl, blob);
+        };
+        try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
+        window.__xVideoRec = rec;
+        try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}   // Chrome çubuğundan "paylaşımı durdur" -> bitir
+        xVideoCtrlKayit(ctrl, durdur);
+        xVideoOtoKaydir(liste.scroll, durdur);
+    }
+    function xVideoOtoKaydir(kap, bitir) {
+        try {
+            var durgun = 0;
+            window.__xVideoScrollIv = setInterval(function () {
+                try {
+                    if (!window.__xVideoKayitAktif) { clearInterval(window.__xVideoScrollIv); return; }
+                    var el = kap || document.scrollingElement || document.documentElement;
+                    var once = el.scrollTop;
+                    var adim = Math.max(140, Math.round((el.clientHeight || window.innerHeight) * 0.55));   // okunur hız (~0.55 ekran/adım)
+                    el.scrollTop = once + adim;
+                    if (el.scrollTop <= once + 1) { durgun++; if (durgun >= 4) { clearInterval(window.__xVideoScrollIv); setTimeout(bitir, 700); } }   // ilerlemiyor -> son; birkaç deneme sonra bitir
+                    else { durgun = 0; }
+                } catch (e) {}
+            }, 700);   // ölçülü tempo: sanallaştırma yüklensin + okunur
+        } catch (e) {}
+    }
+    function xVideoCtrlKayit(ctrl, durdur) {
+        try {
+            ctrl.setAttribute('data-mod', 'kayit');
+            while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
+            var info = document.createElement('div'); info.className = 'x-gx-video-info'; info.textContent = '● Kaydediliyor…';
+            var d = document.createElement('button'); d.type = 'button'; d.className = 'x-gx-video-dur'; d.textContent = '⏹ Durdur';
+            d.addEventListener('click', function () { try { durdur(); } catch (e) {} });
+            ctrl.appendChild(info); ctrl.appendChild(d);
+        } catch (e) {}
+    }
+    function xVideoCtrlBitti(ctrl, blob) {
+        try {
+            if (!ctrl || !ctrl.parentNode) { ctrl = document.getElementById('x-gx-video-ctrl'); if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); } }
+            xVideoStil();
+            ctrl.setAttribute('data-mod', 'bitti');
+            while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
+            var sz = blob ? (blob.size / (1024 * 1024)) : 0;
+            var info = document.createElement('div'); info.className = 'x-gx-video-info'; info.textContent = 'Video hazır · ' + sz.toFixed(1) + ' MB';
+            var ind = document.createElement('button'); ind.type = 'button'; ind.className = 'x-gx-video-ind'; ind.textContent = '⬇ Videoyu İndir';
+            ind.addEventListener('click', function () {
+                try {
+                    var url = URL.createObjectURL(blob);
+                    var a = document.createElement('a'); a.href = url;
+                    var dt = new Date(); function p(n) { return (n < 10 ? '0' : '') + n; }
+                    a.download = 'RT-listesi-' + dt.getFullYear() + p(dt.getMonth() + 1) + p(dt.getDate()) + '-' + p(dt.getHours()) + p(dt.getMinutes()) + '.webm';
+                    document.documentElement.appendChild(a); a.click(); a.remove();
+                    setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 5000);
+                    xVideoToast('Video indirildi ✓');
+                } catch (e) { xVideoToast('İndirilemedi.', true); }
+            });
+            var kapat = document.createElement('button'); kapat.type = 'button'; kapat.className = 'x-gx-video-bas'; kapat.textContent = '✕ Kapat'; kapat.style.background = '#1c2732';
+            kapat.addEventListener('click', function () { try { ctrl.removeAttribute('data-mod'); xVideoBtnGuncelle(); } catch (e) {} });
+            ctrl.appendChild(info); ctrl.appendChild(ind); ctrl.appendChild(kapat);
+        } catch (e) {}
+    }
+    function xVideoToast(msg, hata) {
+        try {
+            var t = document.createElement('div');
+            t.style.cssText = 'position:fixed;left:50%;bottom:80px;transform:translateX(-50%);z-index:2147483640;background:' + (hata ? '#b00020' : '#1d9bf0') + ';color:#fff;font:600 13px -apple-system,Segoe UI,Arial;padding:10px 16px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);';
+            t.textContent = msg; document.documentElement.appendChild(t);
+            setTimeout(function () { try { t.remove(); } catch (e) {} }, 2600);
+        } catch (e) {}
     }
 
     // Gizli dock durum değişimlerini (tarama halkası/güncelleme) nav butonuna ANLIK yansıt.
