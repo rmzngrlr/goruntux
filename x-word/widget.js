@@ -5332,7 +5332,7 @@
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         var bitti = false;
-        function durdur() { if (bitti) return; bitti = true; try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
+        function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
         rec.onstop = function () {
             calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
             try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
@@ -5370,22 +5370,27 @@
     }
     function xVideoOtoKaydir(kap, bitir) {
         try {
-            // [YAVAŞ + AKICI] Zıplamalı kaydırma yerine KÜÇÜK adımlarla PÜRÜZSÜZ kaydır -> her RT eden net görünür
-            // (zıplamada aradaki satırlar tek karede geçip kaçabiliyordu). Hız bilinçli DÜŞÜK (~55px/sn, okunur).
-            var durgun = 0, HIZ = 9.2;   // px / 40ms tik (~230px/sn; kullanıcı: akıcı stil kalsın ama 4x hız)
-            window.__xVideoScrollIv = setInterval(function () {
+            // [AKICI — TİTREMESİZ] Interval yerine requestAnimationFrame: kaydırma EKRAN TAZELEMESİYLE SENKRON ->
+            // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~230px/sn) -> fps'ten
+            // bağımsız SABİT. Her RT eden net geçer; sanallaştırma scrollTop'u zıplatırsa pos gerçek konuma çekilir.
+            var el = kap || document.scrollingElement || document.documentElement;
+            var HIZ = 230, pos = el.scrollTop || 0, sonT = 0, durgun = 0;
+            window.__xVideoScrollStop = false;
+            function tik(ts) {
                 try {
-                    if (!window.__xVideoKayitAktif) { clearInterval(window.__xVideoScrollIv); return; }
-                    var el = kap || document.scrollingElement || document.documentElement;
+                    if (window.__xVideoScrollStop || !window.__xVideoKayitAktif) return;
+                    if (!sonT) { sonT = ts; requestAnimationFrame(tik); return; }
+                    var dt = Math.min(0.05, (ts - sonT) / 1000); sonT = ts;   // sn (cap 50ms -> sekme uyurken sıçrama yok)
                     var maxT = (el.scrollHeight || 0) - (el.clientHeight || 0);
-                    if (el.scrollTop >= maxT - 1) {
-                        // Dibe gelindi: sanallaştırma yeni satır yüklüyor olabilir -> ~2sn büyümezse SON -> bitir
-                        // (böylece TÜM RT edenler yüklenip videoya girer, erken kesilmez).
-                        durgun++;
-                        if (durgun >= 50) { clearInterval(window.__xVideoScrollIv); setTimeout(bitir, 600); }
-                    } else { durgun = 0; el.scrollTop = Math.min(maxT, el.scrollTop + HIZ); }
+                    if (Math.abs((el.scrollTop || 0) - pos) > 60) pos = el.scrollTop || 0;   // sanallaştırma zıplamasını yakala
+                    if (pos >= maxT - 1) {
+                        durgun += dt;
+                        if (durgun >= 2.0) { bitir(); return; }   // ~2sn büyümezse SON (tüm RT edenler yüklenip videoya girer)
+                    } else { durgun = 0; pos = Math.min(maxT, pos + HIZ * dt); el.scrollTop = pos; }
+                    requestAnimationFrame(tik);
                 } catch (e) {}
-            }, 40);
+            }
+            requestAnimationFrame(tik);
         } catch (e) {}
     }
     function xVideoCtrlKayit(ctrl, durdur) {
