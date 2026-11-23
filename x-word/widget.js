@@ -3570,6 +3570,14 @@
             CERCEVE.forEach(P);
             var _dot = document.createElementNS(NS, 'circle'); _dot.setAttribute('cx', '12'); _dot.setAttribute('cy', '12'); _dot.setAttribute('r', '2.6');
             _dot.setAttribute('stroke', 'none'); _dot.setAttribute('fill', '#f4212e'); g.appendChild(_dot);
+        } else if (tur === 'durdur') {
+            // RT VIDEO durdur: daire + ic DOLU kare (stop). Renk CSS'te (kirmizi).
+            var _sq = document.createElementNS(NS, 'rect'); _sq.setAttribute('x', '9'); _sq.setAttribute('y', '9'); _sq.setAttribute('width', '6'); _sq.setAttribute('height', '6'); _sq.setAttribute('rx', '1.2');
+            _sq.setAttribute('stroke', 'none'); _sq.setAttribute('fill', '#f4212e'); g.appendChild(_sq);
+        } else if (tur === 'indir') {
+            P('M12 7.4v6.2'); P('M9.2 10.8L12 13.6l2.8-2.8'); P('M8.2 16.2h7.6');   // daire + asagi ok (indir)
+        } else if (tur === 'kapat') {
+            P('M9 9l6 6'); P('M15 9l-6 6');   // daire + X (kapat)
         } else {
             CERCEVE.forEach(P); P('M12 10v4'); P('M10 12h4');   // cerceve + arti (ekle)
         }
@@ -5295,6 +5303,14 @@
             ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
         } catch (e) {}
     }
+    // Video kontrolü için SADECE-İKON kırmızı buton (kayıt butonu tarzı; metin yok).
+    function xVideoIkonBtn(tur, baslik, onClick) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'x-gx-video-ikon'; b.title = baslik; b.setAttribute('aria-label', baslik);
+        b.appendChild(_xGxSsIkon(tur));
+        b.addEventListener('click', onClick);
+        return b;
+    }
     // [RT VİDEO] Sol-nav yeşil butonun video modundaki sol-tık eylemi: RT listesi videosunu başlat.
     function xVideoBaslatNav() {
         try {
@@ -5439,13 +5455,18 @@
         if (document.getElementById('x-gx-video-style')) return;
         var st = document.createElement('style'); st.id = 'x-gx-video-style';
         st.textContent = [
-            '#x-gx-video-ctrl{position:fixed;left:16px;top:120px;z-index:2147483600;display:flex;flex-direction:column;gap:8px;align-items:stretch;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;width:210px;max-width:210px;}',
-            '#x-gx-video-ctrl button{border:0;border-radius:9999px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}',
-            '.x-gx-video-bas{background:#1d9bf0;color:#fff;}',
-            '.x-gx-video-bas:hover{background:#1a8cd8;}',
-            '.x-gx-video-dur{background:#e0245e;color:#fff;}',
-            '.x-gx-video-ind{background:#00ba7c;color:#fff;}',
-            '.x-gx-video-info{background:#15202b;color:#e7e9ea;border:1px solid #38444d;border-radius:12px;padding:8px 12px;font-size:12px;text-align:center;}'
+            // SADECE-İKON kontroller: sol nav butonunun altında, dar kolon (metin/kutular YOK).
+            '#x-gx-video-ctrl{position:fixed;left:16px;top:120px;z-index:2147483600;display:flex;flex-direction:column;gap:6px;align-items:center;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;width:auto;}',
+            // Kırmızı kayıt butonu tarzı: şeffaf daire, kırmızı nested ikon (renk inline-yeşili ezer).
+            '.x-gx-video-ikon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;border-radius:50%;cursor:pointer;}',
+            '.x-gx-video-ikon:hover{background:rgba(244,33,46,.14);}',
+            '.x-gx-video-ikon .x-gx-ssico{display:block;width:28px;height:28px;overflow:visible;}',
+            '.x-gx-video-ikon .x-gx-ssico .c{fill:none;stroke:#f4212e;stroke-width:1.6;}',
+            '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:#f4212e;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}',
+            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:#f4212e;stroke:none;}',
+            '.x-gx-video-ikon:hover .x-gx-ssico .c{fill:#f4212e;stroke:#f4212e;}',
+            '.x-gx-video-ikon:hover .x-gx-ssico .in{stroke:#fff;}',
+            '.x-gx-video-ikon:hover .x-gx-ssico .in rect{fill:#fff;}'
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
@@ -5522,9 +5543,9 @@
                 if (kadrajEl) {   // FAZ 1: ana tweet INTROSU = tweet SS'i gibi SABİT çerçeve (sayfa KAYDIRMA YOK -> titreme yok).
                     // Kadraj = odaklı tweet (olc kırpar) -> YORUMLAR giremez. Süre = metin okuma + tweet'te video varsa ~5sn izlet.
                     try { if (typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}   // uzun metni aç (SS gibi)
-                    try { kadrajEl.scrollIntoView({ block: 'center' }); } catch (e) {}   // TEK sefer çerçevele; sonra sabit (pan yok)
+                    try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {}   // TWEET ÜSTÜNDEN göster (üst bar gizlendi); sonra sabit
                     await xVideoBekle(450);
-                    try { ustKlip = xVideoUstBaslikAlt(); } catch (e) {}   // [BAŞLIK HARİÇ] introda da "← Gönderi" barı kadraja girmesin
+                    ustKlip = 0;   // üst barlar xVideoBarlariGizle ile GİZLENDİ -> klip YOK, tweet üstü TAM görünür
                     canvasBoyutla();
                     var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
                     var _videoSure = 0;
@@ -5587,12 +5608,11 @@
     }
     function xVideoCtrlKayit(ctrl, durdur) {
         try {
+            xVideoStil();
             ctrl.setAttribute('data-mod', 'kayit');
             while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            var info = document.createElement('div'); info.className = 'x-gx-video-info'; info.textContent = '● Kaydediliyor…';
-            var d = document.createElement('button'); d.type = 'button'; d.className = 'x-gx-video-dur'; d.textContent = '⏹ Durdur';
-            d.addEventListener('click', function () { try { durdur(); } catch (e) {} });
-            ctrl.appendChild(info); ctrl.appendChild(d);
+            // SADECE-İKON: kırmızı DURDUR butonu (metin/info YOK).
+            ctrl.appendChild(xVideoIkonBtn('durdur', 'Kaydı durdur', function () { try { durdur(); } catch (e) {} }));
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
@@ -5602,10 +5622,8 @@
             xVideoStil();
             ctrl.setAttribute('data-mod', 'bitti');
             while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            var sz = blob ? (blob.size / (1024 * 1024)) : 0;
-            var info = document.createElement('div'); info.className = 'x-gx-video-info'; info.textContent = 'Video hazır · ' + sz.toFixed(1) + ' MB';
-            var ind = document.createElement('button'); ind.type = 'button'; ind.className = 'x-gx-video-ind'; ind.textContent = '⬇ Videoyu İndir';
-            ind.addEventListener('click', function () {
+            // SADECE-İKON: İNDİR + KAPAT (metin/MB bilgisi YOK).
+            ctrl.appendChild(xVideoIkonBtn('indir', 'Videoyu indir', function () {
                 try {
                     var url = URL.createObjectURL(blob);
                     var a = document.createElement('a'); a.href = url;
@@ -5616,10 +5634,8 @@
                     xVideoToast('Video indirildi ✓');
                     try { ctrl.remove(); } catch (e) {}   // [İSTEK] iş bitince (indirince) kontrol KAPANIR
                 } catch (e) { xVideoToast('İndirilemedi.', true); }
-            });
-            var kapat = document.createElement('button'); kapat.type = 'button'; kapat.className = 'x-gx-video-bas'; kapat.textContent = '✕ Kapat'; kapat.style.background = '#1c2732';
-            kapat.addEventListener('click', function () { try { ctrl.remove(); } catch (e) {} });
-            ctrl.appendChild(info); ctrl.appendChild(ind); ctrl.appendChild(kapat);
+            }));
+            ctrl.appendChild(xVideoIkonBtn('kapat', 'Kapat', function () { try { ctrl.remove(); } catch (e) {} }));
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
