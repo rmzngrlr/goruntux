@@ -2742,10 +2742,15 @@
 
     function xStripForServer(resItem, gorev) {
         try {
-            if (xWidgetLocalImages && resItem && resItem.screenshot && resItem.link) {
+            // [GÖRSEL KAYBI KÖK-NEDEN FIX] ESKİDEN koşul `xWidgetLocalImages && ...`'ydı. AMA xWidgetLocalImages
+            // ASENKRON yükleniyor (başta false, chrome.storage.local.get ile dolar). Tarama o yüklenmeden capture
+            // ederse flag FALSE kalır -> görsel YEREL İLETİLMEZ -> SUNUCUYA gider -> kaydet-commit'te silinir ->
+            // snapshot 0 -> KAYIP (aralıklı, ilk kurulum/hızlı tarama). Sunucu görsel yolu zaten KALDIRILDI (hep
+            // yerel). Flag yarışını kaldır: görsel + link varsa DAİMA panele ilet (deliverLocalImage -> queueLocalImage
+            // -> pending + retry ile kesin teslim). [[client-docx-migration]]: görsel daima yerel.
+            if (resItem && resItem.screenshot && resItem.link) {
                 // Faz #1-D (tam kaldırma): görüntü SADECE panele iletilir, sunucuya ASLA gitmez; kurtarma-fallback YOK.
-                // swSendReliable teslimi retry eder; aktif tarama boyunca panel açık olduğundan (panel kapanınca
-                // tarama iptal) teslim güvenilir.
+                // swSendReliable teslimi retry eder; teslim background queueLocalImage'a yönlenir (pending + retry).
                 swSendReliable({ action: "deliverLocalImage", link: resItem.link, dataUrl: resItem.screenshot }, function () {});
                 var copy = {}; for (var k in resItem) copy[k] = resItem[k];
                 copy.screenshot = ''; // sunucuya GÖRSELSİZ
