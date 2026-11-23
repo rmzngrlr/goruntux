@@ -729,6 +729,44 @@ function flushPendingLocalImages(origin) {
   });
 }
 
+// [RT VİDEO] Panele video teslim (görsel akışının AYNISI). Panel kapalıysa pending_videos'ta bekler,
+// panel arka planda açılır, flush ile teslim edilir (unlimitedStorage -> boyut OK). Teslim sonrası temizlenir.
+function queueVideo(dataUrl, name, origin) {
+  chrome.storage.local.get(['pending_videos'], (r) => {
+    let q = (r && r.pending_videos) || [];
+    q.push({ dataUrl: dataUrl, name: name || '', ts: Date.now() });
+    chrome.storage.local.set({ pending_videos: q }, () => { flushPendingVideos(origin); });
+  });
+}
+function flushPendingVideos(origin) {
+  chrome.storage.local.get(['pending_videos', 'panel_tab_id', 'server_origin'], (r) => {
+    const q = (r && r.pending_videos) || [];
+    if (!q.length) return;
+    const panelTabId = r.panel_tab_id;
+    const teslim = (tid) => {
+      let kalan = [], bekleyen = q.length;
+      const bitir = () => { chrome.storage.local.set({ pending_videos: kalan }); };
+      q.forEach(item => {
+        try {
+          chrome.tabs.sendMessage(tid, { action: "localVideo", dataUrl: item.dataUrl, name: item.name, ts: item.ts }, () => {
+            const err = chrome.runtime.lastError;
+            if (err) kalan.push(item);
+            if (--bekleyen === 0) bitir();
+          });
+        } catch (e) { kalan.push(item); if (--bekleyen === 0) bitir(); }
+      });
+    };
+    if (panelTabId) {
+      chrome.tabs.get(panelTabId, (t) => {
+        if (chrome.runtime.lastError || !t) { openPanelBackground(origin || r.server_origin); }
+        else { teslim(panelTabId); }
+      });
+    } else {
+      openPanelBackground(origin || r.server_origin);
+    }
+  });
+}
+
 // [GÖRSEL KAYBI FIX] Teslim edilememiş (pending) görseller SONSUZA kalmasın -> periyodik RETRY.
 // Kök sorun: ilk flush panel hazır değilken (tarama sırasında panel re-render/odak/navigasyon, ya da panel
 // henüz registerPanel'e gelmemiş) başarısız olursa, yeniden-deneme YOKTU -> yalnız SONRAKİ queueLocalImage
@@ -738,9 +776,11 @@ function flushPendingLocalImages(origin) {
 try {
   setInterval(() => {
     try {
-      chrome.storage.local.get(['pending_local_images'], (r) => {
+      chrome.storage.local.get(['pending_local_images', 'pending_videos'], (r) => {
         const q = (r && r.pending_local_images) || [];
         if (q && q.length) { flushPendingLocalImages(); }
+        const qv = (r && r.pending_videos) || [];
+        if (qv && qv.length) { flushPendingVideos(); }
       });
     } catch (e) {}
   }, 3500);
@@ -1423,6 +1463,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true; // async yanit
     }
     try { sendResponse({ status: "error", message: "link/dataUrl yok" }); } catch (_) {}
+    return false;
+  }
+
+  // [RT VİDEO] widget'tan gelen RT listesi videosunu panele ilet (pending_videos + flush + retry).
+  if (message.action === "deliverVideo") {
+    if (message.dataUrl) {
+      chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+        try { queueVideo(message.dataUrl, message.name, res.server_origin); } catch (e) {}
+        try { sendResponse({ status: "success" }); } catch (_) {}
+      });
+      return true; // async yanit
+    }
+    try { sendResponse({ status: "error", message: "dataUrl yok" }); } catch (_) {}
     return false;
   }
 

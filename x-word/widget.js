@@ -5658,27 +5658,22 @@
         } catch (e) {}
     }
     function xVideoCtrlBitti(ctrl, blob) {
+        // [İSTEK] X sayfasında İNDİRME YOK. Video PANELE gönderilir (background deliverVideo -> pending_videos ->
+        // panel IndexedDB, 1 gün saklanır); indirme/silme PANELDEKİ video popup'ından yapılır. X kontrolü kapanır.
+        try { var _c = ctrl || document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
         try {
-            if (!ctrl || !ctrl.parentNode) { ctrl = document.getElementById('x-gx-video-ctrl'); if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); } }
-            xVideoStil();
-            ctrl.setAttribute('data-mod', 'bitti');
-            while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            // SADECE-İKON: İNDİR (yeşil) + KAPAT (gri) — kırmızı DEĞİL (kullanıcı: kayıt butonundan ayrışsın).
-            ctrl.appendChild(xVideoIkonBtn('indir', 'Videoyu indir', '#00ba7c', function () {
+            var fr = new FileReader();
+            fr.onload = function () {
                 try {
-                    var url = URL.createObjectURL(blob);
-                    var a = document.createElement('a'); a.href = url;
                     var dt = new Date(); function p(n) { return (n < 10 ? '0' : '') + n; }
-                    a.download = 'RT-listesi-' + dt.getFullYear() + p(dt.getMonth() + 1) + p(dt.getDate()) + '-' + p(dt.getHours()) + p(dt.getMinutes()) + '.webm';
-                    document.documentElement.appendChild(a); a.click(); a.remove();
-                    setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 5000);
-                    xVideoToast('Video indirildi ✓');
-                    try { ctrl.remove(); } catch (e) {}   // [İSTEK] iş bitince (indirince) kontrol KAPANIR
-                } catch (e) { xVideoToast('İndirilemedi.', true); }
-            }));
-            ctrl.appendChild(xVideoIkonBtn('kapat', 'Kapat', '#71767b', function () { try { ctrl.remove(); } catch (e) {} }));
-            xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
-        } catch (e) {}
+                    var ad = 'RT-listesi-' + dt.getFullYear() + p(dt.getMonth() + 1) + p(dt.getDate()) + '-' + p(dt.getHours()) + p(dt.getMinutes());
+                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad }, function () { void chrome.runtime.lastError; });
+                    xVideoToast('Video GörüntüX paneline kaydedildi (1 gün saklanır)');
+                } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
+            };
+            fr.onerror = function () { xVideoToast('Video okunamadı.', true); };
+            fr.readAsDataURL(blob);
+        } catch (e) { xVideoToast('Video işlenemedi.', true); }
     }
     function xVideoToast(msg, hata) {
         try {

@@ -158,6 +158,11 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
         window.postMessage({ type: "X_RAPOR_LOCAL_IMAGE", link: msg.link, dataUrl: msg.dataUrl, mime: msg.mime || "" }, "*");
         sendResponse && sendResponse({ status: "ok" });
       }
+      // [RT VİDEO] SW -> panel: RT listesi videosunu panele ilet (panel IndexedDB'ye yazar, 1 gün saklar).
+      if (msg && msg.action === "localVideo" && msg.dataUrl) {
+        window.postMessage({ type: "X_RAPOR_LOCAL_VIDEO", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0 }, "*");
+        sendResponse && sendResponse({ status: "ok" });
+      }
       // v3.66: tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)
       // paneli haberdar et. Yon SW -> panel oldugu icin meta kapisi GEREKMEZ: bu mesaj
       // sayfadan gelmiyor, eklentinin kendi service worker'indan geliyor.
