@@ -4945,7 +4945,7 @@
             var nav = document.getElementById('x-gx-nav-btn');
             var dock = document.getElementById('x-downloader-widget');
             if (!nav || !dock) return;
-            // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera kalmasın.
+            // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera + kontrol kalmasın.
             try {
                 if (!window.__xVideoKayitAktif && !xVideoTweetDetayMi()) {
                     var _ekl = document.getElementById('x-gx-nav-ekle');
@@ -4955,6 +4955,8 @@
                         if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon('ekle')); }   // "+" ikonunu geri getir
                         if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
                     }
+                    // [İSTEK] sayfadan çıkınca video kontrol kutusu da kapansın (kayıt sürmüyorsa)
+                    var _vc = document.getElementById('x-gx-video-ctrl'); if (_vc) { try { _vc.remove(); } catch (e) {} }
                 }
             } catch (e) {}
             // TARAMA AKTİF BAYRAĞI: toplu tarama sırasında SS alınırken SPA dock'u yeniden kurup
@@ -5256,6 +5258,43 @@
         } catch (e) {}
         return 0;
     }
+    // [BAŞLIK GİZLE — SS GİBİ] SS yakalama (captureArticle) viewport tepesindeki küçük sticky/fixed barları
+    // (← Gönderi üst barı vb.) display:none yapar; video kaydında AYNISINI yapıyoruz -> bar videoya GİRMEZ.
+    // Kendi öğelerimiz (video kontrolü, nav butonu, dock) hariç. Kayıt sonunda geri açılır.
+    function xVideoBarlariGizle() {
+        var gizli = [];
+        try {
+            document.querySelectorAll('*').forEach(function (el) {
+                try {
+                    if (el.closest && el.closest('#x-gx-video-ctrl, #x-gx-nav-btn, #x-downloader-widget')) return;
+                    var st = getComputedStyle(el);
+                    if ((st.position === 'fixed' || st.position === 'sticky') && st.display !== 'none') {
+                        var r = el.getBoundingClientRect();
+                        if (r.top <= 15 && r.bottom > 0 && el.offsetHeight < 100) {
+                            gizli.push({ el: el, d: el.style.display });
+                            el.style.setProperty('display', 'none', 'important');
+                        }
+                    }
+                } catch (e) {}
+            });
+        } catch (e) {}
+        return gizli;
+    }
+    function xVideoBarlariGeri(gizli) {
+        try { (gizli || []).forEach(function (h) { try { if (h.d) h.el.style.display = h.d; else h.el.style.removeProperty('display'); } catch (e) {} }); } catch (e) {}
+    }
+    // Video kontrolünü (#x-gx-video-ctrl) SOL NAV butonunun ALTINA konumla (sağ-alt yerine).
+    function xVideoCtrlKonumla(ctrl) {
+        try {
+            if (!ctrl) return;
+            var nav = document.getElementById('x-gx-nav-ekle') || document.getElementById('x-gx-nav-btn');
+            if (!nav) return;
+            var r = nav.getBoundingClientRect();
+            ctrl.style.left = Math.round(Math.max(8, r.left)) + 'px';
+            ctrl.style.top = Math.round(r.bottom + 8) + 'px';
+            ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
+        } catch (e) {}
+    }
     // [RT VİDEO] Sol-nav yeşil butonun video modundaki sol-tık eylemi: RT listesi videosunu başlat.
     function xVideoBaslatNav() {
         try {
@@ -5400,7 +5439,7 @@
         if (document.getElementById('x-gx-video-style')) return;
         var st = document.createElement('style'); st.id = 'x-gx-video-style';
         st.textContent = [
-            '#x-gx-video-ctrl{position:fixed;right:16px;bottom:16px;z-index:2147483600;display:flex;flex-direction:column;gap:8px;align-items:stretch;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:230px;}',
+            '#x-gx-video-ctrl{position:fixed;left:16px;top:120px;z-index:2147483600;display:flex;flex-direction:column;gap:8px;align-items:stretch;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;width:210px;max-width:210px;}',
             '#x-gx-video-ctrl button{border:0;border-radius:9999px;padding:11px 18px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.35);}',
             '.x-gx-video-bas{background:#1d9bf0;color:#fff;}',
             '.x-gx-video-bas:hover{background:#1a8cd8;}',
@@ -5462,11 +5501,12 @@
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-        var bitti = false;
+        var bitti = false, _barGizli = [];
         function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
         rec.onstop = function () {
             calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
             try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+            try { xVideoBarlariGeri(_barGizli); _barGizli = []; } catch (e) {}   // gizlenen üst barları geri aç
             var blob = new Blob(chunks, { type: 'video/webm' });
             window.__xVideoKayitAktif = false;
             xVideoCtrlBitti(ctrl, blob);
@@ -5474,6 +5514,7 @@
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
         window.__xVideoRec = rec;
         try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}   // Chrome çubuğundan "paylaşımı durdur" -> bitir
+        try { _barGizli = xVideoBarlariGizle(); } catch (e) {}   // [BAŞLIK GİZLE] SS gibi: üst sticky barları gizle -> videoya girmez
         xVideoCtrlKayit(ctrl, durdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
         (async function akis() {
@@ -5500,6 +5541,7 @@
                 var liste = xVideoListeBul();
                 if (!liste || !liste.kadraj) { xVideoToast('Liste bulunamadı.', true); durdur(); return; }
                 kadrajEl = liste.kadraj;
+                try { _barGizli = _barGizli.concat(xVideoBarlariGizle()); } catch (e) {}   // modal açılınca yeniden-render olan üst barları da gizle
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
                 // [BAŞLIK HARİÇ] kadrajın ÜSTÜNÜ İLK RT SATIRININ üstüne kıstır -> "← Gönderi" + modal başlığı kadraja GİRMEZ.
@@ -5551,6 +5593,7 @@
             var d = document.createElement('button'); d.type = 'button'; d.className = 'x-gx-video-dur'; d.textContent = '⏹ Durdur';
             d.addEventListener('click', function () { try { durdur(); } catch (e) {} });
             ctrl.appendChild(info); ctrl.appendChild(d);
+            xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
     function xVideoCtrlBitti(ctrl, blob) {
@@ -5571,11 +5614,13 @@
                     document.documentElement.appendChild(a); a.click(); a.remove();
                     setTimeout(function () { try { URL.revokeObjectURL(url); } catch (e) {} }, 5000);
                     xVideoToast('Video indirildi ✓');
+                    try { ctrl.remove(); } catch (e) {}   // [İSTEK] iş bitince (indirince) kontrol KAPANIR
                 } catch (e) { xVideoToast('İndirilemedi.', true); }
             });
             var kapat = document.createElement('button'); kapat.type = 'button'; kapat.className = 'x-gx-video-bas'; kapat.textContent = '✕ Kapat'; kapat.style.background = '#1c2732';
-            kapat.addEventListener('click', function () { try { ctrl.removeAttribute('data-mod'); xVideoBtnGuncelle(); } catch (e) {} });
+            kapat.addEventListener('click', function () { try { ctrl.remove(); } catch (e) {} });
             ctrl.appendChild(info); ctrl.appendChild(ind); ctrl.appendChild(kapat);
+            xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
     function xVideoToast(msg, hata) {
