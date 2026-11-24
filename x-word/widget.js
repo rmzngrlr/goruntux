@@ -5499,16 +5499,13 @@
         st.textContent = [
             // SADECE-İKON kontroller: sol nav butonunun altında, dar kolon (metin/kutular YOK).
             '#x-gx-video-ctrl{position:fixed;left:16px;top:120px;z-index:2147483600;display:flex;flex-direction:column;gap:6px;align-items:center;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;width:auto;}',
-            // Kırmızı kayıt butonu tarzı: şeffaf daire, kırmızı nested ikon (renk inline-yeşili ezer).
-            '.x-gx-video-ikon{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;padding:0;border-radius:50%;cursor:pointer;color:#f4212e;}',
-            '.x-gx-video-ikon:hover{background:rgba(127,127,127,.16);}',
-            '.x-gx-video-ikon .x-gx-ssico{display:block;width:28px;height:28px;overflow:visible;}',
-            '.x-gx-video-ikon .x-gx-ssico .c{fill:none;stroke:currentColor;stroke-width:1.6;}',
-            '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;}',
-            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:currentColor;stroke:none;}',
-            '.x-gx-video-ikon:hover .x-gx-ssico .c{fill:currentColor;stroke:currentColor;}',
-            '.x-gx-video-ikon:hover .x-gx-ssico .in{stroke:#fff;}',
-            '.x-gx-video-ikon:hover .x-gx-ssico .in rect{fill:#fff;}'
+            // [SADE] DOLU daire (renk=buton rengi) + BEYAZ glyph; dış-daire çizgisi yok. Temiz "durdur" görünümü.
+            '.x-gx-video-ikon{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:0;background:currentColor;padding:0;border-radius:50%;cursor:pointer;color:#f4212e;box-shadow:0 2px 10px rgba(0,0,0,.3);}',
+            '.x-gx-video-ikon:hover{filter:brightness(1.08);}',
+            '.x-gx-video-ikon .x-gx-ssico{display:block;width:24px;height:24px;overflow:visible;}',
+            '.x-gx-video-ikon .x-gx-ssico .c{display:none;}',
+            '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}',
+            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:#fff;stroke:none;}'
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
@@ -5692,8 +5689,8 @@
             xVideoStil();
             ctrl.setAttribute('data-mod', 'kayit');
             while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            // SADECE-İKON: DURDUR (kırmızı = stop).
-            ctrl.appendChild(xVideoIkonBtn('durdur', 'Kaydı durdur', '#f4212e', function () { try { durdur(); } catch (e) {} }));
+            // SADECE-İKON: DURDUR (kırmızı). Basar basmaz toolkit KAPANIR (sonra kayıt durur + panele gider).
+            ctrl.appendChild(xVideoIkonBtn('durdur', 'Kaydı durdur', '#f4212e', function () { try { ctrl.remove(); } catch (e) {} try { durdur(); } catch (e) {} }));
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
