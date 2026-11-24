@@ -5579,9 +5579,13 @@
             if (B < T) B = T;
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
-        function canvasBoyutla() {   // [KÜÇÜK DOSYA] canvas <=820px; faz değişince hedef boyutuna göre yeniden (çözünürlük değişir)
-            var r = olc(); var maxW = 820, k = Math.min(1, maxW / Math.max(1, r.sw));
-            cnv.width = Math.max(2, Math.round(r.sw * k)); cnv.height = Math.max(2, Math.round(r.sh * k));
+        function canvasBoyutla() {   // [SABİT BOYUT] canvas DAİMA "RT liste boyutu" (içerik sütunu × görünür yükseklik); faz değişse de SABİT kalır -> video hep aynı ölçü. Küçük tweet introsunda kalan alan beyaz (ciz contain+beyaz).
+            var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
+            var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
+            var L = 0, R = window.innerWidth; try { var _col = document.querySelector('[data-testid="primaryColumn"]'); if (_col) { var _cr = _col.getBoundingClientRect(); L = Math.max(0, _cr.left); R = Math.min(window.innerWidth, _cr.right); } } catch (e) {}
+            var sw = Math.max(1, (R - L) * sX), sh = Math.max(1, window.innerHeight * sY);
+            var maxW = 820, k = Math.min(1, maxW / sw);
+            cnv.width = Math.max(2, Math.round(sw * k)); cnv.height = Math.max(2, Math.round(sh * k));
         }
         // [GENİŞLEME FIX] Kayıt BAŞLAMADAN önce her şeyi oturt: uzun metni aç, ana tweeti çerçevele, üst barları +
         // ETKİLEŞİM çubuğunu (beğeni/yorum) gizle, Chrome paylaşım çubuğu + bar-gizleme reflow'u otursun diye bekle
@@ -5594,7 +5598,7 @@
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} } raf = requestAnimationFrame(ciz); }
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
         var mime = 'video/webm';
@@ -5676,9 +5680,8 @@
                 ustKlip = 0;   // liste başlığı + tablar kadraja DAHİL
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
-                canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
-                _dondur = false;   // geçiş bitti: donmuş kareyi bırak, listeyi çiz
-                try { var _c0 = olc(); cx.drawImage(vid, _c0.sx, _c0.sy, _c0.sw, _c0.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // ilk liste karesini HEMEN bas (resize sonrası siyah kare olmasın)
+                canvasBoyutla();   // sabit "RT liste boyutu" (değişmez)
+                _dondur = false;   // geçiş bitti: donmuş kareyi bırak, listeyi çiz (contain+beyaz)
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
@@ -5737,10 +5740,17 @@
             if (B < T) B = T;
             return { sx: L * sX, sy: T * sY, sw: Math.max(1, (R - L) * sX), sh: Math.max(1, (B - T) * sY) };
         }
-        function canvasBoyutla() { var r = olc(); var maxW = 820, k = Math.min(1, maxW / Math.max(1, r.sw)); cnv.width = Math.max(2, Math.round(r.sw * k)); cnv.height = Math.max(2, Math.round(r.sh * k)); }
+        function canvasBoyutla() {   // [SABİT BOYUT] canvas DAİMA "RT liste boyutu" (içerik sütunu × görünür yükseklik) -> faz/tweet değişse de SABİT; küçük tweet kalanı beyaz (ciz contain+beyaz).
+            var vw = vid.videoWidth || window.innerWidth, vh = vid.videoHeight || window.innerHeight;
+            var sX = vw / Math.max(1, window.innerWidth), sY = vh / Math.max(1, window.innerHeight);
+            var L = 0, R = window.innerWidth; try { var _col = document.querySelector('[data-testid="primaryColumn"]'); if (_col) { var _cr = _col.getBoundingClientRect(); L = Math.max(0, _cr.left); R = Math.min(window.innerWidth, _cr.right); } } catch (e) {}
+            var sw = Math.max(1, (R - L) * sX), sh = Math.max(1, window.innerHeight * sY);
+            var maxW = 820, k = Math.min(1, maxW / sw);
+            cnv.width = Math.max(2, Math.round(sw * k)); cnv.height = Math.max(2, Math.round(sh * k));
+        }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} } raf = requestAnimationFrame(ciz); }
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);
         var mime = 'video/webm';
@@ -5781,7 +5791,7 @@
                         kadrajEl = art; ustKlip = 0;
                         try { art.scrollIntoView({ block: 'start' }); } catch (e) {}
                         await xVideoBekle(650); canvasBoyutla();
-                        _dondur = false; try { var _ci = olc(); cx.drawImage(vid, _ci.sx, _ci.sy, _ci.sw, _ci.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // tweet yerleşti: donmuş kareyi bırak, introyu çiz
+                        _dondur = false;   // tweet yerleşti: donmuş kareyi bırak, introyu çiz (contain+beyaz)
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
@@ -5801,7 +5811,7 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
-                            _dondur = false; try { var _cl = olc(); cx.drawImage(vid, _cl.sx, _cl.sy, _cl.sw, _cl.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // liste yerleşti: donmuş kareyi bırak, listeyi çiz
+                            _dondur = false;   // liste yerleşti: donmuş kareyi bırak, listeyi çiz
                             await xVideoBekle(2000);
                             await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res); });
                         }
