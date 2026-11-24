@@ -5843,17 +5843,17 @@
         } catch (e) {}
     }
     function xVideoCtrlBitti(ctrl, blob) {
-        // [İSTEK] X sayfasında İNDİRME YOK. Video PANELE gönderilir (background deliverVideo -> pending_videos ->
-        // panel IndexedDB, 1 gün saklanır); indirme/silme PANELDEKİ video popup'ından yapılır. X kontrolü kapanır.
+        // [İSTEK] X sayfasında İNDİRME YOK. Video VideoX paneline (Videolarım) gönderilir (hedef=videox -> KALICI).
+        // Ad = odaklı tweet ID'li. X kontrolü kapanır.
         try { var _c = ctrl || document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
         try {
+            var _oid = ''; try { var _oa = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null; var _om = (location.href.match(/\/status\/(\d+)/) || []); _oid = _om[1] || ''; } catch (e) {}
             var fr = new FileReader();
             fr.onload = function () {
                 try {
-                    var dt = new Date(); function p(n) { return (n < 10 ? '0' : '') + n; }
-                    var ad = 'RT-listesi-' + dt.getFullYear() + p(dt.getMonth() + 1) + p(dt.getDate()) + '-' + p(dt.getHours()) + p(dt.getMinutes());
-                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad }, function () { void chrome.runtime.lastError; });
-                    xVideoToast('Video GörüntüX paneline kaydedildi (1 gün saklanır)');
+                    var ad = _oid ? ('tweet-' + _oid) : ('RT-listesi-' + Date.now());
+                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; });
+                    xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
             };
             fr.onerror = function () { xVideoToast('Video okunamadı.', true); };
