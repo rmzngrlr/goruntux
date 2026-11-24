@@ -5312,18 +5312,36 @@
         } catch (e) {}
         return gizli;
     }
-    // [ALAKALI KİŞİLER GİZLE] Tweet detayda, tweetin altında X'in "Alakalı/İlgili kişiler" (Relevant people) modülü
-    // intro videosuna girmesin. Bu modül UserCell'lerden oluşur (yanıtlar article, UserCell DEĞİL). Modal/retweets
-    // DIŞINDAKİ UserCell'lerin cellInnerDiv bloğunu gizle. YALNIZ tweet detayda (intro) çağrılır -> reposts listesini vurmaz.
+    // [ALAKALI/ALINTILAR SATIRI GİZLE] Intro'da odaklı tweetin EN ALTINDAKİ "Alakalı ⌄ ... Alıntıları görüntüle >"
+    // satırı (quotes çubuğu) + varsa "Alakalı kişiler" (Relevant people) UserCell modülü videoya girmesin.
+    // YALNIZ tweet detayda (intro) çağrılır -> reposts listesini vurmaz.
     function xVideoAlakaliGizle() {
         var gizli = [];
         try {
             if (/\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return gizli;   // alt-sayfalarda DOKUNMA
-            var cells = document.querySelectorAll('[data-testid="UserCell"]');
-            for (var i = 0; i < cells.length; i++) {
-                var c = cells[i];
-                if (c.closest('[aria-modal="true"]')) continue;
-                var blok = (c.closest && c.closest('[data-testid="cellInnerDiv"]')) || c.parentElement;
+            var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
+            if (!art) return gizli;
+            var aw = art.getBoundingClientRect().width || 400;
+            function gizle(el) {
+                try {
+                    if (!el || !art.contains(el)) return;
+                    var p = el, row = el;   // satır konteyneri: genişliği article'ın >=%55'i olan en yakın blok (article'ın kendisi değil)
+                    for (var d = 0; d < 9 && p && p !== art && p.parentElement; d++) { try { if (p.getBoundingClientRect().width >= aw * 0.55) { row = p; break; } } catch (e) {} p = p.parentElement; }
+                    if (row && row !== art && art.contains(row) && row.style.display !== 'none') { gizli.push({ el: row, d: row.style.display }); row.style.setProperty('display', 'none', 'important'); }
+                } catch (e) {}
+            }
+            var q = art.querySelector('a[href*="/quotes"]'); if (q) gizle(q);   // "Alıntıları görüntüle" quotes linki -> satır
+            var sp = art.querySelectorAll('span,a,button,div');
+            for (var i = 0; i < sp.length && i < 700; i++) {
+                if (sp[i].children.length) continue;
+                var tx = (sp[i].textContent || '').trim().toLowerCase();
+                if (tx === 'alakalı' || tx === 'alıntıları görüntüle' || tx === 'alıntıları gör' || tx === 'en son') gizle(sp[i]);
+            }
+            // "Alakalı kişiler" (Relevant people) UserCell modülü de (modal dışı)
+            var cells = art.parentElement ? art.parentElement.querySelectorAll('[data-testid="UserCell"]') : [];
+            for (var j = 0; j < cells.length; j++) {
+                if (cells[j].closest('[aria-modal="true"]')) continue;
+                var blok = (cells[j].closest && cells[j].closest('[data-testid="cellInnerDiv"]')) || cells[j].parentElement;
                 if (blok && blok.style.display !== 'none') { gizli.push({ el: blok, d: blok.style.display }); blok.style.setProperty('display', 'none', 'important'); }
             }
         } catch (e) {}
