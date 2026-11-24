@@ -10639,6 +10639,32 @@ VIDEOX_TRANSFORM_JS = r'''
     ".vx-pl-sp{ flex:1 1 auto; }",
     ".vx-pl-title{ font-size:12px; color:#cfd9e0; max-width:34vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }",
     ".vx-pl-close{ position:absolute; top:-15px; right:-15px; width:36px; height:36px; border-radius:50%; border:0; background:#f4212e; color:#fff; font-size:17px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.5); z-index:2; }",
+    ".vx-pl-btn.duz:hover{ color:#f4212e; }",
+    ".vx-pl-edit{ display:none; background:#0e1620; border:1px solid var(--border-color,#2f3b47); border-top:0; border-radius:0 0 12px 12px; padding:12px 14px; flex-direction:column; gap:10px; }",
+    ".vx-pl.duzenle .vx-pl-ctrl{ border-radius:0; }",
+    ".vx-pl.duzenle .vx-pl-edit{ display:flex; }",
+    ".vx-pe-ust{ display:flex; align-items:center; gap:9px; flex-wrap:wrap; }",
+    ".vx-pe-bol{ background:#f4212e; color:#fff; border:0; border-radius:9px; padding:8px 13px; font-size:13px; font-weight:700; cursor:pointer; }",
+    ".vx-pe-bol:hover{ filter:brightness(1.08); }",
+    ".vx-pe-ipuc{ font-size:11.5px; color:#8899a6; max-width:250px; line-height:1.35; }",
+    ".vx-pe-onizle,.vx-pe-kaydet,.vx-pe-iptal{ border:0; border-radius:9px; padding:8px 13px; font-size:13px; font-weight:600; cursor:pointer; color:#fff; }",
+    ".vx-pe-onizle{ background:#1d9bf0; } .vx-pe-kaydet{ background:#00ba7c; } .vx-pe-iptal{ background:#2f3b47; color:#e7e9ea; }",
+    ".vx-pe-onizle:hover,.vx-pe-kaydet:hover,.vx-pe-iptal:hover{ filter:brightness(1.1); }",
+    ".vx-pe-strip{ display:flex; gap:4px; min-height:56px; align-items:stretch; }",
+    ".vx-seg{ min-width:64px; background:rgba(29,155,240,.1); border:1px solid #2f3b47; border-radius:8px; padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; gap:6px; cursor:pointer; overflow:hidden; }",
+    ".vx-seg:hover{ border-color:#1d9bf0; }",
+    ".vx-seg.silik{ opacity:.45; background:rgba(224,36,94,.1); border-color:rgba(224,36,94,.4); }",
+    ".vx-seg-bas{ font-size:11px; color:#cfd9e0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }",
+    ".vx-seg-alt{ display:flex; align-items:center; gap:5px; }",
+    ".vx-seg-hiz{ flex:1 1 auto; background:#1c2430; color:#e7e9ea; border:1px solid #2f3b47; border-radius:6px; font-size:11px; font-weight:600; padding:3px 4px; cursor:pointer; }",
+    ".vx-seg-hiz:hover{ border-color:#1d9bf0; }",
+    ".vx-seg-sil{ background:none; border:0; cursor:pointer; font-size:13px; padding:0 2px; line-height:1; }",
+    ".vx-pe-export{ display:none; position:absolute; inset:0; z-index:5; background:rgba(0,0,0,.75); align-items:center; justify-content:center; border-radius:12px; }",
+    ".vx-pe-exp-in{ width:80%; max-width:340px; text-align:center; }",
+    ".vx-pe-exp-bar{ height:8px; background:#2f3b47; border-radius:4px; overflow:hidden; }",
+    ".vx-pe-exp-dolu{ height:100%; width:0; background:#00ba7c; transition:width .12s; }",
+    ".vx-pe-exp-txt{ margin-top:11px; font-size:13px; color:#e7e9ea; }",
+    ".vx-pl.export .vx-pl-ctrl, .vx-pl.export .vx-pl-edit, .vx-pl.export .vx-pl-big{ pointer-events:none; }",
     // [VIDEOX] Video'matik artik Rapor'matik .form-group/.btn temasini kullanir (textarea kucuk + oto-buyur, inline).
     // CANLI onizleme listesi (ekleme mantigi Rapor'matik ile birebir): yapistirinca kutu bosalir, link asagida listelenir.
     "#vx-vm-list a:hover{ text-decoration:underline; }",
@@ -10684,9 +10710,23 @@ VIDEOX_TRANSFORM_JS = r'''
           <button class="vx-pl-btn ses" type="button" aria-label="Ses"><svg class="i-ses" viewBox="0 0 24 24"><path d="M3 10v4h4l5 5V5L7 10H3z"/></svg></button>
           <span class="vx-pl-title"></span>
           <span class="vx-pl-sp"></span>
+          <button class="vx-pl-btn duz" type="button" aria-label="Düzenle" title="Düzenle: böl / kesit sil / hız"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 7.5l12 9M8 16.5l12-9"/></svg></button>
           <button class="vx-pl-btn ind" type="button" aria-label="İndir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0l-4-4m4 4l4-4M5 17v2a2 2 0 002 2h10a2 2 0 002-2v-2"/></svg></button>
         </div>
-      </div></div>`;
+      </div>
+      <div class="vx-pl-edit">
+        <div class="vx-pe-ust">
+          <button class="vx-pe-bol" type="button">&#9986; Oynatma anından BÖL</button>
+          <span class="vx-pe-ipuc">Bölmek için videoda istediğin ana gel, BÖL'e bas. Her kesitin hızını değiştir (tıkla) ya da sil.</span>
+          <span class="vx-pl-sp"></span>
+          <button class="vx-pe-onizle" type="button">&#9654; Önizle</button>
+          <button class="vx-pe-kaydet" type="button">Yeni video olarak kaydet</button>
+          <button class="vx-pe-iptal" type="button">İptal</button>
+        </div>
+        <div class="vx-pe-strip"></div>
+      </div>
+      <div class="vx-pe-export"><div class="vx-pe-exp-in"><div class="vx-pe-exp-bar"><div class="vx-pe-exp-dolu"></div></div><div class="vx-pe-exp-txt">Yeni video oluşturuluyor…</div></div></div>
+    </div>`;
     var pl=ov.querySelector(".vx-pl"), vd=ov.querySelector("video"); vd.src=v.dataUrl;
     var big=ov.querySelector(".vx-pl-big"), seek=ov.querySelector(".vx-pl-seek"), dolu=ov.querySelector(".dolu"), nok=ov.querySelector(".nok");
     var su=ov.querySelector(".su"), to=ov.querySelector(".to"), iOyn=ov.querySelector(".i-oyn"), iSes=ov.querySelector(".i-ses");
@@ -10707,11 +10747,82 @@ VIDEOX_TRANSFORM_JS = r'''
     document.addEventListener("mousemove", _mm); document.addEventListener("mouseup", _mu);
     ov.querySelector(".ses").onclick=function(){ vd.muted=!vd.muted; senkSes(); };
     ov.querySelector(".ind").onclick=function(){ indir(v); };
+    // ===== DÜZENLE: böl / kesit sil / kesit hızı -> YENİ video (canvas + MediaRecorder kodlama; sessiz webm). =====
+    var duzBtn=ov.querySelector(".duz"), eStrip=ov.querySelector(".vx-pe-strip");
+    var expOv=ov.querySelector(".vx-pe-export"), expDolu=ov.querySelector(".vx-pe-exp-dolu"), expTxt=ov.querySelector(".vx-pe-exp-txt");
+    var _segler=null, _HIZLAR=[0.5,1,1.5,2,4], _onizAktif=false, _exportAktif=false;
+    function _toast(m,t){ try{ if(window.showToast) window.showToast(m,t||"info"); }catch(e){} }
+    function duzAc(){
+      if(!isFinite(vd.duration)||vd.duration<=0.2){ _toast("Video süresi henüz okunmadı, bir saniye sonra tekrar dene.","danger"); return; }
+      pl.classList.add("duzenle"); try{ vd.pause(); }catch(e){} vd.playbackRate=1;
+      _segler=[{start:0, end:vd.duration, dahil:true, hiz:1}]; segRender();
+    }
+    function duzKapat(){ pl.classList.remove("duzenle"); vd.playbackRate=1; }
+    function segBol(){
+      if(!_segler) return; var t=vd.currentTime;
+      for(var i=0;i<_segler.length;i++){ var s=_segler[i]; if(t>s.start+0.25 && t<s.end-0.25){ _segler.splice(i,1,{start:s.start,end:t,dahil:s.dahil,hiz:s.hiz},{start:t,end:s.end,dahil:s.dahil,hiz:s.hiz}); segRender(); return; } }
+      _toast("Bölme noktası bir kesidin ortasında olmalı (ucuna çok yakın değil).","danger");
+    }
+    function segRender(){
+      if(!eStrip||!_segler) return; eStrip.innerHTML="";
+      _segler.forEach(function(s, idx){
+        var sure=Math.max(0, s.end-s.start);
+        var blok=document.createElement("div"); blok.className="vx-seg"+(s.dahil?"":" silik"); blok.style.flex=sure.toFixed(2)+" 1 0";
+        blok.innerHTML='<div class="vx-seg-bas">Kesit '+(idx+1)+' · '+fmtSure(sure)+'</div>'
+          +'<div class="vx-seg-alt"><button class="vx-seg-hiz" type="button" title="Hız (tıkla değiştir)">'+s.hiz+'x</button>'
+          +'<button class="vx-seg-sil" type="button" title="'+(s.dahil?"Kesidi sil":"Geri al")+'">'+(s.dahil?'\u{1F5D1}':'↩')+'</button></div>';
+        blok.querySelector(".vx-seg-hiz").addEventListener("click", function(e){ e.stopPropagation(); var j=_HIZLAR.indexOf(s.hiz); if(j<0) j=1; j=(j+1)%_HIZLAR.length; s.hiz=_HIZLAR[j]; this.textContent=s.hiz+"x"; });
+        blok.querySelector(".vx-seg-sil").addEventListener("click", function(e){ e.stopPropagation(); s.dahil=!s.dahil; segRender(); });
+        blok.addEventListener("click", function(){ try{ vd.currentTime=Math.min(vd.duration||0, s.start+0.02); }catch(e){} });
+        eStrip.appendChild(blok);
+      });
+    }
+    function _seekVe(t, cb){ var d=false; function on(){ if(d) return; d=true; try{ vd.removeEventListener("seeked",on); }catch(e){} cb(); } try{ vd.addEventListener("seeked", on); }catch(e){} try{ vd.currentTime=t; }catch(e){ on(); } setTimeout(on, 900); }
+    function onizle(){
+      if(!_segler) return; var kalan=_segler.filter(function(s){return s.dahil;}); if(!kalan.length){ _toast("Önizlenecek kesit yok.","danger"); return; }
+      _onizAktif=true; var i=0;
+      function seg(){ if(!_onizAktif) return; if(i>=kalan.length){ _onizAktif=false; vd.playbackRate=1; try{vd.pause();}catch(e){} return; } var s=kalan[i]; vd.playbackRate=s.hiz; _seekVe(s.start, function(){ if(!_onizAktif) return; try{ vd.play(); }catch(e){} tik(s); }); }
+      function tik(s){ if(!_onizAktif) return; if(vd.currentTime>=s.end-0.03||vd.ended){ i++; seg(); return; } requestAnimationFrame(function(){ tik(s); }); }
+      seg();
+    }
+    function kaydet(){
+      if(_exportAktif||!_segler) return; var kalan=_segler.filter(function(s){return s.dahil;});
+      if(!kalan.length){ _toast("En az bir kesit kalmalı.","danger"); return; }
+      var w=vd.videoWidth||640, h=vd.videoHeight||360;
+      var cnv=document.createElement("canvas"); cnv.width=w; cnv.height=h; var cx=cnv.getContext("2d");
+      var cstream; try{ cstream=cnv.captureStream(30); }catch(e){ _toast("Tarayıcı video üretmeyi desteklemiyor.","danger"); return; }
+      var mime="video/webm"; try{ if(window.MediaRecorder && MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) mime="video/webm;codecs=vp9"; }catch(e){}
+      var rec; try{ rec=new MediaRecorder(cstream,{mimeType:mime, videoBitsPerSecond:1800000}); }catch(e){ try{ rec=new MediaRecorder(cstream); }catch(e2){ _toast("Video üretimi bu tarayıcıda desteklenmiyor.","danger"); return; } }
+      _exportAktif=true; _onizAktif=false;
+      var chunks=[]; rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
+      var toplamSrc=Math.max(0.001, kalan.reduce(function(a,s){return a+(s.end-s.start);},0)), bitenSrc=0;
+      expOv.style.display="flex"; expDolu.style.width="0%"; expTxt.textContent="Yeni video oluşturuluyor… %0"; pl.classList.add("export");
+      var calisiyor=true, raf=0, _onceMute=vd.muted;
+      function ciz(){ if(!calisiyor) return; try{ cx.drawImage(vd,0,0,cnv.width,cnv.height); }catch(e){} raf=requestAnimationFrame(ciz); }
+      var i=0;
+      function ilerleme(s){ var ic=s?Math.max(0,vd.currentTime-s.start):0; var pr=Math.min(1,(bitenSrc+ic)/toplamSrc); expDolu.style.width=(pr*100)+"%"; expTxt.textContent="Yeni video oluşturuluyor… %"+Math.round(pr*100); }
+      function seg(){ if(i>=kalan.length){ calisiyor=false; try{ if(raf) cancelAnimationFrame(raf); }catch(e){} try{ rec.stop(); }catch(e){} return; } var s=kalan[i]; vd.playbackRate=s.hiz; vd.muted=true; _seekVe(s.start, function(){ try{ vd.play(); }catch(e){} tik(s); }); }
+      function tik(s){ if(!calisiyor) return; ilerleme(s); if(vd.currentTime>=s.end-0.03||vd.ended){ try{ vd.pause(); }catch(e){} bitenSrc+=(s.end-s.start); i++; seg(); return; } requestAnimationFrame(function(){ tik(s); }); }
+      rec.onstop=function(){
+        try{ vd.playbackRate=1; vd.muted=_onceMute; }catch(e){}
+        var blob=new Blob(chunks,{type:"video/webm"});
+        try{ var fr=new FileReader(); fr.onload=function(){ var durl=fr.result; var size=0; try{ var ci=durl.indexOf(","); size=Math.round((durl.length-(ci+1))*0.75); }catch(e){}
+          put({ id:"vx_"+Date.now()+"_"+Math.random().toString(36).slice(2,8), dataUrl:durl, name:(v.name||"video")+" (düzenlendi)", ts:Date.now(), size:size }).then(function(){ _exportAktif=false; expOv.style.display="none"; pl.classList.remove("export"); _toast("Düzenlenen video Videolarım'a kaydedildi.","success"); kapan(); renderVideolar(); });
+        }; fr.readAsDataURL(blob); }catch(e){ _exportAktif=false; expOv.style.display="none"; pl.classList.remove("export"); }
+      };
+      try{ rec.start(); }catch(e){ _exportAktif=false; expOv.style.display="none"; pl.classList.remove("export"); return; }
+      ciz(); try{ vd.pause(); }catch(e){} i=0; seg();
+    }
+    if(duzBtn) duzBtn.onclick=function(){ _onizAktif=false; duzAc(); };
+    ov.querySelector(".vx-pe-bol").onclick=segBol;
+    ov.querySelector(".vx-pe-onizle").onclick=onizle;
+    ov.querySelector(".vx-pe-kaydet").onclick=kaydet;
+    ov.querySelector(".vx-pe-iptal").onclick=function(){ _onizAktif=false; duzKapat(); };
     var oncekiOf=""; try{ oncekiOf=document.body.style.overflow; }catch(e){}
     function kapan(){ try{ vd.pause(); }catch(e){} try{ document.body.style.overflow=oncekiOf; }catch(e){} document.removeEventListener("keydown",key); document.removeEventListener("mousemove",_mm); document.removeEventListener("mouseup",_mu); ov.remove(); }
     ov.querySelector(".vx-pl-close").onclick=kapan;
     ov.addEventListener("click", function(e){ if(e.target===ov) kapan(); });
-    function key(e){ if(e.key==="Escape"){ kapan(); } else if(e.key===" "||e.key==="k"){ e.preventDefault(); oynDur(); } else if(e.key==="ArrowRight"){ try{ vd.currentTime=Math.min((vd.duration||0),vd.currentTime+5); }catch(_){} } else if(e.key==="ArrowLeft"){ try{ vd.currentTime=Math.max(0,vd.currentTime-5); }catch(_){} } else if(e.key==="m"){ vd.muted=!vd.muted; senkSes(); } }
+    function key(e){ if(_exportAktif) return; if(e.key==="Escape"){ if(pl.classList.contains("duzenle")){ _onizAktif=false; duzKapat(); return; } kapan(); } else if(e.key===" "||e.key==="k"){ e.preventDefault(); oynDur(); } else if(e.key==="ArrowRight"){ try{ vd.currentTime=Math.min((vd.duration||0),vd.currentTime+5); }catch(_){} } else if(e.key==="ArrowLeft"){ try{ vd.currentTime=Math.max(0,vd.currentTime-5); }catch(_){} } else if(e.key==="m"){ vd.muted=!vd.muted; senkSes(); } }
     document.addEventListener("keydown", key);
     try{ document.body.style.overflow="hidden"; }catch(e){}
     document.body.appendChild(ov);
