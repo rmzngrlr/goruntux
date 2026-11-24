@@ -1528,7 +1528,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const links = (message && message.links) || [];
     if (!links.length) { try { sendResponse({ status: "error", message: "link yok" }); } catch (e) {} return false; }
     chrome.tabs.query({ url: ["*://x.com/*", "*://twitter.com/*"] }, (tabs) => {
-      const gonder = (tid) => { try { chrome.tabs.update(tid, { active: true }, () => { void chrome.runtime.lastError; }); } catch (e) {} setTimeout(() => { try { chrome.tabs.sendMessage(tid, { action: "videomatikKomut", links: links }, () => { void chrome.runtime.lastError; }); } catch (e) {} }, 400); };
+      const gonder = (tid) => {
+        try { chrome.tabs.update(tid, { active: true }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+        const _komutGonder = () => { try { chrome.tabs.sendMessage(tid, { action: "videomatikKomut", links: links }, () => { void chrome.runtime.lastError; }); } catch (e) {} };
+        // [FIX] widget.js manifest content_script DEĞİL (executeScript ile enjekte edilir) -> hedef sekmeye komut göndermeden
+        // ÖNCE widget.js'i enjekte et; aksi halde (özellikle taze açılan x.com/home sekmesinde) 'videomatikKomut' dinleyicisi
+        // yok -> sağ-alt kırmızı başlat butonu HİÇ çıkmaz, kayıt başlamaz.
+        try {
+          chrome.scripting.executeScript({ target: { tabId: tid }, func: (id) => { window.xRaporTabId = id; }, args: [tid] })
+            .then(() => chrome.scripting.executeScript({ target: { tabId: tid }, files: ["widget.js"] }))
+            .then(() => { setTimeout(_komutGonder, 350); })
+            .catch(() => { setTimeout(_komutGonder, 450); });
+        } catch (e) { setTimeout(_komutGonder, 450); }
+      };
       if (tabs && tabs.length) { gonder(tabs[0].id); if (tabs[0].windowId != null) { try { chrome.windows.update(tabs[0].windowId, { focused: true }, () => { void chrome.runtime.lastError; }); } catch (e) {} } }
       else { chrome.tabs.create({ url: "https://x.com/home" }, (t) => { if (t && t.id) { const onUpd = (id, info) => { if (id === t.id && info.status === 'complete') { chrome.tabs.onUpdated.removeListener(onUpd); gonder(t.id); } }; chrome.tabs.onUpdated.addListener(onUpd); } }); }
     });
