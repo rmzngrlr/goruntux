@@ -5593,8 +5593,8 @@
         await xVideoBekle(700);
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
-        var raf = 0, calisiyor = true;
-        function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
+        var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
         var mime = 'video/webm';
@@ -5660,7 +5660,9 @@
                     } catch (e) {}
                     if (!window.__xVideoKayitAktif) return;
                 }
-                // FAZ 2: repost listesini aç (yapay bekleme yok; yalnız liste DOM'u yerleşsin diye minimum settle)
+                // FAZ 2: repost listesini aç. [BEYAZ FLAŞ FIX] geçiş boyunca canlı akışı ÇİZME -> canvas son kareyi
+                // (ana tweet) donmuş tutar; X'in /retweets yeniden-çizimindeki anlık BEYAZ ekran kayda GİRMEZ.
+                _dondur = true;
                 var acildi = await new Promise(function (res) { xVideoRepostAc(res); });
                 if (!window.__xVideoKayitAktif) return;
                 if (!acildi) { xVideoToast('Repost listesi açılamadı.', true); durdur(); return; }
@@ -5675,6 +5677,8 @@
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
                 canvasBoyutla();   // kadraj -> liste (çözünürlük değişir)
+                _dondur = false;   // geçiş bitti: donmuş kareyi bırak, listeyi çiz
+                try { var _c0 = olc(); cx.drawImage(vid, _c0.sx, _c0.sy, _c0.sw, _c0.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // ilk liste karesini HEMEN bas (resize sonrası siyah kare olmasın)
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
@@ -5735,8 +5739,8 @@
         }
         function canvasBoyutla() { var r = olc(); var maxW = 820, k = Math.min(1, maxW / Math.max(1, r.sw)); cnv.width = Math.max(2, Math.round(r.sw * k)); cnv.height = Math.max(2, Math.round(r.sh * k)); }
         canvasBoyutla();
-        var raf = 0, calisiyor = true;
-        function ciz() { if (!calisiyor) return; var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} raf = requestAnimationFrame(ciz); }
+        var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, 0, 0, cnv.width, cnv.height); } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);
         var mime = 'video/webm';
@@ -5766,6 +5770,7 @@
             try {
                 for (var i = 0; i < tweets.length; i++) {
                     if (!window.__xVideoKayitAktif) break;
+                    _dondur = true;   // [BEYAZ FLAŞ FIX] tweet'e gezinirken canlı akışı çizme (beyaz yeniden-çizim kayda girmez)
                     await xVmGit(tweets[i].url);
                     if (!window.__xVideoKayitAktif) break;
                     var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
@@ -5776,6 +5781,7 @@
                         kadrajEl = art; ustKlip = 0;
                         try { art.scrollIntoView({ block: 'start' }); } catch (e) {}
                         await xVideoBekle(650); canvasBoyutla();
+                        _dondur = false; try { var _ci = olc(); cx.drawImage(vid, _ci.sx, _ci.sy, _ci.sw, _ci.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // tweet yerleşti: donmuş kareyi bırak, introyu çiz
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
@@ -5784,6 +5790,7 @@
                         try { var _tsc = document.scrollingElement || document.documentElement; var _ov = art.getBoundingClientRect().bottom - window.innerHeight; if (_ov > 6 && window.__xVideoKayitAktif) { var _ps = Math.max(_ok + _vs - 1600, _ov / 0.11), _bs = _tsc.scrollTop || 0; await new Promise(function (res) { var _st = 0; function _pt(ts) { try { if (!window.__xVideoKayitAktif) { res(); return; } if (!_st) { _st = ts; requestAnimationFrame(_pt); return; } var _pr = Math.min(1, (ts - _st) / _ps); _tsc.scrollTop = _bs + _ov * _pr; if (_pr >= 1) { setTimeout(res, 500); return; } requestAnimationFrame(_pt); } catch (e) { res(); } } requestAnimationFrame(_pt); }); } else { await xVideoBekle(Math.max(0, _ok + _vs - 1600)); } } catch (e) {}
                     }
                     if (!window.__xVideoKayitAktif) break;
+                    _dondur = true;   // [BEYAZ FLAŞ FIX] reposts geçişinde canlı akışı çizme
                     var acildi = await new Promise(function (res) { xVideoRepostAc(res); });   // FAZ 2 reposts
                     if (!window.__xVideoKayitAktif) break;
                     if (acildi) {
@@ -5794,6 +5801,7 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
+                            _dondur = false; try { var _cl = olc(); cx.drawImage(vid, _cl.sx, _cl.sy, _cl.sw, _cl.sh, 0, 0, cnv.width, cnv.height); } catch (e) {}   // liste yerleşti: donmuş kareyi bırak, listeyi çiz
                             await xVideoBekle(2000);
                             await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res); });
                         }
