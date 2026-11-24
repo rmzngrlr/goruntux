@@ -4378,9 +4378,10 @@
             if (xGxProfilModAcik() && xGxProfilRaporAcik() && xGxProfilHandle()) return 'profil';
             if (xGxKesfetAcik() && xGxKesfetMi()) return 'ara';
             if (xGxTweetBtnAcik() && /\/status\/\d+/.test(location.href) && xGxOdakliArticle()) return 'ekle';
-            // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında ODAKLI ARTICLE olmasa da butonu ENJEKTE et
-            // (video kaydı için; sağ-tık video modu). Görsel olarak SİLİK (xNavYansit x-gx-rt-silik ekler).
-            if (xGxTweetBtnAcik() && /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return 'ekle';
+            // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında "+" butonu YALNIZ KAYIT SÜRERKEN görünür
+            // (o zaman xNavYansit videomod+rt-silik ile SİLİK KIRMIZI). Kayıt yokken (normal açılış) HİÇ görünmez
+            // (kullanıcı: silik yeşil/kırmızı bile olmasın, yalnız kayıt için açılınca silik kırmızı).
+            if (xGxTweetBtnAcik() && window.__xVideoKayitAktif && /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return 'ekle';
         } catch (e) {}
         return null;
     }
