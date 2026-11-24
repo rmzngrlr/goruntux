@@ -5329,15 +5329,18 @@
         } catch (e) {}
         return gizli;
     }
-    // Video kontrolünü (#x-gx-video-ctrl) kayıt (nav) butonunun ALTINA konumla (kullanıcı isteği).
-    // Nav butonu sol rayda olduğundan ALTI da içerik sütununun solunda kalır -> videoya girmez (+ olc sol-klip emniyet).
+    // Video kontrolünü (#x-gx-video-ctrl) kayıt (nav) butonunun TAM ALT HİZASINDA + AYNI BOYUTTA konumla.
+    // Nav butonu sol rayda olduğundan altı da içerik sütununun solunda kalır -> videoya girmez (+ olc sol-klip emniyet).
     function xVideoCtrlKonumla(ctrl) {
         try {
             if (!ctrl) return;
             var nav = document.getElementById('x-gx-nav-ekle') || document.getElementById('x-gx-nav-btn');
             if (!nav) return;
             var r = nav.getBoundingClientRect();
-            ctrl.style.left = Math.round(Math.max(2, r.left)) + 'px';
+            var sz = Math.round(r.width) || 40;   // nav ile AYNI boyut
+            var btns = ctrl.querySelectorAll('.x-gx-video-ikon');
+            for (var i = 0; i < btns.length; i++) { btns[i].style.width = sz + 'px'; btns[i].style.height = sz + 'px'; var _ic = btns[i].querySelector('.x-gx-ssico'); if (_ic) { var gs = Math.round(sz * 0.6); _ic.style.width = gs + 'px'; _ic.style.height = gs + 'px'; } }
+            ctrl.style.left = Math.round(r.left + r.width / 2 - sz / 2) + 'px';   // nav MERKEZİYLE hizalı (tam alt)
             ctrl.style.top = Math.round(r.bottom + 6) + 'px';
             ctrl.style.right = 'auto'; ctrl.style.bottom = 'auto';
         } catch (e) {}
