@@ -54,13 +54,22 @@ function xRaporRegisterPanel() {
   } catch (e) { /* ignore */ }
 }
 
+// [VIDEOX] VideoX sayfasi (<meta name="x-video-panel">) kendini AYRI "video panel" olarak kaydeder
+// -> background video_panel_tab_id. GoruntuX panelinden bagimsiz (tek-panel surucusuyle catismaz).
+function xVideoRegisterPanel() {
+  try {
+    if (!document.querySelector('meta[name="x-video-panel"]')) return;
+    chrome.runtime.sendMessage({ action: "registerVideoPanel" }, () => { void chrome.runtime.lastError; });
+  } catch (e) { /* ignore */ }
+}
+
 if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sendMessage === "function") {
   try {
     // Panel kaydini DOM hazir olunca yap (meta isareti okunabilsin).
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', xRaporRegisterPanel);
+      document.addEventListener('DOMContentLoaded', function () { xRaporRegisterPanel(); xVideoRegisterPanel(); });
     } else {
-      xRaporRegisterPanel();
+      xRaporRegisterPanel(); xVideoRegisterPanel();
     }
     // SILINDI (v3.62): setUserAuth cagrisi. Bu dosya HER http(s) sayfasinda calistigi icin
     // her ziyaret edilen siteden KOSULSUZ gonderiliyordu ve isleyicisi server_origin'i
@@ -89,6 +98,11 @@ if (typeof chrome !== "undefined" && chrome.runtime && typeof chrome.runtime.sen
 //   X_RAPOR_DETECT_ACTIVE_PROFILE-> kurbanin X kullanici adini sayfaya donduruyordu
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
+  // [VIDEOX] VideoX paneli (x-video-panel) -> Video'matik başlat: linkleri SW'ye ilet (o bir X sekmesine komut yollar).
+  if (event.data && event.data.type === "X_VIDEOMATIK_BASLAT" && document.querySelector('meta[name="x-video-panel"]')) {
+    try { chrome.runtime.sendMessage({ action: "videomatikBaslat", links: (event.data.links || []) }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+    return;
+  }
   if (!document.querySelector('meta[name="x-rapor-panel"]')) return;   // yalnizca GERCEK panel
 
   // Handle Force Poll requests
@@ -161,6 +175,11 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
       // [RT VİDEO] SW -> panel: RT listesi videosunu panele ilet (panel IndexedDB'ye yazar, 1 gün saklar).
       if (msg && msg.action === "localVideo" && msg.dataUrl) {
         window.postMessage({ type: "X_RAPOR_LOCAL_VIDEO", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0 }, "*");
+        sendResponse && sendResponse({ status: "ok" });
+      }
+      // [VIDEOX] SW -> VideoX paneli: Video'matik videosunu ilet (VideoX kalıcı depoya yazar).
+      if (msg && msg.action === "localVideoX" && msg.dataUrl) {
+        window.postMessage({ type: "X_RAPOR_LOCAL_VIDEOX", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0 }, "*");
         sendResponse && sendResponse({ status: "ok" });
       }
       // v3.66: tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)

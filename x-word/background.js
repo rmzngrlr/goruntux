@@ -767,6 +767,38 @@ function flushPendingVideos(origin) {
   });
 }
 
+// [VIDEOX] Video'matik videoları AYRI kuyruk -> video_panel_tab_id'ye (localVideoX). VideoX kapalıysa pending kalır;
+// VideoX açılıp registerVideoPanel gelince ya da periyodik retry'da teslim edilir. (GörüntüX 1-günlük akışından bağımsız.)
+function queueVideoX(dataUrl, name, origin) {
+  chrome.storage.local.get(['pending_videox'], (r) => {
+    let q = (r && r.pending_videox) || [];
+    q.push({ dataUrl: dataUrl, name: name || '', ts: Date.now() });
+    chrome.storage.local.set({ pending_videox: q }, () => { flushPendingVideoX(); });
+  });
+}
+function flushPendingVideoX() {
+  chrome.storage.local.get(['pending_videox', 'video_panel_tab_id'], (r) => {
+    const q = (r && r.pending_videox) || [];
+    if (!q.length) return;
+    const vtid = r.video_panel_tab_id;
+    if (!vtid) return;
+    chrome.tabs.get(vtid, (t) => {
+      if (chrome.runtime.lastError || !t) return;
+      let kalan = [], bekleyen = q.length;
+      const bitir = () => { chrome.storage.local.set({ pending_videox: kalan }); };
+      q.forEach(item => {
+        try {
+          chrome.tabs.sendMessage(vtid, { action: "localVideoX", dataUrl: item.dataUrl, name: item.name, ts: item.ts }, () => {
+            const err = chrome.runtime.lastError;
+            if (err) kalan.push(item);
+            if (--bekleyen === 0) bitir();
+          });
+        } catch (e) { kalan.push(item); if (--bekleyen === 0) bitir(); }
+      });
+    });
+  });
+}
+
 // [GÖRSEL KAYBI FIX] Teslim edilememiş (pending) görseller SONSUZA kalmasın -> periyodik RETRY.
 // Kök sorun: ilk flush panel hazır değilken (tarama sırasında panel re-render/odak/navigasyon, ya da panel
 // henüz registerPanel'e gelmemiş) başarısız olursa, yeniden-deneme YOKTU -> yalnız SONRAKİ queueLocalImage
@@ -776,11 +808,13 @@ function flushPendingVideos(origin) {
 try {
   setInterval(() => {
     try {
-      chrome.storage.local.get(['pending_local_images', 'pending_videos'], (r) => {
+      chrome.storage.local.get(['pending_local_images', 'pending_videos', 'pending_videox'], (r) => {
         const q = (r && r.pending_local_images) || [];
         if (q && q.length) { flushPendingLocalImages(); }
         const qv = (r && r.pending_videos) || [];
         if (qv && qv.length) { flushPendingVideos(); }
+        const qvx = (r && r.pending_videox) || [];
+        if (qvx && qvx.length) { flushPendingVideoX(); }
       });
     } catch (e) {}
   }, 3500);
@@ -1470,13 +1504,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "deliverVideo") {
     if (message.dataUrl) {
       chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
-        try { queueVideo(message.dataUrl, message.name, res.server_origin); } catch (e) {}
+        try {
+          if (message.hedef === 'videox') queueVideoX(message.dataUrl, message.name, res.server_origin);   // VideoX: ayrı kalıcı depo
+          else queueVideo(message.dataUrl, message.name, res.server_origin);                               // GörüntüX: 1 günlük
+        } catch (e) {}
         try { sendResponse({ status: "success" }); } catch (_) {}
       });
       return true; // async yanit
     }
     try { sendResponse({ status: "error", message: "dataUrl yok" }); } catch (_) {}
     return false;
+  }
+
+  // [VIDEOX] VideoX paneli kaydı (x-video-panel meta) -> video_panel_tab_id. GörüntüX panelinden AYRI.
+  if (message.action === "registerVideoPanel") {
+    const stid = sender.tab ? sender.tab.id : null;
+    if (stid) { chrome.storage.local.set({ video_panel_tab_id: stid }, () => { try { flushPendingVideoX(); } catch (e) {} }); try { sendResponse({ status: "ok" }); } catch (e) {} return true; }
+    try { sendResponse({ status: "error" }); } catch (e) {} return false;
+  }
+
+  // [VIDEO'MATIK] VideoX'ten çok-tweet linki -> bir X sekmesine 'videomatikKomut' gönder (orada başlat butonu çıkar).
+  if (message.action === "videomatikBaslat") {
+    const links = (message && message.links) || [];
+    if (!links.length) { try { sendResponse({ status: "error", message: "link yok" }); } catch (e) {} return false; }
+    chrome.tabs.query({ url: ["*://x.com/*", "*://twitter.com/*"] }, (tabs) => {
+      const gonder = (tid) => { try { chrome.tabs.update(tid, { active: true }, () => { void chrome.runtime.lastError; }); } catch (e) {} setTimeout(() => { try { chrome.tabs.sendMessage(tid, { action: "videomatikKomut", links: links }, () => { void chrome.runtime.lastError; }); } catch (e) {} }, 400); };
+      if (tabs && tabs.length) { gonder(tabs[0].id); if (tabs[0].windowId != null) { try { chrome.windows.update(tabs[0].windowId, { focused: true }, () => { void chrome.runtime.lastError; }); } catch (e) {} } }
+      else { chrome.tabs.create({ url: "https://x.com/home" }, (t) => { if (t && t.id) { const onUpd = (id, info) => { if (id === t.id && info.status === 'complete') { chrome.tabs.onUpdated.removeListener(onUpd); gonder(t.id); } }; chrome.tabs.onUpdated.addListener(onUpd); } }); }
+    });
+    try { sendResponse({ status: "ok" }); } catch (e) {}
+    return true;
   }
 
   // [GÖRÜNTÜX İLE RAPORLA Faz3] Widget profil butonu -> paneldeki açık rapor durumunu sorar.
