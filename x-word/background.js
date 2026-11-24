@@ -643,7 +643,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
             // v3.88: fotograf/medya alt sayfalari HARIC. Ayrica GECERSIZ sayfaya (anasayfa,
             // foto, alakasiz) gidilince mevcut widget KALDIRILIR -> SPA gezinmede widget
             // yanlis sayfada kalmaz (kullanici: profil/tweet widget'i baska sayfaya gidince kapansin).
-            const _gecerliWidgetSayfasi = ((((tivitMi && !retweetSayfasiMi) || profilMi || kesfetMi || homeMi || digerTweetYuzeyiMi || isInstagramGenel || isFacebookGenel) && !fotografMi));
+            // [KULLANICI: GörüntüX nav butonu X'in HER sayfasında olsun — istisnasız] x.com/twitter.com'un TÜM
+            // sayfalarında widget enjekte et (foto/medya alt-sayfası hariç; orada sol-nav zaten yok). Nav butonu her
+            // yerde çıkar; tik/yakalama gibi diğer özellikler sayfa-İÇİNDE kendi koşullarıyla gating'li kalır.
+            const xHostMu = /(?:^|\.)(?:x|twitter)\.com$/i.test(urlObj.hostname);
+            const _gecerliWidgetSayfasi = (((xHostMu || isInstagramGenel || isFacebookGenel) && !fotografMi));
             if (_gecerliWidgetSayfasi) {
               chrome.storage.local.get({ otoWidgetAc: true }, (res) => {
                 if (res.otoWidgetAc) {
