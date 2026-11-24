@@ -10681,7 +10681,6 @@ VIDEOX_TRANSFORM_JS = r'''
           <span class="vx-pl-title"></span>
           <span class="vx-pl-sp"></span>
           <button class="vx-pl-btn ind" type="button" aria-label="İndir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10m0 0l-4-4m4 4l4-4M5 17v2a2 2 0 002 2h10a2 2 0 002-2v-2"/></svg></button>
-          <button class="vx-pl-btn tam" type="button" aria-label="Tam ekran"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
         </div>
       </div></div>`;
     var pl=ov.querySelector(".vx-pl"), vd=ov.querySelector("video"); vd.src=v.dataUrl;
@@ -10704,13 +10703,11 @@ VIDEOX_TRANSFORM_JS = r'''
     document.addEventListener("mousemove", _mm); document.addEventListener("mouseup", _mu);
     ov.querySelector(".ses").onclick=function(){ vd.muted=!vd.muted; senkSes(); };
     ov.querySelector(".ind").onclick=function(){ indir(v); };
-    function tamEkran(){ try{ if(document.fullscreenElement) document.exitFullscreen(); else pl.requestFullscreen(); }catch(e){} }
-    ov.querySelector(".tam").onclick=tamEkran;
     var oncekiOf=""; try{ oncekiOf=document.body.style.overflow; }catch(e){}
     function kapan(){ try{ vd.pause(); }catch(e){} try{ document.body.style.overflow=oncekiOf; }catch(e){} document.removeEventListener("keydown",key); document.removeEventListener("mousemove",_mm); document.removeEventListener("mouseup",_mu); ov.remove(); }
     ov.querySelector(".vx-pl-close").onclick=kapan;
     ov.addEventListener("click", function(e){ if(e.target===ov) kapan(); });
-    function key(e){ if(e.key==="Escape"){ kapan(); } else if(e.key===" "||e.key==="k"){ e.preventDefault(); oynDur(); } else if(e.key==="ArrowRight"){ try{ vd.currentTime=Math.min((vd.duration||0),vd.currentTime+5); }catch(_){} } else if(e.key==="ArrowLeft"){ try{ vd.currentTime=Math.max(0,vd.currentTime-5); }catch(_){} } else if(e.key==="f"){ tamEkran(); } else if(e.key==="m"){ vd.muted=!vd.muted; senkSes(); } }
+    function key(e){ if(e.key==="Escape"){ kapan(); } else if(e.key===" "||e.key==="k"){ e.preventDefault(); oynDur(); } else if(e.key==="ArrowRight"){ try{ vd.currentTime=Math.min((vd.duration||0),vd.currentTime+5); }catch(_){} } else if(e.key==="ArrowLeft"){ try{ vd.currentTime=Math.max(0,vd.currentTime-5); }catch(_){} } else if(e.key==="m"){ vd.muted=!vd.muted; senkSes(); } }
     document.addEventListener("keydown", key);
     try{ document.body.style.overflow="hidden"; }catch(e){}
     document.body.appendChild(ov);
@@ -10755,7 +10752,9 @@ VIDEOX_TRANSFORM_JS = r'''
   function vxSecimGuncelle(){ var bar=vxSecimBar(); var n=vxSecilenler().length; try{ document.getElementById("vx-secim-sayi").textContent=n+" seçili"; }catch(e){} if(n>0) bar.classList.add("acik"); else bar.classList.remove("acik"); }
   function vxSecimTemizle(){ try{ Array.prototype.forEach.call(document.querySelectorAll("#vx-videolarim .vx-check:checked"),function(c){ c.checked=false; }); }catch(e){} vxSecimGuncelle(); }
   function vxSecimIndir(){ var ids=vxSecilenler(); if(!ids.length) return; liste().then(function(arr){ var map={}; arr.forEach(function(v){ map[v.id]=v; }); ids.forEach(function(id,i){ var v=map[id]; if(v) setTimeout(function(){ indir(v); }, i*450); }); }); }
-  function vxSecimSil(){ var ids=vxSecilenler(); if(!ids.length) return; if(!window.confirm(ids.length+" video silinsin mi? Bu işlem geri alınamaz.")) return; Promise.all(ids.map(function(id){ return del(id); })).then(function(){ renderVideolar(); }); }
+  // Silme onayı Raporlarım ile BİREBİR: panelin xConfirm stilli dialog'u (native confirm değil).
+  function vxSilOnay(mesaj, baslik){ try{ if(window.xConfirm) return window.xConfirm(mesaj, { title:baslik, okText:"Sil", danger:true, icon:(window._XSVG_COP||undefined) }); }catch(e){} return Promise.resolve(window.confirm(mesaj)); }
+  function vxSecimSil(){ var ids=vxSecilenler(); if(!ids.length) return; vxSilOnay(ids.length+" videoyu silmek istediğine emin misin? Bu işlem geri alınamaz.", "Seçilenleri Sil").then(function(ok){ if(!ok) return; Promise.all(ids.map(function(id){ return del(id); })).then(function(){ renderVideolar(); }); }); }
   function renderVideolar(){
     var box=document.getElementById("vx-videolarim"); if(!box) return;
     liste().then(function(arr){
@@ -10789,7 +10788,7 @@ VIDEOX_TRANSFORM_JS = r'''
         chk.addEventListener("click", function(e){ e.stopPropagation(); });
         chk.addEventListener("change", vxSecimGuncelle);
         card.querySelector(".vx-ind").addEventListener("click", function(e){ e.stopPropagation(); indir(v); });
-        card.querySelector(".vx-sil").addEventListener("click", function(e){ e.stopPropagation(); del(v.id).then(renderVideolar); });
+        card.querySelector(".vx-sil").addEventListener("click", function(e){ e.stopPropagation(); vxSilOnay("Bu videoyu silmek istediğine emin misin? Bu işlem geri alınamaz.", "Videoyu Sil").then(function(ok){ if(ok) del(v.id).then(renderVideolar); }); });
         adEl.addEventListener("click", function(e){ e.stopPropagation(); });
         adEl.addEventListener("dblclick", function(e){ e.stopPropagation(); vxRename(adEl, v); });
         grid.appendChild(card);
