@@ -11137,7 +11137,11 @@ X_SAVED_REPORTS_JS = r'''
   // (canvas) üretilir ve normLink'e göre önbelleklenir (her kayıtta tekrar üretilmesin). ASYNC.
   var _onizThumbCache = {};
   function _onizThumb(key, dataUrl, keepAlpha){   // keepAlpha=true -> PNG (şeffaflık korunur; çizim kağıdı için -> galeri zemini temadan)
-    if(_onizThumbCache[key]) return Promise.resolve(_onizThumbCache[key]);
+    // [FIX] Önbellek GÖRSEL İÇERİĞİNE (dataUrl) bağlı; link-anahtarına (key) DEĞİL. Aksi halde iki rapor aynı
+    // normLink anahtarını FARKLI görsellerle paylaşınca (aynı tweet 2 raporda / IG karusel) birincinin thumbnail'i
+    // ikincide de görünüyordu (benzer başlıklı başka raporun görseli karışması). Aynı görsel yine tek kez üretilir.
+    var _ck = dataUrl || key;
+    if(_onizThumbCache[_ck]) return Promise.resolve(_onizThumbCache[_ck]);
     return new Promise(function(resolve){
       try{
         var img=new Image();
@@ -11146,7 +11150,7 @@ X_SAVED_REPORTS_JS = r'''
           var cw=Math.max(1,Math.round(iw*s)), ch=Math.max(1,Math.round(ih*s));
           var c=document.createElement('canvas'); c.width=cw; c.height=ch;
           c.getContext('2d').drawImage(img,0,0,cw,ch);
-          var t=keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg',0.62); _onizThumbCache[key]=t; resolve(t);
+          var t=keepAlpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg',0.62); _onizThumbCache[_ck]=t; resolve(t);
         }catch(e){ resolve(null); } };
         img.onerror=function(){ resolve(null); };
         img.src=dataUrl;
