@@ -1527,22 +1527,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "videomatikBaslat") {
     const links = (message && message.links) || [];
     if (!links.length) { try { sendResponse({ status: "error", message: "link yok" }); } catch (e) {} return false; }
+    // [FIX] İLK TWEET'i aç (x.com/home DEĞİL) -> kullanıcı "Kaydı Başlat" prompt'unu DOĞRU tweet üstünde görür +
+    // kayıt o tweet'ten başlar (eskiden x.com/home açıp orada soruyordu -> "Hata" hissi).
+    const _ilkTweet = (function () { for (var i = 0; i < links.length; i++) { var m = String(links[i]).match(/https?:\/\/(?:x|twitter)\.com\/[^/\s?#]+\/status\/\d+/i); if (m) return m[0]; } return null; })();
+    const _acilacak = _ilkTweet || "https://x.com/home";
+    // widget.js enjekte (manifest content_script DEĞİL) -> SONRA 'videomatikKomut' gönder (yoksa dinleyici yok, prompt çıkmaz).
+    const gonder = (tid) => {
+      const _komutGonder = () => { try { chrome.tabs.sendMessage(tid, { action: "videomatikKomut", links: links }, () => { void chrome.runtime.lastError; }); } catch (e) {} };
+      try {
+        chrome.scripting.executeScript({ target: { tabId: tid }, func: (id) => { window.xRaporTabId = id; }, args: [tid] })
+          .then(() => chrome.scripting.executeScript({ target: { tabId: tid }, files: ["widget.js"] }))
+          .then(() => { setTimeout(_komutGonder, 400); })
+          .catch(() => { setTimeout(_komutGonder, 500); });
+      } catch (e) { setTimeout(_komutGonder, 500); }
+    };
+    // Hedef sekmeyi İLK TWEET'e götür (yükleme bitince widget+komut). complete gelmezse ~6sn sonra yine dener.
+    const _navEtVeGonder = (tid, windowId) => {
+      try { if (windowId != null) chrome.windows.update(windowId, { focused: true }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+      let _bitti = false;
+      const onUpd = (id, info) => { if (id === tid && info.status === 'complete' && !_bitti) { _bitti = true; try { chrome.tabs.onUpdated.removeListener(onUpd); } catch (e) {} gonder(tid); } };
+      try { chrome.tabs.onUpdated.addListener(onUpd); } catch (e) {}
+      try { chrome.tabs.update(tid, { active: true, url: _acilacak }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+      setTimeout(() => { if (!_bitti) { _bitti = true; try { chrome.tabs.onUpdated.removeListener(onUpd); } catch (e) {} gonder(tid); } }, 6000);
+    };
     chrome.tabs.query({ url: ["*://x.com/*", "*://twitter.com/*"] }, (tabs) => {
-      const gonder = (tid) => {
-        try { chrome.tabs.update(tid, { active: true }, () => { void chrome.runtime.lastError; }); } catch (e) {}
-        const _komutGonder = () => { try { chrome.tabs.sendMessage(tid, { action: "videomatikKomut", links: links }, () => { void chrome.runtime.lastError; }); } catch (e) {} };
-        // [FIX] widget.js manifest content_script DEĞİL (executeScript ile enjekte edilir) -> hedef sekmeye komut göndermeden
-        // ÖNCE widget.js'i enjekte et; aksi halde (özellikle taze açılan x.com/home sekmesinde) 'videomatikKomut' dinleyicisi
-        // yok -> sağ-alt kırmızı başlat butonu HİÇ çıkmaz, kayıt başlamaz.
-        try {
-          chrome.scripting.executeScript({ target: { tabId: tid }, func: (id) => { window.xRaporTabId = id; }, args: [tid] })
-            .then(() => chrome.scripting.executeScript({ target: { tabId: tid }, files: ["widget.js"] }))
-            .then(() => { setTimeout(_komutGonder, 350); })
-            .catch(() => { setTimeout(_komutGonder, 450); });
-        } catch (e) { setTimeout(_komutGonder, 450); }
-      };
-      if (tabs && tabs.length) { gonder(tabs[0].id); if (tabs[0].windowId != null) { try { chrome.windows.update(tabs[0].windowId, { focused: true }, () => { void chrome.runtime.lastError; }); } catch (e) {} } }
-      else { chrome.tabs.create({ url: "https://x.com/home" }, (t) => { if (t && t.id) { const onUpd = (id, info) => { if (id === t.id && info.status === 'complete') { chrome.tabs.onUpdated.removeListener(onUpd); gonder(t.id); } }; chrome.tabs.onUpdated.addListener(onUpd); } }); }
+      if (tabs && tabs.length) { _navEtVeGonder(tabs[0].id, tabs[0].windowId); }
+      else { chrome.tabs.create({ url: _acilacak }, (t) => { if (t && t.id) { let _b = false; const onUpd = (id, info) => { if (id === t.id && info.status === 'complete' && !_b) { _b = true; try { chrome.tabs.onUpdated.removeListener(onUpd); } catch (e) {} gonder(t.id); } }; try { chrome.tabs.onUpdated.addListener(onUpd); } catch (e) {} setTimeout(() => { if (!_b) { _b = true; try { chrome.tabs.onUpdated.removeListener(onUpd); } catch (e) {} gonder(t.id); } }, 8000); } }); }
     });
     try { sendResponse({ status: "ok" }); } catch (e) {}
     return true;

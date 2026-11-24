@@ -10656,9 +10656,9 @@ VIDEOX_TRANSFORM_JS = r'''
     var bitti=false; function son(p,d){ if(bitti) return; bitti=true; try{ cb(p,d); }catch(e){} }
     try{
       var vd=document.createElement("video"); vd.muted=true; vd.preload="auto"; vd.src=v.dataUrl;
-      // Poster = videonun İLK karesi (beyaz-dolgulu tweet introsu) DEĞİL -> RT LİSTESİ bölümünden DOLU bir kare
-      // (yaklaşık %80, introyu geçer; en-boy canvası tamamen doldurur -> önizleme kötü/beyaz görünmez).
-      vd.addEventListener("loadedmetadata", function(){ try{ var d=vd.duration; var hedef=(isFinite(d)&&d>0.6)?Math.min(d-0.25, d*0.8):0.1; vd.currentTime=Math.max(0.1, hedef); }catch(e){ _cek(vd, son); } });
+      // Poster = TWEET introsu (kullanıcı: önizlemede tweet görünsün). İlk kare (beyaz başlangıç/geçiş) DEĞİL,
+      // ~3.5sn (startup+çerçeveleme sonrası tweet gösterilir). Kırpma düzeldiğinden tweet temiz görünür.
+      vd.addEventListener("loadedmetadata", function(){ try{ var d=vd.duration; var hedef=(isFinite(d)&&d>5)?Math.min(d-0.25, 3.5):((isFinite(d)&&d>0.6)?d*0.4:0.1); vd.currentTime=Math.max(0.1, hedef); }catch(e){ _cek(vd, son); } });
       vd.addEventListener("seeked", function(){ _cek(vd, son); });
       vd.addEventListener("error", function(){ son("",0); });
       setTimeout(function(){ if(!bitti){ _cek(vd, son); } }, 4000);
