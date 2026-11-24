@@ -5736,10 +5736,14 @@
             try { btn.focus(); } catch (e) {}
         } catch (e) {}
     }
+    // Odaklı tweet article'ı: önce xGxOdakliArticle (permalink eşleşmeli), yoksa xVideoAnaTweet YEDEĞİ.
+    // (Video'matik pushState gezinmesinde xGxOdakliArticle ara sıra null dönüyordu -> kadrajEl=null -> olc() TÜM
+    //  sayfayı (nav+sidebar) kadraja alıyordu. Yedek ile kadraj HER ZAMAN tweet sütununa kırpılır.)
+    function xVmOdak() { try { var a = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null; if (a) return a; var b = xVideoAnaTweet(); return (b && b.el) ? b.el : null; } catch (e) { return null; } }
     function xVmGit(url) {
         return new Promise(function (res) {
             try { var u = new URL(url); if (location.pathname !== u.pathname) { history.pushState(null, '', u.pathname); window.dispatchEvent(new PopStateEvent('popstate')); } } catch (e) {}
-            var n = 0, iv = setInterval(function () { n++; var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null; if (art) { clearInterval(iv); setTimeout(res, 500); } else if (n > 50) { clearInterval(iv); res(); } }, 150);
+            var n = 0, iv = setInterval(function () { n++; var art = xVmOdak(); if (art) { clearInterval(iv); setTimeout(res, 500); } else if (n > 50) { clearInterval(iv); res(); } }, 150);
         });
     }
     async function xVideomatikBaslat(tweets) {
@@ -5777,6 +5781,7 @@
         function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); _fadeT = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) { _fadeT = 0; } }
         function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { var _fd = false, _a = 1; if (_fadeT) { _a = (((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT) / _fadeDur; if (_a < 1) { _fd = true; } else { _fadeT = 0; _a = 1; } } if (_fd) { cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); } else { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } if (_fd) { cx.save(); cx.globalAlpha = _a; } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fd) { cx.restore(); } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
+        try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } catch (e) {} _dondur = true;   // [FIX] ilk tweet çerçevelenene kadar TÜM sayfayı (nav+sidebar) kaydetme -> temiz başla; akış ilk tweet'i çerçeveleyince çözer
         var cstream = cnv.captureStream(15);
         var mime = 'video/webm';
         try { if (window.MediaRecorder && MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mime = 'video/webm;codecs=vp9'; } catch (e) {}
@@ -5808,7 +5813,7 @@
                     _dondur = true;   // [BEYAZ FLAŞ FIX] tweet'e gezinirken canlı akışı çizme (beyaz yeniden-çizim kayda girmez)
                     await xVmGit(tweets[i].url);
                     if (!window.__xVideoKayitAktif) break;
-                    var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
+                    var art = xVmOdak();
                     try { xVideoBarlariGeri(_barGizli); } catch (e) {} _barGizli = [];
                     try { if (art && typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}
                     try { _barGizli = xVideoBarlariGizle().concat(xVideoEtkilesimGizle()); if (art) _barGizli = _barGizli.concat(xVideoAlakaliGizle()); } catch (e) {}
