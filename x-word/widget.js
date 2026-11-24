@@ -5620,8 +5620,8 @@
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520;   // [GEÇİŞ CROSSFADE] donmuş son kare TAM ZEMİN + canlı içerik üstüne fade-IN -> beyaz boşluk/flaş YOK, yumuşak geçiş
-        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); _fadeT = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) { _fadeT = 0; } }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] her geçiş (tweet<->liste) anını _splitler'e yaz -> düzenleyici oto böler
+        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
         function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { var _fd = false, _a = 1; if (_fadeT) { _a = (((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT) / _fadeDur; if (_a < 1) { _fd = true; } else { _fadeT = 0; _a = 1; } } if (_fd) { cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); } else { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } if (_fd) { cx.save(); cx.globalAlpha = _a; } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fd) { cx.restore(); } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
@@ -5643,10 +5643,10 @@
             window.__xVideoKayitAktif = false;
             if (_kullaniciDurdurdu) { try { var _c = document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {} try { xVideoToast('Kayıt durduruldu — video kaydedilmedi.'); } catch (e) {} return; }
             var blob = new Blob(chunks, { type: 'video/webm' });
-            xVideoCtrlBitti(ctrl, blob);
+            xVideoCtrlBitti(ctrl, blob, _splitler);
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
-        window.__xVideoRec = rec;
+        window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 referansı
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         xVideoCtrlKayit(ctrl, kullaniciDurdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
@@ -5790,8 +5790,8 @@
         }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520;   // [GEÇİŞ CROSSFADE] donmuş son kare TAM ZEMİN + canlı içerik üstüne fade-IN -> beyaz boşluk/flaş YOK, yumuşak geçiş
-        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); _fadeT = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) { _fadeT = 0; } }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] her geçiş (tweet<->liste) anını _splitler'e yaz -> düzenleyici oto böler
+        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
         function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { var _fd = false, _a = 1; if (_fadeT) { _a = (((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT) / _fadeDur; if (_a < 1) { _fd = true; } else { _fadeT = 0; _a = 1; } } if (_fd) { cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); } else { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } if (_fd) { cx.save(); cx.globalAlpha = _a; } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fd) { cx.restore(); } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } catch (e) {} _dondur = true;   // [FIX] ilk tweet çerçevelenene kadar TÜM sayfayı (nav+sidebar) kaydetme -> temiz başla; akış ilk tweet'i çerçeveleyince çözer
@@ -5816,10 +5816,10 @@
             var blob = new Blob(chunks, { type: 'video/webm' });
             var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
             var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - 24 Kasım 2026 HH-MM-SS; çoklu: VideoX - tarih saat
-            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
+            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: _splitler }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
-        window.__xVideoRec = rec;
+        window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 referansı
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         var dctrl = document.getElementById('x-gx-video-ctrl'); if (!dctrl) { dctrl = document.createElement('div'); dctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(dctrl); }
         xVideoCtrlKayit(dctrl, kullaniciDurdur);
@@ -5908,7 +5908,7 @@
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
-    function xVideoCtrlBitti(ctrl, blob) {
+    function xVideoCtrlBitti(ctrl, blob, splitler) {
         // [İSTEK] X sayfasında İNDİRME YOK. Video VideoX paneline (Videolarım) gönderilir (hedef=videox -> KALICI).
         // Ad = odaklı tweet ID'li. X kontrolü kapanır.
         try { var _c = ctrl || document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
@@ -5919,8 +5919,8 @@
                 try {
                     var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
                     var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026 HH-MM-SS
-                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; });
-                    try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {}   // [İSTEK] kayıt bitince VideoX paneline yönlendir
+                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: (splitler || []) }, function () { void chrome.runtime.lastError; });
+                    try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {}  // [İSTEK] kayıt bitince VideoX paneline yönlendir
                     xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
             };

@@ -773,10 +773,10 @@ function flushPendingVideos(origin) {
 
 // [VIDEOX] Video'matik videoları AYRI kuyruk -> video_panel_tab_id'ye (localVideoX). VideoX kapalıysa pending kalır;
 // VideoX açılıp registerVideoPanel gelince ya da periyodik retry'da teslim edilir. (GörüntüX 1-günlük akışından bağımsız.)
-function queueVideoX(dataUrl, name, origin) {
+function queueVideoX(dataUrl, name, origin, splitler) {
   chrome.storage.local.get(['pending_videox'], (r) => {
     let q = (r && r.pending_videox) || [];
-    q.push({ dataUrl: dataUrl, name: name || '', ts: Date.now() });
+    q.push({ dataUrl: dataUrl, name: name || '', ts: Date.now(), splitler: (Array.isArray(splitler) ? splitler : []) });
     chrome.storage.local.set({ pending_videox: q }, () => { flushPendingVideoX(); });
   });
 }
@@ -792,7 +792,7 @@ function flushPendingVideoX() {
       const bitir = () => { chrome.storage.local.set({ pending_videox: kalan }); };
       q.forEach(item => {
         try {
-          chrome.tabs.sendMessage(vtid, { action: "localVideoX", dataUrl: item.dataUrl, name: item.name, ts: item.ts }, () => {
+          chrome.tabs.sendMessage(vtid, { action: "localVideoX", dataUrl: item.dataUrl, name: item.name, ts: item.ts, splitler: (item.splitler || []) }, () => {
             const err = chrome.runtime.lastError;
             if (err) kalan.push(item);
             if (--bekleyen === 0) bitir();
@@ -1509,7 +1509,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.dataUrl) {
       chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
         try {
-          if (message.hedef === 'videox') queueVideoX(message.dataUrl, message.name, res.server_origin);   // VideoX: ayrı kalıcı depo
+          if (message.hedef === 'videox') queueVideoX(message.dataUrl, message.name, res.server_origin, message.splitler);   // VideoX: ayrı kalıcı depo (+oto-böl split zamanları)
           else queueVideo(message.dataUrl, message.name, res.server_origin);                               // GörüntüX: 1 günlük
         } catch (e) {}
         try { sendResponse({ status: "success" }); } catch (_) {}

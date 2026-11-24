@@ -179,7 +179,7 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
       }
       // [VIDEOX] SW -> VideoX paneli: Video'matik videosunu ilet (VideoX kalıcı depoya yazar).
       if (msg && msg.action === "localVideoX" && msg.dataUrl) {
-        window.postMessage({ type: "X_RAPOR_LOCAL_VIDEOX", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0 }, "*");
+        window.postMessage({ type: "X_RAPOR_LOCAL_VIDEOX", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0, splitler: (msg.splitler || []) }, "*");
         sendResponse && sendResponse({ status: "ok" });
       }
       // v3.66: tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)

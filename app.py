@@ -10755,7 +10755,15 @@ VIDEOX_TRANSFORM_JS = r'''
     function duzAc(){
       if(!isFinite(vd.duration)||vd.duration<=0.2){ _toast("Video süresi henüz okunmadı, bir saniye sonra tekrar dene.","danger"); return; }
       pl.classList.add("duzenle"); try{ vd.pause(); }catch(e){} vd.playbackRate=1;
-      _segler=[{start:0, end:vd.duration, dahil:true, hiz:1}]; segRender();
+      var dur=vd.duration;
+      // [OTO-BÖL] Kayıttaki tweet<->liste geçiş anları (v.splitler) -> kesitlere ÖNCEDEN böl (yoksa tek kesit).
+      var pts=[]; try{ if(Array.isArray(v.splitler)){ v.splitler.forEach(function(t){ t=+t; if(isFinite(t)&&t>0.4&&t<dur-0.4) pts.push(t); }); } }catch(e){}
+      pts.sort(function(a,b){ return a-b; });
+      var temiz=[]; pts.forEach(function(t){ if(!temiz.length||t-temiz[temiz.length-1]>0.4) temiz.push(t); });
+      _segler=[]; var prev=0;
+      temiz.forEach(function(t){ _segler.push({start:prev, end:t, dahil:true, hiz:1}); prev=t; });
+      _segler.push({start:prev, end:dur, dahil:true, hiz:1});
+      segRender();
     }
     function duzKapat(){ pl.classList.remove("duzenle"); vd.playbackRate=1; }
     function segBol(){
@@ -11021,7 +11029,7 @@ VIDEOX_TRANSFORM_JS = r'''
   window.addEventListener("message", function(ev){
     if(ev.source!==window) return; var d=ev.data; if(!d || d.type!=="X_RAPOR_LOCAL_VIDEOX" || !d.dataUrl) return;
     var size=0; try{ var ci=d.dataUrl.indexOf(","); size=Math.round((d.dataUrl.length-(ci+1))*0.75); }catch(e){}
-    put({ id:"vx_"+(d.ts||Date.now())+"_"+Math.random().toString(36).slice(2,8), dataUrl:d.dataUrl, name:d.name||"video", ts:d.ts||Date.now(), size:size }).then(renderVideolar);
+    put({ id:"vx_"+(d.ts||Date.now())+"_"+Math.random().toString(36).slice(2,8), dataUrl:d.dataUrl, name:d.name||"video", ts:d.ts||Date.now(), size:size, splitler:(Array.isArray(d.splitler)?d.splitler:[]) }).then(renderVideolar);
   });
   // Eski GoruntuX 1-gunluk deposundaki (goruntux_videos) videolari KALICI goruntux_videox'e tasi (bir kez; idempotent).
   // Eski GoruntuX 1-gunluk goruntux_videos -> KALICI goruntux_videox TASI (kopyala + KAYNAGI TEMIZLE), BIR KEZ.
