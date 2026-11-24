@@ -5531,7 +5531,19 @@
             '.x-gx-video-ikon .x-gx-ssico{display:block;width:24px;height:24px;overflow:visible;}',
             '.x-gx-video-ikon .x-gx-ssico .c{display:none;}',
             '.x-gx-video-ikon .x-gx-ssico .in{fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}',
-            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:#fff;stroke:none;}'
+            '.x-gx-video-ikon .x-gx-ssico .in rect{fill:#fff;stroke:none;}',
+            // [VIDEO'MATIK PROMPT] eski küçük sağ-alt buton yerine ORTADA büyük "Kaydı Başlat" prompt (getDisplayMedia jesti).
+            '#x-gx-vm-prompt{position:fixed;inset:0;z-index:2147483646;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;}',
+            '.x-gx-vmp-card{width:100%;max-width:380px;background:#15202b;border:1px solid #2f3b47;border-radius:18px;padding:30px 26px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.6);}',
+            '.x-gx-vmp-logo{width:52px;height:52px;margin:0 auto 14px;}',
+            '.x-gx-vmp-logo svg{display:block;width:52px;height:52px;}',
+            '.x-gx-vmp-baslik{font-size:19px;font-weight:800;color:#e7e9ea;margin-bottom:6px;}',
+            '.x-gx-vmp-alt{font-size:13px;color:#8899a6;line-height:1.5;margin-bottom:20px;}',
+            '.x-gx-vmp-btn{width:100%;padding:14px;border:0;border-radius:12px;background:#f4212e;color:#fff;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(244,33,46,.4);display:flex;align-items:center;justify-content:center;gap:9px;}',
+            '.x-gx-vmp-btn:hover{filter:brightness(1.08);}',
+            '.x-gx-vmp-btn .pt{width:12px;height:12px;border-radius:50%;background:#fff;}',
+            '.x-gx-vmp-iptal{margin-top:10px;width:100%;padding:9px;border:0;border-radius:10px;background:transparent;color:#8899a6;font-size:13px;cursor:pointer;}',
+            '.x-gx-vmp-iptal:hover{color:#e7e9ea;}'
         ].join('');
         (document.head || document.documentElement).appendChild(st);
     }
@@ -5704,15 +5716,24 @@
             var tweets = xVmLinkAyikla(links);
             if (!tweets.length) { xVideoToast('Geçerli tweet linki yok.', true); return; }
             xVideoStil();
-            var ctrl = document.getElementById('x-gx-video-ctrl');
-            if (!ctrl) { ctrl = document.createElement('div'); ctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(ctrl); }
-            while (ctrl.firstChild) ctrl.removeChild(ctrl.firstChild);
-            var b = document.createElement('button'); b.type = 'button'; b.className = 'x-gx-video-ikon'; b.style.color = '#f4212e'; b.title = 'Video-matik başlat (' + tweets.length + ' tweet)'; b.setAttribute('aria-label', b.title);
-            b.appendChild(_xGxSsIkon('kayit'));
-            b.addEventListener('click', function () { try { ctrl.remove(); } catch (e) {} xVideomatikBaslat(tweets); });
-            ctrl.appendChild(b);
-            ctrl.style.left = 'auto'; ctrl.style.right = '16px'; ctrl.style.top = 'auto'; ctrl.style.bottom = '90px';
-            xVideoToast(tweets.length + ' tweet hazır — sağ-alttaki kırmızı butona basıp kaydı başlat.');
+            // [TEK BÜYÜK PROMPT] Eski küçük sağ-alt buton yerine ORTADA büyük "Kaydı Başlat" prompt. Tıklama =
+            // getDisplayMedia için gereken KULLANICI JESTİ -> preferCurrentTab ile basit "Bu sekmeyi paylaş" onayı.
+            var eski = document.getElementById('x-gx-vm-prompt'); if (eski) eski.remove();
+            var ov = document.createElement('div'); ov.id = 'x-gx-vm-prompt';
+            var card = document.createElement('div'); card.className = 'x-gx-vmp-card';
+            var logo = document.createElement('div'); logo.className = 'x-gx-vmp-logo';
+            logo.innerHTML = '<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#f4212e"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/></g><circle cx="16" cy="16" r="3.2" fill="#ffffff"/></svg>';
+            var bas = document.createElement('div'); bas.className = 'x-gx-vmp-baslik'; bas.textContent = "Video'matik kaydına hazır";
+            var alt = document.createElement('div'); alt.className = 'x-gx-vmp-alt';
+            alt.innerHTML = '<b>' + tweets.length + ' tweet</b> ardı ardına taranıp tek videoda birleştirilecek. Başlatınca tarayıcı <b>"Bu sekmeyi paylaş"</b> onayı ister — onayla, gerisi otomatik olur.';
+            var btn = document.createElement('button'); btn.type = 'button'; btn.className = 'x-gx-vmp-btn';
+            btn.innerHTML = '<span class="pt"></span> Kaydı Başlat';
+            var iptal = document.createElement('button'); iptal.type = 'button'; iptal.className = 'x-gx-vmp-iptal'; iptal.textContent = 'Vazgeç';
+            card.appendChild(logo); card.appendChild(bas); card.appendChild(alt); card.appendChild(btn); card.appendChild(iptal);
+            ov.appendChild(card); document.documentElement.appendChild(ov);
+            btn.addEventListener('click', function () { try { ov.remove(); } catch (e) {} xVideomatikBaslat(tweets); });
+            iptal.addEventListener('click', function () { try { ov.remove(); } catch (e) {} });
+            try { btn.focus(); } catch (e) {}
         } catch (e) {}
     }
     function xVmGit(url) {
