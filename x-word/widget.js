@@ -5255,7 +5255,9 @@
     // güvenli), MediaRecorder -> .webm indir. Oto-kaydır + Durdur + İndir. Ses yok. Yalnız X (sosyal).
     function xVideoHostX() { try { return /(^|\.)x\.com$/i.test(location.hostname) || /(^|\.)twitter\.com$/i.test(location.hostname); } catch (e) { return false; } }
     // [RT VİDEO] Tweet detay (/status/<id>) sayfası mı? Sağ-tık video modu YALNIZ burada çalışır.
-    function xVideoTweetDetayMi() { try { return xVideoHostX() && /\/status\/\d+/.test(location.pathname); } catch (e) { return false; } }
+    // SADECE saf tweet detayı (/status/<id>). /status/<id>/retweets|reposts|likes|quotes ALT-sayfaları HARİÇ:
+    // oralarda video modu (kırmızı) başlatılamaz (tek-tweet kaydı ana tweet sayfasından başlar) -> xNavYansit red'i sıfırlar.
+    function xVideoTweetDetayMi() { try { return xVideoHostX() && /\/status\/\d+/.test(location.pathname) && !/\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname); } catch (e) { return false; } }
     // [BAŞLIK HARİÇ] X'in tepedeki yapışkan "← Gönderi" başlık barının ALT Y'si (yoksa 0). Kadrajın üst klibi
     // olarak kullanılır -> ne introda ne listede bu bar videoya girer.
     function xVideoUstBaslikAlt() {
