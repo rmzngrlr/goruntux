@@ -4960,15 +4960,17 @@
             if (!nav || !dock) return;
             // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera + kontrol kalmasın.
             try {
+                // [RT VİDEO] Video modu (KIRMIZI nav butonu) YALNIZ saf tweet detayında anlamlı. /retweets vb.
+                // alt-sayfalarda + detay dışında KALDIR -> KAYIT SÜRSE BİLE (o ekranda STOP butonu zaten var, kırmızı nav fazlalık).
+                var _ekl = document.getElementById('x-gx-nav-ekle');
+                if (_ekl && _ekl.classList.contains('x-gx-videomod') && !xVideoTweetDetayMi()) {
+                    _ekl.classList.remove('x-gx-videomod');
+                    var _eic = _ekl.querySelector('.x-gx-tw-ic');
+                    if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon('ekle')); }   // "+" ikonunu geri getir
+                    if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+                }
+                // Stop kontrol kutusu (#x-gx-video-ctrl): detay dışına çıkıp KAYIT SÜRMÜYORSA kapat (kayıt sürerken DURDUR gerekir).
                 if (!window.__xVideoKayitAktif && !xVideoTweetDetayMi()) {
-                    var _ekl = document.getElementById('x-gx-nav-ekle');
-                    if (_ekl && _ekl.classList.contains('x-gx-videomod')) {
-                        _ekl.classList.remove('x-gx-videomod');
-                        var _eic = _ekl.querySelector('.x-gx-tw-ic');
-                        if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon('ekle')); }   // "+" ikonunu geri getir
-                        if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
-                    }
-                    // [İSTEK] sayfadan çıkınca video kontrol kutusu da kapansın (kayıt sürmüyorsa)
                     var _vc = document.getElementById('x-gx-video-ctrl'); if (_vc) { try { _vc.remove(); } catch (e) {} }
                 }
                 // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında kayıt butonu SİLİK; diğer sayfalarda net.

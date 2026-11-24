@@ -10620,7 +10620,7 @@ VIDEOX_TRANSFORM_JS = r'''
     ".vx-pl-big{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }",
     ".vx-pl-big .d{ width:68px; height:68px; border-radius:50%; background:rgba(244,33,46,.92); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 24px rgba(0,0,0,.6); transition:transform .14s,opacity .2s; }",
     ".vx-pl-big .d svg{ width:28px; height:28px; fill:#fff; margin-left:3px; }",
-    ".vx-pl-big.oynarken{ pointer-events:none; }",
+    ".vx-pl-big{ cursor:pointer; }",
     ".vx-pl-big.oynarken .d{ opacity:0; transform:scale(.7); }",
     ".vx-pl-ctrl{ background:#0e1620; border-radius:0 0 12px 12px; padding:11px 14px 13px; display:flex; flex-direction:column; gap:9px; border:1px solid var(--border-color,#2f3b47); border-top:0; }",
     ".vx-pl-seek{ position:relative; height:6px; background:#2f3b47; border-radius:3px; cursor:pointer; }",
