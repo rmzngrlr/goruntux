@@ -3571,8 +3571,8 @@
             var _dot = document.createElementNS(NS, 'circle'); _dot.setAttribute('cx', '12'); _dot.setAttribute('cy', '12'); _dot.setAttribute('r', '2.6');
             _dot.setAttribute('stroke', 'none'); _dot.setAttribute('fill', '#f4212e'); g.appendChild(_dot);
         } else if (tur === 'durdur') {
-            // RT VIDEO durdur: daire + ic DOLU kare (stop). Renk CSS'te (kirmizi).
-            var _sq = document.createElementNS(NS, 'rect'); _sq.setAttribute('x', '9'); _sq.setAttribute('y', '9'); _sq.setAttribute('width', '6'); _sq.setAttribute('height', '6'); _sq.setAttribute('rx', '1.2');
+            // RT VIDEO durdur: ic DOLU kare (stop) -> diger ikonlar boyutunda (ikonu doldurur). Renk CSS'te.
+            var _sq = document.createElementNS(NS, 'rect'); _sq.setAttribute('x', '6'); _sq.setAttribute('y', '6'); _sq.setAttribute('width', '12'); _sq.setAttribute('height', '12'); _sq.setAttribute('rx', '2');
             _sq.setAttribute('stroke', 'none'); _sq.setAttribute('fill', '#f4212e'); g.appendChild(_sq);
         } else if (tur === 'indir') {
             P('M12 7.4v6.2'); P('M9.2 10.8L12 13.6l2.8-2.8'); P('M8.2 16.2h7.6');   // daire + asagi ok (indir)
@@ -5321,12 +5321,17 @@
             if (/\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return gizli;   // alt-sayfalarda DOKUNMA
             var art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
             if (!art) return gizli;
-            var aw = art.getBoundingClientRect().width || 400;
             function gizle(el) {
                 try {
                     if (!el || !art.contains(el)) return;
-                    var p = el, row = el;   // satır konteyneri: genişliği article'ın >=%55'i olan en yakın blok (article'ın kendisi değil)
-                    for (var d = 0; d < 9 && p && p !== art && p.parentElement; d++) { try { if (p.getBoundingClientRect().width >= aw * 0.55) { row = p; break; } } catch (e) {} p = p.parentElement; }
+                    // satır konteyneri: YÜKSEKLİK-tabanlı -> yukarı çık ama yalnız BİR SATIR boyu kal (<=64px);
+                    // tweet içerik bloğu yüzlerce px olduğundan ONA GENİŞLEMEZ (eski genişlik-tabanlı koca bloğu siliyordu).
+                    var p = el, row = el;
+                    for (var d = 0; d < 9 && p && p !== art && p.parentElement; d++) {
+                        var h = 0; try { h = p.getBoundingClientRect().height; } catch (e) {}
+                        if (h > 64) break;
+                        row = p; p = p.parentElement;
+                    }
                     if (row && row !== art && art.contains(row) && row.style.display !== 'none') { gizli.push({ el: row, d: row.style.display }); row.style.setProperty('display', 'none', 'important'); }
                 } catch (e) {}
             }
