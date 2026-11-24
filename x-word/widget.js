@@ -5753,7 +5753,8 @@
             try { xVideoBarlariGeri(_barGizli); } catch (e) {}
             var blob = new Blob(chunks, { type: 'video/webm' });
             window.__xVideoKayitAktif = false;
-            var ad = 'tweet-' + tweets.map(function (t) { return t.id; }).slice(0, 6).join('_') + (tweets.length > 6 ? '-vd' : '');
+            var _trt = ''; try { _trt = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { _trt = ''; }
+            var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - tarih; çoklu: VideoX - tarih
             try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; }); xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
@@ -5851,7 +5852,8 @@
             var fr = new FileReader();
             fr.onload = function () {
                 try {
-                    var ad = _oid ? ('tweet-' + _oid) : ('RT-listesi-' + Date.now());
+                    var _trt = ''; try { _trt = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { _trt = ''; }
+                    var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026
                     chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; });
                     xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
