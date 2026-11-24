@@ -9,7 +9,14 @@
 (function () {
   // [SAĞ-TIK] Sağ-tık menüsünden gelen "doğrudan yakala" modu: yüzen menüyü ATLA, direkt kırpma yakalamasını
   // başlat. background, webshot.js enjekte etmeden ÖNCE window.__xWebshotDogrudanIstek=true kuruyor (aynı ISOLATED world).
-  var _dogrudan = false; try { _dogrudan = !!window.__xWebshotDogrudanIstek; window.__xWebshotDogrudanIstek = false; } catch (e) {}
+  // [TEŞHİS] Sağ-tık webshot akışını sunucu /teshis log'una yolla (background üzerinden -> sayfa CSP'sine takılmaz).
+  function _wlog(m, l) { try { chrome.runtime.sendMessage({ action: 'teshisLog', msg: m, lvl: (l || 'info') }, function () { void chrome.runtime.lastError; }); } catch (e) {} }
+  // [DAYANIKLILIK] webshot.js YALNIZ sağ-tık menüsünden (doğrudan yakalama) enjekte edilir (toolbar artık panele gider,
+  // yüzen menü emekli). Bu yüzden _dogrudan DAİMA true: bayrak set edilmese bile (SW/enjeksiyon yarışı) 'toggle-kapat'
+  // ya da yüzen menü YERİNE her zaman TAZE yakalar -> "seçildi ama bir şey olmadı" hatası biter.
+  var _zatenAktif = !!window.__xWebshotAktif;
+  var _dogrudan = true; try { window.__xWebshotDogrudanIstek = false; } catch (e) {}
+  _wlog("webshot.js çalıştı. _dogrudan=" + _dogrudan + " zatenAktif=" + _zatenAktif + " url=" + String(location.href || "").slice(0, 120));
   if (window.__xWebshotAktif) {
     var _m0 = document.getElementById('x-webshot-menu') || document.getElementById('x-webshot-ov') || document.getElementById('x-webshot-blocker');
     if (_dogrudan) {
@@ -116,7 +123,8 @@
     // Menü KALDIRILMASI ekrana işlensin -> yakalamaya girmesin (fast capture, menü silinmeden yakalayabiliyordu).
     requestAnimationFrame(function () { requestAnimationFrame(function () {
       yakala(function (dataUrl) {
-        if (!dataUrl) { bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
+        if (!dataUrl) { _wlog("YAKALAMA BAŞARISIZ: captureTab null -> görüntü alınamadı.", "error"); bitir(); bildir('Ekran görüntüsü alınamadı.', true); return; }
+        _wlog("yakalama OK -> kırp arayüzü açılıyor.");
         var im = new Image();
         im.onload = function () { if (!im.naturalWidth) { bitir(); bildir('Ekran görüntüsü boş.', true); return; } kirpUIKur(scrollbarKirp(im), Y0); };
         im.onerror = function () { bitir(); bildir('Görsel yüklenemedi.', true); };

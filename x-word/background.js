@@ -1588,6 +1588,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // [TEŞHİS] İçerik script'i (webshot.js) -> buraya logla -> sunucu /teshis.
+  if (message.action === "teshisLog") {
+    try { xTeshisLog(message.msg, message.lvl); } catch (e) {}
+    try { sendResponse({ ok: true }); } catch (e) {}
+    return false;
+  }
+
   // [GÖRÜNTÜX İLE RAPORLA Faz3] Widget profil butonu -> paneldeki açık rapor durumunu sorar.
   // panel_tab_id -> bridge.js -> panel sayfası yanıtlar {dolu, ad, sonTarihISO}. Yanıt yoksa
   // panelAcik:false döner (widget güvenli şekilde takvim moduna düşer).
@@ -1866,6 +1873,20 @@ chrome.action.onClicked.addListener((tab) => {
 // Tiklayinca webshot.js enjekte + DOGRUDAN yakalama (yuzen menuyu atla). Gorunurluk SENKRON xSosyalMi ile
 // (xWebshotPopupOlmali async'ti -> google.com'da gec/kacak gorunurluk olabiliyordu; sync -> guvenilir).
 // Toolbar butonu artik HER yerde panele gider (yuzen menu/popup kaldirildi).
+// [TEŞHİS] webshot sağ-tık akışını sunucu /teshis log'una yaz (hata sahada görünür). İçerik script'i (webshot.js)
+// de 'teshisLog' mesajıyla buraya yollar -> sayfa CSP'sine takılmadan buradan POST edilir.
+function xTeshisLog(msg, lvl) {
+  try {
+    chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, function (r) {
+      try {
+        fetch(((r && r.server_origin) || "https://goruntux.rgmedya.tr").replace(/\/+$/, "") + "/api/teshis/log", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lvl: lvl || "info", msg: "[webshot] " + String(msg).slice(0, 400) })
+        }).catch(function () {});
+      } catch (e) {}
+    });
+  } catch (e) {}
+}
 var XW_MENU_ID = 'gx-webshot-capture';
 function xWebshotSagTikGizle(tab) {   // true = menu GIZLI (sosyal veya http/https disi); false = GOSTER
   try { return !tab || !tab.url || !/^https?:\/\//i.test(tab.url) || xSosyalMi(tab.url); } catch (e) { return false; }
@@ -1897,13 +1918,17 @@ try { chrome.tabs.onActivated.addListener(function (info) { try { chrome.tabs.ge
 try { chrome.tabs.onUpdated.addListener(function (tabId, ci, tab) { if (ci && (ci.status === 'complete' || ci.url)) xWebshotMenuGorunur(tab); }); } catch (e) {}
 try {
   chrome.contextMenus.onClicked.addListener(function (info, tab) {
-    if (!info || info.menuItemId !== XW_MENU_ID || !tab || tab.id == null) return;
-    if (xWebshotSagTikGizle(tab)) return;   // sosyalde / uygunsuz sayfada ASLA
-    // Enjeksiyondan ONCE "dogrudan yakala" bayragini kur (ayni ISOLATED world), sonra webshot.js enjekte.
-    chrome.scripting.executeScript({ target: { tabId: tab.id }, func: function () { try { window.__xWebshotDogrudanIstek = true; } catch (e) {} } }, function () {
-      void chrome.runtime.lastError;
-      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, function () { void chrome.runtime.lastError; });
-    });
+    if (!info || info.menuItemId !== XW_MENU_ID || !tab || tab.id == null) { try { xTeshisLog("sağ-tık: tab/menu geçersiz", "warn"); } catch (e) {} return; }
+    if (xWebshotSagTikGizle(tab)) { try { xTeshisLog("sağ-tık: uygun olmayan sayfa, atlandı. url=" + (tab.url || ""), "warn"); } catch (e) {} return; }
+    try { xTeshisLog("sağ-tık tıklandı -> webshot.js enjekte ediliyor. url=" + (tab.url || "") + " tabId=" + tab.id); } catch (e) {}
+    // [DAYANIKLILIK] TEK executeScript: webshot.js artık DAİMA doğrudan yakalar (ayrı "bayrak" adımı KALDIRILDI ->
+    // iki-adımlı SW/enjeksiyon yarışı ve 'seçildi ama bir şey olmadı' hatası biter). lastError /teshis'e loglanır.
+    try {
+      chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, function () {
+        var err = chrome.runtime.lastError;
+        try { xTeshisLog(err ? ("ENJEKSİYON HATASI: " + (err.message || err)) : "webshot.js enjekte edildi (ok).", err ? "error" : "info"); } catch (e) {}
+      });
+    } catch (e) { try { xTeshisLog("executeScript throw: " + ((e && e.message) || e), "error"); } catch (e2) {} }
   });
 } catch (e) {}
 
