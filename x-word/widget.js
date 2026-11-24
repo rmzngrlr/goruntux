@@ -5753,8 +5753,8 @@
             try { xVideoBarlariGeri(_barGizli); } catch (e) {}
             var blob = new Blob(chunks, { type: 'video/webm' });
             window.__xVideoKayitAktif = false;
-            var _trt = ''; try { _trt = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { _trt = ''; }
-            var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - tarih; çoklu: VideoX - tarih
+            var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
+            var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - 24 Kasım 2026 HH-MM-SS; çoklu: VideoX - tarih saat
             try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; }); xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
@@ -5852,8 +5852,8 @@
             var fr = new FileReader();
             fr.onload = function () {
                 try {
-                    var _trt = ''; try { _trt = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }); } catch (e) { _trt = ''; }
-                    var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026
+                    var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
+                    var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026 HH-MM-SS
                     chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; });
                     xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
