@@ -5312,6 +5312,23 @@
         } catch (e) {}
         return gizli;
     }
+    // [ALAKALI KİŞİLER GİZLE] Tweet detayda, tweetin altında X'in "Alakalı/İlgili kişiler" (Relevant people) modülü
+    // intro videosuna girmesin. Bu modül UserCell'lerden oluşur (yanıtlar article, UserCell DEĞİL). Modal/retweets
+    // DIŞINDAKİ UserCell'lerin cellInnerDiv bloğunu gizle. YALNIZ tweet detayda (intro) çağrılır -> reposts listesini vurmaz.
+    function xVideoAlakaliGizle() {
+        var gizli = [];
+        try {
+            if (/\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return gizli;   // alt-sayfalarda DOKUNMA
+            var cells = document.querySelectorAll('[data-testid="UserCell"]');
+            for (var i = 0; i < cells.length; i++) {
+                var c = cells[i];
+                if (c.closest('[aria-modal="true"]')) continue;
+                var blok = (c.closest && c.closest('[data-testid="cellInnerDiv"]')) || c.parentElement;
+                if (blok && blok.style.display !== 'none') { gizli.push({ el: blok, d: blok.style.display }); blok.style.setProperty('display', 'none', 'important'); }
+            }
+        } catch (e) {}
+        return gizli;
+    }
     // Video kontrolünü (#x-gx-video-ctrl) kayıt (nav) butonunun ALTINA konumla (kullanıcı isteği).
     // Nav butonu sol rayda olduğundan ALTI da içerik sütununun solunda kalır -> videoya girmez (+ olc sol-klip emniyet).
     function xVideoCtrlKonumla(ctrl) {
@@ -5548,6 +5565,7 @@
         // -> başlangıçtaki "hafif genişleme"/zıplama kayda GİRMEZ.
         try { if (kadrajEl && typeof window.xTweetMetniAc === 'function') window.xTweetMetniAc(); } catch (e) {}
         try { _barGizli = xVideoBarlariGizle().concat(xVideoEtkilesimGizle()); } catch (e) {}
+        try { if (kadrajEl) _barGizli = _barGizli.concat(xVideoAlakaliGizle()); } catch (e) {}   // intro: tweet altı "Alakalı kişiler" modülü gizle
         if (kadrajEl) { try { kadrajEl.scrollIntoView({ block: 'start' }); } catch (e) {} }
         await xVideoBekle(700);
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
