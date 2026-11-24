@@ -5598,7 +5598,9 @@
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); } catch (e) {} } raf = requestAnimationFrame(ciz); }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 420;   // [GEÇİŞ CROSSFADE] donmuş son kareyi tutup yeni içeriğe yumuşak çapraz-geçiş -> geçiş "fark edilmez"
+        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); _fadeT = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) { _fadeT = 0; } }
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fadeT) { var _el = ((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT; var _a = 1 - _el / _fadeDur; if (_a > 0) { cx.save(); cx.globalAlpha = _a; cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); cx.restore(); } else { _fadeT = 0; } } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
         var mime = 'video/webm';
@@ -5681,7 +5683,7 @@
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
                 canvasBoyutla();   // sabit "RT liste boyutu" (değişmez)
-                _dondur = false;   // geçiş bitti: donmuş kareyi bırak, listeyi çiz (contain+beyaz)
+                _fadeBaslat(); _dondur = false;   // geçiş bitti: donmuş kareden listeye yumuşak CROSSFADE
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
                 xVideoOtoKaydir(liste.scroll, durdur);
             } catch (e) { durdur(); }
@@ -5750,7 +5752,9 @@
         }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); } catch (e) {} } raf = requestAnimationFrame(ciz); }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 420;   // [GEÇİŞ CROSSFADE] donmuş son kareyi tutup yeni içeriğe yumuşak çapraz-geçiş -> geçiş "fark edilmez"
+        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); _fadeT = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) { _fadeT = 0; } }
+        function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fadeT) { var _el = ((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT; var _a = 1 - _el / _fadeDur; if (_a > 0) { cx.save(); cx.globalAlpha = _a; cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); cx.restore(); } else { _fadeT = 0; } } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);
         var mime = 'video/webm';
@@ -5791,7 +5795,7 @@
                         kadrajEl = art; ustKlip = 0;
                         try { art.scrollIntoView({ block: 'start' }); } catch (e) {}
                         await xVideoBekle(650); canvasBoyutla();
-                        _dondur = false;   // tweet yerleşti: donmuş kareyi bırak, introyu çiz (contain+beyaz)
+                        _fadeBaslat(); _dondur = false;   // tweet yerleşti: önceki kareden introya yumuşak CROSSFADE
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
@@ -5811,7 +5815,7 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
-                            _dondur = false;   // liste yerleşti: donmuş kareyi bırak, listeyi çiz
+                            _fadeBaslat(); _dondur = false;   // liste yerleşti: donmuş kareden listeye yumuşak CROSSFADE
                             await xVideoBekle(2000);
                             await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res); });
                         }
