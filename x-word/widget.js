@@ -4960,14 +4960,18 @@
             if (!nav || !dock) return;
             // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera + kontrol kalmasın.
             try {
-                // [RT VİDEO] Video modu (KIRMIZI nav butonu) YALNIZ saf tweet detayında anlamlı. /retweets vb.
-                // alt-sayfalarda + detay dışında KALDIR -> KAYIT SÜRSE BİLE (o ekranda STOP butonu zaten var, kırmızı nav fazlalık).
+                // [NAV KAYIT İKONU] Nav butonu KIRMIZI "kayıt" ikonu gösterir: (a) KAYIT SÜRÜYOR (her sayfada; /retweets'te
+                // x-gx-rt-silik ile SOLUK) VEYA (b) kayıt yok + SAF tweet detayında kullanıcı sağ-tık ile video modunu açtı.
+                // Aksi halde normal yeşil "+". (STOP kontrol kutusu AYRI: yalnız kayıt sürerken + sayfa içinde durur.)
                 var _ekl = document.getElementById('x-gx-nav-ekle');
-                if (_ekl && _ekl.classList.contains('x-gx-videomod') && !xVideoTweetDetayMi()) {
-                    _ekl.classList.remove('x-gx-videomod');
-                    var _eic = _ekl.querySelector('.x-gx-tw-ic');
-                    if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon('ekle')); }   // "+" ikonunu geri getir
-                    if (_ekl.__tip) _ekl.__tip.textContent = "Bu paylaşımı GörüntüX Raporu'na ekle!";
+                if (_ekl) {
+                    var _kayitIkon = !!window.__xVideoKayitAktif || (xVideoTweetDetayMi() && _ekl.__userVideoMode === true);
+                    if (_kayitIkon !== _ekl.classList.contains('x-gx-videomod')) {
+                        _ekl.classList.toggle('x-gx-videomod', _kayitIkon);
+                        var _eic = _ekl.querySelector('.x-gx-tw-ic');
+                        if (_eic) { while (_eic.firstChild) _eic.removeChild(_eic.firstChild); _eic.appendChild(_xGxSsIkon(_kayitIkon ? 'kayit' : 'ekle')); }
+                        if (_ekl.__tip) _ekl.__tip.textContent = _kayitIkon ? (window.__xVideoKayitAktif ? "Video kaydı sürüyor…" : "Video modu — tıkla: RT listesi videosu") : "Bu paylaşımı GörüntüX Raporu'na ekle!";
+                    }
                 }
                 // Stop kontrol kutusu (#x-gx-video-ctrl): detay dışına çıkıp KAYIT SÜRMÜYORSA kapat (kayıt sürerken DURDUR gerekir).
                 if (!window.__xVideoKayitAktif && !xVideoTweetDetayMi()) {
@@ -5395,6 +5399,7 @@
     function xNavVideoModToggle(btn) {
         try {
             var acik = btn.classList.toggle('x-gx-videomod');
+            btn.__userVideoMode = acik;   // [DURUM] kullanıcı sağ-tık toggle'ı -> xNavYansit bu durumu korur (kayıt yokken saf tweet detayında kırmızı kalır)
             var ic = btn.querySelector('.x-gx-tw-ic');
             if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(acik ? 'kayit' : 'ekle')); }
             var tip = btn.__tip;
@@ -5626,20 +5631,23 @@
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı bu tarayıcıda desteklenmiyor.', true); return; } }
         var chunks = [];
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-        var bitti = false;
+        var bitti = false, _kullaniciDurdurdu = false;
         function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (window.__xVideoScrollIv) clearInterval(window.__xVideoScrollIv); } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
+        // [İSTEK] Kullanıcı kaydı (STOP) ya da paylaşımı (Chrome çubuğu) DURDURURSA video ASLA Videolarım'a kaydedilmez.
+        function kullaniciDurdur() { _kullaniciDurdurdu = true; durdur(); }
         rec.onstop = function () {
             calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
             try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
             try { xVideoBarlariGeri(_barGizli); _barGizli = []; } catch (e) {}   // gizlenen üst barları geri aç
-            var blob = new Blob(chunks, { type: 'video/webm' });
             window.__xVideoKayitAktif = false;
+            if (_kullaniciDurdurdu) { try { var _c = document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {} try { xVideoToast('Kayıt durduruldu — video kaydedilmedi.'); } catch (e) {} return; }
+            var blob = new Blob(chunks, { type: 'video/webm' });
             xVideoCtrlBitti(ctrl, blob);
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
         window.__xVideoRec = rec;
-        try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}   // Chrome çubuğundan "paylaşımı durdur" -> bitir
-        xVideoCtrlKayit(ctrl, durdur);
+        try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
+        xVideoCtrlKayit(ctrl, kullaniciDurdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
         (async function akis() {
             try {
@@ -5792,24 +5800,28 @@
         var rec;
         try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 1200000 }); }
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı desteklenmiyor.', true); return; } }
-        var chunks = [], bitti = false, _barGizli = [];
+        var chunks = [], bitti = false, _barGizli = [], _kullaniciDurdurdu = false;
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
         function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
+        // [İSTEK] Kullanıcı kaydı (STOP) ya da paylaşımı (Chrome çubuğu) DURDURURSA video ASLA Videolarım'a kaydedilmez.
+        function kullaniciDurdur() { _kullaniciDurdurdu = true; durdur(); }
         rec.onstop = function () {
             calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
             try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
             try { xVideoBarlariGeri(_barGizli); } catch (e) {}
-            var blob = new Blob(chunks, { type: 'video/webm' });
             window.__xVideoKayitAktif = false;
+            try { var _c = document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
+            if (_kullaniciDurdurdu) { try { xVideoToast('Kayıt durduruldu — video kaydedilmedi.'); } catch (e) {} return; }
+            var blob = new Blob(chunks, { type: 'video/webm' });
             var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
             var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - 24 Kasım 2026 HH-MM-SS; çoklu: VideoX - tarih saat
-            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; }); xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
+            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
         window.__xVideoRec = rec;
-        try { stream.getVideoTracks()[0].addEventListener('ended', durdur); } catch (e) {}
+        try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         var dctrl = document.getElementById('x-gx-video-ctrl'); if (!dctrl) { dctrl = document.createElement('div'); dctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(dctrl); }
-        xVideoCtrlKayit(dctrl, durdur);
+        xVideoCtrlKayit(dctrl, kullaniciDurdur);
         (async function akis() {
             try {
                 for (var i = 0; i < tweets.length; i++) {
@@ -5907,6 +5919,7 @@
                     var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
                     var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026 HH-MM-SS
                     chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox' }, function () { void chrome.runtime.lastError; });
+                    try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {}   // [İSTEK] kayıt bitince VideoX paneline yönlendir
                     xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
             };

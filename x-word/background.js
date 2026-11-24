@@ -1562,6 +1562,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // [İSTEK] Video kaydı bitince kullanıcıyı VideoX paneline (/videox) yönlendir: kayıtlı panel sekmesini öne getir,
+  // yoksa /videox sekmesini bul/aç.
+  if (message.action === "videoxGit") {
+    chrome.storage.local.get({ video_panel_tab_id: null, server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+      const origin = (res.server_origin || "https://goruntux.rgmedya.tr").replace(/\/+$/, "");
+      const url = origin + "/videox";
+      const odakla = (tid, windowId) => {
+        try { chrome.tabs.update(tid, { active: true }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+        try { if (windowId != null) chrome.windows.update(windowId, { focused: true }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+      };
+      const bulVeyaAc = () => {
+        try {
+          chrome.tabs.query({ url: url + "*" }, (tabs) => {
+            if (tabs && tabs.length) { odakla(tabs[0].id, tabs[0].windowId); }
+            else { try { chrome.tabs.create({ url: url }); } catch (e) {} }
+          });
+        } catch (e) { try { chrome.tabs.create({ url: url }); } catch (e2) {} }
+      };
+      if (res.video_panel_tab_id != null) {
+        chrome.tabs.get(res.video_panel_tab_id, (t) => { if (!chrome.runtime.lastError && t && t.id != null) { odakla(t.id, t.windowId); } else { bulVeyaAc(); } });
+      } else { bulVeyaAc(); }
+    });
+    try { sendResponse({ status: "ok" }); } catch (e) {}
+    return true;
+  }
+
   // [GÖRÜNTÜX İLE RAPORLA Faz3] Widget profil butonu -> paneldeki açık rapor durumunu sorar.
   // panel_tab_id -> bridge.js -> panel sayfası yanıtlar {dolu, ad, sonTarihISO}. Yanıt yoksa
   // panelAcik:false döner (widget güvenli şekilde takvim moduna düşer).
