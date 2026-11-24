@@ -987,6 +987,10 @@ HTML_TEMPLATE = """
       #tab-format > *:not(#vx-videolarim){ display:none !important; }
       #tab-auto > *:not(#vx-videomatik){ display:none !important; }
       #saved-count-badge{ display:none !important; }   /* RAPOR sayısı rozeti VideoX'te yanıltıcı -> gizle (video sayısı #vx-count) */
+      /* [VIDEOX] Aktif sekme (Videolarım/Video'matik) mavi yerine VideoX KIRMIZISI: metin+ikon, alt çizgi, sayaç rozeti. */
+      .tab-btn.active{ color:#f4212e !important; background:rgba(244,33,46,0.06) !important; }
+      .tab-btn.active::after{ background-color:#f4212e !important; }
+      .tab-count-badge{ background:#f4212e !important; }
     </style>{% endif %}
     <title>{% if video_mode %}VideoX{% else %}GörüntüX{% endif %}</title>
     <!-- Programa özgü favicon (görüntü/ekran-yakalama kadraj köşeleri + X). Data-URI: kendi kendine
