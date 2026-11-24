@@ -3173,7 +3173,7 @@ HTML_TEMPLATE = """
     <div id="extModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.3 3.2a1.6 1.6 0 0 1 3.2 0c0 .4-.1.8-.2 1.3h3v3c.5-.1.9-.2 1.3-.2a1.6 1.6 0 0 1 0 3.2c-.4 0-.8-.1-1.3-.2v3.4h-3.4c.1-.5.2-.9.2-1.3a1.6 1.6 0 0 0-3.2 0c0 .4.1.8.2 1.3H3.5v-3c-.5.1-.9.2-1.3.2a1.6 1.6 0 0 1 0-3.2c.4 0 .8.1 1.3.2v-3h3c-.1-.5-.2-.9-.2-1.3z"/></svg>{% if video_mode %}VideoX Eklentisi{% else %}GörüntüX Eklentisi{% endif %}</h2>
+                <h2 class="x-shead"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7.3 3.2a1.6 1.6 0 0 1 3.2 0c0 .4-.1.8-.2 1.3h3v3c.5-.1.9-.2 1.3-.2a1.6 1.6 0 0 1 0 3.2c-.4 0-.8-.1-1.3-.2v3.4h-3.4c.1-.5.2-.9.2-1.3a1.6 1.6 0 0 0-3.2 0c0 .4.1.8.2 1.3H3.5v-3c-.5.1-.9.2-1.3.2a1.6 1.6 0 0 1 0-3.2c.4 0 .8.1 1.3.2v-3h3c-.1-.5-.2-.9-.2-1.3z"/></svg>{% if video_mode %}GörüntüX/VideoX Eklentisi{% else %}GörüntüX Eklentisi{% endif %}</h2>
                 <span class="close-btn" onclick="closeExtModal()">&times;</span>
             </div>
             <div class="modal-body">
@@ -10601,26 +10601,17 @@ VIDEOX_TRANSFORM_JS = r'''
   function del(id){ return new Promise(function(res){ var st=tx("readwrite"); if(!st){ res(); return; } var d=st.delete(id); d.onsuccess=function(){ res(); }; d.onerror=function(){ res(); }; }); }
   function indir(v){ try{ var a=document.createElement("a"); a.href=v.dataUrl; a.download=(v.name||"video")+".webm"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }
   function stil(){ if(document.getElementById("vx-stil")) return; var s=document.createElement("style"); s.id="vx-stil"; s.textContent=[
-    // [VIDEOX GALERİ] Videolarım = poster küçük-resimli KART grid.
-    "#vx-videolarim{ display:grid; grid-template-columns:repeat(auto-fill,minmax(188px,1fr)); gap:14px; align-items:start; }",
-    ".vx-card{ position:relative; border:1px solid var(--border-color,#2f3b47); border-radius:14px; overflow:hidden; background:var(--bg-secondary,#15202b); cursor:pointer; transition:transform .12s,box-shadow .12s,border-color .12s; }",
-    ".vx-card:hover{ transform:translateY(-2px); box-shadow:0 10px 26px rgba(0,0,0,.45); border-color:#f4212e; }",
-    ".vx-thumb{ position:relative; aspect-ratio:16/10; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden; }",
-    ".vx-thumb.yok{ background:linear-gradient(135deg,#1c2732,#0e1620); }",
-    ".vx-thumb img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }",
-    ".vx-play{ position:relative; width:46px; height:46px; border-radius:50%; background:rgba(244,33,46,.92); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,0,0,.5); pointer-events:none; }",
-    ".vx-play svg{ width:20px; height:20px; margin-left:2px; fill:#fff; }",
-    ".vx-sure{ position:absolute; right:7px; bottom:7px; background:rgba(0,0,0,.78); color:#fff; font-size:11px; font-weight:600; padding:1px 6px; border-radius:5px; }",
-    ".vx-cbody{ padding:9px 11px 11px; }",
-    ".vx-cbody b{ display:block; font-size:12.5px; line-height:1.3; max-height:2.6em; overflow:hidden; word-break:break-all; }",
-    ".vx-cbody span{ display:block; font-size:11px; opacity:.6; margin-top:3px; }",
-    ".vx-cact{ position:absolute; top:7px; right:7px; display:flex; gap:5px; opacity:0; transition:opacity .12s; }",
-    ".vx-card:hover .vx-cact{ opacity:1; }",
-    ".vx-ic{ width:30px; height:30px; border-radius:8px; border:0; background:rgba(0,0,0,.6); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }",
-    ".vx-ic:hover{ background:#f4212e; }",
-    ".vx-ic.sil:hover{ background:#e0245e; }",
-    ".vx-ic svg{ width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; }",
-    ".vx-bos{ opacity:.6; font-size:13px; padding:10px 2px; grid-column:1/-1; }",
+    // [VIDEOX GALERİ] Videolarım = Raporlarım ile BİREBİR aynı x-gal-* galeri (kart/seç/indir/sil/inline-rename +
+    // alt seçim-çubuğu sınıfları HTML_TEMPLATE'ten gelir). Yalnız .x-gal-page İÇİNE video posteri + oynat + süre.
+    "#vx-videolarim{ display:block; }",
+    "#vx-videolarim .x-gal-page .vx-poster{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:#000; }",
+    "#vx-videolarim .x-gal-page .vx-poster.yok{ background:linear-gradient(135deg,#1c2732,#0e1620); }",
+    "#vx-videolarim .x-gal-page .vx-poster img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }",
+    "#vx-videolarim .x-gal-page .vx-play{ position:relative; width:42px; height:42px; border-radius:50%; background:rgba(244,33,46,.92); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px rgba(0,0,0,.5); pointer-events:none; z-index:1; }",
+    "#vx-videolarim .x-gal-page .vx-play svg{ width:18px; height:18px; margin-left:2px; fill:#fff; }",
+    "#vx-videolarim .x-gal-page .vx-sure{ position:absolute; top:7px; right:7px; background:rgba(0,0,0,.8); color:#fff; font-size:11px; font-weight:600; padding:1px 6px; border-radius:5px; z-index:2; }",
+    "#vx-videolarim .x-gal-card:has(.vx-check:checked) .x-gal-page{ border-color:#1d9bf0 !important; box-shadow:0 0 0 2px #1d9bf0 !important; }",
+    ".vx-bos{ opacity:.6; font-size:13px; padding:10px 2px; }",
     // [VIDEOX ÖZEL OYNATICI] native yerine kırmızı-temalı custom player (modal).
     ".vx-pl-ov{ position:fixed; inset:0; z-index:2147483500; background:rgba(0,0,0,.9); display:flex; align-items:center; justify-content:center; padding:20px; box-sizing:border-box; }",
     ".vx-pl{ position:relative; display:flex; flex-direction:column; max-width:94vw; max-height:92vh; }",
@@ -10724,33 +10715,84 @@ VIDEOX_TRANSFORM_JS = r'''
     senkSes(); senkOyn();
     try{ var pp=vd.play(); if(pp&&pp.catch) pp.catch(function(){ senkOyn(); }); }catch(e){}
   }
+  // [VIDEOX GALERİ] İkonlar Raporlarım galerisiyle BİREBİR (app.py _SVG_INDIR/_SVG_SIL kopyası).
+  var _SVG_INDIR='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg>';
+  var _SVG_SIL='<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg>';
+  // İSİM DÜZENLEME (Raporlarım xGalRename birebir): çift-tık -> inline contenteditable; Enter/blur kaydet, Esc iptal.
+  function vxRename(adEl, v){
+    if(adEl._duzen) return;
+    var cur=(adEl.textContent||"").trim();
+    adEl._duzen=true; adEl.setAttribute("contenteditable","true"); adEl.classList.add("x-gal-ad-edit"); adEl.focus();
+    try{ var rng=document.createRange(); rng.selectNodeContents(adEl); var sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(rng); }catch(e){}
+    var bitti=false;
+    function son(kaydet){
+      if(bitti) return; bitti=true;
+      adEl.removeAttribute("contenteditable"); adEl.classList.remove("x-gal-ad-edit"); adEl._duzen=false;
+      var yeni=(adEl.textContent||"").trim();
+      if(!kaydet||!yeni||yeni===cur){ adEl.textContent=cur; return; }   // iptal/boş/aynı -> eski ad
+      adEl.textContent=yeni; v.name=yeni; try{ put(v); }catch(e){}   // IndexedDB kaydı güncelle (kalıcı)
+    }
+    adEl.addEventListener("keydown", function kd(e){ if(e.key==="Enter"){ e.preventDefault(); adEl.removeEventListener("keydown",kd); adEl.blur(); } else if(e.key==="Escape"){ e.preventDefault(); adEl.removeEventListener("keydown",kd); son(false); } });
+    adEl.addEventListener("blur", function ob(){ adEl.removeEventListener("blur",ob); son(true); });
+  }
+  // ALT SEÇİM ÇUBUĞU (Raporlarım .x-secim-bar birebir sınıf; Birleştir YOK -> videolar birleşmez, yalnız İndir+Sil).
+  function vxSecilenler(){ var a=[]; try{ Array.prototype.forEach.call(document.querySelectorAll("#vx-videolarim .vx-check:checked"),function(c){ var card=c.closest(".x-gal-card"); if(card&&card.getAttribute("data-vid")) a.push(card.getAttribute("data-vid")); }); }catch(e){} return a; }
+  function vxSecimBar(){
+    var bar=document.getElementById("vx-secim-bar"); if(bar) return bar;
+    bar=document.createElement("div"); bar.id="vx-secim-bar"; bar.className="x-secim-bar";
+    bar.innerHTML='<span class="x-secim-sayi" id="vx-secim-sayi">0 seçili</span>'
+      +'<button class="x-secim-btn" type="button" id="vx-s-ind" title="Seçili videoları indir">'+_SVG_INDIR+' İndir</button>'
+      +'<button class="x-secim-btn danger" type="button" id="vx-s-sil" title="Seçili videoları sil">'+_SVG_SIL+' Sil</button>'
+      +'<button class="x-secim-kapat" type="button" id="vx-s-kapat" title="Seçimi temizle">✕</button>';
+    document.body.appendChild(bar);
+    bar.querySelector("#vx-s-ind").addEventListener("click", vxSecimIndir);
+    bar.querySelector("#vx-s-sil").addEventListener("click", vxSecimSil);
+    bar.querySelector("#vx-s-kapat").addEventListener("click", vxSecimTemizle);
+    return bar;
+  }
+  function vxSecimGuncelle(){ var bar=vxSecimBar(); var n=vxSecilenler().length; try{ document.getElementById("vx-secim-sayi").textContent=n+" seçili"; }catch(e){} if(n>0) bar.classList.add("acik"); else bar.classList.remove("acik"); }
+  function vxSecimTemizle(){ try{ Array.prototype.forEach.call(document.querySelectorAll("#vx-videolarim .vx-check:checked"),function(c){ c.checked=false; }); }catch(e){} vxSecimGuncelle(); }
+  function vxSecimIndir(){ var ids=vxSecilenler(); if(!ids.length) return; liste().then(function(arr){ var map={}; arr.forEach(function(v){ map[v.id]=v; }); ids.forEach(function(id,i){ var v=map[id]; if(v) setTimeout(function(){ indir(v); }, i*450); }); }); }
+  function vxSecimSil(){ var ids=vxSecilenler(); if(!ids.length) return; if(!window.confirm(ids.length+" video silinsin mi? Bu işlem geri alınamaz.")) return; Promise.all(ids.map(function(id){ return del(id); })).then(function(){ renderVideolar(); }); }
   function renderVideolar(){
     var box=document.getElementById("vx-videolarim"); if(!box) return;
     liste().then(function(arr){
       arr.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
       try{ var cb=document.getElementById("vx-count"); if(cb){ cb.textContent=String(arr.length); cb.style.display = arr.length ? "inline-flex" : "none"; } }catch(e){}
-      if(!arr.length){ box.innerHTML="<div class=\"vx-bos\">Henüz video yok. Video'matik ile veya X'te RT videosu alınca burada birikir.</div>"; return; }
+      if(!arr.length){ box.innerHTML="<div class=\"vx-bos\">Henüz video yok. Video'matik ile veya X'te RT videosu alınca burada birikir.</div>"; vxSecimGuncelle(); return; }
       box.innerHTML="";
+      var grid=document.createElement("div"); grid.className="x-gal-grid"; box.appendChild(grid);
       arr.forEach(function(v){
-        var t=""; try{ t=new Date(v.ts).toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"}); }catch(e){}
-        var card=document.createElement("div"); card.className="vx-card";
-        card.innerHTML="<div class=\"vx-thumb yok\"><div class=\"vx-play\"><svg viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\"/></svg></div><span class=\"vx-sure\" style=\"display:none\"></span></div>"
-          +"<div class=\"vx-cact\"><button class=\"vx-ic ind\" type=\"button\" title=\"İndir\"><svg viewBox=\"0 0 24 24\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 3v10m0 0l-4-4m4 4l4-4M5 17v2a2 2 0 002 2h10a2 2 0 002-2v-2\"/></svg></button>"
-          +"<button class=\"vx-ic sil\" type=\"button\" title=\"Sil\"><svg viewBox=\"0 0 24 24\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M5 7h14M9 7V5h6v2M7 7l1 12h8l1-12\"/></svg></button></div>"
-          +"<div class=\"vx-cbody\"><b></b><span></span></div>";
-        card.querySelector(".vx-cbody b").textContent=v.name||"video";
-        card.querySelector(".vx-cbody b").title=v.name||"";
-        card.querySelector(".vx-cbody span").textContent=t+" · "+fmtB(v.size);
-        var thumb=card.querySelector(".vx-thumb"), sureEl=card.querySelector(".vx-sure");
-        posterUret(v, function(poster, dur){
-          try{ if(poster){ var im=document.createElement("img"); im.alt=""; im.src=poster; thumb.insertBefore(im, thumb.firstChild); thumb.classList.remove("yok"); } }catch(e){}
+        var t=""; try{ t=new Date(v.ts).toLocaleDateString("tr-TR"); }catch(e){}
+        var card=document.createElement("div"); card.className="x-gal-card"; card.setAttribute("data-vid", v.id); card.title="Aç";
+        card.innerHTML="<div class=\"x-gal-page\">"
+            +"<input type=\"checkbox\" class=\"x-gal-check vx-check\" title=\"Seç (toplu işlem)\">"
+            +"<div class=\"vx-poster yok\"><div class=\"vx-play\"><svg viewBox=\"0 0 24 24\"><path d=\"M8 5v14l11-7z\"/></svg></div></div>"
+            +"<span class=\"vx-sure\" style=\"display:none\"></span>"
+            +"<div class=\"x-gal-ara\"><button class=\"x-gal-ikon vx-ind\" type=\"button\" title=\"İndir\">"+_SVG_INDIR+"</button>"
+            +"<button class=\"x-gal-ikon x-gal-sil vx-sil\" type=\"button\" title=\"Sil\">"+_SVG_SIL+"</button></div>"
+          +"</div>"
+          +"<div class=\"x-gal-meta\"><div class=\"x-gal-ad\" title=\"Çift tıkla: adı düzenle\"></div><div class=\"x-gal-alt\"></div></div>";
+        var adEl=card.querySelector(".x-gal-ad"); adEl.textContent=v.name||"video";
+        card.querySelector(".x-gal-alt").textContent=fmtB(v.size)+" · "+t;
+        var poster=card.querySelector(".vx-poster"), sureEl=card.querySelector(".vx-sure"), chk=card.querySelector(".vx-check");
+        posterUret(v, function(p, dur){
+          try{ if(p){ var im=document.createElement("img"); im.alt=""; im.src=p; poster.insertBefore(im, poster.firstChild); poster.classList.remove("yok"); } }catch(e){}
           try{ if(dur>0){ sureEl.textContent=fmtSure(dur); sureEl.style.display="block"; } }catch(e){}
         });
-        card.onclick=function(){ vxPlayer(v); };
-        card.querySelector(".ind").onclick=function(e){ e.stopPropagation(); indir(v); };
-        card.querySelector(".sil").onclick=function(e){ e.stopPropagation(); del(v.id).then(renderVideolar); };
-        box.appendChild(card);
+        card.addEventListener("click", function(){
+          if(vxSecilenler().length>0){ chk.checked=!chk.checked; vxSecimGuncelle(); return; }   // seçim modu: kart tık = seç/bırak
+          vxPlayer(v);
+        });
+        chk.addEventListener("click", function(e){ e.stopPropagation(); });
+        chk.addEventListener("change", vxSecimGuncelle);
+        card.querySelector(".vx-ind").addEventListener("click", function(e){ e.stopPropagation(); indir(v); });
+        card.querySelector(".vx-sil").addEventListener("click", function(e){ e.stopPropagation(); del(v.id).then(renderVideolar); });
+        adEl.addEventListener("click", function(e){ e.stopPropagation(); });
+        adEl.addEventListener("dblclick", function(e){ e.stopPropagation(); vxRename(adEl, v); });
+        grid.appendChild(card);
       });
+      vxSecimGuncelle();
     });
   }
   function metinDegis(btn, eski, yeni){ try{ Array.prototype.forEach.call(btn.childNodes,function(n){ if(n.nodeType===3 && n.textContent.indexOf(eski)!==-1){ n.textContent=n.textContent.replace(eski,yeni); } }); }catch(e){} }
@@ -10763,7 +10805,7 @@ VIDEOX_TRANSFORM_JS = r'''
       var lo=document.querySelector("h1 .emoji svg"); if(lo){ lo.outerHTML='<svg width="30" height="30" viewBox="0 0 32 32" style="display:block" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7" fill="#f4212e"/><g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/></g><circle cx="16" cy="16" r="3.2" fill="#ffffff"/></svg>'; }
       try{ var h1=document.querySelector("h1"); var sub=h1 && h1.nextElementSibling; if(sub && sub.tagName==="P") sub.textContent="Çoklu tweet RT listesi videosu üret ve sakla"; }catch(e){}
       // [VIDEOX KILAVUZ] GörüntüX kullanım kılavuzunu VideoX kılavuzuyla değiştir (ayrı kılavuz).
-      try{ Array.prototype.forEach.call(document.querySelectorAll("h2"),function(h){ if((h.textContent||"").indexOf("GörüntüX Eklentisi")!==-1) h.textContent="VideoX Eklentisi"; }); }catch(e){}
+      try{ Array.prototype.forEach.call(document.querySelectorAll("h2"),function(h){ if((h.textContent||"").indexOf("GörüntüX Eklentisi")!==-1) h.textContent="GörüntüX/VideoX Eklentisi"; }); }catch(e){}
       try{ var kh3=document.getElementById("x-kilavuz-h3"); if(kh3){ Array.prototype.forEach.call(kh3.childNodes,function(n){ if(n.nodeType===3 && n.textContent.trim()) n.textContent="Kurulum ve VideoX Kullanım Kılavuzu"; }); } }catch(e){}
       try{ var kic=document.getElementById("x-kilavuz-icerik"); if(kic){ kic.innerHTML=`
         <div style="font-weight:800;color:#1d9bf0;margin:4px 0 6px;font-size:12.5px;">1 · KURULUM (ilk kez)</div>
