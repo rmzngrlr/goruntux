@@ -3834,7 +3834,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
 
             const btns = document.querySelectorAll('#tab-format .btn');
             btns.forEach(b => b.disabled = true);
-            progressArea.style.display = 'block';
+            if (progressArea) progressArea.style.display = 'block';
 
             var list = [];
             try { var src = files || (document.getElementById('doc_file') || {}).files; if (src) list = Array.prototype.slice.call(src); } catch (e) {}
@@ -3907,7 +3907,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             // Hide progress area after a short delay
             setTimeout(() => {
                 if (progressArea) {
-                    progressArea.style.display = 'none';
+                    if (progressArea) progressArea.style.display = 'none';
                 }
             }, 1000);
         }
@@ -7338,7 +7338,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     // BURADA da görünüp işlenebilmeli (kullanıcı isteği).
                     // [HAVUZ/SEKME] İSTİSNA: mobilde Rapor'matik (tab-auto) sekmesinde gizli (tarama ekranını iter, anlamsız).
                     window.__xHavuzDolu = true;
-                    manualListSec.style.display = _havuzSekmedeGizle() ? 'none' : 'block';
+                    if (manualListSec) manualListSec.style.display = _havuzSekmedeGizle() ? 'none' : 'block';
                     
                     // İSTEK 2: havuzu hesap-bloklarına gruplayıp sürükle-bırakla sıralanabilir çiz.
                     // Sürükleme sürerken yeniden çizme (drop'u bozmasın).
@@ -7389,7 +7389,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         // Kasıtlı boşaltma (Sıfırla/son-öğe-silme) veya gerçek boş -> eski davranış.
                         window.__xBosPollSayac = 0;
                         window.__xHavuzDolu = false;   // [HAVUZ/SEKME] havuz boş -> sekme değişince de gizli kalsın
-                        manualListSec.style.display = 'none';
+                        if (manualListSec) manualListSec.style.display = 'none';
                         container.innerHTML = '';
                         window.lastManuelListJson = null;
                         window.__xPoolDirty = false;
@@ -7453,11 +7453,11 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 var _oncekiTaramaDurum = window.__sonTaramaStatus; window.__sonTaramaStatus = data.status;
 
                 if (data.status === 'running') {
-                    progressArea.style.display = 'block';
+                    if (progressArea) progressArea.style.display = 'block';
                     if (lblContainer) lblContainer.style.display = 'flex';
                     if (barContainer) barContainer.style.display = 'block';
                     if (downloadArea) downloadArea.style.display = 'none';
-                    actionButtons.style.display = 'none';
+                    if (actionButtons) actionButtons.style.display = 'none';
                     
                     const stopBtn = document.getElementById('stop-button-container');
                     if (stopBtn) stopBtn.style.display = 'block';
@@ -7494,7 +7494,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     }
                     window.automationStartTime = null;
                     
-                    progressArea.style.display = 'block';
+                    if (progressArea) progressArea.style.display = 'block';
                     if (lblContainer) lblContainer.style.display = 'none';
                     if (barContainer) barContainer.style.display = 'none';
                     
@@ -7529,14 +7529,14 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     }
 
                     if (downloadArea) downloadArea.style.display = 'block';
-                    actionButtons.style.display = 'flex';
+                    if (actionButtons) actionButtons.style.display = 'flex';
                 } else {
                     if (automationTimerInterval) {
                         clearInterval(automationTimerInterval);
                         automationTimerInterval = null;
                     }
                     window.automationStartTime = null;
-                    progressArea.style.display = 'none';
+                    if (progressArea) progressArea.style.display = 'none';
                     
                     const stopBtn = document.getElementById('stop-button-container');
                     if (stopBtn) stopBtn.style.display = 'none';
@@ -7557,7 +7557,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     }
                     
                     if (downloadArea) downloadArea.style.display = 'none';
-                    actionButtons.style.display = 'flex';
+                    if (actionButtons) actionButtons.style.display = 'flex';
                 }
 
                 // ===== KILIT: eklenti YOK ya da ESKI ise bu sekmede islem yapilamaz =====

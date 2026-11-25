@@ -1540,7 +1540,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           try { const u = new URL(t.url || ''); if ((!_so || u.origin === _so) && /^\/videox\/?$/i.test(u.pathname)) other = t; } catch (e) {}
         });
       } catch (e) {}
-      try { teshisLog('[panel-tani] registerVideoPanel yeni=' + stid + ' origin=' + (_so || '-') + ' baskaCanliVideoX=' + (other ? other.id : 'yok') + ' -> ' + (other ? 'YENI KAPATILIR' : 'KAYIT')); } catch (e) {}
       if (other) {
         logToServer(`[registerVideoPanel] VideoX zaten acik (Tab ${other.id}). Yeni sekme (${stid}) kapatiliyor, mevcut odaklaniyor.`);
         chrome.tabs.update(other.id, { active: true }, () => { void chrome.runtime.lastError; });
@@ -1685,7 +1684,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
     chrome.storage.local.get(['panel_tab_id'], (res) => {
       const storedPanelTabId = res.panel_tab_id || null;
-      try { teshisLog('[panel-tani] registerPanel GIRIS yeni=' + senderTabId + ' kayitli=' + storedPanelTabId + ' origin=' + rawOrigin); } catch (e) {}
       const finalizeAsPanel = () => {
         let updateData = { server_origin: apiOrigin, panel_tab_id: senderTabId };
         if (clientId) updateData.client_id = clientId;
@@ -1723,7 +1721,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // gosterirse, yeni ana panel (/) onu "ikiz" sanip KAPANIYORDU. Cozum: mevcut sekme /videox ise ana-panel ikizi SAYMA.
             try { const _eu = new URL(existingTab.url); liveSameOriginPanel = (_eu.origin === rawOrigin) && !/^\/videox\/?$/i.test(_eu.pathname); } catch (e) {}
           }
-          try { teshisLog('[panel-tani] registerPanel KARAR kayitliUrl=' + ((existingTab && existingTab.url) || '-') + ' ikizMi=' + liveSameOriginPanel + (liveSameOriginPanel ? ' -> YENI KAPATILIR' : ' -> YENI PANEL OLUR')); } catch (e) {}
           if (liveSameOriginPanel) {
             logToServer(`[registerPanel] Panel zaten acik (Tab ${storedPanelTabId}). Yeni sekme (${senderTabId}) kapatiliyor, mevcut odaklaniyor.`);
             chrome.tabs.update(storedPanelTabId, { active: true }, () => { if (chrome.runtime.lastError) { /* ignore */ } });
