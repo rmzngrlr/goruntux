@@ -4796,9 +4796,10 @@
             .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
             .x-gx-nav.scanning .x-gx-nav-cnt{ display:flex; }
             /* [KAYIT SAYACI] kayıt sürerken record ikonu yerine kırmızı mm:ss sayacı (canlı) -> kullanıcı kaydın sürdüğünü görür */
-            .x-gx-rec-sayac{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff; background:#f4212e; border-radius:9999px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }
+            .x-gx-rec-sayac{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; box-sizing:border-box; font-size:11px; font-weight:800; color:#f4212e; background:transparent; border:2px solid #f4212e; border-radius:9999px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }   /* İÇİ BOŞ: kırmızı halka + kırmızı rakamlar (solid dolgu YOK) */
             .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-rec-sayac{ display:flex; }
             .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-tw-ic{ visibility:hidden; }
+            .x-gx-nav-ekle.x-gx-rec-aktif.x-gx-rt-silik{ opacity:1 !important; }   /* kayıt sürerken SİLİK YOK (sayaç net) — /retweets'te bile */
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
             .x-gx-nav.outdated .x-gx-nav-badge{ display:flex; }
