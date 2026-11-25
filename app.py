@@ -13993,10 +13993,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       function el(){ return root.querySelector(sel1)||root.querySelector(sel2); }
       function dur(){ if(bitti) return; bitti=true; try{ if(ro) ro.disconnect(); }catch(_){} try{ kap.removeEventListener('wheel', _usr); kap.removeEventListener('touchstart', _usr); document.removeEventListener('keydown', _usr); }catch(_){} }
       function _usr(){ dur(); }
-      // [ÜST HİZALA — MANUEL] scrollIntoView, kaptaki scroll-padding-top (118) + karttaki scroll-margin-top (118) ÜST ÜSTE
-      // binip kartı ~236px aşağı bırakıyordu (toolbar altında fazladan boşluk). Manuel: kartı TAM toolbar altına (scroll-padding kadar) hizala.
+      // [ŞERİT ALTINA — _odakUstKur İKİZİ] Input'a tıklayınca bölümü şeridin altına sabitleyen _odakUstKur ile BİREBİR
+      // aynı konum: sabit 118 DEĞİL, ayar şeridinin (editor-serit) ÖLÇÜLEN alt kenarı + 8px (118 ~65px kopuk boşluk bırakıyordu).
       function hizala(){ if(bitti) return; var e=el(); if(!e) return;
-        try{ var er=e.getBoundingClientRect(), kr=kap.getBoundingClientRect(); var sp=parseFloat((getComputedStyle(kap).scrollPaddingTop)||'0')||0; var hedef=kap.scrollTop + (er.top-kr.top) - sp; if(!isFinite(hedef)) hedef=0; kap.scrollTop=Math.max(0,hedef); }
+        try{ var sr=kap.getBoundingClientRect(), er=e.getBoundingClientRect(); var _sr=document.getElementById('editor-serit'); var pad=_sr?Math.round(_sr.getBoundingClientRect().bottom - sr.top + 8):118; if(pad<8) pad=8; var hedef=kap.scrollTop + (er.top-(sr.top+pad)); if(!isFinite(hedef)||hedef<0) hedef=0; kap.scrollTop=hedef; }
         catch(_1){ try{ e.scrollIntoView({block:'start'}); }catch(_2){} }
         if(vurgu!==false && !vurguDone){ vurguDone=true; e.classList.add('ed-bolum-vurgu'); setTimeout(function(){ try{ e.classList.remove('ed-bolum-vurgu'); }catch(_){} }, 1600); }
       }
