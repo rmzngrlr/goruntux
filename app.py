@@ -13988,15 +13988,26 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
   XE._bolumeGit = function(i, vurgu){
     try{
       var root=document.getElementById('editor-root'); if(!root) return;
-      var sel1='.ed-card[data-i="'+i+'"]', sel2='.ed-plat[data-i="'+i+'"]', vurguDone=false;
-      // [ÜSTE HİZALA + REFLOW-DAYANIKLI] Kartı ekranın ÜSTÜNE hizala (block:start; scroll-margin-top:118 sticky toolbar'ı
-      // sayar -> tam kart baştan görünür). base64 GÖRSELLER async decode olduğundan üstteki kartların yüksekliği SONRADAN
-      // artıp hedefi aşağı itiyordu (tek scroll kart çok aşağı kaçıyordu, en üstte durmuyordu). Çözüm: görsel 'load'larında
-      // + birkaç zamanlayıcıda YENİDEN hizala -> içerik otursa bile hedef kart üstte kilitli kalır.
-      var hizala=function(){ var e=root.querySelector(sel1)||root.querySelector(sel2); if(!e) return; try{ e.scrollIntoView({block:'start'}); }catch(_1){ try{ e.scrollIntoView(); }catch(_2){} } if(vurgu!==false && !vurguDone){ vurguDone=true; e.classList.add('ed-bolum-vurgu'); setTimeout(function(){ try{ e.classList.remove('ed-bolum-vurgu'); }catch(_){} }, 1600); } };
+      var sel1='.ed-card[data-i="'+i+'"]', sel2='.ed-plat[data-i="'+i+'"]', vurguDone=false, bitti=false, ro=null;
+      var kap=document.querySelector('#editorModal .preview-body')||root;
+      function el(){ return root.querySelector(sel1)||root.querySelector(sel2); }
+      function dur(){ if(bitti) return; bitti=true; try{ if(ro) ro.disconnect(); }catch(_){} try{ kap.removeEventListener('wheel', _usr); kap.removeEventListener('touchstart', _usr); document.removeEventListener('keydown', _usr); }catch(_){} }
+      function _usr(){ dur(); }
+      // [ÜST HİZALA — MANUEL] scrollIntoView, kaptaki scroll-padding-top (118) + karttaki scroll-margin-top (118) ÜST ÜSTE
+      // binip kartı ~236px aşağı bırakıyordu (toolbar altında fazladan boşluk). Manuel: kartı TAM toolbar altına (scroll-padding kadar) hizala.
+      function hizala(){ if(bitti) return; var e=el(); if(!e) return;
+        try{ var er=e.getBoundingClientRect(), kr=kap.getBoundingClientRect(); var sp=parseFloat((getComputedStyle(kap).scrollPaddingTop)||'0')||0; var hedef=kap.scrollTop + (er.top-kr.top) - sp; if(!isFinite(hedef)) hedef=0; kap.scrollTop=Math.max(0,hedef); }
+        catch(_1){ try{ e.scrollIntoView({block:'start'}); }catch(_2){} }
+        if(vurgu!==false && !vurguDone){ vurguDone=true; e.classList.add('ed-bolum-vurgu'); setTimeout(function(){ try{ e.classList.remove('ed-bolum-vurgu'); }catch(_){} }, 1600); }
+      }
+      if(!el()) return;
       requestAnimationFrame(function(){ requestAnimationFrame(hizala); });
-      var _z=[120,280,500,800,1200,1800]; for(var _k=0;_k<_z.length;_k++) setTimeout(hizala,_z[_k]);   // içerik/görsel yüklenirken yeniden hizala
-      try{ var ims=root.querySelectorAll('img'); for(var _m=0;_m<ims.length;_m++){ if(!ims[_m].complete){ ims[_m].addEventListener('load', hizala, {once:true}); ims[_m].addEventListener('error', hizala, {once:true}); } } }catch(_){}
+      // [REFLOW-DAYANIKLI] base64 GÖRSELLER async yerleşirken üstteki kartlar büyüyüp hedefi aşağı itiyordu (zamanlayıcı
+      // tabanlı eski yöntem data: URL layout'u geç oturunca kaçırıyordu -> kart ekrandan kaçıyordu). ResizeObserver: içerik
+      // HER boyut değiştiğinde (timing bağımsız) hedefi yeniden ÜSTE hizalar. Kullanıcı gerçekten kaydırınca (wheel/touch/tuş) bırak; 6sn backstop.
+      try{ ro=new ResizeObserver(function(){ hizala(); }); ro.observe(root); var _rr=root.querySelector('.ed-root'); if(_rr) ro.observe(_rr); }catch(_){}
+      try{ kap.addEventListener('wheel', _usr, {passive:true}); kap.addEventListener('touchstart', _usr, {passive:true}); document.addEventListener('keydown', _usr); }catch(_){}
+      setTimeout(dur, 6000);
     }catch(e){}
   };
   // Galeri kartına çift tık -> galeriden çık + o bölüme git.
