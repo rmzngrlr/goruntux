@@ -13971,10 +13971,15 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
   XE._bolumeGit = function(i, vurgu){
     try{
       var root=document.getElementById('editor-root'); if(!root) return;
-      var el=root.querySelector('.ed-card[data-i="'+i+'"]') || root.querySelector('.ed-plat[data-i="'+i+'"]');
-      if(!el) return;
-      var go=function(){ try{ el.scrollIntoView({block:'start'}); }catch(e){ try{ el.scrollIntoView(); }catch(_){ } } if(vurgu!==false){ el.classList.add('ed-bolum-vurgu'); setTimeout(function(){ try{ el.classList.remove('ed-bolum-vurgu'); }catch(_){ } }, 1500); } };   // [ÜSTE HİZALA] kart ekranın ÜSTÜNE (tam hali baştan görünür); scroll-margin-top:118 sticky toolbar'ı hesaba katar. Anlık + kısa vurgu
-      requestAnimationFrame(function(){ requestAnimationFrame(go); });
+      var sel1='.ed-card[data-i="'+i+'"]', sel2='.ed-plat[data-i="'+i+'"]', vurguDone=false;
+      // [ÜSTE HİZALA + REFLOW-DAYANIKLI] Kartı ekranın ÜSTÜNE hizala (block:start; scroll-margin-top:118 sticky toolbar'ı
+      // sayar -> tam kart baştan görünür). base64 GÖRSELLER async decode olduğundan üstteki kartların yüksekliği SONRADAN
+      // artıp hedefi aşağı itiyordu (tek scroll kart çok aşağı kaçıyordu, en üstte durmuyordu). Çözüm: görsel 'load'larında
+      // + birkaç zamanlayıcıda YENİDEN hizala -> içerik otursa bile hedef kart üstte kilitli kalır.
+      var hizala=function(){ var e=root.querySelector(sel1)||root.querySelector(sel2); if(!e) return; try{ e.scrollIntoView({block:'start'}); }catch(_1){ try{ e.scrollIntoView(); }catch(_2){} } if(vurgu!==false && !vurguDone){ vurguDone=true; e.classList.add('ed-bolum-vurgu'); setTimeout(function(){ try{ e.classList.remove('ed-bolum-vurgu'); }catch(_){} }, 1600); } };
+      requestAnimationFrame(function(){ requestAnimationFrame(hizala); });
+      var _z=[120,280,500,800,1200,1800]; for(var _k=0;_k<_z.length;_k++) setTimeout(hizala,_z[_k]);   // içerik/görsel yüklenirken yeniden hizala
+      try{ var ims=root.querySelectorAll('img'); for(var _m=0;_m<ims.length;_m++){ if(!ims[_m].complete){ ims[_m].addEventListener('load', hizala, {once:true}); ims[_m].addEventListener('error', hizala, {once:true}); } } }catch(_){}
     }catch(e){}
   };
   // Galeri kartına çift tık -> galeriden çık + o bölüme git.
