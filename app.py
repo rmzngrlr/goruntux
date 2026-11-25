@@ -10208,6 +10208,7 @@ LOCAL_DOCX_JS = r'''
       // v4.28: once bloklari DUZ bir belirtec akisina indir (h / img / link). Boylece
       // "link gorselin ustunde mi altinda mi" GLOBAL olarak saptanabilir (kullanici istegi).
       var toks = [];
+      var _pushMetin = function (_t) { if (!_t) return; var _lt = toks[toks.length - 1]; if (_lt && _lt.t === 'metin') { _lt.text += '\n' + _t; } else { toks.push({ t: 'metin', text: _t }); } };   // ardışık metin TEK parça
       for (var i = 0; i < blocks.length; i++){
         var el = blocks[i];
         var tag = (el.tagName || '').toLowerCase();
@@ -10215,6 +10216,16 @@ LOCAL_DOCX_JS = r'''
         var a = el.querySelector ? el.querySelector('a[href]') : null;
         var img = el.querySelector ? el.querySelector('img') : null;
         if (a) {
+          // [FIX] p+a+txt: link ile AYNI blokta normal metin varsa (tweet metni + link) metni DE al. Klonda tüm
+          // <a>'ları silip kalan metni oku (iç-içe dayanıklı) -> link'ten ÖNCE metin ekle (metin kendi öğesinde kalır).
+          var _metinHep = '';
+          try {
+            var _clone = el.cloneNode(true);
+            var _as = _clone.querySelectorAll ? _clone.querySelectorAll('a[href]') : [];
+            for (var _ai = 0; _ai < _as.length; _ai++){ if (_as[_ai] && _as[_ai].parentNode) _as[_ai].parentNode.removeChild(_as[_ai]); }
+            _metinHep = (_clone.textContent || '').replace(/\s+/g, ' ').trim();
+          } catch (e) {}
+          if (_metinHep) _pushMetin(_metinHep);
           toks.push({ t: 'link', href: (a.getAttribute('href') || '') });
         } else if (img) {
           var src = img.getAttribute('src') || '';
@@ -10224,9 +10235,8 @@ LOCAL_DOCX_JS = r'''
             toks.push({ t: 'img', mime: (meta.split(';')[0] || 'image/jpeg'), b64: src.slice(ci + 1) });
           }
         } else {
-          // [FIX] NORMAL METİN: başlık/link/görsel olmayan düz metin paragrafı -> 'metin' token (ardışık metinler birleşir).
-          var _txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
-          if (_txt) { var _lt = toks[toks.length - 1]; if (_lt && _lt.t === 'metin') { _lt.text += '\n' + _txt; } else { toks.push({ t: 'metin', text: _txt }); } }
+          // [FIX] NORMAL METİN: başlık/link/görsel olmayan düz metin paragrafı -> 'metin' token.
+          _pushMetin((el.textContent || '').replace(/\s+/g, ' ').trim());
         }
       }
       // v4.28: DUZEN SAPTAMA — ilk link, ilk gorselden ONCE mi geliyor? (basliklar sayilmaz)
