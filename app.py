@@ -14084,7 +14084,10 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
   // link-anahtarlı olduğundan kaybolmaz/karışmaz; _galeriUygula undo'ya yazar + sunucu sırasını günceller (geri alınabilir).
   XE._galeriTersCevir = function(){
     var B=XE.belge.birimler||[]; if(B.length<2) return;
-    function _pid(b){ return !!(b && (b.is_profile || (b.item && b.item.is_profile))); }   // profil kartı mı
+    // [PROFİL KARTI TESPİTİ] is_profile bayrağı galeri birimlerine ULAŞMIYOR (buildBirimler taşımıyor; /teshis ile
+    // teyitli: hepsi isP=false). Çözüm: ÇIPLAK profil linki (x.com/<handle>, /status YOK) = profil kartı.
+    function _profilMi(lk){ lk=String(lk||'').trim(); var m=lk.match(/^https?:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/([A-Za-z0-9_]{1,30})\/?(?:\?.*)?$/i); if(!m) return false; return ['i','home','explore','search','notifications','messages','settings','compose','hashtag','bookmarks','login','intent'].indexOf(m[1].toLowerCase())<0; }
+    function _pid(b){ if(!b) return false; if(b.is_profile || (b.item && b.item.is_profile)) return true; return _profilMi((b.item&&b.item.link)||b.link); }   // profil kartı mı (bayrak YOKSA link deseninden)
     // [GRUP ANAHTARI] b.grup doluysa onu; YOKSA (standalone capture raporu) link/başlıktan @handle türet ->
     // aynı hesabın profil+tweetleri AYNI anahtar -> profil o grubun başında tutulur.
     function _gk(b){
@@ -14104,8 +14107,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       if(j>i){ for(var p=i;p<=j;p++){ if(_pid(arr[p])){ if(p!==i){ var _pr=arr.splice(p,1)[0]; arr.splice(i,0,_pr); } break; } } }   // profil kartını bloğun BAŞINA
       i=j+1;
     }
-    // [TANI — geçici] profil yine üstte kalmazsa gerçek yapı için
-    try{ if(window.xTeshisLog){ var _pp=[]; for(var _q=0;_q<B.length;_q++){ if(_pid(B[_q])) _pp.push(_q); } var _ss=[]; for(var _r=0;_r<B.length&&_r<8;_r++){ var _b=B[_r]; _ss.push('#'+_r+' gk='+_gk(_b)+' isP='+_pid(_b)+' lk='+String((_b&&_b.item&&_b.item.link)||'').slice(0,30)); } window.xTeshisLog('[ters-tani] n='+B.length+' profil=['+_pp.join(',')+'] | '+_ss.join(' || ')); } }catch(_){}
+    try{ if(window.xTeshisLog){ var _pp=[]; for(var _q=0;_q<B.length;_q++){ if(_pid(B[_q])) _pp.push(_q); } window.xTeshisLog('[ters-tani] n='+B.length+' profil-bulundu=['+_pp.join(',')+']'); } }catch(_){}   // geçici: profil tespiti onaylanınca kaldır
     XE._galeriUygula(arr);
   };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
