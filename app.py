@@ -10209,6 +10209,21 @@ LOCAL_DOCX_JS = r'''
       // "link gorselin ustunde mi altinda mi" GLOBAL olarak saptanabilir (kullanici istegi).
       var toks = [];
       var _pushMetin = function (_t) { if (!_t) return; var _lt = toks[toks.length - 1]; if (_lt && _lt.t === 'metin') { _lt.text += '\n' + _t; } else { toks.push({ t: 'metin', text: _t }); } };   // ardışık metin TEK parça
+      var _esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+      var _mkHtml = function (node) {   // blok içeriğini güvenli HTML'e çevir: yalnız <a href> ve <br> korunur, gerisi kaçışlı düz metin
+        var _o = '', _ch = node.childNodes || [];
+        for (var _c = 0; _c < _ch.length; _c++){
+          var _n = _ch[_c];
+          if (_n.nodeType === 3) { _o += _esc(_n.nodeValue || ''); }
+          else if (_n.nodeType === 1) {
+            var _tg = (_n.tagName || '').toLowerCase();
+            if (_tg === 'br') { _o += '<br>'; }
+            else if (_tg === 'a' && _n.getAttribute('href')) { _o += '<a href="' + _esc(_n.getAttribute('href')) + '">' + _esc(_n.textContent || '') + '</a>'; }
+            else { _o += _mkHtml(_n); }
+          }
+        }
+        return _o;
+      };
       for (var i = 0; i < blocks.length; i++){
         var el = blocks[i];
         var tag = (el.tagName || '').toLowerCase();
@@ -10216,17 +10231,18 @@ LOCAL_DOCX_JS = r'''
         var a = el.querySelector ? el.querySelector('a[href]') : null;
         var img = el.querySelector ? el.querySelector('img') : null;
         if (a) {
-          // [FIX] p+a+txt: link ile AYNI blokta normal metin varsa (tweet metni + link) metni DE al. Klonda tüm
-          // <a>'ları silip kalan metni oku (iç-içe dayanıklı) -> link'ten ÖNCE metin ekle (metin kendi öğesinde kalır).
-          var _metinHep = '';
+          // [FIX p+a+txt] GörüntüX docx'inde bir <p> ya PERMALINK satırıdır (tüm metin <a> içinde = URL) ya da
+          // içinde SATIR-İÇİ link olan TWEET METNİdir. Ayırt et: <a>'lar silinince metin KALIYORsa -> tweet metni
+          // (metin parçası, satır-içi link korunur, AYRI link token ÜRETME -> öğe bölünmez). Kalmıyorsa -> permalink.
+          var _disMetin = '';
           try {
             var _clone = el.cloneNode(true);
             var _as = _clone.querySelectorAll ? _clone.querySelectorAll('a[href]') : [];
             for (var _ai = 0; _ai < _as.length; _ai++){ if (_as[_ai] && _as[_ai].parentNode) _as[_ai].parentNode.removeChild(_as[_ai]); }
-            _metinHep = (_clone.textContent || '').replace(/\s+/g, ' ').trim();
+            _disMetin = (_clone.textContent || '').replace(/\s+/g, ' ').trim();
           } catch (e) {}
-          if (_metinHep) _pushMetin(_metinHep);
-          toks.push({ t: 'link', href: (a.getAttribute('href') || '') });
+          if (_disMetin) { _pushMetin(_mkHtml(el).replace(/\s+/g, ' ').trim()); }   // tweet metni (satır-içi link gömülü) -> metin parçası
+          else { toks.push({ t: 'link', href: (a.getAttribute('href') || '') }); }   // yalnız URL -> permalink link satırı
         } else if (img) {
           var src = img.getAttribute('src') || '';
           var ci = src.indexOf(',');
@@ -10235,8 +10251,8 @@ LOCAL_DOCX_JS = r'''
             toks.push({ t: 'img', mime: (meta.split(';')[0] || 'image/jpeg'), b64: src.slice(ci + 1) });
           }
         } else {
-          // [FIX] NORMAL METİN: başlık/link/görsel olmayan düz metin paragrafı -> 'metin' token.
-          _pushMetin((el.textContent || '').replace(/\s+/g, ' ').trim());
+          // [FIX] NORMAL METİN: başlık/link/görsel olmayan düz metin paragrafı -> 'metin' token (kaçışlı HTML).
+          _pushMetin(_esc((el.textContent || '').replace(/\s+/g, ' ').trim()));
         }
       }
       // v4.28: DUZEN SAPTAMA — ilk link, ilk gorselden ONCE mi geliyor? (basliklar sayilmaz)
@@ -10255,12 +10271,16 @@ LOCAL_DOCX_JS = r'''
         // GORSEL-USTTE: [gorsel?][metin?][link] -> öğe; link öğeyi kapatır. Standalone görsel/metin kendi öğesi.
         var par = [], curImg = null, curMime = '', curLink = '';
         var _flushG = function () { if (!par.length) return; items.push(_oge(curBaslik, curLink, curImg, curMime, _parcaCevir(par))); par = []; curImg = null; curMime = ''; curLink = ''; };
+        var _parLink = function () { for (var _z = 0; _z < par.length; _z++){ if (par[_z].tur === 'link') return true; } return false; };
         for (var j = 0; j < toks.length; j++){
           var tk = toks[j];
+          // [FIX] Yeni öğe sınırı = GÖRSEL (veya başlık), link DEĞİL. Böylece [görsel][link][metin] sırası (tweet
+          // metni linkten SONRA gelen metin parçası) tek öğede/doğru tweet'te kalır. Link ve metin akan öğeye
+          // eklenir; bir sonraki görsel (ya da birikmiş linksiz-link) öğeyi kapatır.
           if (tk.t === 'h') { _flushG(); curBaslik = tk.text; }
           else if (tk.t === 'metin') { par.push({ tur: 'metin', metin: tk.text }); }
-          else if (tk.t === 'link') { par.push({ tur: 'link' }); curLink = tk.href; _flushG(); }
-          else if (tk.t === 'img') { if (curImg) _flushG(); par.push({ tur: 'gorsel' }); curImg = tk.b64; curMime = tk.mime; }
+          else if (tk.t === 'link') { par.push({ tur: 'link' }); curLink = tk.href; }
+          else if (tk.t === 'img') { if (curImg || _parLink()) _flushG(); par.push({ tur: 'gorsel' }); curImg = tk.b64; curMime = tk.mime; }
         }
         _flushG();
       } else {
