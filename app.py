@@ -14084,14 +14084,28 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
   // link-anahtarlı olduğundan kaybolmaz/karışmaz; _galeriUygula undo'ya yazar + sunucu sırasını günceller (geri alınabilir).
   XE._galeriTersCevir = function(){
     var B=XE.belge.birimler||[]; if(B.length<2) return;
+    function _pid(b){ return !!(b && (b.is_profile || (b.item && b.item.is_profile))); }   // profil kartı mı
+    // [GRUP ANAHTARI] b.grup doluysa onu; YOKSA (standalone capture raporu) link/başlıktan @handle türet ->
+    // aynı hesabın profil+tweetleri AYNI anahtar -> profil o grubun başında tutulur.
+    function _gk(b){
+      if(!b) return null;
+      if(b.grup!=null && b.grup!=='') return 'G'+b.grup;
+      var lk=String((b.item&&b.item.link)||b.link||'');
+      var m=lk.match(/(?:x\.com|twitter\.com)\/([A-Za-z0-9_]+)/i); if(m && m[1].toLowerCase()!=='i') return 'U'+m[1].toLowerCase();
+      m=lk.match(/^(?:rt|rtss|manual):([^:?\/]+)/i); if(m) return 'U'+m[1].toLowerCase();
+      var t=String((b.grupBaslik||'')||(b.item&&b.item.title)||''); m=t.match(/@([A-Za-z0-9_]+)/); if(m) return 'U'+m[1].toLowerCase();
+      return null;   // grupsuz standalone
+    }
     var arr=B.slice().reverse();
     var i=0;
     while(i<arr.length){
-      var g=arr[i]?arr[i].grup:null, j=i;
-      if(g!=null){ while(j+1<arr.length && arr[j+1] && arr[j+1].grup===g) j++; }   // bitişik aynı-grup bloğu [i..j]
-      if(j>i){ for(var p=i;p<=j;p++){ var b=arr[p]; if(b && (b.is_profile || (b.item && b.item.is_profile))){ if(p!==i){ var _pr=arr.splice(p,1)[0]; arr.splice(i,0,_pr); } break; } } }   // profil kartını bloğun başına
+      var g=_gk(arr[i]), j=i;
+      if(g!=null){ while(j+1<arr.length && _gk(arr[j+1])===g) j++; }   // bitişik aynı-grup (b.grup VEYA türetilen @handle) bloğu [i..j]
+      if(j>i){ for(var p=i;p<=j;p++){ if(_pid(arr[p])){ if(p!==i){ var _pr=arr.splice(p,1)[0]; arr.splice(i,0,_pr); } break; } } }   // profil kartını bloğun BAŞINA
       i=j+1;
     }
+    // [TANI — geçici] profil yine üstte kalmazsa gerçek yapı için
+    try{ if(window.xTeshisLog){ var _pp=[]; for(var _q=0;_q<B.length;_q++){ if(_pid(B[_q])) _pp.push(_q); } var _ss=[]; for(var _r=0;_r<B.length&&_r<8;_r++){ var _b=B[_r]; _ss.push('#'+_r+' gk='+_gk(_b)+' isP='+_pid(_b)+' lk='+String((_b&&_b.item&&_b.item.link)||'').slice(0,30)); } window.xTeshisLog('[ters-tani] n='+B.length+' profil=['+_pp.join(',')+'] | '+_ss.join(' || ')); } }catch(_){}
     XE._galeriUygula(arr);
   };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
