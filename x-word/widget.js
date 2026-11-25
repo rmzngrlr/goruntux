@@ -4795,6 +4795,10 @@
             .x-gx-nav-ring .fil{ fill:none; stroke:#fff; stroke-width:4; stroke-linecap:round; transform:rotate(-90deg); transform-box:fill-box; transform-origin:center; transition:stroke-dashoffset .3s ease; }
             .x-gx-nav-cnt{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:10px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
             .x-gx-nav.scanning .x-gx-nav-cnt{ display:flex; }
+            /* [KAYIT SAYACI] kayıt sürerken record ikonu yerine kırmızı mm:ss sayacı (canlı) -> kullanıcı kaydın sürdüğünü görür */
+            .x-gx-rec-sayac{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff; background:#f4212e; border-radius:9999px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }
+            .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-rec-sayac{ display:flex; }
+            .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-tw-ic{ visibility:hidden; }
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
             .x-gx-nav.outdated .x-gx-nav-badge{ display:flex; }
@@ -4888,7 +4892,7 @@
             +     '<span class="x-gx-nav-badge">!</span>'
             +   '</span>'
             +   '<span class="x-gx-nav-lbl">GörüntüX</span>'
-            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle x-gx-ssbtn" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-nav-ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg></span><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
+            +   '<span id="x-gx-nav-ekle" class="x-gx-nav-ekle x-gx-ssbtn" role="button" tabindex="0" aria-label="Bu paylaşımı GörüntüX Raporu\'na ekle!"><span class="x-gx-tw-ic"><svg width="25" height="25" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12V9h3"/><path d="M20 9h3v3"/><path d="M23 20v3h-3"/><path d="M12 23H9v-3"/><path d="M16 11.5v9M11.5 16h9"/></g></svg></span><span class="x-gx-nav-ring"><svg viewBox="0 0 40 40"><circle class="trk" cx="20" cy="20" r="16"></circle><circle class="fil" cx="20" cy="20" r="16" stroke-dasharray="100.53" stroke-dashoffset="100.53"></circle></svg></span><span class="x-gx-nav-cnt">0/0</span><span class="x-gx-rec-sayac"></span><span class="x-gx-tw-tip x-gx-nav-tip">Bu paylaşımı GörüntüX Raporu\'na ekle!</span></span>'
             +   '<button type="button" class="x-gx-nav-cancel" aria-label="Taramayı durdur">✕</button>'
             + '</span>'
             + '<span class="x-gx-nav-pop"><span class="pop-msg"></span><button type="button" class="pop-cancel" aria-label="Taramayı durdur">✕</button></span>';
@@ -4954,6 +4958,20 @@
         } catch (e) {}
         return a;
     }
+    // [KAYIT SAYACI] Nav record butonunu canlı mm:ss sayacına çevir. KALICI global __xVideoRecT0'dan okur -> SPA
+    // tweet->RT geçişinde nav butonu yeniden kurulsa bile sayaç SEKMEZ/SIFIRLANMAZ (aynı başlangıçtan sürer).
+    function xRecSayacTik() {
+        try {
+            var el = document.getElementById('x-gx-nav-ekle'); if (!el) return;
+            var aktif = !!(window.__xVideoKayitAktif && window.__xVideoRecT0);
+            if (el.classList.contains('x-gx-rec-aktif') !== aktif) el.classList.toggle('x-gx-rec-aktif', aktif);
+            if (aktif) {
+                var sc = el.querySelector('.x-gx-rec-sayac');
+                if (sc) { var s = Math.max(0, Math.floor((Date.now() - window.__xVideoRecT0) / 1000)); var m = Math.floor(s / 60), ss = s % 60; var t = m + ':' + (ss < 10 ? '0' : '') + ss; if (sc.textContent !== t) sc.textContent = t; }
+            }
+        } catch (e) {}
+    }
+    try { if (!window.__xRecSayacIv) window.__xRecSayacIv = setInterval(xRecSayacTik, 500); } catch (e) {}
     function xNavYansit() {
         try {
             var nav = document.getElementById('x-gx-nav-btn');
@@ -5646,7 +5664,7 @@
             xVideoCtrlBitti(ctrl, blob, _splitler);
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
-        window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 referansı
+        window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); window.__xVideoRecT0 = Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 + [SAYAÇ] canlı sayaç başlangıcı (KALICI global -> SPA geçişinde sekmez)
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         xVideoCtrlKayit(ctrl, kullaniciDurdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
@@ -5833,7 +5851,7 @@
             if (_recBasladi || bitti) return;
             try { rec.start(); } catch (e) { _recTemizle(); return; }
             _recBasladi = true;
-            try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] gerçek t=0
+            try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); window.__xVideoRecT0 = Date.now(); } catch (e) {}   // [OTO-BÖL] gerçek t=0 + [SAYAÇ] canlı sayaç başlangıcı (KALICI global)
         }
         async function _icerikAc() {   // ilk içerik: beyaz/crossfade YOK + kaydı başlat; sonrakiler: yumuşak crossfade
             if (!_recBasladi) { _dondur = false; try { await xVideoBekle(140); } catch (e) {} _recBaslat(); }
