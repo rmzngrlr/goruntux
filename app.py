@@ -10380,23 +10380,6 @@ LOCAL_DOCX_JS = r'''
         }
         items = xParseReportHtml(_html || '');
         _TL('[word] "' + (f.name||'') + '" -> ' + items.length + ' oge (' + (Date.now()-_ft) + 'ms)');
-        // [TANI — BOŞ SATIR + SATIR-İÇİ LİNK] mammoth'un ürettiği HAM HTML + blok yapısı. Boş satır <p></p> olarak mı
-        // geliyor? Satır-içi link <a href> olarak mı, href'i ne? KÜÇÜK test Word'üyle (2 paragraf + 1 link) bak.
-        try {
-          _TL('[word-tani] ham HTML (ilk 1400): ' + String(_html || '').replace(/\s+/g, ' ').slice(0, 1400));
-          var _dd = new DOMParser().parseFromString(_html || '', 'text/html');
-          var _bb = (_dd && _dd.body) ? _dd.body.children : [];
-          var _ss = [];
-          for (var _bq = 0; _bq < _bb.length && _bq < 30; _bq++){
-            var _ee = _bb[_bq], _tg = (_ee.tagName || '').toLowerCase();
-            var _al = _ee.querySelector ? _ee.querySelector('a[href]') : null;
-            var _im = !!(_ee.querySelector && _ee.querySelector('img'));
-            var _tt = (_ee.textContent || '').replace(/\s+/g, ' ').trim();
-            var _bos = (!_tt && !_im && !_al);
-            _ss.push(_tg + (_bos ? '(BOS)' : '') + (_al ? ('+a[' + ((_al.getAttribute('href') || '').slice(0, 45)) + ']') : '') + (_im ? '+img' : '') + (_tt ? ('+txt' + _tt.length) : ''));
-          }
-          _TL('[word-tani] bloklar (ilk 30): ' + _ss.join(' | '));
-        } catch (e) {}
       } catch (e) { items = []; _TL('[word] "' + (f.name||'') + '" HATA: ' + (e && e.message ? e.message : e) + ' (' + (Date.now()-_ft) + 'ms)', 'error'); }
       var lc = 0;
       for (var j = 0; j < items.length; j++){ if (items[j].link) lc++; }
