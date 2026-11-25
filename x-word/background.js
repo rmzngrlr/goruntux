@@ -1523,8 +1523,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // [VIDEOX] VideoX paneli kaydı (x-video-panel meta) -> video_panel_tab_id. GörüntüX panelinden AYRI.
   if (message.action === "registerVideoPanel") {
     const stid = sender.tab ? sender.tab.id : null;
-    if (stid) { chrome.storage.local.set({ video_panel_tab_id: stid }, () => { try { flushPendingVideoX(); } catch (e) {} }); try { sendResponse({ status: "ok" }); } catch (e) {} return true; }
-    try { sendResponse({ status: "error" }); } catch (e) {} return false;
+    if (!stid) { try { sendResponse({ status: "error" }); } catch (e) {} return false; }
+    // [TEK VIDEOX] Ana panel (registerPanel) ile AYNI tek-instance mantigi: canli bir /videox sekmesi zaten varsa
+    // onu odakla + yeni (fazla) /videox sekmesini kapat. /videox ve / BIRLIKTE acik kalabilir (ayri id + path kontrolu).
+    chrome.storage.local.get(['video_panel_tab_id'], (res) => {
+      const storedVid = res.video_panel_tab_id || null;
+      const finalize = () => { chrome.storage.local.set({ video_panel_tab_id: stid }, () => { try { flushPendingVideoX(); } catch (e) {} }); try { sendResponse({ status: "ok", duplicate: false }); } catch (e) {} };
+      if (storedVid && storedVid !== stid) {
+        chrome.tabs.get(storedVid, (existingTab) => {
+          let liveVideo = false;
+          if (!chrome.runtime.lastError && existingTab && existingTab.url) {
+            try { liveVideo = /^\/videox\/?$/i.test(new URL(existingTab.url).pathname); } catch (e) {}   // mevcut kayitli sekme GERCEKTEN /videox mi
+          }
+          if (liveVideo) {
+            logToServer(`[registerVideoPanel] VideoX zaten acik (Tab ${storedVid}). Yeni sekme (${stid}) kapatiliyor, mevcut odaklaniyor.`);
+            chrome.tabs.update(storedVid, { active: true }, () => { void chrome.runtime.lastError; });
+            if (existingTab.windowId != null) chrome.windows.update(existingTab.windowId, { focused: true }, () => { void chrome.runtime.lastError; });
+            try { sendResponse({ status: "ok", duplicate: true }); } catch (e) {}
+            setTimeout(() => { chrome.tabs.remove(stid, () => { void chrome.runtime.lastError; }); }, 400);
+            return;
+          }
+          finalize();   // eski id olu/gecersiz -> bu sekmeyi video panel yap
+        });
+      } else { finalize(); }
+    });
+    return true;   // async
   }
 
   // [VIDEO'MATIK] VideoX'ten çok-tweet linki -> bir X sekmesine 'videomatikKomut' gönder (orada başlat butonu çıkar).
@@ -1691,7 +1714,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const err = chrome.runtime.lastError;
           let liveSameOriginPanel = false;
           if (!err && existingTab && existingTab.url) {
-            try { liveSameOriginPanel = (new URL(existingTab.url).origin === rawOrigin); } catch (e) {}
+            // [TEK PANEL — PATH FARKINDA] /videox AYNI origin ama AYRI panel. Bayat panel_tab_id bir /videox sekmesini
+            // gosterirse, yeni ana panel (/) onu "ikiz" sanip KAPANIYORDU. Cozum: mevcut sekme /videox ise ana-panel ikizi SAYMA.
+            try { const _eu = new URL(existingTab.url); liveSameOriginPanel = (_eu.origin === rawOrigin) && !/^\/videox\/?$/i.test(_eu.pathname); } catch (e) {}
           }
           if (liveSameOriginPanel) {
             logToServer(`[registerPanel] Panel zaten acik (Tab ${storedPanelTabId}). Yeni sekme (${senderTabId}) kapatiliyor, mevcut odaklaniyor.`);

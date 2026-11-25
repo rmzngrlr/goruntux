@@ -59,7 +59,14 @@ function xRaporRegisterPanel() {
 function xVideoRegisterPanel() {
   try {
     if (!document.querySelector('meta[name="x-video-panel"]')) return;
-    chrome.runtime.sendMessage({ action: "registerVideoPanel" }, () => { void chrome.runtime.lastError; });
+    chrome.runtime.sendMessage({ action: "registerVideoPanel" }, (resp) => {
+      if (chrome.runtime.lastError) { return; }
+      // Zaten baska sekmede /videox aciksa eklenti onu odaklayip BU sekmeyi kapatir (resp.duplicate). Ana panelle AYNI akis.
+      if (resp && resp.duplicate) {
+        try { document.documentElement.innerHTML =
+          '<body style="background:#0d1117;color:#c9d1d9;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;font-size:18px;">VideoX zaten baska bir sekmede acik, oraya yonlendiriliyorsunuz...</body>'; } catch (_) {}
+      }
+    });
   } catch (e) { /* ignore */ }
 }
 
