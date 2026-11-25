@@ -5639,8 +5639,8 @@
         if (!window.__xVideoKayitAktif) { try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return; }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] her geçiş (tweet<->liste) anını _splitler'e yaz -> düzenleyici oto böler
-        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [], _kat = xRtHizliKat(), _segHiz = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] geçiş anları _splitler + [RT HIZLI KAYIT] kesit hızları _segHiz (seg0 kayıt başında/_icerikAc'te eklenir); kat>1 iken liste kesidi 1/kat
+        function _fadeBaslat(hiz) { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); _segHiz.push(hiz == null ? 1 : hiz); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
         function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { var _fd = false, _a = 1; if (_fadeT) { _a = (((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT) / _fadeDur; if (_a < 1) { _fd = true; } else { _fadeT = 0; _a = 1; } } if (_fd) { cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); } else { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } if (_fd) { cx.save(); cx.globalAlpha = _a; } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fd) { cx.restore(); } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         var cstream = cnv.captureStream(15);   // [KÜÇÜK DOSYA] 15fps
@@ -5662,10 +5662,11 @@
             window.__xVideoKayitAktif = false;
             if (_kullaniciDurdurdu) { try { var _c = document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {} try { xVideoToast('Kayıt durduruldu — video kaydedilmedi.'); } catch (e) {} return; }
             var blob = new Blob(chunks, { type: 'video/webm' });
-            xVideoCtrlBitti(ctrl, blob, _splitler);
+            xVideoCtrlBitti(ctrl, blob, _splitler, _segHiz);
         };
         try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
         window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); window.__xVideoRecT0 = Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 + [SAYAÇ] canlı sayaç başlangıcı (KALICI global -> SPA geçişinde sekmez)
+        try { _segHiz.push(1); } catch (e) {}   // [RT HIZLI KAYIT] seg0 = ana tweet introsu = 1× (yavaşlatılmaz)
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         xVideoCtrlKayit(ctrl, kullaniciDurdur);
         // --- FAZ AKIŞI: (1) ana tweet introsu (uzunluğa göre süre), (2) repostları aç + liste kaydır ---
@@ -5727,9 +5728,9 @@
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
                 canvasBoyutla();   // sabit "RT liste boyutu" (değişmez)
-                _fadeBaslat(); _dondur = false;   // geçiş bitti: donmuş kareden listeye yumuşak CROSSFADE
+                _fadeBaslat(1 / _kat); _dondur = false;   // geçiş bitti: donmuş kareden listeye yumuşak CROSSFADE. [RT HIZLI KAYIT] liste kesidi = 1/kat -> çıktıda normal hız
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
-                xVideoOtoKaydir(liste.scroll, durdur);
+                xVideoOtoKaydir(liste.scroll, durdur, _kat);   // [RT HIZLI KAYIT] kat× hızlı kaydır
             } catch (e) { durdur(); }
         })();
     }
@@ -5809,8 +5810,8 @@
         }
         canvasBoyutla();
         var raf = 0, calisiyor = true, _dondur = false;   // _dondur: FAZ geçişinde canlı akışı ÇİZME (beyaz flaş fix) -> canvas son kareyi donmuş tutar
-        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] her geçiş (tweet<->liste) anını _splitler'e yaz -> düzenleyici oto böler
-        function _fadeBaslat() { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
+        var _fc = document.createElement('canvas'), _fcx = _fc.getContext('2d'), _fadeT = 0, _fadeDur = 520, _recT0 = 0, _splitler = [], _kat = xRtHizliKat(), _segHiz = [];   // [GEÇİŞ CROSSFADE] + [OTO-BÖL] geçiş anları _splitler + [RT HIZLI KAYIT] kesit hızları _segHiz (seg0 kayıt başında/_icerikAc'te eklenir); kat>1 iken liste kesidi 1/kat
+        function _fadeBaslat(hiz) { try { _fc.width = cnv.width; _fc.height = cnv.height; _fcx.clearRect(0, 0, _fc.width, _fc.height); _fcx.drawImage(cnv, 0, 0); var _now = (window.performance && performance.now) ? performance.now() : Date.now(); _fadeT = _now; if (_recT0) { try { _splitler.push((_now - _recT0) / 1000); _segHiz.push(hiz == null ? 1 : hiz); } catch (e2) {} } } catch (e) { _fadeT = 0; } }
         function ciz() { if (!calisiyor) return; if (!_dondur) { var c = olc(); try { var _fd = false, _a = 1; if (_fadeT) { _a = (((window.performance && performance.now) ? performance.now() : Date.now()) - _fadeT) / _fadeDur; if (_a < 1) { _fd = true; } else { _fadeT = 0; _a = 1; } } if (_fd) { cx.drawImage(_fc, 0, 0, cnv.width, cnv.height); } else { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } var ar = c.sw / Math.max(1, c.sh); var dw = cnv.width, dh = Math.round(dw / ar); if (dh > cnv.height) { dh = cnv.height; dw = Math.round(dh * ar); } if (_fd) { cx.save(); cx.globalAlpha = _a; } cx.drawImage(vid, c.sx, c.sy, c.sw, c.sh, Math.round((cnv.width - dw) / 2), 0, dw, dh); if (_fd) { cx.restore(); } } catch (e) {} } raf = requestAnimationFrame(ciz); }
         ciz();
         try { cx.fillStyle = '#ffffff'; cx.fillRect(0, 0, cnv.width, cnv.height); } catch (e) {} _dondur = true;   // [FIX] ilk tweet çerçevelenene kadar TÜM sayfayı (nav+sidebar) kaydetme -> temiz başla; akış ilk tweet'i çerçeveleyince çözer
@@ -5843,7 +5844,7 @@
             var blob = new Blob(chunks, { type: 'video/webm' });
             var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
             var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - 24 Kasım 2026 HH-MM-SS; çoklu: VideoX - tarih saat
-            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: _splitler }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
+            try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: _splitler, hizlar: _segHiz }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
         // [#8 BAŞTAKİ BEYAZ FIX] rec'i ŞİMDİ başlatma; ilk GERÇEK içerik (ilk tweet introsu) çizilince başlat ->
         // baştaki beyaz kayda GİRMEZ, video doğrudan tweet-detay introsuyla başlar.
@@ -5854,9 +5855,9 @@
             _recBasladi = true;
             try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); window.__xVideoRecT0 = Date.now(); } catch (e) {}   // [OTO-BÖL] gerçek t=0 + [SAYAÇ] canlı sayaç başlangıcı (KALICI global)
         }
-        async function _icerikAc() {   // ilk içerik: beyaz/crossfade YOK + kaydı başlat; sonrakiler: yumuşak crossfade
-            if (!_recBasladi) { _dondur = false; try { await xVideoBekle(140); } catch (e) {} _recBaslat(); }
-            else { _fadeBaslat(); _dondur = false; }
+        async function _icerikAc(hiz) {   // ilk içerik: beyaz/crossfade YOK + kaydı başlat (seg0 hızı); sonrakiler: yumuşak crossfade
+            if (!_recBasladi) { _dondur = false; try { await xVideoBekle(140); } catch (e) {} _recBaslat(); try { _segHiz.push(hiz == null ? 1 : hiz); } catch (e) {} }   // [RT HIZLI KAYIT] ilk içerik = seg0 hızı
+            else { _fadeBaslat(hiz); _dondur = false; }
         }
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         var dctrl = document.getElementById('x-gx-video-ctrl'); if (!dctrl) { dctrl = document.createElement('div'); dctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(dctrl); }
@@ -5876,7 +5877,7 @@
                         kadrajEl = art; ustKlip = 0;
                         try { art.scrollIntoView({ block: 'start' }); } catch (e) {}
                         await xVideoBekle(650); canvasBoyutla();
-                        await _icerikAc();   // [#8] İLK intro: beyaz/crossfade YOK + kaydı başlat; sonraki tweetler: yumuşak CROSSFADE
+                        await _icerikAc(1);   // [#8] İLK intro: beyaz/crossfade YOK + kaydı başlat; sonraki tweetler: yumuşak CROSSFADE. [RT HIZLI KAYIT] intro kesidi = 1×
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
@@ -5896,9 +5897,9 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
-                            await _icerikAc();   // [#8] liste: ilk içerikse kaydı başlat (crossfade yok), değilse donmuş kareden listeye CROSSFADE
+                            await _icerikAc(1 / _kat);   // [#8] liste: ilk içerikse kaydı başlat (crossfade yok), değilse donmuş kareden listeye CROSSFADE. [RT HIZLI KAYIT] liste kesidi = 1/kat
                             await xVideoBekle(2000);
-                            await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res); });
+                            await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res, _kat); });   // [RT HIZLI KAYIT] kat× hızlı kaydır
                         }
                     }
                 }
@@ -5906,7 +5907,11 @@
             durdur();
         })();
     }
-    function xVideoOtoKaydir(kap, bitir) {
+    // [RT HIZLI KAYIT] Bayrak + hız çarpanı (kat). kat>1: RT listesi kayıtta kat× hızlı kaydırılır, çıktıda 1/kat'a
+    // yavaşlatılır (panel oto-render) -> kayıt süresi 1/kat'a iner, çıktı netliği AYNI. kat=1 => özellik kapalı (eski davranış).
+    // Kapat: localStorage x_rt_hizli_kayit='0'. Kat değiştir: localStorage x_rt_hizli_kat (1..8, vars=4).
+    function xRtHizliKat() { try { if (localStorage.getItem('x_rt_hizli_kayit') === '0') return 1; var k = parseFloat(localStorage.getItem('x_rt_hizli_kat')); return (k >= 1 && k <= 8) ? k : 4; } catch (e) { return 4; } }
+    function xVideoOtoKaydir(kap, bitir, hizKat) {
         try {
             // [AKICI — TİTREMESİZ] Interval yerine requestAnimationFrame: kaydırma EKRAN TAZELEMESİYLE SENKRON ->
             // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~58px/sn, çok yavaş) -> fps'ten
@@ -5917,7 +5922,7 @@
             // sürüklerdik -> onun yerine güvenle bitir.
             var _kok = (el === document.scrollingElement || el === document.documentElement || el === document.body);
             if (_kok && !/\/status\/\d+\/(retweets|reposts)/i.test(location.pathname)) { try { bitir(); } catch (e) {} return; }
-            var HIZ = 58, pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [%50 DAHA YAVAŞ] 230->115->58; her RT eden iyice net
+            var HIZ = 58 * (hizKat > 0 ? hizKat : 1), pos = el.scrollTop || 0, sonT = 0, durgun = 0;   // [%50 DAHA YAVAŞ] 230->115->58; her RT eden iyice net. [RT HIZLI KAYIT] kat× hızlı (çıktıda 1/kat'a yavaşlar); liste dibinde yükleme beklenir (durgun) -> hız artsa da RT kaçmaz
             window.__xVideoScrollStop = false;
             function tik(ts) {
                 try {
@@ -5946,7 +5951,7 @@
             xVideoCtrlKonumla(ctrl);   // sol nav butonunun ALTINA
         } catch (e) {}
     }
-    function xVideoCtrlBitti(ctrl, blob, splitler) {
+    function xVideoCtrlBitti(ctrl, blob, splitler, hizlar) {
         // [İSTEK] X sayfasında İNDİRME YOK. Video VideoX paneline (Videolarım) gönderilir (hedef=videox -> KALICI).
         // Ad = odaklı tweet ID'li. X kontrolü kapanır.
         try { var _c = ctrl || document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
@@ -5957,7 +5962,7 @@
                 try {
                     var _trt = ''; try { var _d = new Date(); var _p = function (n) { return (n < 10 ? '0' : '') + n; }; _trt = _d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' }) + ' ' + _p(_d.getHours()) + '-' + _p(_d.getMinutes()) + '-' + _p(_d.getSeconds()); } catch (e) { _trt = ''; }
                     var ad = (_oid ? _oid : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek tweet: <tweetID> - 24 Kasım 2026 HH-MM-SS
-                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: (splitler || []) }, function () { void chrome.runtime.lastError; });
+                    chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: (splitler || []), hizlar: (hizlar || []) }, function () { void chrome.runtime.lastError; });
                     try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {}  // [İSTEK] kayıt bitince VideoX paneline yönlendir
                     xVideoToast('Video VideoX paneline (Videolarım) kaydedildi.');
                 } catch (e) { xVideoToast('Video panele gönderilemedi.', true); }
