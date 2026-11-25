@@ -1524,29 +1524,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "registerVideoPanel") {
     const stid = sender.tab ? sender.tab.id : null;
     if (!stid) { try { sendResponse({ status: "error" }); } catch (e) {} return false; }
-    // [TEK VIDEOX] Ana panel (registerPanel) ile AYNI tek-instance mantigi: canli bir /videox sekmesi zaten varsa
-    // onu odakla + yeni (fazla) /videox sekmesini kapat. /videox ve / BIRLIKTE acik kalabilir (ayri id + path kontrolu).
-    chrome.storage.local.get(['video_panel_tab_id'], (res) => {
-      const storedVid = res.video_panel_tab_id || null;
-      const finalize = () => { chrome.storage.local.set({ video_panel_tab_id: stid }, () => { try { flushPendingVideoX(); } catch (e) {} }); try { sendResponse({ status: "ok", duplicate: false }); } catch (e) {} };
-      if (storedVid && storedVid !== stid) {
-        chrome.tabs.get(storedVid, (existingTab) => {
-          let liveVideo = false;
-          if (!chrome.runtime.lastError && existingTab && existingTab.url) {
-            try { liveVideo = /^\/videox\/?$/i.test(new URL(existingTab.url).pathname); } catch (e) {}   // mevcut kayitli sekme GERCEKTEN /videox mi
-          }
-          try { teshisLog('[panel-tani] registerVideoPanel KARAR yeni=' + stid + ' kayitli=' + storedVid + ' kayitliUrl=' + ((existingTab && existingTab.url) || '-') + ' ikizMi=' + liveVideo); } catch (e) {}
-          if (liveVideo) {
-            logToServer(`[registerVideoPanel] VideoX zaten acik (Tab ${storedVid}). Yeni sekme (${stid}) kapatiliyor, mevcut odaklaniyor.`);
-            chrome.tabs.update(storedVid, { active: true }, () => { void chrome.runtime.lastError; });
-            if (existingTab.windowId != null) chrome.windows.update(existingTab.windowId, { focused: true }, () => { void chrome.runtime.lastError; });
-            try { sendResponse({ status: "ok", duplicate: true }); } catch (e) {}
-            setTimeout(() => { chrome.tabs.remove(stid, () => { void chrome.runtime.lastError; }); }, 400);
-            return;
-          }
-          finalize();   // eski id olu/gecersiz -> bu sekmeyi video panel yap
+    // [TEK VIDEOX — SAGLAM / SORGU-TABANLI] Bayat video_panel_tab_id (videox kapaninca temizlenmiyor) stored-id yontemini
+    // yaniltiyordu (olu id -> url bos -> ikiz BULUNAMAZ -> 2. videox kapanmaz). Cozum: stored-id'ye GUVENME; CANLI sekmeleri
+    // SORGULA -> ayni origin'de BASKA bir /videox sekmesi varsa onu odakla + bu fazla sekmeyi kapat. Yoksa bunu video panel
+    // yap. (/ ve /videox farkli path -> birlikte acik kalir; sorgu yalniz /videox'leri eslestirir.)
+    const _surl = (sender.tab && sender.tab.url) || '';
+    let _so = '';
+    try { _so = new URL(_surl).origin; } catch (e) {}
+    const finalize = () => { chrome.storage.local.set({ video_panel_tab_id: stid }, () => { try { flushPendingVideoX(); } catch (e) {} }); try { sendResponse({ status: "ok", duplicate: false }); } catch (e) {} };
+    chrome.tabs.query({}, (tabs) => {
+      let other = null;
+      try {
+        (tabs || []).forEach((t) => {
+          if (other || !t || t.id == null || t.id === stid) return;
+          try { const u = new URL(t.url || ''); if ((!_so || u.origin === _so) && /^\/videox\/?$/i.test(u.pathname)) other = t; } catch (e) {}
         });
-      } else { finalize(); }
+      } catch (e) {}
+      try { teshisLog('[panel-tani] registerVideoPanel yeni=' + stid + ' origin=' + (_so || '-') + ' baskaCanliVideoX=' + (other ? other.id : 'yok') + ' -> ' + (other ? 'YENI KAPATILIR' : 'KAYIT')); } catch (e) {}
+      if (other) {
+        logToServer(`[registerVideoPanel] VideoX zaten acik (Tab ${other.id}). Yeni sekme (${stid}) kapatiliyor, mevcut odaklaniyor.`);
+        chrome.tabs.update(other.id, { active: true }, () => { void chrome.runtime.lastError; });
+        if (other.windowId != null) chrome.windows.update(other.windowId, { focused: true }, () => { void chrome.runtime.lastError; });
+        try { sendResponse({ status: "ok", duplicate: true }); } catch (e) {}
+        setTimeout(() => { chrome.tabs.remove(stid, () => { void chrome.runtime.lastError; }); }, 400);
+        return;
+      }
+      finalize();
     });
     return true;   // async
   }
