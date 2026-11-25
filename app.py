@@ -10188,7 +10188,11 @@ LOCAL_DOCX_JS = r'''
       // -> RT SS kaybolur, bölüm boş açılır. Çözüm: linksiz-görsele BENZERSİZ sentetik link (xmanual://) ver
       // -> görsel kendi anahtarına persist eder + ayrı öğe olur; group_override (başlıktaki @handle) RT yapanın
       // altında tutar. parcalar görsel-only -> link GÖRÜNMEZ (yalnız iç anahtar).
-      if ((link == null || link === '') && img) { link = 'xmanual://rtss-' + _rtBaz + '-' + (++_rtSayac); }
+      // [FIX] Linksiz GÖRSEL (RT) VEYA linksiz NORMAL METİN -> benzersiz sentetik xmanual:// link. Aksi halde
+      // havuz/overlay LINK-ANAHTARLI olduğundan (_ov.byLink[xOvKey(link)]) link='' öğeler çakışır/düşer ->
+      // metin/görsel KAYBOLUR. Sentetik link = kendi anahtarına persist + ayrı öğe; link çıktıda GÖRÜNMEZ.
+      var _metinVar = !!(parcalar && parcalar.length && parcalar.some(function (p) { return p && p.tur === 'metin'; }));
+      if ((link == null || link === '') && (img || _metinVar)) { link = 'xmanual://rtss-' + _rtBaz + '-' + (++_rtSayac); }
       var o = { title: title, link: link, image_b64: img, image_mime: mime };
       var g = _grup(title);
       if (g) { o.group_override = g; }
@@ -10342,7 +10346,8 @@ LOCAL_DOCX_JS = r'''
           _html = (mres || {}).value || '';
         }
         items = xParseReportHtml(_html || '');
-        _TL('[word] "' + (f.name||'') + '" -> ' + items.length + ' oge (' + (Date.now()-_ft) + 'ms)');
+        var _mcnt = 0; for (var _mi = 0; _mi < items.length; _mi++){ var _ps = items[_mi].parcalar || []; for (var _mj = 0; _mj < _ps.length; _mj++){ if (_ps[_mj] && _ps[_mj].tur === 'metin') _mcnt++; } }
+        _TL('[word] "' + (f.name||'') + '" -> ' + items.length + ' oge, ' + _mcnt + ' metin parca (' + (Date.now()-_ft) + 'ms)');
       } catch (e) { items = []; _TL('[word] "' + (f.name||'') + '" HATA: ' + (e && e.message ? e.message : e) + ' (' + (Date.now()-_ft) + 'ms)', 'error'); }
       var lc = 0;
       for (var j = 0; j < items.length; j++){ if (items[j].link) lc++; }
