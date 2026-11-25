@@ -5801,9 +5801,17 @@
         var rec;
         try { rec = new MediaRecorder(cstream, { mimeType: mime, videoBitsPerSecond: 1200000 }); }
         catch (e) { try { rec = new MediaRecorder(cstream); } catch (e2) { calisiyor = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e3) {} window.__xVideoKayitAktif = false; xVideoToast('Video kaydı desteklenmiyor.', true); return; } }
-        var chunks = [], bitti = false, _barGizli = [], _kullaniciDurdurdu = false;
+        var chunks = [], bitti = false, _barGizli = [], _kullaniciDurdurdu = false, _recBasladi = false;
         rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-        function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} }
+        function _recTemizle() {   // [#8] kayıt HİÇ başlamadan durdurulursa onstop çalışmaz -> elle temizle (video kaydedilmez)
+            calisiyor = false; try { if (raf) cancelAnimationFrame(raf); } catch (e) {}
+            try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+            try { xVideoBarlariGeri(_barGizli); } catch (e) {}
+            window.__xVideoKayitAktif = false;
+            try { var _c = document.getElementById('x-gx-video-ctrl'); if (_c) _c.remove(); } catch (e) {}
+            try { xVideoToast('Kayıt durduruldu — video kaydedilmedi.'); } catch (e) {}
+        }
+        function durdur() { if (bitti) return; bitti = true; try { window.__xVideoScrollStop = true; } catch (e) {} if (_recBasladi) { try { if (rec.state !== 'inactive') rec.stop(); } catch (e) {} } else { _recTemizle(); } }
         // [İSTEK] Kullanıcı kaydı (STOP) ya da paylaşımı (Chrome çubuğu) DURDURURSA video ASLA Videolarım'a kaydedilmez.
         function kullaniciDurdur() { _kullaniciDurdurdu = true; durdur(); }
         rec.onstop = function () {
@@ -5818,8 +5826,19 @@
             var ad = ((tweets.length === 1) ? tweets[0].id : 'VideoX') + (_trt ? (' - ' + _trt) : '');   // tek link: <id> - 24 Kasım 2026 HH-MM-SS; çoklu: VideoX - tarih saat
             try { var fr = new FileReader(); fr.onload = function () { try { chrome.runtime.sendMessage({ action: 'deliverVideo', dataUrl: fr.result, name: ad, hedef: 'videox', splitler: _splitler }, function () { void chrome.runtime.lastError; }); try { chrome.runtime.sendMessage({ action: 'videoxGit' }, function () { void chrome.runtime.lastError; }); } catch (e) {} xVideoToast('Video VideoX paneline kaydedildi.'); } catch (e) {} }; fr.readAsDataURL(blob); } catch (e) {}
         };
-        try { rec.start(); } catch (e) { calisiyor = false; window.__xVideoKayitAktif = false; try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e4) {} xVideoToast('Kayıt başlamadı.', true); return; }
-        window.__xVideoRec = rec; try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] video t=0 referansı
+        // [#8 BAŞTAKİ BEYAZ FIX] rec'i ŞİMDİ başlatma; ilk GERÇEK içerik (ilk tweet introsu) çizilince başlat ->
+        // baştaki beyaz kayda GİRMEZ, video doğrudan tweet-detay introsuyla başlar.
+        window.__xVideoRec = rec;
+        function _recBaslat() {
+            if (_recBasladi || bitti) return;
+            try { rec.start(); } catch (e) { _recTemizle(); return; }
+            _recBasladi = true;
+            try { _recT0 = (window.performance && performance.now) ? performance.now() : Date.now(); } catch (e) {}   // [OTO-BÖL] gerçek t=0
+        }
+        async function _icerikAc() {   // ilk içerik: beyaz/crossfade YOK + kaydı başlat; sonrakiler: yumuşak crossfade
+            if (!_recBasladi) { _dondur = false; try { await xVideoBekle(140); } catch (e) {} _recBaslat(); }
+            else { _fadeBaslat(); _dondur = false; }
+        }
         try { stream.getVideoTracks()[0].addEventListener('ended', kullaniciDurdur); } catch (e) {}   // Chrome "paylaşımı durdur" -> KAYDETME
         var dctrl = document.getElementById('x-gx-video-ctrl'); if (!dctrl) { dctrl = document.createElement('div'); dctrl.id = 'x-gx-video-ctrl'; document.documentElement.appendChild(dctrl); }
         xVideoCtrlKayit(dctrl, kullaniciDurdur);
@@ -5838,7 +5857,7 @@
                         kadrajEl = art; ustKlip = 0;
                         try { art.scrollIntoView({ block: 'start' }); } catch (e) {}
                         await xVideoBekle(650); canvasBoyutla();
-                        _fadeBaslat(); _dondur = false;   // tweet yerleşti: önceki kareden introya yumuşak CROSSFADE
+                        await _icerikAc();   // [#8] İLK intro: beyaz/crossfade YOK + kaydı başlat; sonraki tweetler: yumuşak CROSSFADE
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
@@ -5858,7 +5877,7 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
-                            _fadeBaslat(); _dondur = false;   // liste yerleşti: donmuş kareden listeye yumuşak CROSSFADE
+                            await _icerikAc();   // [#8] liste: ilk içerikse kaydı başlat (crossfade yok), değilse donmuş kareden listeye CROSSFADE
                             await xVideoBekle(2000);
                             await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res); });
                         }
