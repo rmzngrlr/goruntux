@@ -10348,6 +10348,20 @@ LOCAL_DOCX_JS = r'''
         items = xParseReportHtml(_html || '');
         var _mcnt = 0; for (var _mi = 0; _mi < items.length; _mi++){ var _ps = items[_mi].parcalar || []; for (var _mj = 0; _mj < _ps.length; _mj++){ if (_ps[_mj] && _ps[_mj].tur === 'metin') _mcnt++; } }
         _TL('[word] "' + (f.name||'') + '" -> ' + items.length + ' oge, ' + _mcnt + ' metin parca (' + (Date.now()-_ft) + 'ms)');
+        // [TEŞHİS] mammoth HTML blok yapısı: metin NEREDE? (p+a+txt=link+metin aynı blokta; pure p+txt=düz metin)
+        try {
+          var _dbg = new DOMParser().parseFromString(_html || '', 'text/html');
+          var _bl = (_dbg && _dbg.body) ? _dbg.body.children : [];
+          var _sum = [];
+          for (var _bi2 = 0; _bi2 < _bl.length && _bi2 < 24; _bi2++){
+            var _e2 = _bl[_bi2], _tg = (_e2.tagName || '').toLowerCase();
+            var _ha = !!(_e2.querySelector && _e2.querySelector('a[href]'));
+            var _hi = !!(_e2.querySelector && _e2.querySelector('img'));
+            var _tl2 = (_e2.textContent || '').replace(/\s+/g, ' ').trim();
+            _sum.push(_tg + (_ha ? '+a' : '') + (_hi ? '+img' : '') + (_tl2 ? ('+txt' + _tl2.length) : ''));
+          }
+          _TL('[word] HTML blok (ilk 24): ' + _sum.join(' | '));
+        } catch (e) {}
       } catch (e) { items = []; _TL('[word] "' + (f.name||'') + '" HATA: ' + (e && e.message ? e.message : e) + ' (' + (Date.now()-_ft) + 'ms)', 'error'); }
       var lc = 0;
       for (var j = 0; j < items.length; j++){ if (items[j].link) lc++; }
