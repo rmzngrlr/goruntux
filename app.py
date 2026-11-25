@@ -10209,6 +10209,7 @@ LOCAL_DOCX_JS = r'''
       // "link gorselin ustunde mi altinda mi" GLOBAL olarak saptanabilir (kullanici istegi).
       var toks = [];
       var _pushMetin = function (_t) { if (!_t) return; var _lt = toks[toks.length - 1]; if (_lt && _lt.t === 'metin') { _lt.text += '<br>' + _t; } else { toks.push({ t: 'metin', text: _t }); } };   // ardışık metin TEK parça; ayraç <br> (HTML'de \n görünmez -> paragraflar yapışıyordu). <br> editör+Word(w:br)+PDF'te satır sonu.
+      var _pushBosSatir = function () { var _lt = toks[toks.length - 1]; if (_lt && _lt.t === 'metin') { _lt.text += '<br>'; } };   // [BOŞ SATIR] Word boş paragrafı (mammoth ignoreEmptyParagraphs:false ile <p></p>) -> mevcut metne +1 <br>; sonraki metin de <br> ekler -> aralarında BOŞ SATIR. (Baştaki/ardışıksız boş metin yoksa dokunmaz.)
       var _esc = function (s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
       var _mkHtml = function (node) {   // blok içeriğini güvenli HTML'e çevir: yalnız <a href> ve <br> korunur, gerisi kaçışlı düz metin
         var _o = '', _ch = node.childNodes || [];
@@ -10252,7 +10253,9 @@ LOCAL_DOCX_JS = r'''
           }
         } else {
           // [FIX] NORMAL METİN: başlık/link/görsel olmayan düz metin paragrafı -> 'metin' token (kaçışlı HTML).
-          _pushMetin(_esc((el.textContent || '').replace(/\s+/g, ' ').trim()));
+          // BOŞ paragraf (<p></p>) -> boş satır (_pushBosSatir); dolu -> metin.
+          var _dz = _esc((el.textContent || '').replace(/\s+/g, ' ').trim());
+          if (_dz) { _pushMetin(_dz); } else { _pushBosSatir(); }
         }
       }
       // v4.28: DUZEN SAPTAMA — ilk link, ilk gorselden ONCE mi geliyor? (basliklar sayilmaz)
@@ -10370,7 +10373,7 @@ LOCAL_DOCX_JS = r'''
         }
         if (_anaThread) {
           var mres = await Promise.race([
-            mammoth.convertToHtml({ arrayBuffer: buf }),
+            mammoth.convertToHtml({ arrayBuffer: buf }, { ignoreEmptyParagraphs: false }),
             new Promise(function (_r, rej) { setTimeout(function () { rej(new Error('Word okuma zaman asimi (' + Math.round(_tmo/1000) + 'sn)')); }, _tmo); })
           ]);
           _html = (mres || {}).value || '';
@@ -17348,7 +17351,7 @@ self.onmessage = function (e) {
   var d = e.data || {}, id = d.id, buf = d.buf;
   if (!buf) { self.postMessage({ id: id, ok: false, error: 'bos arraybuffer' }); return; }
   try {
-    self.mammoth.convertToHtml({ arrayBuffer: buf })
+    self.mammoth.convertToHtml({ arrayBuffer: buf }, { ignoreEmptyParagraphs: false })
       .then(function (r) { self.postMessage({ id: id, ok: true, html: (r && r.value) || '' }); })
       .catch(function (err) { self.postMessage({ id: id, ok: false, error: String(err && err.message || err) }); });
   } catch (err) { self.postMessage({ id: id, ok: false, error: String(err && err.message || err) }); }
