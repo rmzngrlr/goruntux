@@ -14107,7 +14107,6 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       if(j>i){ for(var p=i;p<=j;p++){ if(_pid(arr[p])){ if(p!==i){ var _pr=arr.splice(p,1)[0]; arr.splice(i,0,_pr); } break; } } }   // profil kartını bloğun BAŞINA
       i=j+1;
     }
-    try{ if(window.xTeshisLog){ var _pp=[]; for(var _q=0;_q<B.length;_q++){ if(_pid(B[_q])) _pp.push(_q); } window.xTeshisLog('[ters-tani] n='+B.length+' profil-bulundu=['+_pp.join(',')+']'); } }catch(_){}   // geçici: profil tespiti onaylanınca kaldır
     XE._galeriUygula(arr);
   };
   // Bir KARTA (bölüm/havuz) pos KONUMUNA parça ekle. tur: baslik/metin/link/gorsel. ekstra={b64,mime}.
