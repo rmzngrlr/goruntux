@@ -4379,7 +4379,9 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
         // yalniz BRUT tekrar (toplam >= benzersiz*2, yani ortalama her oge >=2 kez) varken uygulanir ->
         // normal rapor + IG karuseli (birkac ayni-imzali slayt) ETKILENMEZ. Ilk gorunum korunur (sira+overlay).
         // Bayrak x_tekrar_guard='0' -> kapali (eski davranis). bkz [[gorsel-kaybi-tarama-kok-neden]] turu veri-kaybi fixleri.
-        function xTekrarGuardAcik() { try { return localStorage.getItem('x_tekrar_guard') !== '0'; } catch (e) { return true; } }
+        // [GUVENLIK] VARSAYILAN KAPALI: self-heal tekilleme veri-kaybi riski tasiyor (143->52 sikayeti) -> acikca
+        // acilmadikca (x_tekrar_guard==='1') CALISMAZ. Tekilleme ac/kaydet'te hic item silmez.
+        function xTekrarGuardAcik() { try { return localStorage.getItem('x_tekrar_guard') === '1'; } catch (e) { return false; } }
         function xItemImza(it) {
             if (!it) return '';
             return JSON.stringify([
