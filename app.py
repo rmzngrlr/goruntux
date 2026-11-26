@@ -6157,6 +6157,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                         '<button type="button" class="x-gal-menu-item" data-sec="yeni" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4.5v11M4.5 10h11"/></svg> Yeni Rapor</button>' +
                         '<button type="button" class="x-gal-menu-item" data-sec="cihaz" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="9.5" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/></svg> Cihazdan Yükle</button>' +
                         '<button type="button" class="x-gal-menu-item" data-sec="pdf" onclick="xRaporMenuSec(event,this)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12H5z"/><path d="M12 2.5v3h3"/><path d="M7.5 11h5M7.5 13.5h5"/></svg> PDF’ten Yakala</button>' +
+                    '</div>' +
                 '</div>';
             html += metas.map(function (m, idx) {
                 var tarih = '';
