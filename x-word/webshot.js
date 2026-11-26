@@ -53,9 +53,10 @@
         if (p !== 'fixed' && p !== 'sticky') continue;
         if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity || '1') < 0.05) continue;
         var r = el.getBoundingClientRect();
-        if (r.width < vw * 0.5 || r.height < 2 || r.height > vh * 0.5) continue;   // GENİŞ ama ince BAR (küçük buton / tam-ekran overlay DEĞİL)
-        var ustte = (r.top <= 2), altta = (r.bottom >= vh - 2);
-        if (!ustte && !altta) continue;   // yalnız viewport üst/alt kenarına yapışık barlar (akış-içi sticky'ye dokunma)
+        if (r.width < vw * 0.5 || r.height < 2 || r.height > vh * 0.33) continue;   // GENİŞ ama İNCE bar (dar buton / uzun panel / tam-ekran overlay DEĞİL)
+        // fixed = viewport'a sabit -> HANGİ konumda olursa olsun her karede dikişe girer (navbar + çerez/aydınlatma barı + footer).
+        // sticky = yalnız bir kenara YAPIŞMIŞ (stuck) ise dikişe girer; akış-içi (orta) sticky'ye DOKUNMA.
+        if (p === 'sticky' && !(r.top <= vh * 0.3 || r.bottom >= vh * 0.7)) continue;
         hidden.push([el, el.style.getPropertyValue('visibility'), el.style.getPropertyPriority('visibility')]);
         el.style.setProperty('visibility', 'hidden', 'important');
       }
