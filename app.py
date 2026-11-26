@@ -11619,7 +11619,7 @@ PDF_YAKALA_JS = r'''
     _resizeH=function(){ if(ov&&srcCv&&canvas){ _olcekle(); blurGuncelle(); ciz(); } };
     window.addEventListener("resize", _resizeH);
   }
-  function git(d){ if(busy) return; var n=pageNo+d; if(n<1||n>numPages) return; pageNo=n; sayfaCiz(); }
+  function git(d){ if(busy) return; var n=pageNo+d; if(n<1||n>numPages) return; pageNo=n; if(_mode==="gorsel"){ try{ window.__xPdfSonPage=pageNo; }catch(e){} } sayfaCiz(); }   // [PDF HAFIZA] kaldigi sayfayi ANINDA hatirla (render beklemeden)
   function sayfaGuncelle(){ try{ var s=ov.querySelector(".x-pdfy-sayfa"); if(s) s.textContent=pageNo+" / "+numPages; ov.querySelector(".x-pdfy-prev").disabled=(pageNo<=1); ov.querySelector(".x-pdfy-next").disabled=(pageNo>=numPages); if(_mode==="gorsel"){ try{ window.__xPdfSonPage=pageNo; }catch(e){} } }catch(e){} }   // [PDF HAFIZA] gorsel modda kaldigi sayfayi hatirla
   function sayfaCiz(){
     if(!pdfDoc) return; busy=true;
