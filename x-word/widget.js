@@ -4985,6 +4985,16 @@
                 // Aksi halde normal yeşil "+". (STOP kontrol kutusu AYRI: yalnız kayıt sürerken + sayfa içinde durur.)
                 var _ekl = document.getElementById('x-gx-nav-ekle');
                 if (_ekl) {
+                    // [MOD SIZMA FIX] Video modu YALNIZ açıldığı tweet GÖRÜNÜMÜNDE geçerli. Başka tweet (id farklı) VEYA
+                    // aynı tweet YENİDEN açılmış (odaklı article ÖĞESİ değişti -> X detayı söküp yeniden kurar) ise sıfırla
+                    // -> yeni/tekrar açılan her tweet detayı YEŞİL (SS) başlar. Kayıt sürerken DOKUNMA (ikon zaten __xVideoKayitAktif'ten).
+                    if (_ekl.__userVideoMode && !window.__xVideoKayitAktif) {
+                        try {
+                            var _sid = xVideoStatusId();
+                            var _art = (typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null;
+                            if (_sid !== _ekl.__userVideoModeId || (_art && _ekl.__userVideoModeArt && _art !== _ekl.__userVideoModeArt)) { _ekl.__userVideoMode = false; }
+                        } catch (e) {}
+                    }
                     var _kayitIkon = !!window.__xVideoKayitAktif || (xVideoTweetDetayMi() && _ekl.__userVideoMode === true);
                     if (_kayitIkon !== _ekl.classList.contains('x-gx-videomod')) {
                         _ekl.classList.toggle('x-gx-videomod', _kayitIkon);
@@ -5284,6 +5294,9 @@
     // SADECE saf tweet detayı (/status/<id>). /status/<id>/retweets|reposts|likes|quotes ALT-sayfaları HARİÇ:
     // oralarda video modu (kırmızı) başlatılamaz (tek-tweet kaydı ana tweet sayfasından başlar) -> xNavYansit red'i sıfırlar.
     function xVideoTweetDetayMi() { try { return xVideoHostX() && /\/status\/\d+/.test(location.pathname) && !/\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname); } catch (e) { return false; } }
+    // [MOD SIZMA FIX] Saf tweet detayının /status/<id> id'si (detay değilse ''). Video modu açıldığı tweet'e bu id + odaklı
+    // article öğesiyle bağlanır; başka tweet (id farklı) VEYA aynı tweet yeniden açılınca (yeni article öğesi) xNavYansit sıfırlar.
+    function xVideoStatusId() { try { if (!xVideoTweetDetayMi()) return ''; var m = location.pathname.match(/\/status\/(\d+)/); return (m && m[1]) ? m[1] : ''; } catch (e) { return ''; } }
     // [BAŞLIK HARİÇ] X'in tepedeki yapışkan "← Gönderi" başlık barının ALT Y'si (yoksa 0). Kadrajın üst klibi
     // olarak kullanılır -> ne introda ne listede bu bar videoya girer.
     function xVideoUstBaslikAlt() {
@@ -5419,7 +5432,8 @@
     function xNavVideoModToggle(btn) {
         try {
             var acik = btn.classList.toggle('x-gx-videomod');
-            btn.__userVideoMode = acik;   // [DURUM] kullanıcı sağ-tık toggle'ı -> xNavYansit bu durumu korur (kayıt yokken saf tweet detayında kırmızı kalır)
+            btn.__userVideoMode = acik;   // [DURUM] kullanıcı sağ-tık toggle'ı. [MOD SIZMA FIX] video modu AÇILDIĞI tweet'e bağlanır:
+            try { btn.__userVideoModeId = acik ? xVideoStatusId() : ''; btn.__userVideoModeArt = acik ? ((typeof xGxOdakliArticle === 'function') ? xGxOdakliArticle() : null) : null; } catch (e) {}   // id + odaklı article ÖĞESİ -> farklı/yeniden-açılan tweette xNavYansit yeşile sıfırlar
             var ic = btn.querySelector('.x-gx-tw-ic');
             if (ic) { while (ic.firstChild) ic.removeChild(ic.firstChild); ic.appendChild(_xGxSsIkon(acik ? 'kayit' : 'ekle')); }
             var tip = btn.__tip;
