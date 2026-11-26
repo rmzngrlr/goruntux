@@ -11891,6 +11891,23 @@ X_SAVED_REPORTS_JS = r'''
     }
     return lines;
   }
+  // [VERİ KAYBI YEDEK] Bir rapor ANİ BÜYÜK küçülmeyle (depo>=20 & yeni<%60) uzerine yazilmadan ONCE, ESKI (buyuk)
+  // halini AYRI bir rapora ("<ad> ⟲yedek HH:MM") kopyalar -> kayip KURTARILABILIR olur. ENGELLEMEZ (save devam eder);
+  // yalniz kurtarma noktasi birakir. 45sn/ayni-sayi tekrar yedegi atlanir (spam engel). Rekursiyon yok (yeni id -> _hasId false).
+  var _sonYedek = {};
+  function _saat(){ try{ var d=new Date(); function p(n){ return (n<10?'0':'')+n; } return p(d.getHours())+':'+p(d.getMinutes()); }catch(e){ return ''; } }
+  function _yedekle(id, eskiSay, yeniSay){
+    try{
+      var _s=_sonYedek[id]; if(_s && _s.eski===eskiSay && (_now()-_s.ts)<45000) return Promise.resolve();   // yakin zamanda ayni yedek -> atla
+      _sonYedek[id]={ ts:_now(), eski:eskiSay };
+      return get(id).then(function(old){
+        if(!old || !old.items || old.items.length<20) return;
+        var _ad=(old.name||'Rapor')+' ⟲yedek '+_saat();
+        try{ if(window.xTeshisLog) window.xTeshisLog('[YEDEK] '+String(id).slice(0,8)+' ani kucuilme ('+eskiSay+'->'+yeniSay+') -> "'+_ad+'" ('+old.items.length+' oge) KURTARMA icin saklandi','warning'); }catch(e){}
+        return saveReport({ name:_ad, items:old.items, images:old.images||{}, blob:old.blob||null, filename:old.filename||'', editorStyle:old.editorStyle||null, manualClusters:old.manualClusters||[] });
+      }).catch(function(){});
+    }catch(e){ return Promise.resolve(); }
+  }
   function saveReport(o){
     if(!_db) return Promise.reject(new Error('Yerel depo açılamadı'));
     var now=_now();
@@ -11903,6 +11920,12 @@ X_SAVED_REPORTS_JS = r'''
       var createdAt = existing ? (existing.createdAt||now) : now;
       // Ad: açıkça verildiyse onu kullan; verilmediyse (null) mevcut adı KORU (oto-kayıt ad göndermez).
       var _ad = (o.name!=null) ? o.name.toString().trim() : (existing ? (existing.name||'') : '');
+      // [VERİ KAYBI] HER kaydi logla (eski->yeni oge sayisi) -> hangi yol kucultuyor /teshis'te kesin gorunur.
+      var _eskiSay=(existing && existing.itemCount)||0, _yeniSay=(o.items&&o.items.length)||0;
+      try{ if(window.xTeshisLog && _hasId) window.xTeshisLog('[kayit] '+String(id).slice(0,8)+' eski='+_eskiSay+' -> yeni='+_yeniSay+(existing?'':' (yeni rapor)')); }catch(e){}
+      // [VERİ KAYBI YEDEK] Ani buyuk kucuilme -> ESKI hali ayri rapora yedekle (ONCE), sonra normal kaydi surdur.
+      var _yedekP = (_hasId && existing && _eskiSay>=20 && _yeniSay<_eskiSay*0.6) ? _yedekle(id, _eskiSay, _yeniSay) : Promise.resolve();
+      return _yedekP.then(function(){
       // Faz 3: slug (URL /<slug>). Ad değişmediyse mevcut slug korunur; benzersizleştir (başka rapor aynı slug'ı kullanıyorsa -2,-3...).
       return _uniqueSlug(_slugify(_ad||'rapor'), id).then(function(_slug){
        return _buildPreview(o).then(function(_prev){
@@ -11920,6 +11943,7 @@ X_SAVED_REPORTS_JS = r'''
           }catch(e){ reject(e); }
         });
        });
+      });
       });
     });
   }
