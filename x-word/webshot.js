@@ -35,11 +35,13 @@
   function bitir() { window.__xWebshotAktif = false; }
   function docH() { return Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0, window.innerHeight); }
 
-  // ===== [STICKY GİZLE] Scroll-stitch (Devamını Al / Öğe Seç oto-uzatma) sırasında site sabit/sticky
-  // NAVBAR'ı her karede viewport tepesinde tekrar çizilip DİKİŞE giriyordu (navbar 2-3 kez + arkasındaki
-  // içerik kaybı). Çözüm: UZATMA karesini yakalamadan önce viewport ÜST/ALT kenarına yapışık GENİŞ BARLARI
-  // (fixed/sticky navbar/footer) geçici gizle (visibility:hidden -> layout BOZULMAZ, dikiş matematiği sağlam),
-  // yakala, geri aç. İlk yakalama gizlemez -> navbar BİR KEZ (gerçek tepe) kalır. Bayrak x_webshot_sticky ('0'=kapalı).
+  // ===== [STICKY GİZLE] Scroll-stitch (Devamını Al / Öğe Seç oto-uzatma) sırasında site FIXED/STICKY
+  // ögeleri (navbar, çerez/aydınlatma barı, footer, yan-reklam şeridi) her karede viewport'a sabit kalıp
+  // DİKİŞE giriyordu (tekrar + arkasındaki içerik kaybı). Çözüm: UZATMA karesini yakalamadan önce bunları
+  // geçici gizle (visibility:hidden -> layout BOZULMAZ, dikiş matematiği sağlam), yakala, geri aç. İlk
+  // yakalama gizlemez -> öge BİR KEZ (gerçek konumunda) kalır. Kapsam: FIXED = tam-ekran overlay HARİÇ her
+  // konum/boyut (viewport'a sabit -> her karede tekrar); STICKY = yalnız bir kenara yapışmış + bar-ish
+  // (akış-içi/uzun sticky sütuna dokunma). Bayrak x_webshot_sticky ('0'=kapalı).
   function _stickyAcik() { try { return localStorage.getItem('x_webshot_sticky') !== '0'; } catch (e) { return true; } }
   function _stickyGizle() {
     if (!_stickyAcik()) return null;
@@ -53,10 +55,15 @@
         if (p !== 'fixed' && p !== 'sticky') continue;
         if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity || '1') < 0.05) continue;
         var r = el.getBoundingClientRect();
-        if (r.width < vw * 0.5 || r.height < 2 || r.height > vh * 0.33) continue;   // GENİŞ ama İNCE bar (dar buton / uzun panel / tam-ekran overlay DEĞİL)
-        // fixed = viewport'a sabit -> HANGİ konumda olursa olsun her karede dikişe girer (navbar + çerez/aydınlatma barı + footer).
-        // sticky = yalnız bir kenara YAPIŞMIŞ (stuck) ise dikişe girer; akış-içi (orta) sticky'ye DOKUNMA.
-        if (p === 'sticky' && !(r.top <= vh * 0.3 || r.bottom >= vh * 0.7)) continue;
+        if (r.width < 2 || r.height < 2) continue;
+        if (r.width >= vw * 0.9 && r.height >= vh * 0.9) continue;   // tam-ekran overlay/modal -> DOKUNMA (sayfa tamamen gizlenmesin)
+        // fixed = viewport'a SABİT -> HANGİ konum/boyutta olursa olsun her karede dikişe girer:
+        //   navbar + çerez/aydınlatma barı (ahaber .veriAltBar, çok-satırda ~109px) + footer + yan-reklam şeridi (pageSkin) + buton/widget.
+        // sticky = yalnız bir kenara YAPIŞMIŞ + bar-ish; akış-içi/uzun sticky sütuna DOKUNMA.
+        if (p === 'sticky') {
+          if (r.height > vh * 0.5) continue;
+          if (!(r.top <= vh * 0.3 || r.bottom >= vh * 0.7)) continue;
+        }
         hidden.push([el, el.style.getPropertyValue('visibility'), el.style.getPropertyPriority('visibility')]);
         el.style.setProperty('visibility', 'hidden', 'important');
       }
