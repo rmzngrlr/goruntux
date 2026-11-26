@@ -4626,6 +4626,14 @@
         var disTik = function (e) {
             var o = document.getElementById('x-gx-ov'); if (!o || o.contains(e.target)) return;
             var nb = document.getElementById('x-gx-nav-btn'); if (nb && nb.contains(e.target)) return;
+            // [ARAMA INPUT İSTİSNA] X'in arama kutusuna tıklamak gelişmiş-arama popup'ını KAPATMASIN
+            // (kullanıcı input'a tıklayıp yazmaya devam edebilsin). Hem input'un kendisi hem sardığı arama kutusu.
+            try {
+                var _t = e.target;
+                if (_t && _t.closest && _t.closest('[data-testid="SearchBox_Search_Input"]')) return;
+                var _si = document.querySelector('input[data-testid="SearchBox_Search_Input"]');
+                if (_si) { var _kutu = _si.closest('form[role="search"]') || _si.closest('[role="search"]') || _si.closest('form') || _si.parentElement; if (_kutu && _t && _kutu.contains(_t)) return; }
+            } catch (_e) {}
             xProfilPopupKapat();
         };
         var esc = function (e) { if (e.key === 'Escape') xProfilPopupKapat(); };
