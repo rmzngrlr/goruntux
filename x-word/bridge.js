@@ -112,6 +112,16 @@ window.addEventListener("message", (event) => {
   }
   if (!document.querySelector('meta[name="x-rapor-panel"]')) return;   // yalnizca GERCEK panel
 
+  // [PDF WEBSHOT] Panelde PDF overlay'inden yakalanan gorsel -> havuza (webshot addToPool ile AYNI yol: meta sunucuya, gorsel yerele).
+  if (event.data && event.data.type === "X_RAPOR_PDF_EKLE" && event.data.image && event.data.link) {
+    try {
+      chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, (res) => {
+        try { chrome.runtime.sendMessage({ action: "addToPool", origin: res.server_origin, title: event.data.title || "PDF", link: event.data.link, image: event.data.image, is_profile: false, group_override: "", dedup: false }, () => { void chrome.runtime.lastError; }); } catch (e) {}
+      });
+    } catch (e) {}
+    return;
+  }
+
   // Handle Force Poll requests
   if (event.data && event.data.type === "X_RAPOR_FORCE_POLL") {
     try {
@@ -187,6 +197,11 @@ if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage)
       // [VIDEOX] SW -> VideoX paneli: Video'matik videosunu ilet (VideoX kalıcı depoya yazar).
       if (msg && msg.action === "localVideoX" && msg.dataUrl) {
         window.postMessage({ type: "X_RAPOR_LOCAL_VIDEOX", dataUrl: msg.dataUrl, name: msg.name || "", ts: msg.ts || 0, splitler: (msg.splitler || []), hizlar: (msg.hizlar || []) }, "*");
+        sendResponse && sendResponse({ status: "ok" });
+      }
+      // [PDF WEBSHOT] SW -> panel: yakalanacak web PDF'inin byte'ları (base64) -> panel overlay'i açar (pdf.js render + kırp).
+      if (msg && msg.action === "pdfYakala" && msg.dataB64) {
+        window.postMessage({ type: "X_RAPOR_PDF_YAKALA", dataB64: msg.dataB64, src: msg.src || "" }, "*");
         sendResponse && sendResponse({ status: "ok" });
       }
       // v3.66: tarama bir SEBEPLE durduysa (TikTok captcha / Facebook dogrulama ekrani)

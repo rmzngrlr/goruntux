@@ -812,13 +812,14 @@ function flushPendingVideoX() {
 try {
   setInterval(() => {
     try {
-      chrome.storage.local.get(['pending_local_images', 'pending_videos', 'pending_videox'], (r) => {
+      chrome.storage.local.get(['pending_local_images', 'pending_videos', 'pending_videox', 'pending_pdf_yakala'], (r) => {
         const q = (r && r.pending_local_images) || [];
         if (q && q.length) { flushPendingLocalImages(); }
         const qv = (r && r.pending_videos) || [];
         if (qv && qv.length) { flushPendingVideos(); }
         const qvx = (r && r.pending_videox) || [];
         if (qvx && qvx.length) { flushPendingVideoX(); }
+        if (r && r.pending_pdf_yakala) { try { flushPendingPdf(); } catch (e) {} }   // [PDF WEBSHOT] panel hazır olunca teslim
       });
     } catch (e) {}
   }, 3500);
@@ -1948,6 +1949,14 @@ try {
   chrome.contextMenus.onClicked.addListener(function (info, tab) {
     if (!info || info.menuItemId !== XW_MENU_ID || !tab || tab.id == null) { try { xTeshisLog("sağ-tık: tab/menu geçersiz", "warn"); } catch (e) {} return; }
     if (xWebshotSagTikGizle(tab)) { try { xTeshisLog("sağ-tık: uygun olmayan sayfa, atlandı. url=" + (tab.url || ""), "warn"); } catch (e) {} return; }
+    // [PDF WEBSHOT] Chrome'da açık web PDF'i -> webshot.js enjekte EDİLEMEZ -> panelde pdf.js yakalama akışı.
+    if (/\.pdf(\?|#|$)/i.test(tab.url || "")) {
+      chrome.storage.local.get({ x_pdf_webshot: true }, function (cfg) {
+        if (cfg && cfg.x_pdf_webshot !== false) { try { xTeshisLog("[pdf] sağ-tık -> PDF yakalama. url=" + (tab.url || "")); xPdfYakalaBaslat(tab); } catch (e) { try { xTeshisLog("[pdf] başlat throw: " + ((e && e.message) || e), "error"); } catch (e2) {} } return; }
+        try { chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['webshot.js'] }, function () { void chrome.runtime.lastError; }); } catch (e) {}   // pdf yakalama bayrağı kapalı -> normal webshot (fallback)
+      });
+      return;
+    }
     try { xTeshisLog("sağ-tık tıklandı -> webshot.js enjekte ediliyor. url=" + (tab.url || "") + " tabId=" + tab.id); } catch (e) {}
     // [DAYANIKLILIK] TEK executeScript: webshot.js artık DAİMA doğrudan yakalar (ayrı "bayrak" adımı KALDIRILDI ->
     // iki-adımlı SW/enjeksiyon yarışı ve 'seçildi ama bir şey olmadı' hatası biter). lastError /teshis'e loglanır.
@@ -1959,6 +1968,40 @@ try {
     } catch (e) { try { xTeshisLog("executeScript throw: " + ((e && e.message) || e), "error"); } catch (e2) {} }
   });
 } catch (e) {}
+
+// [PDF WEBSHOT] Chrome'da açık web PDF'ini background HOST-iziyle fetch et (CORS yok, çerez için credentials) +
+// base64 -> panele yolla. Panel pdf.js (self-host) ile render edip kullanıcı sayfa seçip kırpar -> addToPool.
+function xU8ToB64(u8) { var CH = 0x8000, s = ""; for (var i = 0; i < u8.length; i += CH) { s += String.fromCharCode.apply(null, u8.subarray(i, i + CH)); } return btoa(s); }
+function xPdfYakalaBaslat(tab) {
+  if (!tab || !tab.url) return;
+  fetch(tab.url, { credentials: 'include' }).then(function (r) { return r.arrayBuffer(); }).then(function (buf) {
+    var u8 = new Uint8Array(buf);
+    if (!(u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46)) { try { xTeshisLog("[pdf] magic yok, PDF değil. url=" + tab.url, "warn"); } catch (e) {} return; }   // %PDF
+    if (u8.length > 45 * 1024 * 1024) { try { xTeshisLog("[pdf] çok büyük (" + u8.length + " B), atlandı.", "warn"); } catch (e) {} return; }
+    var b64; try { b64 = xU8ToB64(u8); } catch (e) { try { xTeshisLog("[pdf] base64 hata", "error"); } catch (e2) {} return; }
+    chrome.storage.local.set({ pending_pdf_yakala: { dataB64: b64, src: tab.url, ts: Date.now() } }, function () {
+      chrome.storage.local.get({ server_origin: "https://goruntux.rgmedya.tr" }, function (res) {
+        var origin = res.server_origin || "https://goruntux.rgmedya.tr", host = "";
+        try { host = new URL(origin).hostname; } catch (e) {}
+        chrome.tabs.query({}, function (tabs) {
+          var pt = (tabs || []).find(function (t) { try { return t.url && new URL(t.url).hostname === host; } catch (e) { return false; } });
+          if (pt) { try { chrome.tabs.update(pt.id, { active: true }, function () { if (pt.windowId != null) chrome.windows.update(pt.windowId, { focused: true }, function () { void chrome.runtime.lastError; }); }); } catch (e) {} setTimeout(flushPendingPdf, 150); }
+          else { try { chrome.tabs.create({ url: origin, active: true }, function () { void chrome.runtime.lastError; }); } catch (e) {} }   // yeni panel: registerPanel + ~3.5sn retry teslim eder
+        });
+      });
+    });
+  }).catch(function (e) { try { xTeshisLog("[pdf] fetch hata: " + ((e && e.message) || e), "error"); } catch (e2) {} });
+}
+function flushPendingPdf() {
+  chrome.storage.local.get(['pending_pdf_yakala', 'panel_tab_id'], function (r) {
+    var p = r && r.pending_pdf_yakala, tid = r && r.panel_tab_id;
+    if (!p || tid == null) return;
+    chrome.tabs.get(tid, function (t) {
+      if (chrome.runtime.lastError || !t) return;
+      try { chrome.tabs.sendMessage(tid, { action: "pdfYakala", dataB64: p.dataB64, src: p.src }, function () { if (!chrome.runtime.lastError) { try { chrome.storage.local.remove('pending_pdf_yakala'); } catch (e2) {} } }); } catch (e) {}
+    });
+  });
+}
 
 // --- SERVER POLLING SYSTEM ---
 
