@@ -5693,7 +5693,7 @@
                     var _vid = null; try { _vid = kadrajEl.querySelector('video'); } catch (e) {}
                     var _videoSure = 0;
                     if (_vid) { try { _vid.muted = true; var _p = _vid.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _videoSure = 5000; }   // video/GIF -> oynat + ~5sn
-                    var _okuma = Math.min(10000, Math.max(2500, (ana.len || 40) * 45));   // metin uzunluğuna göre okuma süresi
+                    var _okuma = Math.min(15000, Math.max(5000, (ana.len || 40) * 45));   // metin uzunluğuna göre okuma süresi
                     var _ustDur = Math.min(1600, _okuma);   // üstte kısa dur (yazar + metin başı okunur)
                     await xVideoBekle(_ustDur);
                     if (!window.__xVideoKayitAktif) return;
@@ -5896,7 +5896,7 @@
                         var _v = null; try { _v = art.querySelector('video'); } catch (e) {}
                         var _vs = 0; if (_v) { try { _v.muted = true; var _p = _v.play(); if (_p && _p.catch) _p.catch(function () {}); } catch (e) {} _vs = 5000; }
                         var _tx = art.querySelector('[data-testid="tweetText"]'); var _len = _tx ? ((_tx.textContent || '').trim().length) : 40;
-                        var _ok = Math.min(10000, Math.max(2500, _len * 45));
+                        var _ok = Math.min(15000, Math.max(5000, _len * 45));
                         await xVideoBekle(Math.min(1600, _ok));
                         try { var _tsc = document.scrollingElement || document.documentElement; var _ov = art.getBoundingClientRect().bottom - window.innerHeight; if (_ov > 6 && window.__xVideoKayitAktif) { var _ps = Math.max(_ok + _vs - 1600, _ov / 0.11), _bs = _tsc.scrollTop || 0; await new Promise(function (res) { var _st = 0; function _pt(ts) { try { if (!window.__xVideoKayitAktif) { res(); return; } if (!_st) { _st = ts; requestAnimationFrame(_pt); return; } var _pr = Math.min(1, (ts - _st) / _ps); _tsc.scrollTop = _bs + _ov * _pr; if (_pr >= 1) { setTimeout(res, 500); return; } requestAnimationFrame(_pt); } catch (e) { res(); } } requestAnimationFrame(_pt); }); } else { await xVideoBekle(Math.max(0, _ok + _vs - 1600)); } } catch (e) {}
                     }
