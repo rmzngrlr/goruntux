@@ -5728,9 +5728,10 @@
                 try { liste.scroll.scrollTop = 0; } catch (e) {}
                 await xVideoBekle(300);   // en üste dön + yerleşsin
                 canvasBoyutla();   // sabit "RT liste boyutu" (değişmez)
-                _fadeBaslat(1 / _kat); _dondur = false;   // geçiş bitti: donmuş kareden listeye yumuşak CROSSFADE. [RT HIZLI KAYIT] liste kesidi = 1/kat -> çıktıda normal hız
+                _fadeBaslat(1); _dondur = false;   // geçiş bitti: donmuş kareden listeye yumuşak CROSSFADE. [RT HIZLI KAYIT] liste-ÜSTÜ yerleşme kesidi = 1× (yavaşlatma YOK -> çıktıda 2sn, 8sn değil)
                 await xVideoBekle(2000);   // [İSTEK] liste açılınca EN ÜSTTE ~2sn beklesin, sonra scroll başlasın
-                xVideoOtoKaydir(liste.scroll, durdur, _kat);   // [RT HIZLI KAYIT] kat× hızlı kaydır
+                if (_kat > 1 && _recT0) { try { var _so1 = (window.performance && performance.now) ? performance.now() : Date.now(); _splitler.push((_so1 - _recT0) / 1000); _segHiz.push(1 / _kat); } catch (e) {} }   // [RT HIZLI KAYIT] kaydırma BAŞLIYOR: 1/kat (yavaş) kesit sınırı
+                xVideoOtoKaydir(liste.scroll, durdur, _kat, (_kat > 1) ? function (idle) { try { if (!_recT0) return; var _se1 = (window.performance && performance.now) ? performance.now() : Date.now(); var _t1 = (_se1 - _recT0) / 1000 - idle; if (_t1 > 0) { _splitler.push(_t1); _segHiz.push(1); } } catch (e) {} } : null);   // [RT HIZLI KAYIT] kat× hızlı kaydır; dipte kaydırma-bitişi sınırı (1×) GERİ-TARİHLİ
             } catch (e) { durdur(); }
         })();
     }
@@ -5897,9 +5898,10 @@
                             kadrajEl = liste.kadraj; ustKlip = 0;
                             try { liste.scroll.scrollTop = 0; } catch (e) {}
                             await xVideoBekle(300); canvasBoyutla();
-                            await _icerikAc(1 / _kat);   // [#8] liste: ilk içerikse kaydı başlat (crossfade yok), değilse donmuş kareden listeye CROSSFADE. [RT HIZLI KAYIT] liste kesidi = 1/kat
+                            await _icerikAc(1);   // [#8] liste: ilk içerikse kaydı başlat (crossfade yok), değilse donmuş kareden listeye CROSSFADE. [RT HIZLI KAYIT] liste-ÜSTÜ yerleşme kesidi = 1× (stretch yok)
                             await xVideoBekle(2000);
-                            await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res, _kat); });   // [RT HIZLI KAYIT] kat× hızlı kaydır
+                            if (_kat > 1 && _recT0) { try { var _so2 = (window.performance && performance.now) ? performance.now() : Date.now(); _splitler.push((_so2 - _recT0) / 1000); _segHiz.push(1 / _kat); } catch (e) {} }   // [RT HIZLI KAYIT] kaydırma BAŞLIYOR: 1/kat sınırı
+                            await new Promise(function (res) { xVideoOtoKaydir(liste.scroll, res, _kat, (_kat > 1) ? function (idle) { try { if (!_recT0) return; var _se2 = (window.performance && performance.now) ? performance.now() : Date.now(); var _t2 = (_se2 - _recT0) / 1000 - idle; if (_t2 > 0) { _splitler.push(_t2); _segHiz.push(1); } } catch (e) {} } : null); });   // [RT HIZLI KAYIT] kat× hızlı kaydır; dip-bitişi 1× GERİ-TARİHLİ
                         }
                     }
                 }
@@ -5911,7 +5913,7 @@
     // yavaşlatılır (panel oto-render) -> kayıt süresi 1/kat'a iner, çıktı netliği AYNI. kat=1 => özellik kapalı (eski davranış).
     // Kapat: localStorage x_rt_hizli_kayit='0'. Kat değiştir: localStorage x_rt_hizli_kat (1..8, vars=4).
     function xRtHizliKat() { try { if (localStorage.getItem('x_rt_hizli_kayit') === '0') return 1; var k = parseFloat(localStorage.getItem('x_rt_hizli_kat')); return (k >= 1 && k <= 8) ? k : 4; } catch (e) { return 4; } }
-    function xVideoOtoKaydir(kap, bitir, hizKat) {
+    function xVideoOtoKaydir(kap, bitir, hizKat, onDip) {
         try {
             // [AKICI — TİTREMESİZ] Interval yerine requestAnimationFrame: kaydırma EKRAN TAZELEMESİYLE SENKRON ->
             // 25Hz interval'ın yarattığı sarsıntı (judder/titreme) biter. Hız dt-tabanlı (~58px/sn, çok yavaş) -> fps'ten
@@ -5933,7 +5935,7 @@
                     if (Math.abs((el.scrollTop || 0) - pos) > 60) pos = el.scrollTop || 0;   // sanallaştırma zıplamasını yakala
                     if (pos >= maxT - 1) {
                         durgun += dt;
-                        if (durgun >= 2.0) { bitir(); return; }   // ~2sn büyümezse SON (tüm RT edenler yüklenip videoya girer)
+                        if (durgun >= 2.0) { try { if (onDip) onDip(durgun); } catch (e) {} bitir(); return; }   // ~2sn büyümezse SON (tüm RT edenler yüklenip videoya girer). [RT HIZLI KAYIT] onDip(durgun): dip bekleme süresi -> kaydırma bitişi GERİ-TARİHLİ işaretlenir (çıktıda boş bekleme 1×, stretch yok)
                     } else { durgun = 0; pos = Math.min(maxT, pos + HIZ * dt); el.scrollTop = pos; }
                     requestAnimationFrame(tik);
                 } catch (e) {}
