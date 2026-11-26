@@ -5610,7 +5610,7 @@
         var stream;
         try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true }); }
         catch (e) { xVideoToast('Kayıt iptal edildi / başlatılamadı.', true); return; }
-        window.__xVideoKayitAktif = true;
+        window.__xVideoKayitAktif = true; try { window.__xVideoRecT0 = 0; } catch (e) {}   // [SAYAÇ FIX] yeni kayıt: BAYAT recT0'ı temizle -> sayaç rec.start'a kadar görünmez; 00:00'dan başlar (eski kaydın recT0'ından 15:23 değil)
         try { window.__xVideoScrollStop = false; } catch (e) {}   // önceki kaydın durdur() bayrağı yeni FAZ 1 pan'ını atlatmasın
         var vid = document.createElement('video'); vid.muted = true; vid.playsInline = true; vid.srcObject = stream;
         try { await vid.play(); } catch (e) {}
@@ -5799,7 +5799,7 @@
         var stream;
         try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 30 }, audio: false, preferCurrentTab: true }); }
         catch (e) { xVideoToast('Kayıt iptal / başlatılamadı.', true); return; }
-        window.__xVideoKayitAktif = true;
+        window.__xVideoKayitAktif = true; try { window.__xVideoRecT0 = 0; } catch (e) {}   // [SAYAÇ FIX] yeni kayıt: BAYAT recT0'ı temizle -> sayaç rec.start'a kadar görünmez; 00:00'dan başlar (eski kaydın recT0'ından 15:23 değil)
         try { window.__xVideoScrollStop = false; } catch (e) {}
         var vid = document.createElement('video'); vid.muted = true; vid.playsInline = true; vid.srcObject = stream;
         try { await vid.play(); } catch (e) {}
