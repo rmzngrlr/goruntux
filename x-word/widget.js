@@ -4379,8 +4379,8 @@
             if (xGxKesfetAcik() && xGxKesfetMi()) return 'ara';
             if (xGxTweetBtnAcik() && /\/status\/\d+/.test(location.href) && xGxOdakliArticle()) return 'ekle';
             // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında "+" butonu YALNIZ KAYIT SÜRERKEN görünür
-            // (o zaman xNavYansit videomod+rt-silik ile SİLİK KIRMIZI). Kayıt yokken (normal açılış) HİÇ görünmez
-            // (kullanıcı: silik yeşil/kırmızı bile olmasın, yalnız kayıt için açılınca silik kırmızı).
+            // (o zaman nav sayacı/kayıt ikonu net/opak). Kayıt yokken (normal açılış) HİÇ görünmez. (Eski "silik" durumu
+            // kaldırıldı — vestigial'dı, geçişte kısa flash yaratıyordu.)
             if (xGxTweetBtnAcik() && window.__xVideoKayitAktif && /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname)) return 'ekle';
         } catch (e) {}
         return null;
@@ -4799,7 +4799,6 @@
             .x-gx-rec-sayac{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; box-sizing:border-box; font-size:11px; font-weight:800; color:#f4212e; background:transparent; border:2px solid #f4212e; border-radius:9999px; letter-spacing:.2px; font-variant-numeric:tabular-nums; }   /* İÇİ BOŞ: kırmızı halka + kırmızı rakamlar (solid dolgu YOK) */
             .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-rec-sayac{ display:flex; }
             .x-gx-nav-ekle.x-gx-rec-aktif .x-gx-tw-ic{ visibility:hidden; }
-            .x-gx-nav-ekle.x-gx-rec-aktif.x-gx-rt-silik{ opacity:1 !important; }   /* kayıt sürerken SİLİK YOK (sayaç net) — /retweets'te bile */
             .x-gx-nav-badge{ position:absolute; top:-3px; right:-3px; display:none; width:16px; height:16px; border-radius:9999px;
                 background:#f5a623; color:#fff; font-size:11px; font-weight:800; align-items:center; justify-content:center; line-height:1; box-shadow:0 0 0 2px var(--w-bg,#000); }
             .x-gx-nav.outdated .x-gx-nav-badge{ display:flex; }
@@ -4830,8 +4829,7 @@
             /* [RT VİDEO] Video modu = YEŞİL SS butonunun AYNISI, yalnız KIRMIZI + içte + yerine DOLU NOKTA (record).
                Buton ŞEFFAF kalır (yeşildeki gibi; bg değişmez); sadece ikon renkleri kırmızıya döner. İkon
                _xGxSsIkon('kayit') ile basılır (kare çerçeve + nokta). */
-            /* [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında kayıt butonu ENJEKTE edilir ama SİLİK (kullanıcı isteği). */
-            .x-gx-nav-ekle.x-gx-rt-silik{ opacity:.45 !important; }
+            /* [SİLİK KALDIRILDI] eski .x-gx-rt-silik (opacity .45) vestigial'dı -> kaldırıldı (geçişte kısa yeşil silik flash'ı yaratıyordu). */
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .c{ stroke:#f4212e !important; fill:none !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in{ stroke:#f4212e !important; }
             .x-gx-nav-ekle.x-gx-videomod .x-gx-ssico .in circle{ fill:#f4212e !important; stroke:none !important; }
@@ -4980,8 +4978,8 @@
             if (!nav || !dock) return;
             // [RT VİDEO] Video modu YALNIZ tweet detayda geçerli: başka sayfaya geçilince kırmızı/kamera + kontrol kalmasın.
             try {
-                // [NAV KAYIT İKONU] Nav butonu KIRMIZI "kayıt" ikonu gösterir: (a) KAYIT SÜRÜYOR (her sayfada; /retweets'te
-                // x-gx-rt-silik ile SOLUK) VEYA (b) kayıt yok + SAF tweet detayında kullanıcı sağ-tık ile video modunu açtı.
+                // [NAV KAYIT İKONU] Nav butonu KIRMIZI "kayıt" ikonu gösterir: (a) KAYIT SÜRÜYOR (her sayfada, sayaç net/opak)
+                // VEYA (b) kayıt yok + SAF tweet detayında kullanıcı sağ-tık ile video modunu açtı.
                 // Aksi halde normal yeşil "+". (STOP kontrol kutusu AYRI: yalnız kayıt sürerken + sayfa içinde durur.)
                 var _ekl = document.getElementById('x-gx-nav-ekle');
                 if (_ekl) {
@@ -5007,9 +5005,11 @@
                 if (!window.__xVideoKayitAktif && !xVideoTweetDetayMi()) {
                     var _vc = document.getElementById('x-gx-video-ctrl'); if (_vc) { try { _vc.remove(); } catch (e) {} }
                 }
-                // [RT VİDEO] /retweets (reposts/likes/quotes) sayfasında kayıt butonu SİLİK; diğer sayfalarda net.
+                // [SİLİK KALDIRILDI] x-gx-rt-silik (opacity .45) VESTIGIAL idi: /retweets'te boşta buton zaten GİZLİ,
+                // kayıtta ise .x-gx-rec-aktif opacity:1 ile OPAK -> .45 asla kasıtlı görünmezdi, yalnız geçiş yarışlarında
+                // "kısa yeşil silik" flash'ı yaratıyordu. Artık eklenmiyor; kalıntı varsa DAİMA temizle.
                 var _ekl2 = document.getElementById('x-gx-nav-ekle');
-                if (_ekl2) _ekl2.classList.toggle('x-gx-rt-silik', /\/status\/\d+\/(retweets|reposts|likes|quotes)/i.test(location.pathname));
+                if (_ekl2) _ekl2.classList.remove('x-gx-rt-silik');
             } catch (e) {}
             // TARAMA AKTİF BAYRAĞI: toplu tarama sırasında SS alınırken SPA dock'u yeniden kurup
             // .scanning'i düşürse de nav halkası KAYBOLMASIN; ilerleme window-var'lardan okunur
