@@ -35,6 +35,40 @@
   function bitir() { window.__xWebshotAktif = false; }
   function docH() { return Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0, window.innerHeight); }
 
+  // ===== [STICKY GİZLE] Scroll-stitch (Devamını Al / Öğe Seç oto-uzatma) sırasında site sabit/sticky
+  // NAVBAR'ı her karede viewport tepesinde tekrar çizilip DİKİŞE giriyordu (navbar 2-3 kez + arkasındaki
+  // içerik kaybı). Çözüm: UZATMA karesini yakalamadan önce viewport ÜST/ALT kenarına yapışık GENİŞ BARLARI
+  // (fixed/sticky navbar/footer) geçici gizle (visibility:hidden -> layout BOZULMAZ, dikiş matematiği sağlam),
+  // yakala, geri aç. İlk yakalama gizlemez -> navbar BİR KEZ (gerçek tepe) kalır. Bayrak x_webshot_sticky ('0'=kapalı).
+  function _stickyAcik() { try { return localStorage.getItem('x_webshot_sticky') !== '0'; } catch (e) { return true; } }
+  function _stickyGizle() {
+    if (!_stickyAcik()) return null;
+    var hidden = [], vh = window.innerHeight, vw = window.innerWidth;
+    try {
+      var all = document.querySelectorAll('body *');
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i], cs;
+        try { cs = getComputedStyle(el); } catch (e) { continue; }
+        var p = cs.position;
+        if (p !== 'fixed' && p !== 'sticky') continue;
+        if (cs.visibility === 'hidden' || cs.display === 'none' || parseFloat(cs.opacity || '1') < 0.05) continue;
+        var r = el.getBoundingClientRect();
+        if (r.width < vw * 0.5 || r.height < 2 || r.height > vh * 0.5) continue;   // GENİŞ ama ince BAR (küçük buton / tam-ekran overlay DEĞİL)
+        var ustte = (r.top <= 2), altta = (r.bottom >= vh - 2);
+        if (!ustte && !altta) continue;   // yalnız viewport üst/alt kenarına yapışık barlar (akış-içi sticky'ye dokunma)
+        hidden.push([el, el.style.getPropertyValue('visibility'), el.style.getPropertyPriority('visibility')]);
+        el.style.setProperty('visibility', 'hidden', 'important');
+      }
+    } catch (e) {}
+    return hidden;
+  }
+  function _stickyGoster(list) {
+    if (!list) return;
+    for (var i = 0; i < list.length; i++) {
+      try { var el = list[i][0], v = list[i][1], pr = list[i][2]; if (v) el.style.setProperty('visibility', v, pr || ''); else el.style.removeProperty('visibility'); } catch (e) {}
+    }
+  }
+
   function scrollbarKirp(raw) {
     try {
       var sbW = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
@@ -363,9 +397,10 @@
       var yeniCss = alt ? ((gercek + vh) - imgBot) : (imgTopPage - gercek);   // eklenecek CSS yükseklik
       if (yeniCss < 2) { try { window.scrollTo(0, onceki); } catch (e) {} _mesgul = false; if (!done) bildir(alt ? 'Sayfanın sonuna gelindi.' : 'Sayfanın başına gelindi.', true); bit(); return; }
       ov.style.visibility = 'hidden';
+      var _sg = _stickyGizle();   // [STICKY GİZLE] uzatma karesinde sabit navbar/footer'ı gizle -> dikişe tekrar girmesin
       requestAnimationFrame(function () { requestAnimationFrame(function () {   // gizle PAINT olsun (overlay kadraja girmesin)
         yakala(function (dataUrl) {
-          ov.style.visibility = ''; try { window.scrollTo(0, onceki); } catch (e) {}
+          _stickyGoster(_sg); ov.style.visibility = ''; try { window.scrollTo(0, onceki); } catch (e) {}
           _mesgul = false;
           if (!dataUrl) { bildir('Yakalanamadı.', true); bit(); return; }
           var im2 = new Image();
