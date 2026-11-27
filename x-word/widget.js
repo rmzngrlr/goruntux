@@ -4878,6 +4878,19 @@
                kadraja giriyordu). Rapor/seçim popup'ı #x-gx-ov zaten html.x-gx-capturing ile gizli. */
             html.x-gx-capturing .x-gx-nav-tip,
             html.x-gx-capturing .x-gx-nav-pop{ visibility:hidden !important; opacity:0 !important; }
+            /* ===== [LOGO YANI] Buton X logosunun YANINA (aynı satır), biraz KÜÇÜLTÜLMÜŞ, ETİKETSİZ, kompakt.
+               Mavi ikon (Panele Git) + yeşil "+" (tweet detayında) yan yana; tarama halkası ikon üzerinde; iptal
+               hover-popover ile. Bayrak x_gx_nav_logo_yani. ===== */
+            .x-gx-nav.logo-yani{ width:auto; margin:0 0 0 2px; }
+            .x-gx-nav.logo-yani .x-gx-nav-inner{ flex-direction:row !important; gap:2px; margin-left:0 !important; }
+            .x-gx-nav.logo-yani .x-gx-nav-lbl{ display:none !important; }
+            .x-gx-nav.logo-yani .x-gx-nav-cancel{ display:none !important; }
+            .x-gx-nav.logo-yani .x-gx-nav-ico{ width:36px; height:36px; }
+            .x-gx-nav.logo-yani .x-gx-nav-ico > svg.x-gx-nav-logo{ width:36px; height:36px; }
+            .x-gx-nav.logo-yani .x-gx-nav-ekle{ width:36px; height:36px; }
+            .x-gx-nav.logo-yani .x-gx-nav-ekle .x-gx-ssico{ width:36px !important; height:36px !important; }
+            .x-gx-nav.logo-yani.scanning:hover .x-gx-nav-pop,
+            .x-gx-nav.logo-yani.outdated:hover .x-gx-nav-pop{ display:flex; }
         `;
         (document.head || document.documentElement).appendChild(s);
     }
@@ -5064,18 +5077,41 @@
             }
         } catch (e) {}
     }
+    function xNavLogoYani() { try { return localStorage.getItem('x_gx_nav_logo_yani') !== '0'; } catch (e) { return true; } }
+    // [LOGO YANI] Butonu X logosunun YANINA (aynı satır) koy. Logo = nav DIŞINDAKİ /home linki (aria-label "X");
+    // onu saran div'i (h1'in üstü) yatay satır yap + butonu oraya ekle. X re-render'da 700ms poller tekrar uygular
+    // (data-x-gx-row guard = idempotent; X düğümü değiştirirse yeni düğümde tekrar kurar). Başarısızsa false -> eski yer.
+    function xNavLogoYaniYerlestir(btn) {
+        try {
+            var logo = null, hs = document.querySelectorAll('a[href="/home"]');
+            for (var i = 0; i < hs.length; i++) { if (!hs[i].closest('nav')) { logo = hs[i]; break; } }
+            if (!logo || !logo.parentElement || !logo.parentElement.parentElement) return false;
+            var gp = logo.parentElement.parentElement;   // logoyu saran div (h1'in üstü)
+            if (gp.getAttribute('data-x-gx-row') !== '1') {
+                gp.style.display = 'flex'; gp.style.flexDirection = 'row'; gp.style.alignItems = 'center'; gp.style.width = 'auto';
+                gp.setAttribute('data-x-gx-row', '1');
+            }
+            btn.classList.add('logo-yani'); btn.classList.remove('collapsed');
+            if (btn.parentElement !== gp || gp.lastElementChild !== btn) gp.appendChild(btn);
+            return true;
+        } catch (e) { return false; }
+    }
     function xNavButonYerlestir() {
         try {
             if (X_GX_DOCK_ESKI) return;
-            // Birincil nav = Anasayfa linkini içeren <nav>. Logo bu nav'ın HEMEN ÜSTÜNDE ayrı
-            // kapsayıcıda; butonu nav'ın İLK öğesi yapınca logonun hemen altına, Anasayfa'nın üstüne gelir.
+            xNavStilEkle();
+            var btn = document.getElementById('x-gx-nav-btn');
+            if (!btn) btn = xNavButonOlustur();
+            // [LOGO YANI] Varsayılan: X logosunun yanına, küçültülmüş. Logo bulunamazsa ESKİ yere (logo altı) düş.
+            if (xNavLogoYani() && xNavLogoYaniYerlestir(btn)) {
+                xNavObserverKur(); xNavYansit(); return;
+            }
+            // ESKİ: Birincil nav = Anasayfa linkini içeren <nav>; butonu nav'ın İLK öğesi = logonun hemen altı.
             var home = document.querySelector('nav a[href="/home"]');
             if (!home) return;
             var navRoot = home.closest('nav');
             if (!navRoot) return;
-            xNavStilEkle();
-            var btn = document.getElementById('x-gx-nav-btn');
-            if (!btn) btn = xNavButonOlustur();
+            btn.classList.remove('logo-yani');
             if (btn.parentElement !== navRoot || navRoot.firstElementChild !== btn) {
                 navRoot.insertBefore(btn, navRoot.firstElementChild);
             }
