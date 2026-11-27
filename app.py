@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe15 teksatir-sarma-yok";
+  var PE_BUILD="2026-11-27pe17 gomulu-font-yigini";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -19958,7 +19958,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var buf=fr.result;
         S.bytes=new Uint8Array(buf.slice(0));
         L.getDocument({data:new Uint8Array(buf)}).promise.then(function(pdf){
-          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={}; S.fontCov={}; S.grp={};
+          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={}; S.fontCov={}; S.charRef={}; S.grp={}; _kapsarMemo={};
           var N=pdf.numPages, dim=[], ch=Promise.resolve();
           for(var i=1;i<=N;i++){ (function(num){ ch=ch.then(function(){ return pdf.getPage(num).then(function(p){ var v=p.getViewport({scale:1}); dim[num]={w:v.width,h:v.height}; }); }); })(i); }
           ch.then(function(){
@@ -20168,7 +20168,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
         var realName="", lname=""; try{ if(p.commonObjs&&p.commonObjs.has&&p.commonObjs.has(it.fontName)){ var fo=p.commonObjs.get(it.fontName); realName=(fo&&fo.name)||""; lname=(fo&&fo.loadedName)||""; } }catch(_){}
         var fam=(stil[it.fontName]&&stil[it.fontName].fontFamily)||"";
-        if(lname){ if(!S.fontCov) S.fontCov={}; var cs=S.fontCov[lname]||(S.fontCov[lname]={}); for(var ck=0;ck<it.str.length;ck++) cs[it.str[ck]]=1; }
+        if(lname){ if(!S.fontCov) S.fontCov={}; if(!S.charRef) S.charRef={}; var cs=S.fontCov[lname]||(S.fontCov[lname]={}); for(var ck=0;ck<it.str.length;ck++){ var ch0=it.str[ck]; cs[ch0]=1; if(S.charRef[ch0]==null) S.charRef[ch0]=lname; } }
         raw.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs,font:fontKeyOf(realName+" "+fam),lname:lname});
       }
       // MERGE: ayni satir + ayni font + kucuk bosluk -> tek kutu (Turkce sozcuk/satir bolunmesini toparla).
@@ -20221,12 +20221,31 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   function metinRengiOrnekle(num,it){ return boxRenkOrnekle(num,it).fg; }
   // Kapsama: bir karakter, gomulu subset-fonta GUVENLI mi? Orijinal metinde o lname ile gectiyse EVET.
   // (Subset'te olmayan kod noktalari icin pdf.js fonti yanlis/.notdef glyph cizer = Turkce artefakti.)
-  function fontKapsar(lname,ch){ if(ch===" "||ch==="\t"||ch==="\n") return true; var cs=lname&&S.fontCov&&S.fontCov[lname]; return !!(cs&&cs[ch]); }
-  // Karakter-bazli ciz: kapsanan -> gomulu font (birebir); kapsanmayan -> Turkce-uyumlu fallback (fbCss). Artefakt yok.
+  // Iki fontun ayni karakteri AYNI mi cizdigi (genislik + opak piksel sayisi). Fontlar render'da yuklu.
+  var _kapsarMemo={};
+  function glyphImza(fam,ch){ try{ var c=document.createElement("canvas"); c.width=52; c.height=52; var x=c.getContext("2d"); x.font='32px "'+fam+'",monospace'; var w=x.measureText(ch).width; x.textBaseline="alphabetic"; x.fillStyle="#000"; x.fillText(ch,4,40); var d=x.getImageData(0,0,52,52).data, n=0; for(var i=3;i<d.length;i+=4) if(d[i]>16) n++; return {w:w,n:n}; }catch(e){ return {w:-1,n:-1}; } }
+  function glyphEsit(a,b,ch){ var A=glyphImza(a,ch), B=glyphImza(b,ch); return A.n>0 && Math.abs(A.w-B.w)<1.0 && Math.abs(A.n-B.n)<=Math.max(3,B.n*0.1); }
+  // Kapsama: satirin gomulu fontu bu karakteri DOGRU cizebilir mi?
+  //  - dogrudan o fontta gectiyse: kesin EVET. - belgede hic yoksa: HAYIR (fallback). - baska fontta gectiyse:
+  //  satirin fontu o karakteri REFERANS fontla ayni ciziyorsa EVET (ayni aile, kodlama bolunmesi; or. ş g_d1_f3'te
+  //  ama g_d1_f2 de ayni ciziyor) -> font DEGISMEZ. Yanlis glyph (gercekten eksik) ise ayni cizmez -> fallback.
+  function fontKapsar(lname,ch){
+    if(ch===" "||ch==="\t"||ch==="\n") return true; if(!lname) return false;
+    var cs=S.fontCov&&S.fontCov[lname]; if(cs&&cs[ch]) return true;
+    var ref=S.charRef&&S.charRef[ch]; if(!ref||ref===lname) return false;
+    var key=lname+"|"+ch; if(_kapsarMemo[key]!=null) return _kapsarMemo[key];
+    var ok=glyphEsit(lname,ref,ch); _kapsarMemo[key]=ok; return ok;
+  }
+  // Bir karakteri cizecek EN IYI font-stack: satirin fontu kapsiyorsa o; degilse karakterin REFERANS fontu (ayni
+  // aile, baska subset -> or. ş g_d1_f3=Poppins); hicbiri yoksa Turkce fallback -> font DEGISMEZ, Arial'a dusmez.
+  function karFontu(lname,ch,fbCss){ if(lname&&fontKapsar(lname,ch)) return '"'+lname+'",'+fbCss; var ref=S.charRef&&S.charRef[ch]; if(ref&&ref!==lname) return '"'+ref+'",'+fbCss; return fbCss; }
+  // Onizleme icin: birincil + TUM gomulu fontlar yigini (tarayici karakter-basina .notdef'te dogru Poppins subset'ine duser).
+  function embedStack(primary){ var out=[]; if(primary) out.push('"'+primary+'"'); if(S.fontCov) for(var k in S.fontCov){ if(k!==primary) out.push('"'+k+'"'); } return out.join(","); }
+  // Karakter-bazli ciz: kapsanan -> gomulu font (birebir); kapsanmayan -> referans Poppins / Turkce fallback. Artefakt yok.
   function metinGorselUret(lname,txt,fsPt,renk,fbCss){
     return new Promise(function(res){
       var dpr=3, fsPx=Math.max(4,fsPt*dpr); fbCss=fbCss||"Arial,Helvetica,sans-serif";
-      function fontFor(ch){ return fsPx+'px '+((lname&&fontKapsar(lname,ch))?('"'+lname+'",'+fbCss):fbCss); }
+      function fontFor(ch){ return fsPx+'px '+karFontu(lname,ch,fbCss); }
       function ciz(){ try{
         var mc=document.createElement("canvas"), cx=mc.getContext("2d");
         var chs=Array.from(txt), asc=fsPx*0.8, desc=fsPx*0.3, total=0, i, m;
@@ -20243,7 +20262,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   function metinParGorselUret(lname,txt,fsPt,renk,fbCss,colWpt,lineHpt){
     return new Promise(function(res){
       var dpr=3, fsPx=Math.max(4,fsPt*dpr), colW=Math.max(20,colWpt*dpr), lineH=(lineHpt>0?lineHpt:fsPt*1.3)*dpr; fbCss=fbCss||"Arial,Helvetica,sans-serif";
-      function fontFor(ch){ return fsPx+'px '+((lname&&fontKapsar(lname,ch))?('"'+lname+'",'+fbCss):fbCss); }
+      function fontFor(ch){ return fsPx+'px '+karFontu(lname,ch,fbCss); }
       function genis(cx,s){ var t=0; for(var i=0;i<s.length;i++){ cx.font=fontFor(s[i]); t+=cx.measureText(s[i]).width; } return t; }
       function ciz(){ try{
         var mc=document.createElement("canvas"), cx=mc.getContext("2d");
@@ -20271,8 +20290,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     inp.style.left=Math.round(g.x*S.scale)+"px"; inp.style.top=Math.round(g.y*S.scale)+"px"; inp.style.fontSize=Math.round(g.fs*S.scale)+"px"; inp.style.width=Math.round(g.colW*S.scale)+"px"; inp.style.whiteSpace="pre-wrap"; inp.style.color=rk.fg; inp.style.background=rk.bg; inp.style.lineHeight=(lhPt*S.scale)+"px"; inp.style.minHeight=Math.round(g.h*S.scale)+"px";
     var fk=g.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
     var mevcut=g.edited?g.str:g.tis.map(function(ti){ return (S.txt[num][ti]||{}).str||""; }).join(" ");
-    function kapsarHepsi(s){ if(!g.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(g.lname,s[_i])) return false; } return true; }
-    function fontGuncelle(){ if(kapsarHepsi(inp.textContent||"")){ inp.style.fontFamily='"'+g.lname+'",'+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
+    function fontGuncelle(){ if(g.lname){ inp.style.fontFamily=embedStack(g.lname)+","+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
     inp.textContent=mevcut; fontGuncelle(); inp.addEventListener("input",fontGuncelle); wrap.appendChild(inp);
     setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
     var bitti=false;
@@ -20302,8 +20320,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var rk=boxRenkOrnekle(num,it);
     inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color=rk.fg; inp.style.background=rk.bg; inp.style.minWidth=Math.round(it.w*S.scale)+"px";
     var fk=it.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
-    function kapsarHepsi(s){ if(!it.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(it.lname,s[_i])) return false; } return true; }
-    function fontGuncelle(){ if(kapsarHepsi(inp.textContent||"")){ inp.style.fontFamily='"'+it.lname+'",'+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
+    function fontGuncelle(){ if(it.lname){ inp.style.fontFamily=embedStack(it.lname)+","+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
     inp.textContent=it.str; fontGuncelle(); inp.addEventListener("input",fontGuncelle); wrap.appendChild(inp);
     setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
     var bitti=false;
