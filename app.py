@@ -6020,23 +6020,28 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 }
                 try { window.__wdProg = { t0: Date.now(), estMs: Math.max(1500, toplam * 220), biten: 0, say: toplam }; } catch (e) {}
                 // 2) Her sayfayi KENDI boyutunda render -> oge
-                var SC = 2;   // render olcegi (netlik/boyut dengesi)
+                // [PDF MOTORU] UYARLANABILIR olcek: en fazla ~2x + genislik<=1100px + ~2.2MP/sayfa (fonrapor gibi
+                // COK UZUN sayfalarda dev canvas/bellek patlamasini onler). Taban = JPEG 0.92 (opak sayfa; PNG'nin
+                // ~1/8'i -> 74 sf kalicilik mumkun). Gercek/secilebilir PDF ciktisi ORIJINAL vektor sayfadan gelir -> kalite etkilenmez.
                 for (var di = 0; di < dokler.length; di++) {
                     var dk = dokler[di];
                     for (var pn = 1; pn <= dk.N; pn++) {
                         var page = await dk.doc.getPage(pn);
                         var vp1 = page.getViewport({ scale: 1 });
+                        var SC = Math.min(2, 1100 / vp1.width, Math.sqrt(2200000 / (vp1.width * vp1.height))); if (!(SC > 0.4)) SC = 0.4;
                         var cw = Math.max(1, Math.round(vp1.width * SC)), chh = Math.max(1, Math.round(vp1.height * SC));
                         var cv = document.createElement('canvas'); cv.width = cw; cv.height = chh;
-                        await page.render({ canvasContext: cv.getContext('2d'), viewport: page.getViewport({ scale: SC }) }).promise;
-                        var b64 = cv.toDataURL('image/png').split(',')[1];
+                        var _cx = cv.getContext('2d'); _cx.fillStyle = '#ffffff'; _cx.fillRect(0, 0, cw, chh);   // JPEG seffaflik tasimaz -> beyaz taban
+                        await page.render({ canvasContext: _cx, viewport: page.getViewport({ scale: SC }) }).promise;
+                        var b64 = cv.toDataURL('image/jpeg', 0.92).split(',')[1];
                         items.push({ title: '', link: 'xmanual://' + _uid(), parcalar: [{
                             tur: 'gorsel', cizimKagidi: true, pdfSayfa: true,
                             pdfKaynakKey: dk.key, pdfSayfaNo: pn,
-                            b64: b64, mime: 'image/png',
+                            b64: b64, mime: 'image/jpeg',
                             cizimObjeleri: [], cizgili: false, kareli: false,
                             cbW: cw, cbH: chh, ckSayfa: 1
                         }] });
+                        try { cv.width = cv.height = 1; } catch (e) {}   // canvas belleğini hemen birak
                         try { window.__wdProg.biten = items.length; } catch (e) {}
                         if ((items.length % 8) === 0) { await new Promise(function (r) { setTimeout(r, 0); }); }   // event-loop'a soluk (UI donmasin)
                     }
