@@ -10212,6 +10212,9 @@ LOCAL_DOCX_JS = r'''
             var _p=_pc[_pi];
             if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){
               if(_iu.cizim){   // [9A] çizim -> YEREL NESNELER (DrawingML grubu); boş/hata -> görsel fallback
+                var _ckP0=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
+                if(_ckP0 && _ckP0.pdfSayfa){ body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true)); }   // [PDF MOTORU] PDF sayfasi -> yuksek-coz GORSEL (sayfa+objs opak b64); vektor/cok-sayfa YOK
+                else {
                 var _ckParca=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
                 var _ckSay=(_ckParca && (_ckParca.ckSayfa|0))||1;
                 if(_ckParca && !_ckParca.yatay && _ckSay>1 && window.xCkRenderPages){   // [SINIRSIZ] çok-sayfa dikey çizim -> her A4 bandı AYRI sayfa (raster dilim)
@@ -10228,6 +10231,7 @@ LOCAL_DOCX_JS = r'''
                   }catch(_eg){ _grpX=''; }
                   body.push(_grpX || imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true));
                 }
+                }   // [PDF MOTORU] pdfSayfa-else kapanis
               } else { var _imgBord=(_CIZGI_GORSELE && u.cizgi && _pi===_lastEmit); body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, _iu.align, _KN_FIX ? (_pi!==_lastEmit) : true, _imgBord, false)); if(_imgBord) _cizgiKondu=true; }
             } }   // çizim ORTALI (standart kenar boşluğu)
             else if(_p.tur==='metin'){ var _mh=String(_p.metin||''); var _mtxt=_mh.replace(/<[^>]*>/g,'').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').trim(); if(_mtxt) body.push(textXml(_mh, _KN_FIX ? (_pi!==_lastEmit) : true)); }
