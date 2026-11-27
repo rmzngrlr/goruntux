@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe11 etiket";
+  var PE_BUILD="2026-11-27pe13 satirici-birlestir";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20174,9 +20174,11 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       raw.sort(function(a,b){ var dy=a.y-b.y; return (Math.abs(dy)>Math.min(a.fs,b.fs)*0.45)?dy:(a.x-b.x); });
       var mg=[];
       for(var m=0;m<raw.length;m++){ var c=raw[m], l=mg[mg.length-1];
-        if(l && l.font===c.font && Math.abs(l.fs-c.fs)<1.6 && Math.abs(l.y-c.y)<c.fs*0.45 && c.x>=l.x-1 && (c.x-(l.x+l.w))<c.fs*0.9){
+        // AYNI SATIR + ayni boyut + kucuk bosluk -> birlestir (font/lname farkina BAKMA: satir-ici kalin etiket "Ana mesaj:" govdeye katilir).
+        if(l && Math.abs(l.fs-c.fs)<1.6 && Math.abs(l.y-c.y)<c.fs*0.45 && c.x>=l.x-1 && (c.x-(l.x+l.w))<c.fs*0.9){
           var gap=c.x-(l.x+l.w); if(gap>c.fs*0.22 && !/\s$/.test(l.str) && !/^\s/.test(c.str)) l.str+=" "; l.str+=c.str; l.w=Math.max(l.x+l.w,c.x+c.w)-l.x; l.h=Math.max(l.h,c.h);
-        } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font,lname:c.lname});
+          if(c.str.length>l._mf){ l._mf=c.str.length; l.font=c.font; l.lname=c.lname; }   // satir fontu/lname = en uzun parca (govde)
+        } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font,lname:c.lname,_mf:c.str.length});
       }
       S.txt[num]=mg;
       // PARAGRAF GRUPLA: ardisik satirlari (ayni font/punto/lname + sol-hizali + makul satir-araligi) tek gruba topla.
@@ -20185,9 +20187,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         if(last){ var pl=mg[last.tis[last.tis.length-1]];
           var ayniFont=(pl.font===li.font && (pl.lname||"")===(li.lname||"") && Math.abs(pl.fs-li.fs)<1.6);
           var solHiza=Math.abs(pl.x-li.x)<li.fs*0.6; var dy=li.y-pl.y; var satirArasi=(dy>li.fs*0.6 && dy<li.fs*2.2);
-          if(ayniFont && solHiza && satirArasi){ last.tis.push(gg); last.x=Math.min(last.x,li.x); last.colW=Math.max(last.colW,(li.x+li.w)-Math.min(last.x,li.x)); last.w=last.colW; last.h=(li.y+li.h)-last.y; continue; }
+          if(ayniFont && solHiza && satirArasi){ last.tis.push(gg); last.x=Math.min(last.x,li.x); last.colW=Math.max(last.colW,(li.x+li.w)-Math.min(last.x,li.x)); last.w=last.colW; last.h=(li.y+li.h)-last.y; if(last.lineH==null) last.lineH=dy; continue; }
         }
-        grp.push({tis:[gg], x:li.x, y:li.y, w:li.w, h:li.h, colW:li.w, fs:li.fs, font:li.font, lname:li.lname, edited:false, str:li.str});
+        grp.push({tis:[gg], x:li.x, y:li.y, w:li.w, h:li.h, colW:li.w, fs:li.fs, font:li.font, lname:li.lname, lineH:null, edited:false, str:li.str});
       }
       if(!S.grp) S.grp={}; S.grp[num]=grp;
       if(S.arac==="metinduz") annRender(num);
@@ -20234,9 +20236,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     });
   }
   // Paragraf: metni colWpt genisligine WORD-WRAP + cok-satir raster (karakter-bazli kapsama; kapsanmayan->Turkce fallback).
-  function metinParGorselUret(lname,txt,fsPt,renk,fbCss,colWpt){
+  function metinParGorselUret(lname,txt,fsPt,renk,fbCss,colWpt,lineHpt){
     return new Promise(function(res){
-      var dpr=3, fsPx=Math.max(4,fsPt*dpr), colW=Math.max(20,colWpt*dpr), lineH=fsPx*1.2; fbCss=fbCss||"Arial,Helvetica,sans-serif";
+      var dpr=3, fsPx=Math.max(4,fsPt*dpr), colW=Math.max(20,colWpt*dpr), lineH=(lineHpt>0?lineHpt:fsPt*1.3)*dpr; fbCss=fbCss||"Arial,Helvetica,sans-serif";
       function fontFor(ch){ return fsPx+'px '+((lname&&fontKapsar(lname,ch))?('"'+lname+'",'+fbCss):fbCss); }
       function genis(cx,s){ var t=0; for(var i=0;i<s.length;i++){ cx.font=fontFor(s[i]); t+=cx.measureText(s[i]).width; } return t; }
       function ciz(){ try{
@@ -20261,7 +20263,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var wrap=S.ovlById[num].parentNode;
     var inp=document.createElement("div"); inp.className="pe-txted pe-par"; inp.contentEditable="true";
     var rk=boxRenkOrnekle(num,g);
-    inp.style.left=Math.round(g.x*S.scale)+"px"; inp.style.top=Math.round(g.y*S.scale)+"px"; inp.style.fontSize=Math.round(g.fs*S.scale)+"px"; inp.style.width=Math.round(g.colW*S.scale)+"px"; inp.style.whiteSpace="pre-wrap"; inp.style.color=rk.fg; inp.style.background=rk.bg;
+    var lhPt=(g.lineH>0?g.lineH:g.fs*1.3);
+    inp.style.left=Math.round(g.x*S.scale)+"px"; inp.style.top=Math.round(g.y*S.scale)+"px"; inp.style.fontSize=Math.round(g.fs*S.scale)+"px"; inp.style.width=Math.round(g.colW*S.scale)+"px"; inp.style.whiteSpace="pre-wrap"; inp.style.color=rk.fg; inp.style.background=rk.bg; inp.style.lineHeight=(lhPt*S.scale)+"px"; inp.style.minHeight=Math.round(g.h*S.scale)+"px";
     var fk=g.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
     var mevcut=g.edited?g.str:g.tis.map(function(ti){ return (S.txt[num][ti]||{}).str||""; }).join(" ");
     function kapsarHepsi(s){ if(!g.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(g.lname,s[_i])) return false; } return true; }
@@ -20278,7 +20281,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       S.ann[num].push({t:"whiteout",x:g.x-1,y:g.y-1,w:g.w+2,h:g.h+2,bg:rk.bg,_gi:gi});
       if(!txt){ annRender(num); return; }
       var renk=rk.fg;
-      if(g.lname){ metinParGorselUret(g.lname,txt,g.fs,renk,fb,g.colW).then(function(r2){
+      if(g.lname){ metinParGorselUret(g.lname,txt,g.fs,renk,fb,g.colW,lhPt).then(function(r2){
           if(r2&&r2.wpt>0) S.ann[num].push({t:"image",x:g.x,y:(g.y+g.fs)-r2.ascpt,w:r2.wpt,h:r2.hpt,src:r2.url,_gi:gi});
           else S.ann[num].push({t:"text",x:g.x,y:g.y+g.fs*0.2,text:txt,size:g.fs,renk:renk,font:g.font,_gi:gi});
           annRender(num);
