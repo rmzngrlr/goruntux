@@ -19930,7 +19930,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe6 Faz3-birebirfont";
+  var PE_BUILD="2026-11-27pe7 Faz3-turkce-kapsama";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -19956,7 +19956,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var buf=fr.result;
         S.bytes=new Uint8Array(buf.slice(0));
         L.getDocument({data:new Uint8Array(buf)}).promise.then(function(pdf){
-          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={};
+          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={}; S.fontCov={};
           var N=pdf.numPages, dim=[], ch=Promise.resolve();
           for(var i=1;i<=N;i++){ (function(num){ ch=ch.then(function(){ return pdf.getPage(num).then(function(p){ var v=p.getViewport({scale:1}); dim[num]={w:v.width,h:v.height}; }); }); })(i); }
           ch.then(function(){
@@ -20161,6 +20161,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
         var realName="", lname=""; try{ if(p.commonObjs&&p.commonObjs.has&&p.commonObjs.has(it.fontName)){ var fo=p.commonObjs.get(it.fontName); realName=(fo&&fo.name)||""; lname=(fo&&fo.loadedName)||""; } }catch(_){}
         var fam=(stil[it.fontName]&&stil[it.fontName].fontFamily)||"";
+        if(lname){ if(!S.fontCov) S.fontCov={}; var cs=S.fontCov[lname]||(S.fontCov[lname]={}); for(var ck=0;ck<it.str.length;ck++) cs[it.str[ck]]=1; }
         raw.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs,font:fontKeyOf(realName+" "+fam),lname:lname});
       }
       // MERGE: ayni satir + ayni font + kucuk bosluk -> tek kutu (Turkce sozcuk/satir bolunmesini toparla).
@@ -20186,17 +20187,24 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       return "#"+best.map(function(v){ return ("0"+v.toString(16)).slice(-2); }).join("");
     }catch(e){ return "#111111"; }
   }
-  function metinGorselUret(lname,txt,fsPt,renk){
+  // Kapsama: bir karakter, gomulu subset-fonta GUVENLI mi? Orijinal metinde o lname ile gectiyse EVET.
+  // (Subset'te olmayan kod noktalari icin pdf.js fonti yanlis/.notdef glyph cizer = Turkce artefakti.)
+  function fontKapsar(lname,ch){ if(ch===" "||ch==="\t"||ch==="\n") return true; var cs=lname&&S.fontCov&&S.fontCov[lname]; return !!(cs&&cs[ch]); }
+  // Karakter-bazli ciz: kapsanan -> gomulu font (birebir); kapsanmayan -> Turkce-uyumlu fallback (fbCss). Artefakt yok.
+  function metinGorselUret(lname,txt,fsPt,renk,fbCss){
     return new Promise(function(res){
-      var dpr=3, fsPx=Math.max(4,fsPt*dpr), fam='"'+lname+'",sans-serif';
+      var dpr=3, fsPx=Math.max(4,fsPt*dpr); fbCss=fbCss||"Arial,Helvetica,sans-serif";
+      function fontFor(ch){ return fsPx+'px '+((lname&&fontKapsar(lname,ch))?('"'+lname+'",'+fbCss):fbCss); }
       function ciz(){ try{
-        var mc=document.createElement("canvas"), cx=mc.getContext("2d"); cx.font=fsPx+"px "+fam;
-        var m=cx.measureText(txt), asc=m.actualBoundingBoxAscent||fsPx*0.8, desc=m.actualBoundingBoxDescent||fsPx*0.3;
-        var w=Math.ceil(m.width)+6, h=Math.ceil(asc+desc)+6; if(w<3||h<3){ res(null); return; }
-        mc.width=w; mc.height=h; cx.font=fsPx+"px "+fam; cx.fillStyle=renk||"#111"; cx.textBaseline="alphabetic"; cx.fillText(txt,3,3+asc);
+        var mc=document.createElement("canvas"), cx=mc.getContext("2d");
+        var chs=Array.from(txt), asc=fsPx*0.8, desc=fsPx*0.3, total=0, i, m;
+        for(i=0;i<chs.length;i++){ cx.font=fontFor(chs[i]); m=cx.measureText(chs[i]); total+=m.width; if(m.actualBoundingBoxAscent>asc) asc=m.actualBoundingBoxAscent; if(m.actualBoundingBoxDescent>desc) desc=m.actualBoundingBoxDescent; }
+        var w=Math.ceil(total)+6, h=Math.ceil(asc+desc)+6; if(w<3||h<3){ res(null); return; }
+        mc.width=w; mc.height=h; cx.fillStyle=renk||"#111"; cx.textBaseline="alphabetic";
+        var x=3; for(i=0;i<chs.length;i++){ cx.font=fontFor(chs[i]); cx.fillText(chs[i],x,3+asc); x+=cx.measureText(chs[i]).width; }
         res({url:mc.toDataURL("image/png"), wpt:w/dpr, hpt:h/dpr, ascpt:(asc+3)/dpr});
       }catch(e){ res(null); } }
-      try{ if(document.fonts&&document.fonts.load){ document.fonts.load(fsPx+'px "'+lname+'"').then(ciz,ciz); } else ciz(); }catch(e){ ciz(); }
+      try{ if(lname&&document.fonts&&document.fonts.load){ document.fonts.load(fsPx+'px "'+lname+'"').then(ciz,ciz); } else ciz(); }catch(e){ ciz(); }
     });
   }
   function metinDuzenleAc(num,ti,e){
@@ -20205,8 +20213,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
     inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color=metinRengiOrnekle(num,it); inp.style.minWidth=Math.round(it.w*S.scale)+"px";
     var fk=it.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
-    inp.style.fontFamily=it.lname?('"'+it.lname+'",'+fb):fb; if(!it.lname){ if(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi") inp.style.fontWeight="bold"; if(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi") inp.style.fontStyle="italic"; }
-    inp.textContent=it.str; wrap.appendChild(inp);
+    function kapsarHepsi(s){ if(!it.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(it.lname,s[_i])) return false; } return true; }
+    function fontGuncelle(){ if(kapsarHepsi(inp.textContent||"")){ inp.style.fontFamily='"'+it.lname+'",'+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
+    inp.textContent=it.str; fontGuncelle(); inp.addEventListener("input",fontGuncelle); wrap.appendChild(inp);
     setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
     var bitti=false;
     function commit(){ if(bitti) return; bitti=true; var txt=(inp.textContent||"").replace(/ /g," ");
@@ -20216,7 +20225,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
       if(!txt.trim()){ annRender(num); return; }
       var renk=metinRengiOrnekle(num,it);
-      if(it.lname){ metinGorselUret(it.lname,txt.trim(),it.fs,renk).then(function(g){
+      if(it.lname){ metinGorselUret(it.lname,txt.trim(),it.fs,renk,fb).then(function(g){
           if(g&&g.wpt>0) S.ann[num].push({t:"image",x:it.x,y:(it.y+it.fs)-g.ascpt,w:g.wpt,h:g.hpt,src:g.url});
           else S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font});
           annRender(num);
