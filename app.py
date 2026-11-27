@@ -9524,6 +9524,21 @@ LOCAL_DOCX_JS = r'''
     }
 
     var rels=[], media=[], ridCounter=0, docPrId=1;
+    // [PDF MOTORU] A4'ten UZUN PDF sayfa gorselini N yatay banda dilimle (her bant ayri Word sayfasi -> tasmaz). -> [jpeg b64,..]
+    function _pdfSayfaDilimle(b64, mime, bands){
+      return new Promise(function(res){ try{
+        var im=new Image();
+        im.onload=function(){ try{
+          var W=im.naturalWidth||im.width, H=im.naturalHeight||im.height, bh=Math.floor(H/bands), out=[];
+          for(var i=0;i<bands;i++){ var y0=i*bh, hh=(i===bands-1)?(H-y0):bh; if(hh<1) continue;
+            var c=document.createElement('canvas'); c.width=W; c.height=hh; var x=c.getContext('2d'); x.fillStyle='#ffffff'; x.fillRect(0,0,W,hh);
+            x.drawImage(im, 0,y0,W,hh, 0,0,W,hh); out.push(c.toDataURL('image/jpeg',0.9).split(',')[1]); }
+          res(out);
+        }catch(e){ res(null); } };
+        im.onerror=function(){ res(null); };
+        im.src='data:'+(mime||'image/jpeg')+';base64,'+b64;
+      }catch(e){ res(null); } });
+    }
     function addImageRaw(b64, mime){
       if(!b64) return null;
       mime=mime||'image/jpeg';
@@ -10273,7 +10288,16 @@ LOCAL_DOCX_JS = r'''
             if(_p.tur==='gorsel'){ var _iu=_um[_pi]; if(_iu){
               if(_iu.cizim){   // [9A] çizim -> YEREL NESNELER (DrawingML grubu); boş/hata -> görsel fallback
                 var _ckP0=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
-                if(_ckP0 && _ckP0.pdfSayfa){ body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true)); }   // [PDF MOTORU] PDF sayfasi -> yuksek-coz GORSEL (sayfa+objs opak b64); vektor/cok-sayfa YOK
+                if(_ckP0 && _ckP0.pdfSayfa){   // [PDF MOTORU] PDF sayfasi -> yuksek-coz GORSEL (sayfa+objs opak b64); vektor/cok-sayfa YOK
+                  var _A4band=9.3;   // A4 kullanilabilir bant yuksekligi (inc); _iu.w ~6.26in
+                  if(_iu.h <= _A4band+0.4){ body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _iu.h, 'center', false, false, true)); }   // sigiyorsa tek sayfa
+                  else {   // A4'ten UZUN -> yatay bantlara dilimle, her bant AYRI sayfa (pbBefore) -> Word'de tasmaz
+                    var _nb=Math.max(2, Math.ceil(_iu.h/_A4band)), _bh=_iu.h/_nb, _dilimler=null;
+                    try{ _dilimler=await _pdfSayfaDilimle(_iu.b64, _iu.mime, _nb); }catch(_ed){ _dilimler=null; }
+                    if(_dilimler && _dilimler.length){ for(var _ds=0; _ds<_dilimler.length; _ds++) body.push(imageXmlRaw(_dilimler[_ds], 'image/jpeg', _iu.w, _bh, 'center', false, false, true)); }
+                    else body.push(imageXmlRaw(_iu.b64, _iu.mime, _iu.w, _A4band, 'center', false, false, true));   // dilim hatasi -> en azindan 1 sayfaya sigdir
+                  }
+                }
                 else {
                 var _ckParca=(u.item && u.item.parcalar)?u.item.parcalar[_iu.k]:null;
                 var _ckSay=(_ckParca && (_ckParca.ckSayfa|0))||1;
