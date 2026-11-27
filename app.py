@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe14 cok-sutun-grup";
+  var PE_BUILD="2026-11-27pe15 teksatir-sarma-yok";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20113,7 +20113,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       if(S.arac==="gorsel"){ gorselBekle={p:num,pt:pt}; $("pe-img").click(); return; }
       if(S.arac==="metinduz"){ var _gi=e.target&&e.target.getAttribute&&e.target.getAttribute("data-gi");
         if(_gi!=null){ var g=(S.grp[num]||[])[+_gi];
-          if(g && e.altKey && g.tis.length>1 && !g.edited){ var py=pt.y, ti=g.tis[0]; for(var kk=0;kk<g.tis.length;kk++){ var ll=S.txt[num][g.tis[kk]]; if(py>=ll.y-2 && py<=ll.y+ll.h+2){ ti=g.tis[kk]; break; } } metinDuzenleAc(num,ti,e); }
+          if(g && g.tis.length===1){ metinDuzenleAc(num,g.tis[0],e); }   // tek satir/sayi/etiket -> tek-satir editor (SARMA YOK)
+          else if(g && e.altKey && !g.edited){ var py=pt.y, ti=g.tis[0]; for(var kk=0;kk<g.tis.length;kk++){ var ll=S.txt[num][g.tis[kk]]; if(py>=ll.y-2 && py<=ll.y+ll.h+2){ ti=g.tis[kk]; break; } } metinDuzenleAc(num,ti,e); }
           else metinParagrafAc(num,+_gi,e);
         } return; }
       e.preventDefault(); var a=yeniAnn(S.arac,pt); if(!a) return;
