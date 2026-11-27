@@ -19782,6 +19782,177 @@ if(K){ (async function(){ var d=await veri(); if(d&&d.ok){ $('giris').style.disp
 </script>
 </body></html>'''
 
+# ======================= PDF EDITOR (yeni yuzey: /pdfeditor) =======================
+# Faz 0 = GORUNTULEYICI: cihazdan PDF yukle -> pdf.js (self-host /pdfjs) ile sayfalari render,
+# zoom/sigdir, sayfa gezinme, kucuk-resim seridi. Faz 1 (sonraki) = duzenleme overlay + pdf-lib ile indir.
+# Tamamen istemci-tarafli; Flask yalniz sayfayi sunar. Ayri/izole yuzey (panele/rapora bagli DEGIL).
+PDFEDITOR_PAGE = r'''<!doctype html>
+<html lang="tr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>GoruntuX PDF Editor</title>
+<style>
+:root{--bg:#0e1621;--panel:#15202d;--panel2:#1b2735;--bd:#2c3a4a;--ink:#e7e9ea;--dim:#8b98a5;--mavi:#1d9bf0;--mavi2:#1a8cd8;}
+*{box-sizing:border-box;}
+html,body{margin:0;height:100%;}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.pe-top{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--bd);flex-wrap:wrap;}
+.pe-logo{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:14px;}
+.pe-logo .ic{width:26px;height:26px;border-radius:7px;background:var(--mavi);display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.pe-faz{font-size:11px;color:var(--dim);}
+.pe-sp{flex:1 1 auto;}
+.pe-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);background:var(--panel2);color:var(--ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.pe-btn:hover{border-color:var(--mavi);}
+.pe-btn.pri{background:var(--mavi);border-color:var(--mavi);color:#fff;}
+.pe-btn.pri:hover{background:var(--mavi2);}
+.pe-btn:disabled{opacity:.4;cursor:default;}
+.pe-grp{display:inline-flex;align-items:center;gap:2px;background:var(--panel2);border:1px solid var(--bd);border-radius:9px;padding:3px;}
+.pe-ic{border:0;background:transparent;color:var(--ink);width:30px;height:30px;border-radius:7px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:16px;line-height:1;}
+.pe-ic:hover{background:#263546;}
+.pe-ic:disabled{opacity:.35;cursor:default;}
+.pe-zoom{min-width:48px;text-align:center;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;}
+.pe-pgno{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:4px;}
+.pe-pgno input{width:38px;background:#0e1621;border:1px solid var(--bd);color:var(--ink);border-radius:6px;text-align:center;font-size:12px;padding:3px 2px;}
+.pe-fname{font-size:12px;color:var(--dim);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pe-main{flex:1 1 auto;display:flex;min-height:0;}
+.pe-thumbs{flex:0 0 150px;background:var(--panel);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px;display:none;flex-direction:column;gap:10px;scrollbar-gutter:stable;}
+.pe-thumbs.acik{display:flex;}
+.pe-thumb{position:relative;cursor:pointer;border:2px solid transparent;border-radius:6px;overflow:hidden;background:#fff;}
+.pe-thumb.aktif{border-color:var(--mavi);}
+.pe-thumb canvas{display:block;width:100%;height:auto;}
+.pe-thumb .no{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;}
+.pe-pages{flex:1 1 auto;overflow:auto;padding:24px;display:flex;flex-direction:column;align-items:center;gap:20px;scrollbar-gutter:stable;}
+.pe-page{position:relative;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.pe-page canvas{display:block;}
+.pe-empty{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--dim);text-align:center;padding:30px;}
+.pe-drop{border:2px dashed var(--bd);border-radius:16px;padding:40px 54px;transition:border-color .15s,background .15s;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.pe-drop.vurgu{border-color:var(--mavi);background:rgba(29,155,240,.08);}
+.pe-empty h2{margin:0;font-size:18px;color:var(--ink);font-weight:700;}
+.pe-empty p{margin:0;font-size:13px;}
+.pe-yuk{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,14,20,.72);z-index:50;color:var(--ink);font-weight:600;font-size:15px;}
+.pe-yuk.acik{display:flex;}
+@media(max-width:640px){.pe-thumbs.acik{display:none;}.pe-pages{padding:12px;}.pe-fname{display:none;}}
+</style></head>
+<body>
+<div class="pe-top">
+  <span class="pe-logo"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 10.5V7.5h3"/><path d="M13.5 7.5h3v3"/><path d="M16.5 13.5v3h-3"/><path d="M10.5 16.5H7.5v-3"/><path d="M10 10l4 4"/><path d="M14 10l-4 4"/></svg></span>PDF Editor</span>
+  <span class="pe-faz">Faz 0 - goruntuleyici</span>
+  <button class="pe-btn pri" id="pe-ac"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V3"/><path d="M6 6.5l4-4 4 4"/><path d="M4 16h12"/></svg>PDF Ac</button>
+  <span class="pe-fname" id="pe-fname"></span>
+  <span class="pe-sp"></span>
+  <span class="pe-grp" id="pe-pgnav" style="display:none;"><button class="pe-ic" id="pe-prev" title="Onceki sayfa">&#8249;</button><span class="pe-pgno"><input id="pe-pginp" type="text" value="1" inputmode="numeric"> / <b id="pe-pgtop">1</b></span><button class="pe-ic" id="pe-next" title="Sonraki sayfa">&#8250;</button></span>
+  <span class="pe-grp" id="pe-zoomgrp" style="display:none;"><button class="pe-ic" id="pe-zout" title="Uzaklas">&#8722;</button><span class="pe-zoom" id="pe-zlbl">100%</span><button class="pe-ic" id="pe-zin" title="Yakinlas">+</button><button class="pe-ic" id="pe-fit" title="Sigdir">&#10530;</button></span>
+  <button class="pe-btn" id="pe-indir" disabled title="Faz 1 ile gelecek"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg>Indir</button>
+</div>
+<div class="pe-main">
+  <aside class="pe-thumbs" id="pe-thumbs"></aside>
+  <div class="pe-pages" id="pe-pages">
+    <div class="pe-empty" id="pe-empty"><div class="pe-drop" id="pe-drop"><h2>PDF yukleyin</h2><p>Bir PDF secin ya da buraya surukleyip birakin.</p><button class="pe-btn pri" id="pe-ac2">PDF Sec</button></div></div>
+  </div>
+</div>
+<input type="file" id="pe-file" accept="application/pdf,.pdf" hidden>
+<div class="pe-yuk" id="pe-yuk">PDF yukleniyor...</div>
+<script src="/pdfjs/pdf.min.js"></script>
+<script>
+(function(){
+  "use strict";
+  var PE_BUILD="2026-11-27pe1 Faz0";
+  try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
+  var $=function(id){ return document.getElementById(id); };
+  var L=window.pdfjsLib;
+  if(!L){ $("pe-empty").innerHTML='<div class="pe-drop"><h2>PDF motoru yuklenemedi</h2><p>Sayfayi yenileyin.</p></div>'; return; }
+  try{ L.GlobalWorkerOptions.workerSrc="/pdfjs/pdf.worker.min.js"; }catch(e){}
+  var S={doc:null,n:0,scale:1.0,fit:true,bytes:null,fname:"",cv:[]};
+  var pagesEl=$("pe-pages"), thumbsEl=$("pe-thumbs"), emptyEl=$("pe-empty");
+  function yuk(on){ $("pe-yuk").classList.toggle("acik",!!on); }
+  function dosyaAc(){ $("pe-file").click(); }
+  $("pe-ac").addEventListener("click",dosyaAc);
+  document.addEventListener("click",function(e){ if(e.target && e.target.id==="pe-ac2") dosyaAc(); });
+  $("pe-file").addEventListener("change",function(e){ var f=e.target.files&&e.target.files[0]; if(f) acDosya(f); e.target.value=""; });
+  ["dragenter","dragover"].forEach(function(ev){ pagesEl.addEventListener(ev,function(e){ e.preventDefault(); var d=$("pe-drop"); if(d) d.classList.add("vurgu"); }); });
+  pagesEl.addEventListener("dragleave",function(e){ var d=$("pe-drop"); if(d) d.classList.remove("vurgu"); });
+  pagesEl.addEventListener("drop",function(e){ e.preventDefault(); var d=$("pe-drop"); if(d) d.classList.remove("vurgu"); var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]; if(f && /pdf/i.test(f.type||f.name)) acDosya(f); });
+
+  function acDosya(f){
+    yuk(true); S.fname=f.name||"belge.pdf"; $("pe-fname").textContent=S.fname;
+    var fr=new FileReader();
+    fr.onload=function(){
+      try{
+        var buf=fr.result;
+        S.bytes=new Uint8Array(buf.slice(0));
+        L.getDocument({data:new Uint8Array(buf)}).promise.then(function(pdf){
+          S.doc=pdf; S.n=pdf.numPages; S.fit=true;
+          emptyEl.style.display="none";
+          thumbsEl.classList.add("acik");
+          $("pe-pgnav").style.display=""; $("pe-zoomgrp").style.display="";
+          $("pe-pgtop").textContent=S.n; $("pe-pginp").value="1";
+          hesaplaFit().then(function(){ cizTumu(); cizThumbs(); yuk(false); });
+        }).catch(function(err){ yuk(false); alert("PDF acilamadi: "+((err&&err.message)||err)); });
+      }catch(err){ yuk(false); alert("Hata: "+((err&&err.message)||err)); }
+    };
+    fr.onerror=function(){ yuk(false); alert("Dosya okunamadi."); };
+    fr.readAsArrayBuffer(f);
+  }
+  function hesaplaFit(){
+    if(!S.doc) return Promise.resolve();
+    return S.doc.getPage(1).then(function(p){
+      var vp=p.getViewport({scale:1});
+      var kullan=pagesEl.clientWidth-48; if(kullan<80) kullan=Math.max(80,pagesEl.clientWidth-16);
+      S.scale=Math.max(.2,Math.min(4,kullan/vp.width));
+      zoomLbl();
+    });
+  }
+  function zoomLbl(){ $("pe-zlbl").textContent=Math.round(S.scale*100)+"%"; }
+  function cizTumu(){
+    [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(x){ x.remove(); });
+    S.cv=[];
+    var zinc=Promise.resolve();
+    for(var i=1;i<=S.n;i++){ (function(num){
+      var wrap=document.createElement("div"); wrap.className="pe-page"; wrap.setAttribute("data-p",num);
+      var cv=document.createElement("canvas"); wrap.appendChild(cv); pagesEl.appendChild(wrap); S.cv[num]=cv;
+      zinc=zinc.then(function(){ return cizSayfa(num,cv,S.scale); });
+    })(i); }
+    izleKur();
+  }
+  function cizSayfa(num,cv,scale){
+    return S.doc.getPage(num).then(function(p){
+      var dpr=Math.min(2,window.devicePixelRatio||1);
+      var vp=p.getViewport({scale:scale*dpr});
+      cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
+      cv.style.width=Math.round(vp.width/dpr)+"px"; cv.style.height=Math.round(vp.height/dpr)+"px";
+      return p.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+    });
+  }
+  function cizThumbs(){
+    thumbsEl.innerHTML="";
+    for(var i=1;i<=S.n;i++){ (function(num){
+      var t=document.createElement("div"); t.className="pe-thumb"; t.setAttribute("data-p",num);
+      var cv=document.createElement("canvas"); var no=document.createElement("span"); no.className="no"; no.textContent=num;
+      t.appendChild(cv); t.appendChild(no); thumbsEl.appendChild(t);
+      t.addEventListener("click",function(){ sayfayaGit(num); });
+      S.doc.getPage(num).then(function(p){ var vp=p.getViewport({scale:1}); var sc=132/vp.width; var v2=p.getViewport({scale:sc}); cv.width=Math.round(v2.width); cv.height=Math.round(v2.height); p.render({canvasContext:cv.getContext("2d"),viewport:v2}); });
+    })(i); }
+  }
+  function sayfayaGit(num){ var el=pagesEl.querySelector('.pe-page[data-p="'+num+'"]'); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); }
+  var io=null;
+  function izleKur(){ if(io) io.disconnect(); io=new IntersectionObserver(function(ents){ ents.forEach(function(en){ if(en.isIntersecting) aktifSayfa(+en.target.getAttribute("data-p")); }); },{root:pagesEl,threshold:.5}); [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(x){ io.observe(x); }); }
+  function aktifSayfa(p){ if(document.activeElement!==$("pe-pginp")) $("pe-pginp").value=p; [].slice.call(thumbsEl.querySelectorAll(".pe-thumb")).forEach(function(t){ t.classList.toggle("aktif",+t.getAttribute("data-p")===p); }); var at=thumbsEl.querySelector('.pe-thumb[data-p="'+p+'"]'); if(at) at.scrollIntoView({block:"nearest"}); }
+  $("pe-prev").addEventListener("click",function(){ var c=+$("pe-pginp").value||1; sayfayaGit(Math.max(1,c-1)); });
+  $("pe-next").addEventListener("click",function(){ var c=+$("pe-pginp").value||1; sayfayaGit(Math.min(S.n,c+1)); });
+  $("pe-pginp").addEventListener("keydown",function(e){ if(e.key==="Enter"){ var v=Math.max(1,Math.min(S.n,parseInt(this.value,10)||1)); sayfayaGit(v); this.blur(); } });
+  function yenidenCiz(){ zoomLbl(); for(var i=1;i<=S.n;i++){ if(S.cv[i]) cizSayfa(i,S.cv[i],S.scale); } }
+  $("pe-zin").addEventListener("click",function(){ if(!S.doc) return; S.fit=false; S.scale=Math.min(4,S.scale*1.2); yenidenCiz(); });
+  $("pe-zout").addEventListener("click",function(){ if(!S.doc) return; S.fit=false; S.scale=Math.max(.2,S.scale/1.2); yenidenCiz(); });
+  $("pe-fit").addEventListener("click",function(){ if(!S.doc) return; S.fit=true; hesaplaFit().then(yenidenCiz); });
+  var rt; window.addEventListener("resize",function(){ clearTimeout(rt); rt=setTimeout(function(){ if(S.doc&&S.fit) hesaplaFit().then(yenidenCiz); },200); });
+})();
+</script>
+</body></html>'''
+
+@app.route('/pdfeditor', methods=['GET'])
+def pdfeditor_sayfa():
+    return Response(PDFEDITOR_PAGE, mimetype='text/html; charset=utf-8')
+
 @app.route('/teshis', methods=['GET'])
 def teshis_page():
     return Response(TESHIS_PAGE, mimetype='text/html; charset=utf-8')
