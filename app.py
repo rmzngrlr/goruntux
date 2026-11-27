@@ -4457,7 +4457,9 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 if (it.h2_ov) { o.h2_ov = it.h2_ov; }
                 return o;
             });
-            return { blob: blob, filename: filename, snapItems: _snapItems, images: images };
+            var _pdfs = {};   // [PDF MOTORU] oto-kayitta orijinal PDF baytlarini koru (yalniz hala referanslananlar)
+            try { if (window.__xReportPdfs) { _snapItems.forEach(function (o) { (o.parcalar || []).forEach(function (pc) { if (pc && pc.pdfKaynakKey && window.__xReportPdfs[pc.pdfKaynakKey]) _pdfs[pc.pdfKaynakKey] = window.__xReportPdfs[pc.pdfKaynakKey]; }); }); } } catch (e) {}
+            return { blob: blob, filename: filename, snapItems: _snapItems, images: images, pdfs: _pdfs };
         }
         function xTriggerDownload(blob, filename) {
             var url = window.URL.createObjectURL(blob);
@@ -5523,6 +5525,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 }
             }
             window.__xEditorOverlay = _ov;
+            window.__xReportPdfs = rec.pdfs || {};   // [PDF MOTORU] reload/yeniden-baglanmada orijinal PDF baytlarini da geri yukle
             window.__xManualClusters = (rec.manualClusters || []);
             try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}
             if (rec.editorStyle) { try { xApplyStyleOpts(rec.editorStyle); } catch (e) {} }
@@ -5769,7 +5772,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 var meta = await window.XSavedReports.save({
                     id: _kayitId,
                     name: (id ? (window.__xActiveReportName || null) : _yeniAd),
-                    items: r.snapItems, images: r.images, blob: r.blob, filename: r.filename,
+                    items: r.snapItems, images: r.images, pdfs: r.pdfs, blob: r.blob, filename: r.filename,
                     editorStyle: xBuildStyleOpts(), manualClusters: (window.__xManualClusters || [])
                 });
                 if (_yeniMi) { try { if (window.xTeshisLog) window.xTeshisLog('[profil-ad] yeni rapor adi=' + (_yeniAd || '?') + ' (bekleyen=' + (window.__xProfilRaporAdi || '-') + ', havuzdan=' + (xProfilRaporAdiCoz(r.snapItems) || '-') + ')'); } catch (e) {} try { window.__xProfilRaporAdi = null; } catch (e) {} }   // profil adı tüketildi
@@ -5898,12 +5901,14 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
         // arasına girsin) -> openSavedReport ile AKTİF yap (havuz+overlay) -> editörde düzenlenebilir aç. Dosya sunucuya GİTMEZ.
         function cihazdanYukle() {
             var inp = document.createElement('input');
-            inp.type = 'file'; inp.accept = '.docx'; inp.multiple = true;
+            inp.type = 'file'; inp.accept = '.docx,.pdf'; inp.multiple = true;
             inp.addEventListener('change', function () {
                 var files = inp.files;
                 if (!files || !files.length) return;
+                var tumPdf = Array.prototype.every.call(files, function (f) { return /\.pdf$/i.test(f.name); });
                 var tumDocx = Array.prototype.every.call(files, function (f) { return /\.docx$/i.test(f.name); });
-                if (!tumDocx) { showToast('Lütfen yalnız .docx dosyaları seçin.', 'danger'); return; }
+                if (tumPdf) { _cihazdanPdfYukle(files); return; }   // [PDF MOTORU] PDF -> her sayfa cizim-kagidi-benzeri oge
+                if (!tumDocx) { showToast('Lütfen yalnız .docx ya da yalnız .pdf dosyaları seçin.', 'danger'); return; }
                 if (!window.XLocalDocx || !window.XLocalDocx.clientWordDuzenle) { showToast('Word bileşeni yüklenemedi (sayfayı yenileyin).', 'danger'); return; }
                 var prog = xYukleProgressBaslat('Dosya açılıyor…');   // sağ-altta yüzde sayan bildirim
                 window.XLocalDocx.clientWordDuzenle(files, (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}))
@@ -5937,6 +5942,68 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
             inp.click();
         }
         window.cihazdanYukle = cihazdanYukle;
+        // [PDF MOTORU] Cihazdan PDF: her sayfa pdf.js ile KENDİ boyutunda render -> cizim-kagidi-benzeri oge (pdfSayfa:true,
+        // taban=sayfa gorseli, cizimObjeleri=[] uzerine cizim). Orijinal baytlar pdfs haritasinda (gercek/secilebilir PDF ciktisi icin).
+        // Sonra docx akisiyla BIREBIR: XSavedReports.save -> openSavedReport (havuz+overlay). Dosya sunucuya GITMEZ.
+        async function _cihazdanPdfYukle(files) {
+            if (!window.pdfjsLib) { showToast('PDF motoru (pdf.js) yüklenmedi. Sayfayı yenileyin.', 'danger'); return; }
+            if (!window.XSavedReports || !window.XSavedReports.save) { showToast('Yerel depo bileşeni yüklenemedi.', 'danger'); return; }
+            var prog = xYukleProgressBaslat('PDF açılıyor…');
+            try {
+                var items = [], pdfs = {}, _uc = 0, _dmg = Date.now().toString(36);
+                function _uid() { return 'pdfpg-' + _dmg + '-' + (++_uc); }
+                // 1) Belgeleri aç + toplam sayfa say (ilerleme icin)
+                var dokler = [], toplam = 0;
+                for (var fi = 0; fi < files.length; fi++) {
+                    var buf = await files[fi].arrayBuffer();
+                    var bytes = new Uint8Array(buf.slice(0));
+                    var key = 'pdf-' + _dmg + '-' + fi;
+                    pdfs[key] = bytes;
+                    var doc = await window.pdfjsLib.getDocument({ data: new Uint8Array(bytes) }).promise;
+                    dokler.push({ doc: doc, key: key, N: doc.numPages });
+                    toplam += doc.numPages;
+                }
+                try { window.__wdProg = { t0: Date.now(), estMs: Math.max(1500, toplam * 220), biten: 0, say: toplam }; } catch (e) {}
+                // 2) Her sayfayi KENDI boyutunda render -> oge
+                var SC = 2;   // render olcegi (netlik/boyut dengesi)
+                for (var di = 0; di < dokler.length; di++) {
+                    var dk = dokler[di];
+                    for (var pn = 1; pn <= dk.N; pn++) {
+                        var page = await dk.doc.getPage(pn);
+                        var vp1 = page.getViewport({ scale: 1 });
+                        var cw = Math.max(1, Math.round(vp1.width * SC)), chh = Math.max(1, Math.round(vp1.height * SC));
+                        var cv = document.createElement('canvas'); cv.width = cw; cv.height = chh;
+                        await page.render({ canvasContext: cv.getContext('2d'), viewport: page.getViewport({ scale: SC }) }).promise;
+                        var b64 = cv.toDataURL('image/png').split(',')[1];
+                        items.push({ title: '', link: 'xmanual://' + _uid(), parcalar: [{
+                            tur: 'gorsel', cizimKagidi: true, pdfSayfa: true,
+                            pdfKaynakKey: dk.key, pdfSayfaNo: pn,
+                            b64: b64, mime: 'image/png',
+                            cizimObjeleri: [], cizgili: false, kareli: false,
+                            cbW: cw, cbH: chh, ckSayfa: 1
+                        }] });
+                        try { window.__wdProg.biten = items.length; } catch (e) {}
+                        if ((items.length % 8) === 0) { await new Promise(function (r) { setTimeout(r, 0); }); }   // event-loop'a soluk (UI donmasin)
+                    }
+                }
+                try { window.__wdProg = null; } catch (e) {}
+                if (!items.length) { if (prog) prog.bitir(false); showToast('PDF boş veya okunamadı.', 'danger'); return; }
+                var name = (files.length === 1 ? (files[0].name || '').replace(/\.pdf$/i, '') : 'GörüntüX_PDF') || xTarihSaatDamgasi();
+                var filename = (typeof xRaporDosyaAdi === 'function') ? xRaporDosyaAdi(name) : (name + '.docx');
+                try { window.__xReportPdfs = pdfs; } catch (e) {}   // editor/cikti icin bellek
+                await window.XSavedReports.whenReady();
+                var meta = await window.XSavedReports.save({ name: name, items: items, images: {}, pdfs: pdfs, blob: null, filename: filename, editorStyle: (typeof xBuildStyleOpts === 'function' ? xBuildStyleOpts() : {}), manualClusters: [] });
+                await openSavedReport(meta.id, { urlReplace: true });
+                if (prog) prog.bitir(true);
+                showToast("Raporlarım'a eklendi (" + items.length + " PDF sayfası) — Önizle ile düzenle.", 'success');
+            } catch (err) {
+                try { window.__wdProg = null; } catch (e) {}
+                if (prog) prog.bitir(false);
+                console.error('PDF yükle hatası:', err);
+                showToast('PDF yüklenemedi: ' + (err && err.message ? err.message : err), 'danger');
+            }
+        }
+        window._cihazdanPdfYukle = _cihazdanPdfYukle;
         // [PDF WEBSHOT - YEREL] "PDF'ten Yakala": yerel PDF seç -> FileReader ile oku -> base64 -> X_RAPOR_PDF_YAKALA
         // postMessage -> PDF_YAKALA_JS overlay'i (pdf.js render + sayfa seç + kırp). Web PDF sağ-tık yolu AYNI overlay'i kullanır.
         function pdfDosyadanYakala(mode) {
@@ -6461,6 +6528,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     if (_it2 && (_it2.parcalar || _it2.h2_override != null || _it2.group_override != null || _it2.h1_override != null || _it2.h1_ov || _it2.h2_ov)) { _ov2.byLink[xOvKey(_it2.link || '')] = { parcalar: _it2.parcalar || null, h2: (_it2.h2_override != null ? _it2.h2_override : null), h2sil: (_it2.h2_sil ? 1 : 0), grup: (_it2.group_override != null ? _it2.group_override : null), h1over: (_it2.h1_override != null ? _it2.h1_override : null), h1ov: (_it2.h1_ov || null), h2ov: (_it2.h2_ov || null) }; }
                 }
                 window.__xEditorOverlay = _ov2;
+                window.__xReportPdfs = rec.pdfs || {};   // [PDF MOTORU] orijinal PDF baytlari (gercek/secilebilir PDF ciktisi + editorde yeniden-render)
                 window.__xManualClusters = (rec.manualClusters || []);   // #2: manuel blokları geri yükle
                 try { if (window.XEditor) { window.XEditor.belge = { stil: {}, birimler: [] }; } } catch (e) {}   // bayat belge temizle; sonraki Önizle havuzdan + overlay'den kurar
                 if (rec.editorStyle) { xApplyStyleOpts(rec.editorStyle); }
@@ -12024,7 +12092,11 @@ X_SAVED_REPORTS_JS = r'''
        return _buildPreview(o).then(function(_prev){
         var meta = { id:id, name:_ad, slug:_slug, createdAt:createdAt,
                      updatedAt:now, itemCount:((o.items&&o.items.length)||0), preview:_prev };
-        var data = { id:id, items:o.items||[], images:o.images||{}, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
+        // [PDF MOTORU veri-kaybi guard] gelen pdfs BOS ise mevcut depolanani KORU ({} ile ezme; reload yarisi/oto-kayit).
+        var _pdfsGelen = (o.pdfs && Object.keys(o.pdfs).length) ? o.pdfs : null;
+        var _pdfsP = _pdfsGelen ? Promise.resolve(_pdfsGelen) : (_hasId ? get(id).then(function(d){ return (d&&d.pdfs)||{}; }).catch(function(){ return {}; }) : Promise.resolve({}));
+        return _pdfsP.then(function(_pdfs){
+        var data = { id:id, items:o.items||[], images:o.images||{}, pdfs:_pdfs, blob:o.blob||null, filename:o.filename||'', editorStyle:o.editorStyle||null, manualClusters:o.manualClusters||[] };
         return new Promise(function(resolve,reject){
           try{
             var tx=_tx([META,DATA],'readwrite');
@@ -12034,6 +12106,7 @@ X_SAVED_REPORTS_JS = r'''
             tx.onerror=function(){ reject(tx.error||new Error('kaydetme hatası')); };
             tx.onabort=function(){ reject(tx.error||new Error('kaydetme iptal (kota?)')); };
           }catch(e){ reject(e); }
+        });
         });
        });
       });
