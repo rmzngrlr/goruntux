@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe17 gomulu-font-yigini";
+  var PE_BUILD="2026-11-27pe18 kalicilik";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -19967,7 +19967,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
             $("pe-tools").classList.remove("gizli"); $("pe-indir").disabled=false;
             $("pe-pgnav").style.display=""; $("pe-zoomgrp").style.display="";
             sayGuncelle();
-            hesaplaFit().then(function(){ cizTumu(); cizThumbs(); yuk(false); });
+            hesaplaFit().then(function(){ cizTumu(); cizThumbs(); yuk(false); try{ pdfKaydet(); durumKaydet(); }catch(e){} });
           }).catch(function(err){ yuk(false); alert("PDF hazirlanamadi: "+((err&&err.message)||err)); });
         }).catch(function(err){ yuk(false); alert("PDF acilamadi: "+((err&&err.message)||err)); });
       }catch(err){ yuk(false); alert("Hata: "+((err&&err.message)||err)); }
@@ -19975,6 +19975,32 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     fr.onerror=function(){ yuk(false); alert("Dosya okunamadi."); };
     fr.readAsArrayBuffer(f);
   }
+  // ---- KALICILIK (IndexedDB): son PDF + duzenlemeler; yenilemede geri yukle ----
+  var _peIdbP=null;
+  function _peIdb(){ if(_peIdbP) return _peIdbP; _peIdbP=new Promise(function(res,rej){ try{ var rq=indexedDB.open("goruntux_pdfed",1); rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore("kv"); }catch(e){} }; rq.onsuccess=function(){ res(rq.result); }; rq.onerror=function(){ rej(rq.error); }; }catch(e){ rej(e); } }); return _peIdbP; }
+  function _peGet(k){ return _peIdb().then(function(db){ return new Promise(function(res){ try{ var r=db.transaction("kv","readonly").objectStore("kv").get(k); r.onsuccess=function(){ res(r.result); }; r.onerror=function(){ res(null); }; }catch(e){ res(null); } }); }).catch(function(){ return null; }); }
+  function _pePut(k,v){ return _peIdb().then(function(db){ return new Promise(function(res){ try{ var t=db.transaction("kv","readwrite"); t.objectStore("kv").put(v,k); t.oncomplete=function(){ res(true); }; t.onerror=function(){ res(false); }; }catch(e){ res(false); } }); }).catch(function(){ return false; }); }
+  function pdfKaydet(){ try{ if(!S.bytes) return; var ext={}; for(var k in S.ext){ if(S.ext[k]&&S.ext[k].bytes) ext[k]=S.ext[k].bytes; } _pePut("pdf",{fname:S.fname,bytes:S.bytes,ext:ext,ts:Date.now()}); }catch(e){} }
+  var _durumT=null;
+  function durumKaydet(){ if(!S.doc) return; clearTimeout(_durumT); _durumT=setTimeout(function(){ try{ _pePut("durum",{pages:S.pages,ann:S.ann,nextId:S.nextId}); }catch(e){} },1500); }
+  function belgeGoster(){ emptyEl.style.display="none"; thumbsEl.classList.add("acik"); $("pe-tools").classList.remove("gizli"); $("pe-indir").disabled=false; $("pe-pgnav").style.display=""; $("pe-zoomgrp").style.display=""; sayGuncelle(); return hesaplaFit().then(function(){ cizTumu(); cizThumbs(); yuk(false); }); }
+  function oturumYukle(){ return _peGet("pdf").then(function(rec){ if(!rec||!rec.bytes) return; yuk(true);
+    return _peGet("durum").then(function(dur){
+      S.fname=rec.fname||"belge.pdf"; $("pe-fname").textContent=S.fname;
+      S.bytes=(rec.bytes instanceof Uint8Array)?rec.bytes:new Uint8Array(rec.bytes);
+      return L.getDocument({data:new Uint8Array(S.bytes)}).promise.then(function(pdf){
+        S.doc=pdf; S.fit=true; S.sel=null; S.ext={}; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={}; S.fontCov={}; S.charRef={}; S.grp={}; _kapsarMemo={};
+        var extKeys=rec.ext?Object.keys(rec.ext):[], ech=Promise.resolve();
+        extKeys.forEach(function(k){ ech=ech.then(function(){ var by=(rec.ext[k] instanceof Uint8Array)?rec.ext[k]:new Uint8Array(rec.ext[k]); return L.getDocument({data:new Uint8Array(by)}).promise.then(function(ed){ S.ext[k]={doc:ed,bytes:by}; }); }); });
+        return ech.then(function(){
+          if(dur&&dur.pages&&dur.pages.length){ S.pages=dur.pages; S.ann=dur.ann||{}; S.nextId=dur.nextId||(S.pages.length+1); return; }
+          S.pages=[]; S.ann={}; S.nextId=1; var N=pdf.numPages, dim=[], ch=Promise.resolve();
+          for(var i=1;i<=N;i++){ (function(num){ ch=ch.then(function(){ return pdf.getPage(num).then(function(p){ var v=p.getViewport({scale:1}); dim[num]={w:v.width,h:v.height}; }); }); })(i); }
+          return ch.then(function(){ for(var i=1;i<=N;i++) S.pages.push({id:S.nextId++,kind:"orig",src:i,rot:0,w:dim[i].w,h:dim[i].h}); });
+        }).then(function(){ return belgeGoster(); });
+      });
+    });
+  }).catch(function(){ yuk(false); }); }
   function sayGuncelle(){ $("pe-pgtop").textContent=S.pages.length; }
   function hesaplaFit(){ if(!S.pages.length) return Promise.resolve(); var w0=S.pages[0].w||600; var kullan=pagesEl.clientWidth-48; if(kullan<80) kullan=Math.max(80,pagesEl.clientWidth-16); S.scale=Math.max(.2,Math.min(4,kullan/w0)); zoomLbl(); return Promise.resolve(); }
   function sayfaYerlesim(outer,inr,pg){
@@ -20042,15 +20068,15 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   $("pe-pginp").addEventListener("keydown",function(e){ if(e.key==="Enter"){ posaGit((parseInt(this.value,10)||1)-1); this.blur(); } });
   function yenidenCiz(){ zoomLbl(); for(var i=0;i<S.pages.length;i++){ var pg=S.pages[i], cv=S.cvById[pg.id], ovl=S.ovlById[pg.id]; if(cv&&ovl){ var outer=pagesEl.querySelector('.pe-page[data-id="'+pg.id+'"]'), inr=outer&&outer.querySelector(".pe-page-in"); if(outer&&inr) sayfaYerlesim(outer,inr,pg); sayfaCiz(pg,cv,ovl,S.scale); } } }
   /* ===== FAZ 2: SAYFA ISLEMLERI ===== */
-  function sayfalariGuncelle(){ sayGuncelle(); cizTumu(); cizThumbs(); }
+  function sayfalariGuncelle(){ sayGuncelle(); cizTumu(); cizThumbs(); try{ durumKaydet(); }catch(_){} }
   function sayfaDondur(id){ var pos=posOf(id); if(pos<0) return; S.pages[pos].rot=((S.pages[pos].rot||0)+90)%360; var pg=S.pages[pos];
-    var outer=pagesEl.querySelector('.pe-page[data-id="'+id+'"]'), inr=outer&&outer.querySelector(".pe-page-in"); if(outer&&inr){ sayfaYerlesim(outer,inr,pg); } cizThumbs(); }
+    var outer=pagesEl.querySelector('.pe-page[data-id="'+id+'"]'), inr=outer&&outer.querySelector(".pe-page-in"); if(outer&&inr){ sayfaYerlesim(outer,inr,pg); } cizThumbs(); try{ durumKaydet(); }catch(_){} }
   function sayfaSil(id){ var pos=posOf(id); if(pos<0) return; if(S.pages.length<=1){ alert("Son sayfa silinemez."); return; } S.pages.splice(pos,1); delete S.ann[id]; if(S.sel&&String(S.sel.p)===String(id)){ S.sel=null; $("pe-annsil").disabled=true; } sayfalariGuncelle(); }
   function sayfaSirala(fromId,toId){ var fi=posOf(fromId), ti=posOf(toId); if(fi<0||ti<0||fi===ti) return; var it=S.pages.splice(fi,1)[0]; S.pages.splice(ti,0,it); sayfalariGuncelle(); }
   function bosEkle(){ var ref=S.pages[posOf(S.aktifId)]||S.pages[0]||{w:595,h:842}; var pos=posOf(S.aktifId); S.pages.splice((pos<0?S.pages.length:pos+1),0,{id:S.nextId++,kind:"blank",rot:0,w:ref.w,h:ref.h}); sayfalariGuncelle(); }
   async function pdfBirlestir(f){ yuk(true); try{ var buf=await f.arrayBuffer(); var bytes=new Uint8Array(buf.slice(0)); var edoc=await L.getDocument({data:new Uint8Array(buf)}).promise; var key="x"+(S.nextId); S.ext[key]={doc:edoc,bytes:bytes}; var cnt=edoc.numPages;
       for(var i=1;i<=cnt;i++){ var p=await edoc.getPage(i); var v=p.getViewport({scale:1}); S.pages.push({id:S.nextId++,kind:"ext",extKey:key,src:i,rot:0,w:v.width,h:v.height}); }
-      sayfalariGuncelle();
+      sayfalariGuncelle(); try{ pdfKaydet(); }catch(_){}
     }catch(err){ alert("PDF birlestirilemedi: "+((err&&err.message)||err)); } finally{ yuk(false); } }
   $("pe-bos").addEventListener("click",function(){ if(S.pages.length) bosEkle(); });
   $("pe-birlestir").addEventListener("click",function(){ if(S.pages.length) $("pe-merge").click(); });
@@ -20085,6 +20111,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     }
     if(S.arac==="metinduz"){ var gl=S.grp[num]||[]; for(var gi3=0;gi3<gl.length;gi3++){ var g0=gl[gi3]; var rr=el("rect",{x:g0.x,y:g0.y,width:g0.w,height:g0.h,"class":"pe-tbox"+(g0.tis.length>1?" pe-par-box":""),"data-gi":gi3}); ovl.appendChild(rr); } }
     if(S.sel && S.sel.p===num){ var se=ovl.querySelector('[data-i="'+S.sel.i+'"]'); if(se){ try{ var bb=se.getBBox(), pad=Math.max(2,(list[S.sel.i]&&list[S.sel.i].kalin)||2); ovl.appendChild(el("rect",{x:bb.x-pad,y:bb.y-pad,width:bb.width+2*pad,height:bb.height+2*pad,"class":"pe-selbox"})); }catch(_){} } }
+    try{ durumKaydet(); }catch(_){}
   }
   function ptOf(e,ovl){ try{ var p=ovl.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; var m=ovl.getScreenCTM(); if(m) p=p.matrixTransform(m.inverse()); return {x:p.x,y:p.y}; }catch(_){ var r=ovl.getBoundingClientRect(), vb=ovl.viewBox.baseVal; return {x:(e.clientX-r.left)/r.width*vb.width,y:(e.clientY-r.top)/r.height*vb.height}; } }
   function selDegis(ns){ var old=S.sel; S.sel=ns; $("pe-annsil").disabled=!ns; if(old && (!ns||old.p!==ns.p)) annRender(old.p); if(ns) annRender(ns.p); }
@@ -20392,6 +20419,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     finally{ yuk(false); btn.disabled=false; }
   }
   $("pe-indir").addEventListener("click",disaAktar);
+  try{ oturumYukle(); }catch(e){}   // yenilemede son PDF + duzenlemeleri geri yukle (IndexedDB)
 })();
 </script>
 </body></html>'''
