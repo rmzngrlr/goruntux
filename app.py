@@ -19846,7 +19846,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 .pe-thumb.suruk{opacity:.4;}
 .pe-thumb.dropust{outline:2px solid var(--mavi);outline-offset:1px;}
 .pe-pages{flex:1 1 auto;overflow:auto;padding:24px;display:flex;flex-direction:column;align-items:center;gap:20px;scrollbar-gutter:stable;}
-.pe-page{position:relative;}
+.pe-page{position:relative;flex:0 0 auto;}
 .pe-page-in{position:absolute;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.5);transform-origin:center center;}
 .pe-page-in canvas{display:block;}
 .pe-empty{margin:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--dim);text-align:center;padding:30px;}
