@@ -15811,7 +15811,8 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
     var cv=ov.querySelector('.ed-gd-tuval'), ctx=cv.getContext('2d');
     var sar=ov.querySelector('.ed-gd-tuval-sar');
     var yaziInp=ov.querySelector('.ed-gd-yazi-inp');
-    var scale=1, fitMode='height', zoom=1;   // [ÇİZİM ZOOM] fitMode:'height'(contain,varsayılan)|'width'; zoom=kullanıcı çarpanı (yalnız _cz)
+    var _asp0=((opts.cbH||1)/(opts.cbW||1));   // [PDF MOTORU] A4'ten UZUN (aspect>1.5) sayfa -> varsayilan GENISLIGE sigdir (okunur boyut, dikey kaydir); A4/yatay -> tumunu sigdir
+    var scale=1, fitMode=(_asp0>1.5?'width':'height'), zoom=1;   // [ÇİZİM ZOOM] fitMode:'height'(contain,varsayılan)|'width'; zoom=kullanıcı çarpanı (yalnız _cz)
     var _dpr=1, _cw=0, _ch=0;   // [S DPR] cihaz-piksel-oranı + MANTIKSAL canvas boyutu (CSS px); backing store _cw*_dpr -> retina'da keskin çizgi (çizgili defter moiré gider)
 
     function fitScale(){
