@@ -15545,14 +15545,14 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
   };
   function _gdKur(bi, pp, img0, mime, opts){
     opts=opts||{};
-    var _cz=!!opts.cizim, _cizgili=!!opts.cizgili, _kareli=!!opts.kareli, _onKaydet=opts.onKaydet, _gorselKaydet=opts.gorselKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları (_cizgili=çizgili defter, _kareli=kareli defter; karşılıklı dışlar) + görsel-obje önbelleği
+    var _cz=!!opts.cizim, _pdf=!!opts.pdfSayfa, _cizgili=!!opts.cizgili, _kareli=!!opts.kareli, _onKaydet=opts.onKaydet, _gorselKaydet=opts.gorselKaydet, _imgC={};   // [ÇİZİM KAĞIDI] mod bayrakları (_pdf=PDF sayfasi: cizgili/kareli yok + taban opak + margin yok; _cizgili/_kareli defter) + görsel-obje önbelleği
     var _ckPager=!!opts.ckPager, _ckGit=opts.ckGit, _ckSil=opts.ckSil, _ckHedef=opts.ckHedef, _ckIdx=(opts.ckIdx||0), _ckLen=(opts.ckLen||1), _ckDirty=false;   // [ÇİZİM PAGER] çok-sayfa gezinme: sol/sağ ok, son öğede sağ=+ekle; _ckSil=sayfa sil; _ckHedef=birleşik gezinmede prev/next hedef türü (bölüm->kapat+odak)
     // [ÇİZİM SINIRSIZ KAYDIRMA — x_ck_sonsuz] Dikey çizim kağıdı AŞAĞI doğru sınırsız uzayabilir: tuval yüksekliği = _ckSayfa × A4yüksekliği.
     // Çıktı (Word/PDF) her A4 bandını AYRI sayfaya raster-dilimler (tek-sayfa çizim ESKISI GIBI vektör kalır). YALNIZ DİKEY; yatayda tek A4.
     // Bayrak x_ck_sonsuz VARSAYILAN AÇIK (!=='0'); kapatmak için localStorage x_ck_sonsuz='0' (eski tek-A4 davranışı).
     var _ckSayfa=Math.max(1, (opts.ckSayfa|0)||1);   // çizim içerik sayfa sayısı (A4 yüksekliği katı)
     function _ckSonsuzBayrak(){ try{ return localStorage.getItem('x_ck_sonsuz')!=='0'; }catch(e){ return true; } }
-    function _ckSonsuz(){ return !!(_cz && !_yatay && _ckSonsuzBayrak()); }   // sınırsız (çok-sayfa) mod aktif mi
+    function _ckSonsuz(){ return !!(_cz && !_pdf && !_yatay && _ckSonsuzBayrak()); }   // sınırsız (çok-sayfa) mod aktif mi; [PDF MOTORU] PDF sayfasinda KAPALI (sabit boyut)
     function _ckTotH(){ return _ckSonsuz() ? (_ckSayfa*baseH) : baseH; }      // toplam içerik yüksekliği (src px); sonsuz kapalı/yatay -> tek A4
     var _yatay=!!opts.yatay;   // [ÇİZİM YATAY] A4 landscape modu (tuval geniş); çıktıda 90° döndürülüp dikey sayfaya oturur
     function _dondurObjs90(arr, W, H, ccw){   // [YATAY] içerik KONUMLARINI 90° döndür. ccw=false: saat yönü/CW (x,y)->(H-y,x) [KULLANIM: Yatay->Dikey, sol->üst]. ccw=true: saat-tersi/CCW (x,y)->(y,W-x) [KULLANIM: Dikey->Yatay, üst->sol = kullanıcı mantığı]. İki yön birbirinin TAM tersi -> gidiş-dönüş (D->Y->D) KAYIPSIZ (şekil çizdiği yere birebir döner). Dikdörtgen/elips: en<->boy swap. Görsel/metin: YALNIZ konum (editörde dik kalır; çıktıda döner). Kalem: tüm noktalar.
@@ -15643,7 +15643,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       +'<div class="ed-gd-box">'
       +'  <div class="ed-gd-ust">'
       +'    <div class="ed-gd-tools">'+tbBtns+'</div>'
-      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg></button><button type="button" class="ed-gd-mini ed-gd-ckpdf" title="PDF sayfasından görsel yakala (kırp)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12H5z"/><path d="M12 2.5v3h3"/><path d="M7.5 11h5M7.5 13.5h5"/></svg></button><button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3.5" y1="6" x2="16.5" y2="6"/><line x1="3.5" y1="10" x2="16.5" y2="10"/><line x1="3.5" y1="14" x2="16.5" y2="14"/></svg></button><button type="button" class="ed-gd-mini ed-gd-ckkareli'+(_kareli?' aktif':'')+'" title="Kareli defter formu aç/kapa"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3.5" y1="7.5" x2="16.5" y2="7.5"/><line x1="3.5" y1="12.5" x2="16.5" y2="12.5"/><line x1="7.5" y1="3.5" x2="7.5" y2="16.5"/><line x1="12.5" y1="3.5" x2="12.5" y2="16.5"/></svg></button></div>'):'')
+      +(_cz?('<div class="ed-gd-tools ed-gd-ckgrp"><button type="button" class="ed-gd-mini ed-gd-ckgorsel" title="Çizim kağıdına görsel ekle (istediğin yere)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="1.5"/><circle cx="7.5" cy="8.5" r="1.3"/><path d="M4 14l4-3.5 3 2.5 3-2.5 2 2"/></svg></button><button type="button" class="ed-gd-mini ed-gd-ckpdf" title="PDF sayfasından görsel yakala (kırp)"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h7l3 3v12H5z"/><path d="M12 2.5v3h3"/><path d="M7.5 11h5M7.5 13.5h5"/></svg></button>'+(_pdf?'':'<button type="button" class="ed-gd-mini ed-gd-ckcizgili'+(_cizgili?' aktif':'')+'" title="Çizgili defter formu aç/kapa"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="3.5" y1="6" x2="16.5" y2="6"/><line x1="3.5" y1="10" x2="16.5" y2="10"/><line x1="3.5" y1="14" x2="16.5" y2="14"/></svg></button><button type="button" class="ed-gd-mini ed-gd-ckkareli'+(_kareli?' aktif':'')+'" title="Kareli defter formu aç/kapa"><svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="3.5" y1="7.5" x2="16.5" y2="7.5"/><line x1="3.5" y1="12.5" x2="16.5" y2="12.5"/><line x1="7.5" y1="3.5" x2="7.5" y2="16.5"/><line x1="12.5" y1="3.5" x2="12.5" y2="16.5"/></svg></button>')+'</div>'):'')
       +'    <div class="ed-gd-stil">'
       +'      <label class="ed-gd-renk" title="Renk"><input type="color" class="ed-gd-renk-inp" value="'+renk+'"></label>'
       +(_cz?('<button type="button" class="ed-gd-tool ed-gd-gorseldz" title="Görseli düzenle (kırp/yazı/ok/dikdörtgen/kalem)" style="display:none;"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 3.5l-4 4M16 16l-.9-3.6-8.6-8.6-3.1 3.1 8.6 8.6z"/></svg></button>'):'')   // [ÇİZİM GÖRSEL DÜZENLE] renk paletinin hemen sağında, ikon-only; gömülü görsel seçiliyken görünür
@@ -16045,7 +16045,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       var pr=(baseH>0?baseW/baseH:0.707), pw, ph; if(TW/TH > pr){ ph=TH; pw=TH*pr; } else { pw=TW; ph=TW/pr; }
       var ox=(TW-pw)/2, oy=(TH-ph)/2, st=(baseW>0?pw/baseW:1);
       c.save(); _rrPath(c,ox,oy,pw,ph,3); c.clip();
-      if(_cz){ c.fillStyle=_ckZeminRenk(); c.fillRect(ox,oy,pw,ph); } else if(base && base.width){ try{ c.drawImage(base,ox,oy,pw,ph); }catch(_){ c.fillStyle='#ccc'; c.fillRect(ox,oy,pw,ph); } } else { c.fillStyle='#fff'; c.fillRect(ox,oy,pw,ph); }
+      if(_cz && !_pdf){ c.fillStyle=_ckZeminRenk(); c.fillRect(ox,oy,pw,ph); } else if(base && base.width){ try{ c.drawImage(base,ox,oy,pw,ph); }catch(_){ c.fillStyle='#ccc'; c.fillRect(ox,oy,pw,ph); } } else { c.fillStyle='#fff'; c.fillRect(ox,oy,pw,ph); }
       try{ _katThumbObj(c,o,ox,oy,st); }catch(_){}
       c.restore();
       c.strokeStyle=(_ckKoyuMu()?'rgba(255,255,255,0.22)':'rgba(120,130,145,0.5)'); c.lineWidth=1; _rrPath(c,ox+0.5,oy+0.5,pw-1,ph-1,3); c.stroke(); }
@@ -16079,13 +16079,13 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       olcekleGerek();
       ctx.setTransform(_dpr,0,0,_dpr,0,0);   // [S DPR] mantıksal koordinatta çiz (S(v)=v*scale aynen); bağlam cihaz pikseline eşler -> keskin
       ctx.clearRect(0,0,_cw,_ch);
-      if(_cz){ ctx.fillStyle=_ckZeminRenk(); ctx.fillRect(0,0,_cw,_ch); }   // [ÇİZİM TEMA] A4 zemini EKRANDA temaya göre (koyu/açık); KAYDET'te şeffaf (çıktı beyaz)
-      else ctx.drawImage(base,0,0,_cw,_ch);
+      if(_cz && !_pdf){ ctx.fillStyle=_ckZeminRenk(); ctx.fillRect(0,0,_cw,_ch); }   // [ÇİZİM TEMA] A4 zemini EKRANDA temaya göre (koyu/açık); KAYDET'te şeffaf (çıktı beyaz)
+      else ctx.drawImage(base,0,0,_cw,_ch);   // [PDF MOTORU] PDF sayfasinda zemin = render edilmis sayfa (gorsel dali)
       if(_cz && _ckSonsuz()){ _ckSonsuzGuide(ctx); }   // [SINIRSIZ] çok-sayfa: sürekli çizgili/kareli + sayfa-sınırı + "Sayfa N"
       else {
         if(_cz && _cizgili) _ckCizgiCiz(ctx, _cw, _ch);   // [ÇİZİM KAĞIDI] çizgili defter (dinamik, taban beyaz)
         if(_cz && _kareli) _ckKareliCiz(ctx, _cw, _ch);   // [ÇİZİM KAĞIDI] kareli defter (dinamik, taban beyaz)
-        if(_cz) _ckMarginCiz(ctx, _cw, _ch);   // [ÇİZİM KAĞIDI] Word-sayfası margin kılavuzu (ekran-only)
+        if(_cz && !_pdf) _ckMarginCiz(ctx, _cw, _ch);   // [ÇİZİM KAĞIDI] Word-sayfası margin kılavuzu (ekran-only); [PDF MOTORU] PDF sayfasinda YOK
       }
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       for(var _si=0;_si<secili.length;_si++){ var _so=secili[_si]; if(_so.t==='ok' && secili.length===1) continue;   // [BOYUTLANDIR] tek seçili çizgi/ok: kesikli kutu YOK (yalnız 2 uç noktası)
@@ -16960,12 +16960,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
     function _kaydetParca(auto){   // [ÇİZİM PAGER] render + parçaya yaz (KAPATMAZ). kaydet() + _ckCommit() + OTO-KAYIT bunu kullanır. auto=true -> onKaydet rapor-undo/yeniden-çizim ATLAR (sessiz oto-kayıt).
       if(yaziInp.style.display!=='none' && !auto) _yaziBitir();   // [YAZMA ALANI FIX] OTO-KAYIT'ta yazı alanını KAPATMA (kullanıcı yazarken 1sn sonra kapanıyordu); metin canlı o.metin'den çizilir -> rasterde zaten var
       var c=document.createElement('canvas'); c.width=baseW; c.height=baseH; var x=c.getContext('2d');
-      if(!_cz) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF; görselde taban çizilir.
+      if(!_cz || _pdf) x.drawImage(base,0,0,baseW,baseH);   // [ÇİZİM TEMA] çizimde zemin ŞEFFAF; görselde/[PDF MOTORU]PDF sayfasinda taban (sayfa) cizilir.
       var _os=scale, _oc=ctx; scale=1; ctx=x;   // objeleri NATIVE çözünürlükte çiz (scale=1); b64 ekran/tema-uyumlu renk.
       for(var i=0;i<objs.length;i++) cizObj(objs[i]);
       scale=_os; ctx=_oc;
       var _expC=c;
-      if(_cz){ var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // içerik-alanı kırp (şeffaf kalır)
+      if(_cz && !_pdf){ var m=_ckMargin(baseW,baseH), cw=baseW-2*m.mx, ch=baseH-2*m.my;   // içerik-alanı kırp (şeffaf kalır); [PDF MOTORU] PDF sayfasinda KIRPMA YOK (tam sayfa)
         if(cw>10 && ch>10){ var c2=document.createElement('canvas'); c2.width=cw; c2.height=ch; var x2=c2.getContext('2d'); x2.drawImage(c, m.mx, m.my, cw, ch, 0, 0, cw, ch); _expC=c2; }
       }
       var du=_expC.toDataURL('image/png'), ci=du.indexOf(',');
@@ -17370,7 +17370,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
     }
     var im=new Image();
     im.onload=function(){ try{ _gdKur(bi, pp, im, 'image/png', {
-      cizim:true, cizgili:!!parca.cizgili, kareli:!!parca.kareli, yatay:!!parca.yatay, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH, ckSayfa:(parca.ckSayfa|0)||1,
+      cizim:true, pdfSayfa:!!parca.pdfSayfa, cizgili:!!parca.cizgili, kareli:!!parca.kareli, yatay:!!parca.yatay, objs:(parca.cizimObjeleri||[]), cbW:cbW, cbH:cbH, ckSayfa:(parca.ckSayfa|0)||1,
       ckPager:true, ckIdx:_idx, ckLen:_L.length, ckGit:_ckGit, ckSil:_ckSil, ckHedef:_ckHedef,
       onKaydet:function(b64, objs2, cizgili2, yatay2, cbW2, cbH2, auto, kareli2, ckSayfa2){ if(!auto){ try{ XE._pushUndo(); }catch(_){} }   // [OTO-KAYIT] auto -> rapor undo yığınını KİRLETME; kareli2=8. param; [SINIRSIZ] ckSayfa2=9. param (içerik A4 sayfa sayısı)
         // Rebuild olmuş olabilir -> çizim parçasını link ile YENİDEN BUL (bayat referans kullanma).
@@ -17385,7 +17385,7 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
     }); }catch(e){ try{ if(window.showToast) showToast('Çizim kağıdı açılamadı.','error'); }catch(_){} }
       try{ var _pe=XE._ckEski; if(_pe){ XE._ckEski=null; try{ clearTimeout(_pe.t); }catch(_){} requestAnimationFrame(function(){ requestAnimationFrame(function(){ try{ _pe.kapat(); }catch(_){} }); }); } }catch(_){}   // [PAGER GEÇİŞ ÖRTÜŞME] yeni overlay boyandı -> ESKİ (örtüşen) overlay'i kaldır (çift rAF = yeni ilk kare garanti -> göz kırpma yok)
     };
-    im.src='data:image/png;base64,'+_ckBosPng(cbW,cbH,false);   // beyaz A4 taban; çizgi DİNAMİK (_gdKur ciz)
+    im.src=(parca.pdfSayfa && parca.b64) ? ('data:'+(parca.mime||'image/png')+';base64,'+parca.b64) : ('data:image/png;base64,'+_ckBosPng(cbW,cbH,false));   // [PDF MOTORU] PDF sayfasinda taban = render edilmis sayfa; yoksa beyaz A4 (cizgi DINAMIK _gdKur ciz)
   };
 
   // #2: Manuel bloğu sürükleyerek başka konuma taşı (afterUid güncelle).
