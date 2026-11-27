@@ -11792,6 +11792,23 @@ def pdfjs_serve(fn):
     except Exception:
         return ('', 404)
 
+# [PDF EDITOR] self-host kutuphaneler: pdf-lib (yazma/export) + fontkit (TTF goml) + DejaVuSans (Turkce metin).
+# Yalniz /pdfeditor Faz 1 (indir) kullanir; lazy-load (export aninda fetch). pdf.js gibi whitelist + uzun onbellek.
+_VENDOR_MIME = {'pdf-lib.min.js': 'application/javascript', 'fontkit.umd.min.js': 'application/javascript', 'font.ttf': 'font/ttf'}
+@app.route('/vendor/<path:fn>', methods=['GET'])
+def vendor_serve(fn):
+    mt = _VENDOR_MIME.get(fn)
+    if not mt:
+        return ('', 404)
+    try:
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor', fn)
+        resp = send_file(p, mimetype=mt)
+        try: resp.headers['Cache-Control'] = 'public, max-age=86400'
+        except Exception: pass
+        return resp
+    except Exception:
+        return ('', 404)
+
 
 # ----------------- KAYITLI RAPORLAR (yerel, coklu, 1 hafta) -----------------
 # Kullanici istegi: "Kaydet ve Indir" ile uretilen rapor hem PC'ye iner HEM de panelde
@@ -19831,19 +19848,55 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 .pe-empty p{margin:0;font-size:13px;}
 .pe-yuk{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(10,14,20,.72);z-index:50;color:var(--ink);font-weight:600;font-size:15px;}
 .pe-yuk.acik{display:flex;}
+/* [FAZ 1] arac cubugu + duzenleme overlay + annotasyonlar */
+.pe-tools{flex:0 0 auto;display:flex;align-items:center;gap:5px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--bd);flex-wrap:wrap;}
+.pe-tools.gizli{display:none;}
+.pe-tool{border:1px solid var(--bd);background:var(--panel2);color:var(--ink);width:34px;height:34px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}
+.pe-tool:hover{border-color:var(--mavi);}
+.pe-tool.aktif{background:var(--mavi);border-color:var(--mavi);color:#fff;}
+.pe-tool:disabled{opacity:.4;cursor:default;}
+.pe-tool svg{width:18px;height:18px;display:block;}
+.pe-ayir{width:1px;height:22px;background:var(--bd);margin:0 3px;flex:0 0 auto;}
+.pe-renk{width:30px;height:30px;border:1px solid var(--bd);border-radius:7px;padding:2px;background:var(--panel2);cursor:pointer;flex:0 0 auto;}
+.pe-kalin{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--dim);white-space:nowrap;}
+.pe-kalin input[type=range]{width:62px;}
+.pe-sz{width:46px;background:#0e1621;border:1px solid var(--bd);color:var(--ink);border-radius:6px;text-align:center;font-size:12px;padding:4px 2px;}
+.pe-ovl{position:absolute;left:0;top:0;width:100%;height:100%;z-index:3;}
+.pe-page.pe-cizmod .pe-ovl{cursor:crosshair;}
+.pe-ovl .pe-selbox{fill:none;stroke:#1d9bf0;stroke-width:1.3;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none;}
+.pe-txted{position:absolute;z-index:40;background:rgba(255,255,255,.97);color:#111;border:1px solid var(--mavi);border-radius:3px;outline:none;padding:1px 4px;font-family:Arial,sans-serif;line-height:1.15;white-space:pre;min-width:30px;}
 @media(max-width:640px){.pe-thumbs.acik{display:none;}.pe-pages{padding:12px;}.pe-fname{display:none;}}
 </style></head>
 <body>
 <div class="pe-top">
   <span class="pe-logo"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 10.5V7.5h3"/><path d="M13.5 7.5h3v3"/><path d="M16.5 13.5v3h-3"/><path d="M10.5 16.5H7.5v-3"/><path d="M10 10l4 4"/><path d="M14 10l-4 4"/></svg></span>PDF Editor</span>
-  <span class="pe-faz">Faz 0 - goruntuleyici</span>
+  <span class="pe-faz">Faz 1 - duzenleyici</span>
   <button class="pe-btn pri" id="pe-ac"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V3"/><path d="M6 6.5l4-4 4 4"/><path d="M4 16h12"/></svg>PDF Ac</button>
   <span class="pe-fname" id="pe-fname"></span>
   <span class="pe-sp"></span>
   <span class="pe-grp" id="pe-pgnav" style="display:none;"><button class="pe-ic" id="pe-prev" title="Onceki sayfa">&#8249;</button><span class="pe-pgno"><input id="pe-pginp" type="text" value="1" inputmode="numeric"> / <b id="pe-pgtop">1</b></span><button class="pe-ic" id="pe-next" title="Sonraki sayfa">&#8250;</button></span>
   <span class="pe-grp" id="pe-zoomgrp" style="display:none;"><button class="pe-ic" id="pe-zout" title="Uzaklas">&#8722;</button><span class="pe-zoom" id="pe-zlbl">100%</span><button class="pe-ic" id="pe-zin" title="Yakinlas">+</button><button class="pe-ic" id="pe-fit" title="Sigdir">&#10530;</button></span>
-  <button class="pe-btn" id="pe-indir" disabled title="Faz 1 ile gelecek"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg>Indir</button>
+  <button class="pe-btn" id="pe-indir" disabled title="Duzenlenmis PDF olarak indir"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v10"/><path d="M6 9.5l4 3.5 4-3.5"/><path d="M4.5 16.5h11"/></svg>Indir</button>
 </div>
+<div class="pe-tools gizli" id="pe-tools">
+  <button class="pe-tool aktif" data-arac="sec" title="Sec / tasi"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l15 9-6 1.4L10.6 20 5 3z"/></svg></button>
+  <button class="pe-tool" data-arac="metin" title="Metin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></button>
+  <button class="pe-tool" data-arac="kalem" title="Serbest kalem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg></button>
+  <button class="pe-tool" data-arac="vurgu" title="Vurgula"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 16l9-9 3 3-9 9H6v-3z"/></svg></button>
+  <button class="pe-tool" data-arac="dikdortgen" title="Dikdortgen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg></button>
+  <button class="pe-tool" data-arac="elips" title="Elips"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="8" ry="6"/></svg></button>
+  <button class="pe-tool" data-arac="cizgi" title="Cizgi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 19L19 5"/></svg></button>
+  <button class="pe-tool" data-arac="ok" title="Ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19L19 5"/><path d="M11 5h8v8"/></svg></button>
+  <button class="pe-tool" data-arac="whiteout" title="Beyaz kapat (uzerini ort)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="7" width="16" height="10" rx="1.5" fill="#fff"/></svg></button>
+  <button class="pe-tool" data-arac="gorsel" title="Gorsel ekle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M5 17l4-4 3 2.5 3.5-3.5 3.5 3.5"/></svg></button>
+  <span class="pe-ayir"></span>
+  <input type="color" class="pe-renk" id="pe-renk" value="#e53935" title="Renk">
+  <span class="pe-kalin">Kalinlik<input type="range" id="pe-kalin" min="1" max="12" value="2"></span>
+  <span class="pe-kalin">Punto<input type="number" class="pe-sz" id="pe-sz" min="8" max="96" value="18"></span>
+  <span class="pe-ayir"></span>
+  <button class="pe-tool" id="pe-annsil" title="Secili ogeyi sil" disabled><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 6h11"/><path d="M8 6V4.5h4V6"/><path d="M6 6l.7 10h6.6L14 6"/><path d="M8.6 9v4M11.4 9v4"/></svg></button>
+</div>
+<input type="file" id="pe-img" accept="image/*" hidden>
 <div class="pe-main">
   <aside class="pe-thumbs" id="pe-thumbs"></aside>
   <div class="pe-pages" id="pe-pages">
@@ -19856,13 +19909,14 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe1 Faz0";
+  var PE_BUILD="2026-11-27pe2 Faz1";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
   if(!L){ $("pe-empty").innerHTML='<div class="pe-drop"><h2>PDF motoru yuklenemedi</h2><p>Sayfayi yenileyin.</p></div>'; return; }
   try{ L.GlobalWorkerOptions.workerSrc="/pdfjs/pdf.worker.min.js"; }catch(e){}
-  var S={doc:null,n:0,scale:1.0,fit:true,bytes:null,fname:"",cv:[]};
+  var S={doc:null,n:0,scale:1.0,fit:true,bytes:null,fname:"",cv:[],ovl:[],pt:{},ann:{},arac:"sec",renk:"#e53935",kalin:2,punto:18,sel:null};
+  var SVGNS="http://www.w3.org/2000/svg";
   var pagesEl=$("pe-pages"), thumbsEl=$("pe-thumbs"), emptyEl=$("pe-empty");
   function yuk(on){ $("pe-yuk").classList.toggle("acik",!!on); }
   function dosyaAc(){ $("pe-file").click(); }
@@ -19884,6 +19938,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
           S.doc=pdf; S.n=pdf.numPages; S.fit=true;
           emptyEl.style.display="none";
           thumbsEl.classList.add("acik");
+          S.ann={}; S.sel=null; $("pe-tools").classList.remove("gizli"); $("pe-indir").disabled=false;
           $("pe-pgnav").style.display=""; $("pe-zoomgrp").style.display="";
           $("pe-pgtop").textContent=S.n; $("pe-pginp").value="1";
           hesaplaFit().then(function(){ cizTumu(); cizThumbs(); yuk(false); });
@@ -19905,22 +19960,26 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   function zoomLbl(){ $("pe-zlbl").textContent=Math.round(S.scale*100)+"%"; }
   function cizTumu(){
     [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(x){ x.remove(); });
-    S.cv=[];
+    S.cv=[]; S.ovl=[];
     var zinc=Promise.resolve();
     for(var i=1;i<=S.n;i++){ (function(num){
       var wrap=document.createElement("div"); wrap.className="pe-page"; wrap.setAttribute("data-p",num);
-      var cv=document.createElement("canvas"); wrap.appendChild(cv); pagesEl.appendChild(wrap); S.cv[num]=cv;
+      var cv=document.createElement("canvas"); wrap.appendChild(cv);
+      var ovl=document.createElementNS(SVGNS,"svg"); ovl.setAttribute("class","pe-ovl"); ovl.setAttribute("data-p",num); wrap.appendChild(ovl); S.ovl[num]=ovl; ovlOlaylar(ovl,num);
+      pagesEl.appendChild(wrap); S.cv[num]=cv;
       zinc=zinc.then(function(){ return cizSayfa(num,cv,S.scale); });
     })(i); }
-    izleKur();
+    izleKur(); aracUygula();
   }
   function cizSayfa(num,cv,scale){
     return S.doc.getPage(num).then(function(p){
+      var vp1=p.getViewport({scale:1}); S.pt[num]={w:vp1.width,h:vp1.height};
+      if(S.ovl[num]) S.ovl[num].setAttribute("viewBox","0 0 "+vp1.width+" "+vp1.height);
       var dpr=Math.min(2,window.devicePixelRatio||1);
       var vp=p.getViewport({scale:scale*dpr});
       cv.width=Math.round(vp.width); cv.height=Math.round(vp.height);
       cv.style.width=Math.round(vp.width/dpr)+"px"; cv.style.height=Math.round(vp.height/dpr)+"px";
-      return p.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+      return p.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise.then(function(){ annRender(num); });
     });
   }
   function cizThumbs(){
@@ -19945,6 +20004,133 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   $("pe-zout").addEventListener("click",function(){ if(!S.doc) return; S.fit=false; S.scale=Math.max(.2,S.scale/1.2); yenidenCiz(); });
   $("pe-fit").addEventListener("click",function(){ if(!S.doc) return; S.fit=true; hesaplaFit().then(yenidenCiz); });
   var rt; window.addEventListener("resize",function(){ clearTimeout(rt); rt=setTimeout(function(){ if(S.doc&&S.fit) hesaplaFit().then(yenidenCiz); },200); });
+
+  /* ============== FAZ 1: DUZENLEME OVERLAY + pdf-lib EXPORT ============== */
+  var gorselBekle=null, _libYuk=null;
+  function el(tag,attrs){ var e=document.createElementNS(SVGNS,tag); for(var k in attrs) e.setAttribute(k,attrs[k]); return e; }
+  function ptsToD(pts){ if(!pts.length) return ""; var d="M "+pts[0][0]+" "+pts[0][1]; for(var i=1;i<pts.length;i++) d+=" L "+pts[i][0]+" "+pts[i][1]; return d; }
+  function okBasi(x1,y1,x2,y2,w){ var ang=Math.atan2(y2-y1,x2-x1), L=6+(w||2)*2.2, a1=ang-2.6, a2=ang+2.6; var d="M "+x2+" "+y2+" L "+(x2+L*Math.cos(a1))+" "+(y2+L*Math.sin(a1))+" M "+x2+" "+y2+" L "+(x2+L*Math.cos(a2))+" "+(y2+L*Math.sin(a2)); return el("path",{d:d,fill:"none","stroke-width":w,"stroke-linecap":"round"}); }
+  function annRender(num){
+    var ovl=S.ovl[num]; if(!ovl) return;
+    while(ovl.firstChild) ovl.removeChild(ovl.firstChild);
+    var list=S.ann[num]||[], sec=(S.arac==="sec");
+    for(var i=0;i<list.length;i++){ var a=list[i], g=null;
+      if(a.t==="rect"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:"none",stroke:a.renk,"stroke-width":a.kalin}); }
+      else if(a.t==="highlight"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:a.renk,"fill-opacity":"0.33",stroke:"none"}); }
+      else if(a.t==="whiteout"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:"#ffffff",stroke:"none"}); }
+      else if(a.t==="ellipse"){ g=el("ellipse",{cx:a.x+a.w/2,cy:a.y+a.h/2,rx:Math.abs(a.w/2),ry:Math.abs(a.h/2),fill:"none",stroke:a.renk,"stroke-width":a.kalin}); }
+      else if(a.t==="line"||a.t==="ok"){ g=el("line",{x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2,stroke:a.renk,"stroke-width":a.kalin,"stroke-linecap":"round"}); }
+      else if(a.t==="path"){ g=el("path",{d:a.d,fill:"none",stroke:a.renk,"stroke-width":a.kalin,"stroke-linecap":"round","stroke-linejoin":"round"}); }
+      else if(a.t==="text"){ g=el("text",{x:a.x,y:a.y+a.size*0.8,"font-size":a.size,fill:a.renk,"font-family":"Arial, sans-serif"}); g.textContent=a.text; }
+      else if(a.t==="image"){ g=el("image",{x:a.x,y:a.y,width:a.w,height:a.h}); try{ g.setAttribute("href",a.src); }catch(_){} try{ g.setAttributeNS("http://www.w3.org/1999/xlink","href",a.src); }catch(_){} }
+      if(!g) continue;
+      g.setAttribute("data-i",i); g.style.pointerEvents=sec?"auto":"none";
+      ovl.appendChild(g);
+      if(a.t==="ok"){ var ah=okBasi(a.x1,a.y1,a.x2,a.y2,a.kalin); ah.setAttribute("stroke",a.renk); ah.style.pointerEvents="none"; ovl.appendChild(ah); }
+    }
+    if(S.sel && S.sel.p===num){ var se=ovl.querySelector('[data-i="'+S.sel.i+'"]'); if(se){ try{ var bb=se.getBBox(), pad=Math.max(2,(list[S.sel.i]&&list[S.sel.i].kalin)||2); ovl.appendChild(el("rect",{x:bb.x-pad,y:bb.y-pad,width:bb.width+2*pad,height:bb.height+2*pad,"class":"pe-selbox"})); }catch(_){} } }
+  }
+  function ptOf(e,ovl){ try{ var p=ovl.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; var m=ovl.getScreenCTM(); if(m) p=p.matrixTransform(m.inverse()); return {x:p.x,y:p.y}; }catch(_){ var r=ovl.getBoundingClientRect(), vb=ovl.viewBox.baseVal; return {x:(e.clientX-r.left)/r.width*vb.width,y:(e.clientY-r.top)/r.height*vb.height}; } }
+  function selDegis(ns){ var old=S.sel; S.sel=ns; $("pe-annsil").disabled=!ns; if(old && (!ns||old.p!==ns.p)) annRender(old.p); if(ns) annRender(ns.p); }
+  function normWH(a){ if(a.w<0){ a.x+=a.w; a.w=-a.w; } if(a.h<0){ a.y+=a.h; a.h=-a.h; } }
+  function yeniAnn(tool,pt){ var r=S.renk,k=S.kalin;
+    if(tool==="kalem") return {t:"path",renk:r,kalin:k,_pts:[[pt.x,pt.y]],d:"M "+pt.x+" "+pt.y};
+    if(tool==="dikdortgen") return {t:"rect",x:pt.x,y:pt.y,w:0,h:0,renk:r,kalin:k};
+    if(tool==="elips") return {t:"ellipse",x:pt.x,y:pt.y,w:0,h:0,renk:r,kalin:k};
+    if(tool==="cizgi") return {t:"line",x1:pt.x,y1:pt.y,x2:pt.x,y2:pt.y,renk:r,kalin:k};
+    if(tool==="ok") return {t:"ok",x1:pt.x,y1:pt.y,x2:pt.x,y2:pt.y,renk:r,kalin:k};
+    if(tool==="vurgu") return {t:"highlight",x:pt.x,y:pt.y,w:0,h:0,renk:r};
+    if(tool==="whiteout") return {t:"whiteout",x:pt.x,y:pt.y,w:0,h:0};
+    return null; }
+  function guncelleYeni(a,s,pt){ if(a.t==="path"){ a._pts.push([pt.x,pt.y]); a.d+=" L "+pt.x+" "+pt.y; } else if(a.t==="line"||a.t==="ok"){ a.x2=pt.x; a.y2=pt.y; } else { a.x=Math.min(s.x,pt.x); a.y=Math.min(s.y,pt.y); a.w=Math.abs(pt.x-s.x); a.h=Math.abs(pt.y-s.y); } }
+  function tasiAnn(a,snap,dx,dy){ if(a.t==="line"||a.t==="ok"){ a.x1=snap.x1+dx; a.y1=snap.y1+dy; a.x2=snap.x2+dx; a.y2=snap.y2+dy; } else if(a.t==="path"){ a._pts=snap._pts.map(function(p){return [p[0]+dx,p[1]+dy];}); a.d=ptsToD(a._pts); } else { a.x=snap.x+dx; a.y=snap.y+dy; } }
+  function ovlOlaylar(ovl,num){
+    var drag=null;
+    ovl.addEventListener("pointerdown",function(e){
+      if(!S.doc) return; if(e.button&&e.button!==0) return;
+      var pt=ptOf(e,ovl);
+      if(S.arac==="sec"){ var ti=e.target&&e.target.getAttribute&&e.target.getAttribute("data-i");
+        if(ti!=null){ selDegis({p:num,i:+ti}); var a0=(S.ann[num]||[])[+ti]; drag={mode:"move",s:pt,a:a0,snap:JSON.parse(JSON.stringify(a0))}; try{ ovl.setPointerCapture(e.pointerId); }catch(_){} }
+        else selDegis(null);
+        return; }
+      if(S.arac==="metin"){ metinEkle(num,pt,e); return; }
+      if(S.arac==="gorsel"){ gorselBekle={p:num,pt:pt}; $("pe-img").click(); return; }
+      e.preventDefault(); var a=yeniAnn(S.arac,pt); if(!a) return;
+      if(!S.ann[num]) S.ann[num]=[]; S.ann[num].push(a);
+      drag={mode:"yeni",s:pt,a:a}; S.sel={p:num,i:S.ann[num].length-1}; $("pe-annsil").disabled=false;
+      try{ ovl.setPointerCapture(e.pointerId); }catch(_){} annRender(num);
+    });
+    ovl.addEventListener("pointermove",function(e){ if(!drag) return; var pt=ptOf(e,ovl);
+      if(drag.mode==="yeni"){ guncelleYeni(drag.a,drag.s,pt); annRender(num); }
+      else { var dx=pt.x-drag.s.x, dy=pt.y-drag.s.y; tasiAnn(drag.a,drag.snap,dx,dy); annRender(num); } });
+    function bitir(){ if(!drag) return;
+      if(drag.mode==="yeni"){ var a=drag.a, kck=false;
+        if(a.t==="path") kck=(a._pts.length<2);
+        else if(a.t==="line"||a.t==="ok") kck=(Math.abs(a.x2-a.x1)<2&&Math.abs(a.y2-a.y1)<2);
+        else if(a.w!=null){ kck=(a.w<3&&a.h<3); }
+        if(kck){ var arr=S.ann[num], ix=arr.indexOf(a); if(ix>=0) arr.splice(ix,1); S.sel=null; $("pe-annsil").disabled=true; }
+        annRender(num);
+      }
+      drag=null; }
+    ovl.addEventListener("pointerup",bitir); ovl.addEventListener("pointercancel",bitir);
+  }
+  function metinEkle(num,pt,e){
+    var wrap=S.ovl[num].parentNode, pr=wrap.getBoundingClientRect();
+    var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
+    inp.style.left=(e.clientX-pr.left)+"px"; inp.style.top=(e.clientY-pr.top)+"px"; inp.style.fontSize=(S.punto*S.scale)+"px"; inp.style.color=S.renk;
+    wrap.appendChild(inp); setTimeout(function(){ inp.focus(); },0);
+    var bitti=false;
+    function commit(){ if(bitti) return; bitti=true; var txt=(inp.textContent||"").replace(/ /g," ").trim();
+      if(txt){ if(!S.ann[num]) S.ann[num]=[]; S.ann[num].push({t:"text",x:pt.x,y:pt.y,text:txt,size:S.punto,renk:S.renk}); annRender(num); }
+      if(inp.parentNode) inp.parentNode.removeChild(inp); }
+    inp.addEventListener("blur",commit);
+    inp.addEventListener("keydown",function(ev){ ev.stopPropagation(); if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); inp.blur(); } else if(ev.key==="Escape"){ inp.textContent=""; inp.blur(); } });
+  }
+  $("pe-img").addEventListener("change",function(e){ var f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f||!gorselBekle) return; var num=gorselBekle.p, pt=gorselBekle.pt; gorselBekle=null;
+    var fr=new FileReader(); fr.onload=function(){ var img=new Image(); img.onload=function(){ var maxW=Math.min((S.pt[num]&&S.pt[num].w||400)*0.5,220), sc=maxW/img.width, w=img.width*sc, h=img.height*sc; if(!S.ann[num]) S.ann[num]=[]; S.ann[num].push({t:"image",x:pt.x,y:pt.y,w:w,h:h,src:fr.result}); annRender(num); }; img.src=fr.result; }; fr.readAsDataURL(f); });
+  function aracUygula(){ [].slice.call(document.querySelectorAll(".pe-tool[data-arac]")).forEach(function(b){ b.classList.toggle("aktif",b.getAttribute("data-arac")===S.arac); }); [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(pg){ pg.classList.toggle("pe-cizmod",S.arac!=="sec"); }); for(var i=1;i<=S.n;i++){ if(S.ovl[i]) annRender(i); } }
+  [].slice.call(document.querySelectorAll(".pe-tool[data-arac]")).forEach(function(b){ b.addEventListener("click",function(){ S.arac=b.getAttribute("data-arac"); if(S.arac!=="sec") selDegis(null); aracUygula(); }); });
+  $("pe-renk").addEventListener("input",function(){ S.renk=this.value; if(S.sel){ var a=(S.ann[S.sel.p]||[])[S.sel.i]; if(a&&a.t!=="whiteout"&&a.t!=="image"){ a.renk=this.value; annRender(S.sel.p); } } });
+  $("pe-kalin").addEventListener("input",function(){ S.kalin=+this.value; if(S.sel){ var a=(S.ann[S.sel.p]||[])[S.sel.i]; if(a&&a.kalin!=null){ a.kalin=+this.value; annRender(S.sel.p); } } });
+  $("pe-sz").addEventListener("input",function(){ S.punto=Math.max(6,+this.value||18); if(S.sel){ var a=(S.ann[S.sel.p]||[])[S.sel.i]; if(a&&a.t==="text"){ a.size=S.punto; annRender(S.sel.p); } } });
+  function annSil(){ if(!S.sel) return; var arr=S.ann[S.sel.p]; if(arr&&arr[S.sel.i]!=null) arr.splice(S.sel.i,1); var p=S.sel.p; S.sel=null; $("pe-annsil").disabled=true; annRender(p); }
+  $("pe-annsil").addEventListener("click",annSil);
+  document.addEventListener("keydown",function(e){ if((e.key==="Delete"||e.key==="Backspace")&&S.sel){ var ae=document.activeElement; if(ae&&(ae.isContentEditable||ae.tagName==="INPUT")) return; e.preventDefault(); annSil(); } });
+
+  function libYukle(){ if(_libYuk) return _libYuk; _libYuk=new Promise(function(res,rej){ var sr=["/vendor/pdf-lib.min.js","/vendor/fontkit.umd.min.js"], i=0; (function nx(){ if(i>=sr.length){ res(); return; } var s=document.createElement("script"); s.src=sr[i++]; s.onload=nx; s.onerror=function(){ rej(new Error("kutuphane yuklenemedi")); }; document.head.appendChild(s); })(); }); return _libYuk; }
+  function hex2rgb(h){ h=(h||"#000").replace("#",""); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; var n=parseInt(h,16)||0; return {r:((n>>16)&255)/255,g:((n>>8)&255)/255,b:(n&255)/255}; }
+  function okPdf(pg,PL,a,H,c){ var ang=Math.atan2(a.y2-a.y1,a.x2-a.x1), L=6+a.kalin*2.2, a1=ang-2.6, a2=ang+2.6, col=PL.rgb(c.r,c.g,c.b);
+    pg.drawLine({start:{x:a.x2,y:H-a.y2},end:{x:a.x2+L*Math.cos(a1),y:H-(a.y2+L*Math.sin(a1))},thickness:a.kalin,color:col});
+    pg.drawLine({start:{x:a.x2,y:H-a.y2},end:{x:a.x2+L*Math.cos(a2),y:H-(a.y2+L*Math.sin(a2))},thickness:a.kalin,color:col}); }
+  async function disaAktar(){
+    if(!S.doc||!S.bytes) return; var btn=$("pe-indir"); btn.disabled=true; yuk(true);
+    try{
+      await libYukle();
+      var PL=window.PDFLib, fk=window.fontkit;
+      var doc=await PL.PDFDocument.load(S.bytes); doc.registerFontkit(fk);
+      var fb=await fetch("/vendor/font.ttf").then(function(r){ return r.arrayBuffer(); });
+      var font=await doc.embedFont(fb,{subset:true});
+      var pages=doc.getPages(), imgC={};
+      for(var pno=1;pno<=S.n;pno++){ var list=S.ann[pno]||[]; if(!list.length) continue; var pg=pages[pno-1], H=pg.getHeight();
+        for(var i=0;i<list.length;i++){ var a=list[i]; try{
+          if(a.t==="rect"){ var c=hex2rgb(a.renk); pg.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
+          else if(a.t==="highlight"){ var c=hex2rgb(a.renk); pg.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,color:PL.rgb(c.r,c.g,c.b),opacity:0.33}); }
+          else if(a.t==="whiteout"){ pg.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,color:PL.rgb(1,1,1)}); }
+          else if(a.t==="ellipse"){ var c=hex2rgb(a.renk); pg.drawEllipse({x:a.x+a.w/2,y:H-(a.y+a.h/2),xScale:Math.abs(a.w/2),yScale:Math.abs(a.h/2),borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
+          else if(a.t==="line"||a.t==="ok"){ var c=hex2rgb(a.renk); pg.drawLine({start:{x:a.x1,y:H-a.y1},end:{x:a.x2,y:H-a.y2},thickness:a.kalin,color:PL.rgb(c.r,c.g,c.b)}); if(a.t==="ok") okPdf(pg,PL,a,H,c); }
+          else if(a.t==="path"){ var c=hex2rgb(a.renk); pg.drawSvgPath(a.d,{x:0,y:H,borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
+          else if(a.t==="text"){ var c=hex2rgb(a.renk); pg.drawText(a.text,{x:a.x,y:H-a.y-a.size*0.8,size:a.size,font:font,color:PL.rgb(c.r,c.g,c.b)}); }
+          else if(a.t==="image"){ var im=imgC[a.src]; if(!im){ var by=await (await fetch(a.src)).arrayBuffer(); im=(/^data:image\/png/i.test(a.src))?await doc.embedPng(by):await doc.embedJpg(by); imgC[a.src]=im; } pg.drawImage(im,{x:a.x,y:H-a.y-a.h,width:a.w,height:a.h}); }
+        }catch(err){ console.warn("export ann hata",a.t,(err&&err.message)); } }
+      }
+      var out=await doc.save(); var blob=new Blob([out],{type:"application/pdf"}); var url=URL.createObjectURL(blob);
+      var ad=(S.fname||"belge.pdf").replace(/\.pdf$/i,"")+"-duzenli.pdf";
+      var al=document.createElement("a"); al.href=url; al.download=ad; document.body.appendChild(al); al.click(); al.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },5000);
+    }catch(err){ alert("PDF olusturulamadi: "+((err&&err.message)||err)); }
+    finally{ yuk(false); btn.disabled=false; }
+  }
+  $("pe-indir").addEventListener("click",disaAktar);
 })();
 </script>
 </body></html>'''
