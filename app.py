@@ -13473,6 +13473,8 @@ body:not(.light-theme) #editorModal .ed-gal-yuk .ed-gal-spin{border-color:#2c3a4
    kişi) KUTU ÜST ŞERİDİNDE (kartta değil), altında kartlar NÖTR; devam parçasında "↩ devam". Renk sadece kutu kenarı+şerit. */
 #editorModal .ed-gal-grid.ed-gal-kumeli{align-items:start;}
 #editorModal .ed-gal-kbox{position:relative;min-width:0;border:1px solid #d7dde6;border-radius:12px;overflow:hidden;display:flex;flex-direction:column;background:transparent;transition:box-shadow .12s,opacity .12s;}
+#editorModal .ed-gal-kbox-tekil{border:0 !important;border-radius:9px;overflow:visible;}   /* [TEKİL] tek öğe = kutusuz düz kart ("Tekil" başlığı yok); kümeler kutulu kalır */
+#editorModal .ed-gal-kbox-tekil .ed-gal-kbox-grid{padding:0;}
 #editorModal .ed-gal-kbox-bas,#editorModal .ed-gal-kbox-devam{display:flex;align-items:center;gap:8px;min-height:35px;box-sizing:border-box;padding:6px 10px;cursor:grab;user-select:none;background:#eef2f8;color:#334;border-bottom:1px solid #d7dde6;}
 #editorModal .ed-gal-kbox-bas:active,#editorModal .ed-gal-kbox-devam:active{cursor:grabbing;}
 #editorModal .ed-gal-kbox-devam{font-weight:800;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -15287,15 +15289,16 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       // parçasında "↩ devam" şeridi. N sütun = genişlikten (sarkma); başlık şeridi sürükle/numara = küme sırası (tüm
       // parçalar birlikte); kart sürükle = küme-içi (data-k). Ekran değişince N değişirse yeniden döşe (ResizeObserver). ----
       var K=XE._galKumeler(B);
-      XE._galAdlar=[];
+      XE._galAdlar=[]; XE._galTekil=[];
       var _rw=(root.clientWidth||0)-36, _cw=168, _gp=12;   // sütun sayısı N (kart ~168px); layout yoksa 6 + RO düzeltir
       var N=(_rw>0)?Math.max(1, Math.floor((_rw+_gp)/(_cw+_gp))):6; XE._galLastN=N;
       var flat=[];
       for(var n=0;n<K.length;n++){ var c=K[n], ad='';
+        var _tk=(c.idx.length===1 && /^S\d+$/.test(String(c.key)));   // [TEKİL] tek öğe + S-anahtar -> TEKİL: başlık şeridi YOK (düz kart), 'Tekil' etiketi gösterilmez
         for(var z=0;z<c.idx.length;z++){ if(XE._galPid(B[c.idx[z]])){ ad=XE._galKartBas(B[c.idx[z]]); break; } }
         if(!ad) ad=XE._galKartBas(B[c.idx[0]]);
-        if(!ad) ad=String(c.key).replace(/^U/,'@').replace(/^G/,'Grup ').replace(/^S\d+$/,'Tekil');
-        XE._galAdlar[n]=ad;
+        if(!ad && !_tk) ad=String(c.key).replace(/^U/,'@').replace(/^G/,'Grup ');   // tekil değilse key-based; tekilde ad BOŞ (strip yok)
+        XE._galAdlar[n]=ad; XE._galTekil[n]=_tk;
         for(var z2=0;z2<c.idx.length;z2++){ flat.push({gi:c.idx[z2], k:n}); }
       }
       // satırları N'e göre döşe -> her (küme,satır) bitişik parçası bir segment; her satır TAM N kart (son hariç)
@@ -15305,11 +15308,12 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       if(cur) segs.push(cur);
       var _seen={}; for(var si=0;si<segs.length;si++){ segs[si].ilk=!_seen[segs[si].k]; _seen[segs[si].k]=true; }
       var h='<div class="ed-gal-pad"><div class="ed-gal-ust">'+TERSBTN+(XE._galOzetAcik()?XE._galOzBtnHtml(false):'')+'<div class="ed-gal-ipucu"><b>Çift tıkla</b> = o bölüme git. Küme <b>başlığını (kutu üstü)</b> sürükle ya da numarasını yaz = küme sırası. <b>Kartı</b> sürükle = küme içinde sırala.</div></div><div class="ed-gal-grid ed-gal-kumeli" style="grid-template-columns:repeat('+N+',minmax(0,1fr));">';
-      for(var s3=0;s3<segs.length;s3++){ var g=segs[s3]; var _kc=(g.k%6), sp=g.cards.length;
-        var strip = g.ilk
+      for(var s3=0;s3<segs.length;s3++){ var g=segs[s3]; var _kc=(g.k%6), sp=g.cards.length; var _tk=XE._galTekil[g.k];
+        var strip = _tk ? ''   // [TEKİL] başlık şeridi YOK -> düz kart (kart sürükle = küme sırası, DnD'de ele alınır)
+          : (g.ilk
           ? ('<div class="ed-gal-kbox-bas" draggable="true" data-k="'+g.k+'" title="Sürükle = küme sırası · numara yaz = o sıraya"><input class="ed-gal-kume-noinp" type="number" min="1" draggable="true" value="'+(g.k+1)+'" aria-label="Küme numarası"><span class="ed-gal-kbox-ad">'+esc(XE._galAdlar[g.k])+'</span><span class="ed-gal-kbox-tut" aria-hidden="true">⋮⋮</span></div>')
-          : ('<div class="ed-gal-kbox-devam" draggable="true" data-k="'+g.k+'" title="Sürükle = küme sırası">↩ '+esc(XE._galAdlar[g.k])+' (devam)</div>');
-        h+='<div class="ed-gal-kbox" data-k="'+g.k+'" data-kc="'+_kc+'" style="grid-column:span '+sp+';">'+strip+'<div class="ed-gal-kbox-grid" style="grid-template-columns:repeat('+sp+',minmax(0,1fr));">';
+          : ('<div class="ed-gal-kbox-devam" draggable="true" data-k="'+g.k+'" title="Sürükle = küme sırası">↩ '+esc(XE._galAdlar[g.k])+' (devam)</div>'));
+        h+='<div class="ed-gal-kbox'+(_tk?' ed-gal-kbox-tekil':'')+'" data-k="'+g.k+'" data-kc="'+_kc+'"'+(_tk?' data-tekil="1"':'')+' style="grid-column:span '+sp+';">'+strip+'<div class="ed-gal-kbox-grid" style="grid-template-columns:repeat('+sp+',minmax(0,1fr));">';
         for(var ci=0;ci<g.cards.length;ci++){ h+=kartHtml(g.cards[ci], g.k); }   // kart NÖTR, etiket YOK
         h+='</div></div>';
       }
@@ -15360,7 +15364,9 @@ html.x-mobile.x-dik.x-ed-yaz #editorModal.ed-tek-oge{top:var(--vv-top,0px)!impor
       var strip=(e.target && e.target.closest) ? e.target.closest('.ed-gal-kbox-bas,.ed-gal-kbox-devam') : null;   // kutu başlığı/devam -> KÜME sürükle
       if(strip){ _kumeFrom=+strip.getAttribute('data-k'); _cardFrom=-1; _cardFromK=-1; var bx=strip.closest('.ed-gal-kbox'); if(bx) bx.classList.add('kume-suruklenen'); var _di=XE._galDesteImg(_kumeFrom); if(_di){ try{ e.dataTransfer.setDragImage(_di, 72, 30); }catch(_){} } try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','K'+_kumeFrom); }catch(_){} return; }
       var c=(e.target && e.target.closest) ? e.target.closest('.ed-gal-card') : null;   // normal kart -> küme-içi
-      if(c){ _cardFrom=+c.getAttribute('data-i'); _cardFromK=+c.getAttribute('data-k'); _kumeFrom=-1; c.classList.add('suruklenen'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','C'+_cardFrom); }catch(_){} }
+      if(c){ var _bxt=c.closest('.ed-gal-kbox');
+        if(_bxt && _bxt.getAttribute('data-tekil')==='1'){ _kumeFrom=+c.getAttribute('data-k'); _cardFrom=-1; _cardFromK=-1; _bxt.classList.add('kume-suruklenen'); var _dti=XE._galDesteImg(_kumeFrom); if(_dti){ try{ e.dataTransfer.setDragImage(_dti,72,30); }catch(_){} } try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','K'+_kumeFrom); }catch(_){} return; }   // [TEKİL] başlık şeridi yok -> kartın kendisi sürükle = küme sırası (strip gibi)
+        _cardFrom=+c.getAttribute('data-i'); _cardFromK=+c.getAttribute('data-k'); _kumeFrom=-1; c.classList.add('suruklenen'); try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain','C'+_cardFrom); }catch(_){} }
     });
     cont.addEventListener('dragover', function(e){
       if(_kumeFrom>=0){ var bx=(e.target && e.target.closest) ? e.target.closest('.ed-gal-kbox') : null; if(!bx) return; e.preventDefault(); try{ e.dataTransfer.dropEffect='move'; }catch(_){} var toK=+bx.getAttribute('data-k'); _temizle(); if(toK===_kumeFrom) return; var z=_zon(bx, e.clientX); bx.classList.add(z==='swap'?'kume-swap':(z==='once'?'kume-sol':'kume-sag')); return; }
