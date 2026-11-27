@@ -19888,7 +19888,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <body>
 <div class="pe-top">
   <span class="pe-logo"><span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 10.5V7.5h3"/><path d="M13.5 7.5h3v3"/><path d="M16.5 13.5v3h-3"/><path d="M10.5 16.5H7.5v-3"/><path d="M10 10l4 4"/><path d="M14 10l-4 4"/></svg></span>PDF Editor</span>
-  <span class="pe-faz">Faz 2 - sayfa + duzenle</span>
+  <span class="pe-faz">metin + paragraf + sayfa duzenle</span>
   <button class="pe-btn pri" id="pe-ac"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13V3"/><path d="M6 6.5l4-4 4 4"/><path d="M4 16h12"/></svg>PDF Ac</button>
   <span class="pe-fname" id="pe-fname"></span>
   <span class="pe-sp"></span>
@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe10 Faz3-koyuarkaplan";
+  var PE_BUILD="2026-11-27pe11 etiket";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
