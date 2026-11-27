@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe9 Faz3-paragraf";
+  var PE_BUILD="2026-11-27pe10 Faz3-koyuarkaplan";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20072,7 +20072,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     for(var i=0;i<list.length;i++){ var a=list[i], g=null;
       if(a.t==="rect"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:"none",stroke:a.renk,"stroke-width":a.kalin}); }
       else if(a.t==="highlight"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:a.renk,"fill-opacity":"0.33",stroke:"none"}); }
-      else if(a.t==="whiteout"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:"#ffffff",stroke:"none"}); }
+      else if(a.t==="whiteout"){ g=el("rect",{x:a.x,y:a.y,width:a.w,height:a.h,fill:(a.bg||"#ffffff"),stroke:"none"}); }
       else if(a.t==="ellipse"){ g=el("ellipse",{cx:a.x+a.w/2,cy:a.y+a.h/2,rx:Math.abs(a.w/2),ry:Math.abs(a.h/2),fill:"none",stroke:a.renk,"stroke-width":a.kalin}); }
       else if(a.t==="line"||a.t==="ok"){ g=el("line",{x1:a.x1,y1:a.y1,x2:a.x2,y2:a.y2,stroke:a.renk,"stroke-width":a.kalin,"stroke-linecap":"round"}); }
       else if(a.t==="path"){ g=el("path",{d:a.d,fill:"none",stroke:a.renk,"stroke-width":a.kalin,"stroke-linecap":"round","stroke-linejoin":"round"}); }
@@ -20195,16 +20195,24 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   }
   // [BIREBIR FONT] Orijinal gomulu font, pdf.js tarafindan document.fonts'a (loadedName) yuklenir -> duzenlenen
   // metni O fontla yuksek-DPI canvas'a ciz -> GORSEL olarak gom = PIKSEL-AYNI (subset dahil). Bedel: o metin secilemez.
-  function metinRengiOrnekle(num,it){
-    try{ var cv=S.cvById[num]; if(!cv||!cv.width) return "#111111"; var pg=S.pages[posOf(num)]; if(!pg) return "#111111";
+  // Kutu bolgesinden ARKA PLAN (en sik renk) + ON PLAN (arka plana en zit metin rengi) ornekle.
+  // -> koyu zeminde beyaz metin dogru islenir; whiteout arka-plan rengiyle doldurulur (beyaz yama YOK).
+  function hx2(r,g,b){ return "#"+[r,g,b].map(function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return ("0"+v.toString(16)).slice(-2); }).join(""); }
+  function boxRenkOrnekle(num,it){
+    try{ var cv=S.cvById[num]; if(!cv||!cv.width) return {bg:"#ffffff",fg:"#111111"}; var pg=S.pages[posOf(num)]; if(!pg) return {bg:"#ffffff",fg:"#111111"};
       var sc=cv.width/pg.w, x0=Math.max(0,Math.floor(it.x*sc)), y0=Math.max(0,Math.floor(it.y*sc));
-      var w0=Math.min(cv.width-x0,Math.ceil(it.w*sc)), h0=Math.min(cv.height-y0,Math.ceil(it.h*sc)); if(w0<1||h0<1) return "#111111";
-      var d=cv.getContext("2d").getImageData(x0,y0,w0,h0).data, best=null, bl=9999;
-      for(var i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; var L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; if(L<bl){ bl=L; best=[d[i],d[i+1],d[i+2]]; } }
-      if(!best||bl>232) return "#111111";
-      return "#"+best.map(function(v){ return ("0"+v.toString(16)).slice(-2); }).join("");
-    }catch(e){ return "#111111"; }
+      var w0=Math.min(cv.width-x0,Math.ceil(it.w*sc)), h0=Math.min(cv.height-y0,Math.ceil(it.h*sc)); if(w0<1||h0<1) return {bg:"#ffffff",fg:"#111111"};
+      var d=cv.getContext("2d").getImageData(x0,y0,w0,h0).data, cnt={}, bestK=-1, bestN=0, i, q;
+      for(i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; q=((d[i]>>4)<<8)|((d[i+1]>>4)<<4)|(d[i+2]>>4); cnt[q]=(cnt[q]||0)+1; if(cnt[q]>bestN){ bestN=cnt[q]; bestK=q; } }
+      if(bestK<0) return {bg:"#ffffff",fg:"#111111"};
+      var sr=0,sg=0,sb=0,sn=0; for(i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; q=((d[i]>>4)<<8)|((d[i+1]>>4)<<4)|(d[i+2]>>4); if(q===bestK){ sr+=d[i]; sg+=d[i+1]; sb+=d[i+2]; sn++; } }
+      var br=sr/sn, bgg=sg/sn, bb=sb/sn, bgLum=0.299*br+0.587*bgg+0.114*bb;
+      var fr=br,fg2=bgg,fb2=bb, bestD=-1; for(i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; var L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; var dd=Math.abs(L-bgLum); if(dd>bestD){ bestD=dd; fr=d[i]; fg2=d[i+1]; fb2=d[i+2]; } }
+      if(bestD<24){ fr=(bgLum>128)?17:238; fg2=fr; fb2=fr; }  // zit bulunamazsa koyu/aciga gore guvenli metin
+      return { bg:hx2(br,bgg,bb), fg:hx2(fr,fg2,fb2) };
+    }catch(e){ return {bg:"#ffffff",fg:"#111111"}; }
   }
+  function metinRengiOrnekle(num,it){ return boxRenkOrnekle(num,it).fg; }
   // Kapsama: bir karakter, gomulu subset-fonta GUVENLI mi? Orijinal metinde o lname ile gectiyse EVET.
   // (Subset'te olmayan kod noktalari icin pdf.js fonti yanlis/.notdef glyph cizer = Turkce artefakti.)
   function fontKapsar(lname,ch){ if(ch===" "||ch==="\t"||ch==="\n") return true; var cs=lname&&S.fontCov&&S.fontCov[lname]; return !!(cs&&cs[ch]); }
@@ -20252,7 +20260,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var g=(S.grp[num]||[])[gi]; if(!g) return;
     var wrap=S.ovlById[num].parentNode;
     var inp=document.createElement("div"); inp.className="pe-txted pe-par"; inp.contentEditable="true";
-    inp.style.left=Math.round(g.x*S.scale)+"px"; inp.style.top=Math.round(g.y*S.scale)+"px"; inp.style.fontSize=Math.round(g.fs*S.scale)+"px"; inp.style.width=Math.round(g.colW*S.scale)+"px"; inp.style.whiteSpace="pre-wrap"; inp.style.color=metinRengiOrnekle(num,g);
+    var rk=boxRenkOrnekle(num,g);
+    inp.style.left=Math.round(g.x*S.scale)+"px"; inp.style.top=Math.round(g.y*S.scale)+"px"; inp.style.fontSize=Math.round(g.fs*S.scale)+"px"; inp.style.width=Math.round(g.colW*S.scale)+"px"; inp.style.whiteSpace="pre-wrap"; inp.style.color=rk.fg; inp.style.background=rk.bg;
     var fk=g.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
     var mevcut=g.edited?g.str:g.tis.map(function(ti){ return (S.txt[num][ti]||{}).str||""; }).join(" ");
     function kapsarHepsi(s){ if(!g.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(g.lname,s[_i])) return false; } return true; }
@@ -20266,9 +20275,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       if(!S.ann[num]) S.ann[num]=[];
       S.ann[num]=S.ann[num].filter(function(a){ return a._gi!==gi && (a._ti==null || g.tis.indexOf(a._ti)<0); });   // bu grubun onceki (paragraf+satir) duzenlemelerini kaldir
       g.str=txt; g.edited=true;
-      S.ann[num].push({t:"whiteout",x:g.x-1,y:g.y-1,w:g.w+2,h:g.h+2,_gi:gi});
+      S.ann[num].push({t:"whiteout",x:g.x-1,y:g.y-1,w:g.w+2,h:g.h+2,bg:rk.bg,_gi:gi});
       if(!txt){ annRender(num); return; }
-      var renk=metinRengiOrnekle(num,g);
+      var renk=rk.fg;
       if(g.lname){ metinParGorselUret(g.lname,txt,g.fs,renk,fb,g.colW).then(function(r2){
           if(r2&&r2.wpt>0) S.ann[num].push({t:"image",x:g.x,y:(g.y+g.fs)-r2.ascpt,w:r2.wpt,h:r2.hpt,src:r2.url,_gi:gi});
           else S.ann[num].push({t:"text",x:g.x,y:g.y+g.fs*0.2,text:txt,size:g.fs,renk:renk,font:g.font,_gi:gi});
@@ -20283,7 +20292,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var it=(S.txt[num]||[])[ti]; if(!it) return;
     var wrap=S.ovlById[num].parentNode;
     var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
-    inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color=metinRengiOrnekle(num,it); inp.style.minWidth=Math.round(it.w*S.scale)+"px";
+    var rk=boxRenkOrnekle(num,it);
+    inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color=rk.fg; inp.style.background=rk.bg; inp.style.minWidth=Math.round(it.w*S.scale)+"px";
     var fk=it.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
     function kapsarHepsi(s){ if(!it.lname) return false; for(var _i=0;_i<s.length;_i++){ if(!fontKapsar(it.lname,s[_i])) return false; } return true; }
     function fontGuncelle(){ if(kapsarHepsi(inp.textContent||"")){ inp.style.fontFamily='"'+it.lname+'",'+fb; inp.style.fontWeight=""; inp.style.fontStyle=""; } else { inp.style.fontFamily=fb; inp.style.fontWeight=(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi")?"bold":""; inp.style.fontStyle=(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi")?"italic":""; } }
@@ -20296,9 +20306,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       if(!S.ann[num]) S.ann[num]=[];
       S.ann[num]=S.ann[num].filter(function(a){ return a._ti!==ti; });   // ayni ogenin onceki duzenlemesini kaldir -> yigilma yok
       it.str=txt;                                                        // tekrar acinca GUNCEL metni goster (orijinali degil)
-      S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2,_ti:ti});
+      S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2,bg:rk.bg,_ti:ti});
       if(!txt.trim()){ annRender(num); return; }
-      var renk=metinRengiOrnekle(num,it);
+      var renk=rk.fg;
       if(it.lname){ metinGorselUret(it.lname,txt.trim(),it.fs,renk,fb).then(function(g){
           if(g&&g.wpt>0) S.ann[num].push({t:"image",x:it.x,y:(it.y+it.fs)-g.ascpt,w:g.wpt,h:g.hpt,src:g.url,_ti:ti});
           else S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font,_ti:ti});
@@ -20342,7 +20352,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         for(var i=0;i<list.length;i++){ var a=list[i]; try{
           if(a.t==="rect"){ var c=hex2rgb(a.renk); page.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
           else if(a.t==="highlight"){ var c=hex2rgb(a.renk); page.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,color:PL.rgb(c.r,c.g,c.b),opacity:0.33}); }
-          else if(a.t==="whiteout"){ page.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,color:PL.rgb(1,1,1)}); }
+          else if(a.t==="whiteout"){ var wc=hex2rgb(a.bg||"#ffffff"); page.drawRectangle({x:a.x,y:H-a.y-a.h,width:a.w,height:a.h,color:PL.rgb(wc.r,wc.g,wc.b)}); }
           else if(a.t==="ellipse"){ var c=hex2rgb(a.renk); page.drawEllipse({x:a.x+a.w/2,y:H-(a.y+a.h/2),xScale:Math.abs(a.w/2),yScale:Math.abs(a.h/2),borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
           else if(a.t==="line"||a.t==="ok"){ var c=hex2rgb(a.renk); page.drawLine({start:{x:a.x1,y:H-a.y1},end:{x:a.x2,y:H-a.y2},thickness:a.kalin,color:PL.rgb(c.r,c.g,c.b)}); if(a.t==="ok") okPdf(page,PL,a,H,c); }
           else if(a.t==="path"){ var c=hex2rgb(a.renk); page.drawSvgPath(a.d,{x:0,y:H,borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
