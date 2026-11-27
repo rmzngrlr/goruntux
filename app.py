@@ -5252,7 +5252,7 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                     if (h2t && !basliksiz) { hNo++; var _bsz = (parseInt(o.b_size, 10) || 16), _ba = (parseInt(o.b_after, 10) || 6), _ht = numarali ? (hNo + '. ' + h2t) : h2t; u.blocks.push(basBlok(_ht, _bsz, o.b_bold, o.b_italic, o.b_underline, o.b_strike, o.b_color, o.b_align, 0, _ba)); u.pay += _txtY(_ht, _bsz, _ba); }
                     var ps = n.querySelectorAll('.ed-parca');
                     [].forEach.call(ps, function (p) {
-                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); if (u.cizim) { try { var _bi = +img.getAttribute('data-i'), _pp = +img.getAttribute('data-p'); var _ckp = window.XEditor.belge.birimler[_bi].item.parcalar[_pp]; u.yatay = !!(_ckp && _ckp.yatay); u.ckEr = (window.xCkExportPrim && _ckp && (_ckp.cizimObjeleri || []).length) ? window.xCkExportPrim(_ckp.cizimObjeleri, _ckp.cbW, _ckp.cbH) : null; u.ckSayfa = (_ckp && (_ckp.ckSayfa | 0)) || 1; u.ckObjs = (_ckp && _ckp.cizimObjeleri) || []; u.ckCbW = (_ckp && _ckp.cbW) || 1240; u.ckCbH = (_ckp && _ckp.cbH) || 1754; } catch (e) { u.ckEr = null; } }   /* [9A] cizim vektorleri -> native; [SINIRSIZ] ckSayfa>1 -> cok-sayfa raster dilim */ var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = (u.cizim && u.yatay && nh > 0) ? (nw / nh) : (nh / nw); u.pay += 6; } return; }   /* [YATAY] yatay cizim -> kutu PORTRE (rh ters: cikti 90 derece doner) */
+                        var img = p.querySelector('img.ed-img'); if (img && img.src) { if (u.imgIdx < 0) { u.imgIdx = u.blocks.length; u.blocks.push(null); u.img = img; u.cizim = img.classList.contains('ed-ck-img'); if (u.cizim) { try { var _bi = +img.getAttribute('data-i'), _pp = +img.getAttribute('data-p'); var _ckp = window.XEditor.belge.birimler[_bi].item.parcalar[_pp]; u.yatay = !!(_ckp && _ckp.yatay); u.ckEr = (window.xCkExportPrim && _ckp && (_ckp.cizimObjeleri || []).length) ? window.xCkExportPrim(_ckp.cizimObjeleri, _ckp.cbW, _ckp.cbH) : null; u.ckSayfa = (_ckp && (_ckp.ckSayfa | 0)) || 1; u.ckObjs = (_ckp && _ckp.cizimObjeleri) || []; u.ckCbW = (_ckp && _ckp.cbW) || 1240; u.ckCbH = (_ckp && _ckp.cbH) || 1754; u.pdfSayfa = !!(_ckp && _ckp.pdfSayfa); u.pdfKaynakKey = (_ckp && _ckp.pdfKaynakKey) || null; u.pdfSayfaNo = (_ckp && _ckp.pdfSayfaNo) || null; } catch (e) { u.ckEr = null; } }   /* [9A] cizim vektorleri -> native; [SINIRSIZ] ckSayfa>1 -> cok-sayfa raster dilim */ var nw = img.naturalWidth || img.width || 1, nh = img.naturalHeight || img.height || 1; u.rh = (u.cizim && u.yatay && nh > 0) ? (nw / nh) : (nh / nw); u.pay += 6; } return; }   /* [YATAY] yatay cizim -> kutu PORTRE (rh ters: cikti 90 derece doner) */
                         var mt = p.querySelector('.ed-metin'); if (mt) { var _m = String(mt.textContent || '').trim(); if (_m) { u.blocks.push(mBlok(mt)); u.pay += _txtY(_m, (parseInt(o.m_size, 10) || 11), 6); } return; }
                         var lk = p.querySelector('.ed-link-edit'); if (lk) { var lu = String(lk.textContent || '').trim(); if (lu) { u.blocks.push(lBlok(lu)); u.pay += _txtY(lu, (parseInt(o.l_size, 10) || 10), 8); } return; }
                     });
@@ -5280,9 +5280,11 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 else if (_yu.cizim && !_yu.yatay && (_yu.ckSayfa || 1) > 1 && window.xCkRenderPages) { try { _yu.ckPages = await window.xCkRenderPages(_yu.ckObjs, _yu.ckCbW, _yu.ckCbH, _yu.ckSayfa); } catch (_e3) { _yu.ckPages = null; } }   /* [SINIRSIZ] cok-sayfa dikey cizim -> her A4 bandi ayri raster */
                 else if (_yu.cizim && !_yu.yatay && _yu.ckEr && _yu.ckEr.prims && window.xCkRenderRot90 && _yu.ckEr.prims.some(function (p) { return p.aci; })) { try { _yu.flatImg = await window.xCkRenderRot90(_yu.ckEr, 1600, true); } catch (_e2) { _yu.flatImg = null; } } }   // [DÖNDÜR PDF] serbest döndürülmüş dikey çizim -> düz raster (pdfmake prim döndüremez)
             // PASS 3: içeriği kur (görsel placeholder'ını boyutlanmış imgBlok ile doldur)
-            var content = [];
+            var content = [], _parts = [];
+            function _pmFlush() { if (content.length) { _parts.push({ kind: 'pm', content: content }); content = []; } }
             for (var _i2 = 0; _i2 < items.length; _i2++) {
                 var it = items[_i2];
+                if (it.cizim && it.pdfSayfa) { _pmFlush(); _parts.push({ kind: 'pdf', key: it.pdfKaynakKey, pageNo: it.pdfSayfaNo, objs: it.ckObjs || [], cbW: it.ckCbW || 1240, cbH: it.ckCbH || 1754 }); continue; }   // [PDF MOTORU] GERCEK sayfa -> segment siniri (pdfmake'e KOYMA)
                 if (it.t === 'cizgi') { content.push(cizgiBlok()); continue; }
                 if (it.cizim && it.yatay && it.rotImg) {   // [YATAY ÇİZİM PDF] 90° döndürülmüş tam-sayfa GÖRSEL (metin dahil; bozulmasız)
                     var _ckWy = it.w || (CW - 36), _ckHy = _ckWy * (it.rh || 1.37);
@@ -5325,19 +5327,72 @@ Böylece GörüntüX uygulama gibi tam ekran açılır.`, { title: "Ana Ekrana E
                 if (it.cizim && content.length > 0) _blk.pageBreak = 'before';   // [ÇİZİM KAĞIDI] kendi sayfasında (ilk öğeyse boş sayfa açma)
                 content.push(_blk);
             }
-            if (!content.length) throw new Error('Rapor boş — önce içerik ekleyin.');
+            _pmFlush();
+            if (!_parts.length) throw new Error('Rapor boş — önce içerik ekleyin.');
             _pmProg(45);
             var pnOn = !!o.pn_on, pnAl = _pmAlign(o.pn_align), pnFmt = o.pn_fmt || 'plain', pnPos = o.pn_pos || 'footer';
             function pnFn(cur, total) { var t = (pnFmt === 'sayfa') ? ('Sayfa ' + cur) : (pnFmt === 'xofn') ? (cur + ' / ' + total) : ('' + cur); return { text: t, alignment: pnAl, fontSize: 9, color: '#666666', margin: [54, 8, 54, 0] }; }
-            var dd = { pageSize: 'A4', pageMargins: [54, 36, 54, 36], content: content, defaultStyle: { font: 'Roboto', fontSize: (parseInt(o.m_size, 10) || 11), color: _pmHex(o.m_color), lineHeight: lh } };
-            if (pnOn) { if (pnPos === 'header') dd.header = pnFn; else dd.footer = pnFn; }
+            var _ddBase = { pageSize: 'A4', pageMargins: [54, 36, 54, 36], defaultStyle: { font: 'Roboto', fontSize: (parseInt(o.m_size, 10) || 11), color: _pmHex(o.m_color), lineHeight: lh } };
+            if (pnOn) { if (pnPos === 'header') _ddBase.header = pnFn; else _ddBase.footer = pnFn; }
             var ad = ((typeof window.xIndirmeDosyaAdi === 'function') ? window.xIndirmeDosyaAdi() : 'GörüntüX.docx').replace(/\.docx$/i, '') + '.pdf';
-            return await new Promise(function (resolve, reject) {
-                try { pdfMake.createPdf(dd).getBlob(function (blob) { _pmProg(100); resolve({ blob: blob, filename: ad }); }); }
-                catch (e) { reject(e); }
-            });
+            var _hasPdfSayfa = _parts.some(function (pp) { return pp.kind === 'pdf'; });
+            if (!_hasPdfSayfa) {   // PDF sayfasi YOK -> eski tek-dokuman yol (regresyon yok)
+                var dd = Object.assign({ content: (_parts[0] ? _parts[0].content : []) }, _ddBase);
+                return await new Promise(function (resolve, reject) {
+                    try { pdfMake.createPdf(dd).getBlob(function (blob) { _pmProg(100); resolve({ blob: blob, filename: ad }); }); }
+                    catch (e) { reject(e); }
+                });
+            }
+            // [PDF MOTORU] GERCEK sayfa: segment-aralama (normal segmentler pdfmake, aralarda orijinal PDF sayfalari + cizim overlay)
+            return await _pdfSayfaliBirlestir(_parts, _ddBase, ad, _pmProg);
         }
         window.xPdfUretPdfmake = xPdfUretPdfmake;
+        // [PDF MOTORU] GERCEK/secilebilir PDF sayfasi ciktisi: raporu segmentlere bol (normal oge koslari = pdfmake
+        // alt-dokumani; aralarda orijinal PDF sayfalari). pdf-lib ile birlestir; cizim objs'i gercek sayfaya VEKTOR
+        // overlay (disaAktar teknigi). Sira = insa sirasi (indeks tespiti gerekmez). pdf-lib+fontkit self-hosted (/vendor).
+        function _pdfLibB64U8(b64) { var s = atob(b64 || ''), u = new Uint8Array(s.length); for (var i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+        async function _pdfLibYukle() {
+            function ld(src) { return new Promise(function (ok, no) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+            if (!window.PDFLib) await ld('/vendor/pdf-lib.min.js');
+            if (!window.fontkit) await ld('/vendor/fontkit.umd.min.js');
+        }
+        async function _pdfSayfaliBirlestir(parts, ddBase, ad, _pmProg) {
+            await _pdfLibYukle();
+            var PL = window.PDFLib, FK = window.fontkit;
+            var yeni = await PL.PDFDocument.create(); try { yeni.registerFontkit(FK); } catch (e) {}
+            var _dvF = null;
+            async function _font() { if (_dvF) return _dvF; try { var bb = await fetch('/vendor/font.ttf').then(function (x) { return x.arrayBuffer(); }); _dvF = await yeni.embedFont(bb, { subset: true }); } catch (e) { try { _dvF = await yeni.embedFont(PL.StandardFonts.Helvetica); } catch (_) { _dvF = null; } } return _dvF; }
+            var _srcC = {};
+            async function _src(key) { if (key in _srcC) return _srcC[key]; var by = window.__xReportPdfs && window.__xReportPdfs[key]; var d = null; if (by) { try { d = await PL.PDFDocument.load(by instanceof Uint8Array ? by : new Uint8Array(by)); } catch (e) { d = null; } } _srcC[key] = d; return d; }
+            function _hx(h) { h = ('' + (h || '000000')).replace('#', ''); if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; var n = parseInt(h, 16) || 0; return PL.rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255); }
+            async function _ciz(pg, er) {   // cizim objs'i (xCkExportPrim kesirsel prim) gercek sayfaya basar (y-flip: H-(y+h))
+                var W = pg.getWidth(), H = pg.getHeight(), prims = er.prims || [];
+                for (var i = 0; i < prims.length; i++) { var p = prims[i]; try {
+                    if (p.t === 'rect') { var o1 = { x: p.x * W, y: H - (p.y + p.h) * H, width: p.w * W, height: p.h * H, borderColor: _hx(p.renk), borderWidth: Math.max(0.3, (p.kal || 0.002) * W) }; if (p.dolgu) { o1.color = _hx(p.dolgu); o1.opacity = (p.dolguA == null ? 1 : p.dolguA); } pg.drawRectangle(o1); }
+                    else if (p.t === 'ellipse') { var o2 = { x: (p.x + p.w / 2) * W, y: H - (p.y + p.h / 2) * H, xScale: Math.max(0.1, (p.w / 2) * W), yScale: Math.max(0.1, (p.h / 2) * H), borderColor: _hx(p.renk), borderWidth: Math.max(0.3, (p.kal || 0.002) * W) }; if (p.dolgu) { o2.color = _hx(p.dolgu); o2.opacity = (p.dolguA == null ? 1 : p.dolguA); } pg.drawEllipse(o2); }
+                    else if (p.t === 'line') { pg.drawLine({ start: { x: p.x1 * W, y: H - p.y1 * H }, end: { x: p.x2 * W, y: H - p.y2 * H }, thickness: Math.max(0.3, (p.kal || 0.002) * W), color: _hx(p.renk) }); }
+                    else if (p.t === 'text' && p.metin) { var f = await _font(); if (f) { var fs = Math.max(4, (p.boyut || 0.02) * W); pg.drawText('' + p.metin, { x: p.x * W, y: H - p.y * H - fs, size: fs, font: f, color: _hx(p.renk) }); } }
+                    else if (p.t === 'image' && p.b64) { var by = _pdfLibB64U8(p.b64); var im = (/png/i.test(p.mime || 'png')) ? await yeni.embedPng(by) : await yeni.embedJpg(by); pg.drawImage(im, { x: p.x * W, y: H - (p.y + p.h) * H, width: p.w * W, height: p.h * H }); }
+                } catch (e) {} }
+                if (er.penImg && er.penBox) { try { var pim = await yeni.embedPng(_pdfLibB64U8(er.penImg)); var b = er.penBox; pg.drawImage(pim, { x: b.x * W, y: H - (b.y + b.h) * H, width: b.w * W, height: b.h * H }); } catch (e) {} }
+            }
+            for (var pi = 0; pi < parts.length; pi++) { var prt = parts[pi];
+                if (prt.kind === 'pm') {
+                    var bf = await new Promise(function (res, rej) { try { pdfMake.createPdf(Object.assign({ content: prt.content }, ddBase)).getBuffer(function (b) { res(b); }); } catch (e) { rej(e); } });
+                    var sd = await PL.PDFDocument.load(bf); var cps = await yeni.copyPages(sd, sd.getPageIndices()); cps.forEach(function (p) { yeni.addPage(p); });
+                } else {
+                    var sd2 = await _src(prt.key);
+                    if (sd2 && prt.pageNo >= 1 && prt.pageNo <= sd2.getPageCount()) {
+                        var cp2 = await yeni.copyPages(sd2, [prt.pageNo - 1]); var pg = yeni.addPage(cp2[0]);
+                        try { var er = window.xCkExportPrim ? window.xCkExportPrim(prt.objs || [], prt.cbW, prt.cbH, true, false) : null; if (er && ((er.prims && er.prims.length) || er.penImg)) await _ciz(pg, er); } catch (e) {}
+                    }
+                }
+                try { if (_pmProg) _pmProg(45 + Math.round((pi + 1) / parts.length * 50)); } catch (e) {}
+            }
+            var out = await yeni.save(); try { if (_pmProg) _pmProg(100); } catch (e) {}
+            return { blob: new Blob([out], { type: 'application/pdf' }), filename: ad };
+        }
+        window._pdfSayfaliBirlestir = _pdfSayfaliBirlestir;
         // Seçilen biçimin blob'unu üret. Word: editör açıksa generateBlob, değilse xBuildReport. PDF: pdfmake (metin) | raster (eski).
         // [KAYITLI RAPOR PDF] Kayıtlı raporu AÇMADAN (editör görünmeden) PDF üret: snapshot öğelerini
         // GİZLİ ed-root'a render edip xPdfUretPdfmake'i çalıştır. Sunucu havuzuna / XLocalImages'a DOKUNMAZ
