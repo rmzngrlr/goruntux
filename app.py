@@ -19930,7 +19930,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe7 Faz3-turkce-kapsama";
+  var PE_BUILD="2026-11-27pe8 Faz3-tekrar-duzenle";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20222,15 +20222,17 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       if(inp.parentNode) inp.parentNode.removeChild(inp);
       if(txt===it.str) return;
       if(!S.ann[num]) S.ann[num]=[];
-      S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
+      S.ann[num]=S.ann[num].filter(function(a){ return a._ti!==ti; });   // ayni ogenin onceki duzenlemesini kaldir -> yigilma yok
+      it.str=txt;                                                        // tekrar acinca GUNCEL metni goster (orijinali degil)
+      S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2,_ti:ti});
       if(!txt.trim()){ annRender(num); return; }
       var renk=metinRengiOrnekle(num,it);
       if(it.lname){ metinGorselUret(it.lname,txt.trim(),it.fs,renk,fb).then(function(g){
-          if(g&&g.wpt>0) S.ann[num].push({t:"image",x:it.x,y:(it.y+it.fs)-g.ascpt,w:g.wpt,h:g.hpt,src:g.url});
-          else S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font});
+          if(g&&g.wpt>0) S.ann[num].push({t:"image",x:it.x,y:(it.y+it.fs)-g.ascpt,w:g.wpt,h:g.hpt,src:g.url,_ti:ti});
+          else S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font,_ti:ti});
           annRender(num);
         }); }
-      else { S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font}); annRender(num); }
+      else { S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font,_ti:ti}); annRender(num); }
     }
     inp.addEventListener("blur",commit);
     inp.addEventListener("keydown",function(ev){ ev.stopPropagation(); if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); inp.blur(); } else if(ev.key==="Escape"){ bitti=true; if(inp.parentNode) inp.parentNode.removeChild(inp); } });
