@@ -19932,7 +19932,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe13 satirici-birlestir";
+  var PE_BUILD="2026-11-27pe14 cok-sutun-grup";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20181,15 +20181,18 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font,lname:c.lname,_mf:c.str.length});
       }
       S.txt[num]=mg;
-      // PARAGRAF GRUPLA: ardisik satirlari (ayni font/punto/lname + sol-hizali + makul satir-araligi) tek gruba topla.
+      // PARAGRAF GRUPLA: her satir icin USTUNDEKI uygun gruba katil (yalniz son gruba degil -> COK-SUTUN yerlesimde
+      // sol/sag sutun satirlari y'de ic ice gelse bile her sutun kendi paragrafinda kalir).
       var grp=[];
-      for(var gg=0; gg<mg.length; gg++){ var li=mg[gg], last=grp[grp.length-1];
-        if(last){ var pl=mg[last.tis[last.tis.length-1]];
+      for(var gg=0; gg<mg.length; gg++){ var li=mg[gg], best=null;
+        for(var q=grp.length-1; q>=0; q--){ var G=grp[q]; var pl=mg[G.tis[G.tis.length-1]];
+          if(pl.y>=li.y) continue; var dy=li.y-pl.y; if(dy>li.fs*2.4) continue;
           var ayniFont=(pl.font===li.font && (pl.lname||"")===(li.lname||"") && Math.abs(pl.fs-li.fs)<1.6);
-          var solHiza=Math.abs(pl.x-li.x)<li.fs*0.6; var dy=li.y-pl.y; var satirArasi=(dy>li.fs*0.6 && dy<li.fs*2.2);
-          if(ayniFont && solHiza && satirArasi){ last.tis.push(gg); last.x=Math.min(last.x,li.x); last.colW=Math.max(last.colW,(li.x+li.w)-Math.min(last.x,li.x)); last.w=last.colW; last.h=(li.y+li.h)-last.y; if(last.lineH==null) last.lineH=dy; continue; }
+          var solHiza=Math.abs(pl.x-li.x)<li.fs*0.6; var satirArasi=(dy>li.fs*0.6 && dy<li.fs*2.2);
+          if(ayniFont && solHiza && satirArasi){ best=G; break; }
         }
-        grp.push({tis:[gg], x:li.x, y:li.y, w:li.w, h:li.h, colW:li.w, fs:li.fs, font:li.font, lname:li.lname, lineH:null, edited:false, str:li.str});
+        if(best){ var pdy=li.y-mg[best.tis[best.tis.length-1]].y; best.tis.push(gg); best.x=Math.min(best.x,li.x); best.colW=Math.max(best.colW,(li.x+li.w)-Math.min(best.x,li.x)); best.w=best.colW; best.h=(li.y+li.h)-best.y; if(best.lineH==null) best.lineH=pdy; }
+        else grp.push({tis:[gg], x:li.x, y:li.y, w:li.w, h:li.h, colW:li.w, fs:li.fs, font:li.font, lname:li.lname, lineH:null, edited:false, str:li.str});
       }
       if(!S.grp) S.grp={}; S.grp[num]=grp;
       if(S.arac==="metinduz") annRender(num);
