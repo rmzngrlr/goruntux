@@ -19930,7 +19930,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe5 Faz3-font";
+  var PE_BUILD="2026-11-27pe6 Faz3-birebirfont";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20159,9 +20159,9 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var tm=window.pdfjsLib.Util.transform(vp1.transform,it.transform);
         var fs=Math.hypot(tm[2],tm[3])||it.height||10; if(fs<1) fs=10;
         var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
-        var realName=""; try{ if(p.commonObjs&&p.commonObjs.has&&p.commonObjs.has(it.fontName)){ var fo=p.commonObjs.get(it.fontName); realName=(fo&&fo.name)||""; } }catch(_){}
+        var realName="", lname=""; try{ if(p.commonObjs&&p.commonObjs.has&&p.commonObjs.has(it.fontName)){ var fo=p.commonObjs.get(it.fontName); realName=(fo&&fo.name)||""; lname=(fo&&fo.loadedName)||""; } }catch(_){}
         var fam=(stil[it.fontName]&&stil[it.fontName].fontFamily)||"";
-        raw.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs,font:fontKeyOf(realName+" "+fam)});
+        raw.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs,font:fontKeyOf(realName+" "+fam),lname:lname});
       }
       // MERGE: ayni satir + ayni font + kucuk bosluk -> tek kutu (Turkce sozcuk/satir bolunmesini toparla).
       raw.sort(function(a,b){ var dy=a.y-b.y; return (Math.abs(dy)>Math.min(a.fs,b.fs)*0.45)?dy:(a.x-b.x); });
@@ -20169,27 +20169,60 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       for(var m=0;m<raw.length;m++){ var c=raw[m], l=mg[mg.length-1];
         if(l && l.font===c.font && Math.abs(l.fs-c.fs)<1.6 && Math.abs(l.y-c.y)<c.fs*0.45 && c.x>=l.x-1 && (c.x-(l.x+l.w))<c.fs*0.9){
           var gap=c.x-(l.x+l.w); if(gap>c.fs*0.22 && !/\s$/.test(l.str) && !/^\s/.test(c.str)) l.str+=" "; l.str+=c.str; l.w=Math.max(l.x+l.w,c.x+c.w)-l.x; l.h=Math.max(l.h,c.h);
-        } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font});
+        } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font,lname:c.lname});
       }
       S.txt[num]=mg; if(S.arac==="metinduz") annRender(num);
     }); }).catch(function(){ S.txt[num]=[]; });
+  }
+  // [BIREBIR FONT] Orijinal gomulu font, pdf.js tarafindan document.fonts'a (loadedName) yuklenir -> duzenlenen
+  // metni O fontla yuksek-DPI canvas'a ciz -> GORSEL olarak gom = PIKSEL-AYNI (subset dahil). Bedel: o metin secilemez.
+  function metinRengiOrnekle(num,it){
+    try{ var cv=S.cvById[num]; if(!cv||!cv.width) return "#111111"; var pg=S.pages[posOf(num)]; if(!pg) return "#111111";
+      var sc=cv.width/pg.w, x0=Math.max(0,Math.floor(it.x*sc)), y0=Math.max(0,Math.floor(it.y*sc));
+      var w0=Math.min(cv.width-x0,Math.ceil(it.w*sc)), h0=Math.min(cv.height-y0,Math.ceil(it.h*sc)); if(w0<1||h0<1) return "#111111";
+      var d=cv.getContext("2d").getImageData(x0,y0,w0,h0).data, best=null, bl=9999;
+      for(var i=0;i<d.length;i+=4){ if(d[i+3]<128) continue; var L=0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]; if(L<bl){ bl=L; best=[d[i],d[i+1],d[i+2]]; } }
+      if(!best||bl>232) return "#111111";
+      return "#"+best.map(function(v){ return ("0"+v.toString(16)).slice(-2); }).join("");
+    }catch(e){ return "#111111"; }
+  }
+  function metinGorselUret(lname,txt,fsPt,renk){
+    return new Promise(function(res){
+      var dpr=3, fsPx=Math.max(4,fsPt*dpr), fam='"'+lname+'",sans-serif';
+      function ciz(){ try{
+        var mc=document.createElement("canvas"), cx=mc.getContext("2d"); cx.font=fsPx+"px "+fam;
+        var m=cx.measureText(txt), asc=m.actualBoundingBoxAscent||fsPx*0.8, desc=m.actualBoundingBoxDescent||fsPx*0.3;
+        var w=Math.ceil(m.width)+6, h=Math.ceil(asc+desc)+6; if(w<3||h<3){ res(null); return; }
+        mc.width=w; mc.height=h; cx.font=fsPx+"px "+fam; cx.fillStyle=renk||"#111"; cx.textBaseline="alphabetic"; cx.fillText(txt,3,3+asc);
+        res({url:mc.toDataURL("image/png"), wpt:w/dpr, hpt:h/dpr, ascpt:(asc+3)/dpr});
+      }catch(e){ res(null); } }
+      try{ if(document.fonts&&document.fonts.load){ document.fonts.load(fsPx+'px "'+lname+'"').then(ciz,ciz); } else ciz(); }catch(e){ ciz(); }
+    });
   }
   function metinDuzenleAc(num,ti,e){
     var it=(S.txt[num]||[])[ti]; if(!it) return;
     var wrap=S.ovlById[num].parentNode;
     var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
-    inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color="#111"; inp.style.minWidth=Math.round(it.w*S.scale)+"px";
-    var fk=it.font||"sans"; inp.style.fontFamily=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif'); if(/-b|-bi$/.test(fk)||fk.slice(-2)==="-b") inp.style.fontWeight="bold"; if(/-i$|-bi$/.test(fk)) inp.style.fontStyle="italic";
+    inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color=metinRengiOrnekle(num,it); inp.style.minWidth=Math.round(it.w*S.scale)+"px";
+    var fk=it.font||"sans", fb=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif');
+    inp.style.fontFamily=it.lname?('"'+it.lname+'",'+fb):fb; if(!it.lname){ if(fk.slice(-2)==="-b"||fk.slice(-3)==="-bi") inp.style.fontWeight="bold"; if(fk.slice(-2)==="-i"||fk.slice(-3)==="-bi") inp.style.fontStyle="italic"; }
     inp.textContent=it.str; wrap.appendChild(inp);
     setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
     var bitti=false;
     function commit(){ if(bitti) return; bitti=true; var txt=(inp.textContent||"").replace(/ /g," ");
-      if(txt!==it.str){ if(!S.ann[num]) S.ann[num]=[];
-        S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
-        if(txt.trim()) S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:"#111",font:it.font});
-        annRender(num);
-      }
-      if(inp.parentNode) inp.parentNode.removeChild(inp); }
+      if(inp.parentNode) inp.parentNode.removeChild(inp);
+      if(txt===it.str) return;
+      if(!S.ann[num]) S.ann[num]=[];
+      S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
+      if(!txt.trim()){ annRender(num); return; }
+      var renk=metinRengiOrnekle(num,it);
+      if(it.lname){ metinGorselUret(it.lname,txt.trim(),it.fs,renk).then(function(g){
+          if(g&&g.wpt>0) S.ann[num].push({t:"image",x:it.x,y:(it.y+it.fs)-g.ascpt,w:g.wpt,h:g.hpt,src:g.url});
+          else S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font});
+          annRender(num);
+        }); }
+      else { S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:renk,font:it.font}); annRender(num); }
+    }
     inp.addEventListener("blur",commit);
     inp.addEventListener("keydown",function(ev){ ev.stopPropagation(); if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); inp.blur(); } else if(ev.key==="Escape"){ bitti=true; if(inp.parentNode) inp.parentNode.removeChild(inp); } });
   }
