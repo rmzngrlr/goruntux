@@ -11795,13 +11795,19 @@ def pdfjs_serve(fn):
 # [PDF EDITOR] self-host kutuphaneler: pdf-lib (yazma/export) + fontkit (TTF goml) + DejaVuSans (Turkce metin).
 # Yalniz /pdfeditor Faz 1 (indir) kullanir; lazy-load (export aninda fetch). pdf.js gibi whitelist + uzun onbellek.
 _VENDOR_MIME = {'pdf-lib.min.js': 'application/javascript', 'fontkit.umd.min.js': 'application/javascript', 'font.ttf': 'font/ttf'}
+# [PDF EDITOR — FONT ESLESTIRME] metrik-uyumlu Turkce-kapsamli fontlar: sans=Arimo(Arial), serif=Tinos(Times),
+# mono=Cousine(Courier) + bold/italic. Mevcut metni duzenlerken orijinal aile/stile gore secilir -> font degismez.
+_VENDOR_FONTS = {'sans', 'sans-b', 'sans-i', 'sans-bi', 'serif', 'serif-b', 'serif-i', 'serif-bi', 'mono', 'mono-b'}
 @app.route('/vendor/<path:fn>', methods=['GET'])
 def vendor_serve(fn):
-    mt = _VENDOR_MIME.get(fn)
-    if not mt:
+    base = os.path.dirname(os.path.abspath(__file__))
+    if fn in _VENDOR_MIME:
+        p = os.path.join(base, 'vendor', fn); mt = _VENDOR_MIME[fn]
+    elif fn.startswith('fonts/') and fn.endswith('.ttf') and fn[6:-4] in _VENDOR_FONTS:
+        p = os.path.join(base, 'vendor', 'fonts', fn[6:-4] + '.ttf'); mt = 'font/ttf'
+    else:
         return ('', 404)
     try:
-        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'vendor', fn)
         resp = send_file(p, mimetype=mt)
         try: resp.headers['Cache-Control'] = 'public, max-age=86400'
         except Exception: pass
@@ -19924,7 +19930,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe4 Faz3-metinduz";
+  var PE_BUILD="2026-11-27pe5 Faz3-font";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -20137,16 +20143,35 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
   }
   /* [FAZ 3: MEVCUT METNI DUZENLE] pdf.js metin katmani -> tiklanabilir kutular -> tiklayinca icerigi dolu
      duzenlenebilir alan -> kaydedince ORIJINALI whiteout + yeni metni ustune yaz (gercek reflow DEGIL). */
+  function fontKeyOf(s){ s=(s||"").toLowerCase();
+    var bold=/bold|black|heavy|semibold|demibold|700|800|900/.test(s), ital=/italic|oblique/.test(s);
+    var base=(/times|serif|roman|georgia|minion|garamond|plantin|antiqua|cambria/.test(s)&&!/sans/.test(s))?"serif":(/courier|mono|consol|typewriter/.test(s)?"mono":"sans");
+    if(base==="mono") return bold?"mono-b":"mono";
+    return base+(bold&&ital?"-bi":(bold?"-b":(ital?"-i":"")));
+  }
   function metinKatmaniYukle(num){
     if(S.txt[num]!==undefined) return; S.txt[num]=null;   // null=yukleniyor
     var pos=posOf(num), pg=S.pages[pos]; if(!pg||pg.kind==="blank"){ S.txt[num]=[]; return; }
     var kaynak=(pg.kind==="ext")?(S.ext[pg.extKey]&&S.ext[pg.extKey].doc):S.doc; if(!kaynak){ S.txt[num]=[]; return; }
     kaynak.getPage(pg.src).then(function(p){ var vp1=p.getViewport({scale:1}); return p.getTextContent().then(function(tc){
-      var arr=[]; for(var i=0;i<tc.items.length;i++){ var it=tc.items[i]; if(!it.str||!it.str.trim()) continue;
+      var stil=tc.styles||{}, raw=[];
+      for(var i=0;i<tc.items.length;i++){ var it=tc.items[i]; if(!it.str||!it.str.trim()) continue;
         var tm=window.pdfjsLib.Util.transform(vp1.transform,it.transform);
-        var fs=Math.hypot(tm[2],tm[3])||it.height||10; var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
-        arr.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs});
-      } S.txt[num]=arr; if(S.arac==="metinduz") annRender(num);
+        var fs=Math.hypot(tm[2],tm[3])||it.height||10; if(fs<1) fs=10;
+        var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
+        var realName=""; try{ if(p.commonObjs&&p.commonObjs.has&&p.commonObjs.has(it.fontName)){ var fo=p.commonObjs.get(it.fontName); realName=(fo&&fo.name)||""; } }catch(_){}
+        var fam=(stil[it.fontName]&&stil[it.fontName].fontFamily)||"";
+        raw.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs,font:fontKeyOf(realName+" "+fam)});
+      }
+      // MERGE: ayni satir + ayni font + kucuk bosluk -> tek kutu (Turkce sozcuk/satir bolunmesini toparla).
+      raw.sort(function(a,b){ var dy=a.y-b.y; return (Math.abs(dy)>Math.min(a.fs,b.fs)*0.45)?dy:(a.x-b.x); });
+      var mg=[];
+      for(var m=0;m<raw.length;m++){ var c=raw[m], l=mg[mg.length-1];
+        if(l && l.font===c.font && Math.abs(l.fs-c.fs)<1.6 && Math.abs(l.y-c.y)<c.fs*0.45 && c.x>=l.x-1 && (c.x-(l.x+l.w))<c.fs*0.9){
+          var gap=c.x-(l.x+l.w); if(gap>c.fs*0.22 && !/\s$/.test(l.str) && !/^\s/.test(c.str)) l.str+=" "; l.str+=c.str; l.w=Math.max(l.x+l.w,c.x+c.w)-l.x; l.h=Math.max(l.h,c.h);
+        } else mg.push({str:c.str,x:c.x,y:c.y,w:c.w,h:c.h,fs:c.fs,font:c.font});
+      }
+      S.txt[num]=mg; if(S.arac==="metinduz") annRender(num);
     }); }).catch(function(){ S.txt[num]=[]; });
   }
   function metinDuzenleAc(num,ti,e){
@@ -20154,13 +20179,14 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     var wrap=S.ovlById[num].parentNode;
     var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
     inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color="#111"; inp.style.minWidth=Math.round(it.w*S.scale)+"px";
+    var fk=it.font||"sans"; inp.style.fontFamily=(fk.indexOf("serif")===0)?'"Times New Roman",Georgia,serif':((fk.indexOf("mono")===0)?'"Courier New",monospace':'Arial,Helvetica,sans-serif'); if(/-b|-bi$/.test(fk)||fk.slice(-2)==="-b") inp.style.fontWeight="bold"; if(/-i$|-bi$/.test(fk)) inp.style.fontStyle="italic";
     inp.textContent=it.str; wrap.appendChild(inp);
     setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
     var bitti=false;
     function commit(){ if(bitti) return; bitti=true; var txt=(inp.textContent||"").replace(/ /g," ");
       if(txt!==it.str){ if(!S.ann[num]) S.ann[num]=[];
         S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
-        if(txt.trim()) S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:"#111"});
+        if(txt.trim()) S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:"#111",font:it.font});
         annRender(num);
       }
       if(inp.parentNode) inp.parentNode.removeChild(inp); }
@@ -20189,9 +20215,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       await libYukle();
       var PL=window.PDFLib, fk=window.fontkit;
       var yeni=await PL.PDFDocument.create(); yeni.registerFontkit(fk);
-      var fb=await fetch("/vendor/font.ttf").then(function(r){ return r.arrayBuffer(); });
-      var font=await yeni.embedFont(fb,{subset:true});
-      var orij=await PL.PDFDocument.load(S.bytes), extDoc={}, imgC={};
+      var orij=await PL.PDFDocument.load(S.bytes), extDoc={}, imgC={}, fontC={}, dvF=null;
+      async function getFont(key){ key=key||"sans"; if(fontC[key]) return fontC[key]; try{ var rr=await fetch("/vendor/fonts/"+key+".ttf"); if(!rr.ok) throw 0; fontC[key]=await yeni.embedFont(await rr.arrayBuffer(),{subset:true}); return fontC[key]; }catch(_){ if(!dvF){ dvF=await yeni.embedFont(await fetch("/vendor/font.ttf").then(function(x){return x.arrayBuffer();}),{subset:true}); } return dvF; } }
       async function kDoc(pg){ if(pg.kind==="ext"){ if(!extDoc[pg.extKey]) extDoc[pg.extKey]=await PL.PDFDocument.load(S.ext[pg.extKey].bytes); return extDoc[pg.extKey]; } return orij; }
       for(var pi=0;pi<S.pages.length;pi++){ var pg=S.pages[pi], page;
         if(pg.kind==="blank"){ page=yeni.addPage([pg.w,pg.h]); }
@@ -20205,7 +20230,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
           else if(a.t==="ellipse"){ var c=hex2rgb(a.renk); page.drawEllipse({x:a.x+a.w/2,y:H-(a.y+a.h/2),xScale:Math.abs(a.w/2),yScale:Math.abs(a.h/2),borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
           else if(a.t==="line"||a.t==="ok"){ var c=hex2rgb(a.renk); page.drawLine({start:{x:a.x1,y:H-a.y1},end:{x:a.x2,y:H-a.y2},thickness:a.kalin,color:PL.rgb(c.r,c.g,c.b)}); if(a.t==="ok") okPdf(page,PL,a,H,c); }
           else if(a.t==="path"){ var c=hex2rgb(a.renk); page.drawSvgPath(a.d,{x:0,y:H,borderColor:PL.rgb(c.r,c.g,c.b),borderWidth:a.kalin}); }
-          else if(a.t==="text"){ var c=hex2rgb(a.renk); page.drawText(a.text,{x:a.x,y:H-a.y-a.size*0.8,size:a.size,font:font,color:PL.rgb(c.r,c.g,c.b)}); }
+          else if(a.t==="text"){ var c=hex2rgb(a.renk); var tf=await getFont(a.font); page.drawText(a.text,{x:a.x,y:H-a.y-a.size*0.8,size:a.size,font:tf,color:PL.rgb(c.r,c.g,c.b)}); }
           else if(a.t==="image"){ var im=imgC[a.src]; if(!im){ var by=await (await fetch(a.src)).arrayBuffer(); im=(/^data:image\/png/i.test(a.src))?await yeni.embedPng(by):await yeni.embedJpg(by); imgC[a.src]=im; } page.drawImage(im,{x:a.x,y:H-a.y-a.h,width:a.w,height:a.h}); }
         }catch(err){ console.warn("export ann hata",a.t,(err&&err.message)); } }
       }
