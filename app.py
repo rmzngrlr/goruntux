@@ -19834,7 +19834,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 .pe-main{flex:1 1 auto;display:flex;min-height:0;}
 .pe-thumbs{flex:0 0 150px;background:var(--panel);border-right:1px solid var(--bd);overflow-y:auto;padding:10px 8px;display:none;flex-direction:column;gap:10px;scrollbar-gutter:stable;}
 .pe-thumbs.acik{display:flex;}
-.pe-thumb{position:relative;cursor:pointer;border:2px solid transparent;border-radius:6px;overflow:hidden;background:#fff;}
+.pe-thumb{position:relative;cursor:pointer;border:2px solid transparent;border-radius:6px;overflow:hidden;background:#fff;flex:0 0 auto;}
 .pe-thumb.aktif{border-color:var(--mavi);}
 .pe-thumb canvas{display:block;width:100%;height:auto;}
 .pe-thumb .no{position:absolute;left:4px;bottom:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;}
