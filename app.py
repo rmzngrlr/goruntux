@@ -19873,6 +19873,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 .pe-page.pe-cizmod .pe-ovl{cursor:crosshair;}
 .pe-ovl .pe-selbox{fill:none;stroke:#1d9bf0;stroke-width:1.3;stroke-dasharray:5 4;vector-effect:non-scaling-stroke;pointer-events:none;}
 .pe-txted{position:absolute;z-index:40;background:rgba(255,255,255,.97);color:#111;border:1px solid var(--mavi);border-radius:3px;outline:none;padding:1px 4px;font-family:Arial,sans-serif;line-height:1.15;white-space:pre;min-width:30px;}
+.pe-tbox{fill:rgba(29,155,240,0.07);stroke:rgba(29,155,240,0.4);stroke-width:0.6;cursor:text;pointer-events:auto;}
+.pe-tbox:hover{fill:rgba(29,155,240,0.2);}
 @media(max-width:640px){.pe-thumbs.acik{display:none;}.pe-pages{padding:12px;}.pe-fname{display:none;}}
 </style></head>
 <body>
@@ -19888,7 +19890,8 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 </div>
 <div class="pe-tools gizli" id="pe-tools">
   <button class="pe-tool aktif" data-arac="sec" title="Sec / tasi"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l15 9-6 1.4L10.6 20 5 3z"/></svg></button>
-  <button class="pe-tool" data-arac="metin" title="Metin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></button>
+  <button class="pe-tool" data-arac="metin" title="Metin ekle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h14M12 6v13"/></svg></button>
+  <button class="pe-tool" data-arac="metinduz" title="Mevcut metni duzenle (tikla)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M4 11h6"/><path d="M14.5 19.5l5.5-5.5 2 2-5.5 5.5-2.7.7z"/></svg></button>
   <button class="pe-tool" data-arac="kalem" title="Serbest kalem"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 10-10-3-3L5 16l-1 4z"/><path d="M14 6l3 3"/></svg></button>
   <button class="pe-tool" data-arac="vurgu" title="Vurgula"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 16l9-9 3 3-9 9H6v-3z"/></svg></button>
   <button class="pe-tool" data-arac="dikdortgen" title="Dikdortgen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="6" width="16" height="12" rx="1.5"/></svg></button>
@@ -19921,7 +19924,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
 <script>
 (function(){
   "use strict";
-  var PE_BUILD="2026-11-27pe3 Faz2";
+  var PE_BUILD="2026-11-27pe4 Faz3-metinduz";
   try{ window.PE_BUILD=PE_BUILD; console.info("GoruntuX PDF Editor "+PE_BUILD); }catch(e){}
   var $=function(id){ return document.getElementById(id); };
   var L=window.pdfjsLib;
@@ -19947,7 +19950,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         var buf=fr.result;
         S.bytes=new Uint8Array(buf.slice(0));
         L.getDocument({data:new Uint8Array(buf)}).promise.then(function(pdf){
-          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null;
+          S.doc=pdf; S.fit=true; S.ann={}; S.sel=null; S.ext={}; S.pages=[]; S.nextId=1; S.ovlById={}; S.cvById={}; S.aktifId=null; S.txt={};
           var N=pdf.numPages, dim=[], ch=Promise.resolve();
           for(var i=1;i<=N;i++){ (function(num){ ch=ch.then(function(){ return pdf.getPage(num).then(function(p){ var v=p.getViewport({scale:1}); dim[num]={w:v.width,h:v.height}; }); }); })(i); }
           ch.then(function(){
@@ -20072,6 +20075,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
       ovl.appendChild(g);
       if(a.t==="ok"){ var ah=okBasi(a.x1,a.y1,a.x2,a.y2,a.kalin); ah.setAttribute("stroke",a.renk); ah.style.pointerEvents="none"; ovl.appendChild(ah); }
     }
+    if(S.arac==="metinduz"){ var tb=S.txt[num]||[]; for(var ti=0;ti<tb.length;ti++){ var it0=tb[ti]; var rr=el("rect",{x:it0.x,y:it0.y,width:it0.w,height:it0.h,"class":"pe-tbox","data-ti":ti}); ovl.appendChild(rr); } }
     if(S.sel && S.sel.p===num){ var se=ovl.querySelector('[data-i="'+S.sel.i+'"]'); if(se){ try{ var bb=se.getBBox(), pad=Math.max(2,(list[S.sel.i]&&list[S.sel.i].kalin)||2); ovl.appendChild(el("rect",{x:bb.x-pad,y:bb.y-pad,width:bb.width+2*pad,height:bb.height+2*pad,"class":"pe-selbox"})); }catch(_){} } }
   }
   function ptOf(e,ovl){ try{ var p=ovl.createSVGPoint(); p.x=e.clientX; p.y=e.clientY; var m=ovl.getScreenCTM(); if(m) p=p.matrixTransform(m.inverse()); return {x:p.x,y:p.y}; }catch(_){ var r=ovl.getBoundingClientRect(), vb=ovl.viewBox.baseVal; return {x:(e.clientX-r.left)/r.width*vb.width,y:(e.clientY-r.top)/r.height*vb.height}; } }
@@ -20099,6 +20103,7 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
         return; }
       if(S.arac==="metin"){ metinEkle(num,pt,e); return; }
       if(S.arac==="gorsel"){ gorselBekle={p:num,pt:pt}; $("pe-img").click(); return; }
+      if(S.arac==="metinduz"){ var _ti=e.target&&e.target.getAttribute&&e.target.getAttribute("data-ti"); if(_ti!=null) metinDuzenleAc(num,+_ti,e); return; }
       e.preventDefault(); var a=yeniAnn(S.arac,pt); if(!a) return;
       if(!S.ann[num]) S.ann[num]=[]; S.ann[num].push(a);
       drag={mode:"yeni",s:pt,a:a}; S.sel={p:num,i:S.ann[num].length-1}; $("pe-annsil").disabled=false;
@@ -20130,9 +20135,41 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSys
     inp.addEventListener("blur",commit);
     inp.addEventListener("keydown",function(ev){ ev.stopPropagation(); if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); inp.blur(); } else if(ev.key==="Escape"){ inp.textContent=""; inp.blur(); } });
   }
+  /* [FAZ 3: MEVCUT METNI DUZENLE] pdf.js metin katmani -> tiklanabilir kutular -> tiklayinca icerigi dolu
+     duzenlenebilir alan -> kaydedince ORIJINALI whiteout + yeni metni ustune yaz (gercek reflow DEGIL). */
+  function metinKatmaniYukle(num){
+    if(S.txt[num]!==undefined) return; S.txt[num]=null;   // null=yukleniyor
+    var pos=posOf(num), pg=S.pages[pos]; if(!pg||pg.kind==="blank"){ S.txt[num]=[]; return; }
+    var kaynak=(pg.kind==="ext")?(S.ext[pg.extKey]&&S.ext[pg.extKey].doc):S.doc; if(!kaynak){ S.txt[num]=[]; return; }
+    kaynak.getPage(pg.src).then(function(p){ var vp1=p.getViewport({scale:1}); return p.getTextContent().then(function(tc){
+      var arr=[]; for(var i=0;i<tc.items.length;i++){ var it=tc.items[i]; if(!it.str||!it.str.trim()) continue;
+        var tm=window.pdfjsLib.Util.transform(vp1.transform,it.transform);
+        var fs=Math.hypot(tm[2],tm[3])||it.height||10; var x=tm[4], yTop=tm[5]-fs, w=it.width; if(!(w>1)) w=it.str.length*fs*0.5;
+        arr.push({str:it.str,x:x,y:yTop,w:w,h:fs*1.2,fs:fs});
+      } S.txt[num]=arr; if(S.arac==="metinduz") annRender(num);
+    }); }).catch(function(){ S.txt[num]=[]; });
+  }
+  function metinDuzenleAc(num,ti,e){
+    var it=(S.txt[num]||[])[ti]; if(!it) return;
+    var wrap=S.ovlById[num].parentNode;
+    var inp=document.createElement("div"); inp.className="pe-txted"; inp.contentEditable="true";
+    inp.style.left=Math.round(it.x*S.scale)+"px"; inp.style.top=Math.round(it.y*S.scale)+"px"; inp.style.fontSize=Math.round(it.fs*S.scale)+"px"; inp.style.color="#111"; inp.style.minWidth=Math.round(it.w*S.scale)+"px";
+    inp.textContent=it.str; wrap.appendChild(inp);
+    setTimeout(function(){ try{ inp.focus(); var r=document.createRange(); r.selectNodeContents(inp); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }catch(_){} },0);
+    var bitti=false;
+    function commit(){ if(bitti) return; bitti=true; var txt=(inp.textContent||"").replace(/ /g," ");
+      if(txt!==it.str){ if(!S.ann[num]) S.ann[num]=[];
+        S.ann[num].push({t:"whiteout",x:it.x-1,y:it.y-1,w:it.w+2,h:it.h+2});
+        if(txt.trim()) S.ann[num].push({t:"text",x:it.x,y:it.y+it.fs*0.2,text:txt.trim(),size:it.fs,renk:"#111"});
+        annRender(num);
+      }
+      if(inp.parentNode) inp.parentNode.removeChild(inp); }
+    inp.addEventListener("blur",commit);
+    inp.addEventListener("keydown",function(ev){ ev.stopPropagation(); if(ev.key==="Enter"&&!ev.shiftKey){ ev.preventDefault(); inp.blur(); } else if(ev.key==="Escape"){ bitti=true; if(inp.parentNode) inp.parentNode.removeChild(inp); } });
+  }
   $("pe-img").addEventListener("change",function(e){ var f=e.target.files&&e.target.files[0]; e.target.value=""; if(!f||!gorselBekle) return; var num=gorselBekle.p, pt=gorselBekle.pt; gorselBekle=null;
     var fr=new FileReader(); fr.onload=function(){ var img=new Image(); img.onload=function(){ var pw=(S.ovlById[num]&&S.ovlById[num].viewBox.baseVal.width)||400, maxW=Math.min(pw*0.5,220), sc=maxW/img.width, w=img.width*sc, h=img.height*sc; if(!S.ann[num]) S.ann[num]=[]; S.ann[num].push({t:"image",x:pt.x,y:pt.y,w:w,h:h,src:fr.result}); annRender(num); }; img.src=fr.result; }; fr.readAsDataURL(f); });
-  function aracUygula(){ [].slice.call(document.querySelectorAll(".pe-tool[data-arac]")).forEach(function(b){ b.classList.toggle("aktif",b.getAttribute("data-arac")===S.arac); }); [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(pg){ pg.classList.toggle("pe-cizmod",S.arac!=="sec"); }); for(var i=0;i<S.pages.length;i++){ if(S.ovlById[S.pages[i].id]) annRender(S.pages[i].id); } }
+  function aracUygula(){ [].slice.call(document.querySelectorAll(".pe-tool[data-arac]")).forEach(function(b){ b.classList.toggle("aktif",b.getAttribute("data-arac")===S.arac); }); [].slice.call(pagesEl.querySelectorAll(".pe-page")).forEach(function(pg){ pg.classList.toggle("pe-cizmod",S.arac!=="sec"); }); for(var i=0;i<S.pages.length;i++){ if(S.ovlById[S.pages[i].id]) annRender(S.pages[i].id); } if(S.arac==="metinduz"){ for(var j=0;j<S.pages.length;j++){ metinKatmaniYukle(S.pages[j].id); } } }
   [].slice.call(document.querySelectorAll(".pe-tool[data-arac]")).forEach(function(b){ b.addEventListener("click",function(){ S.arac=b.getAttribute("data-arac"); if(S.arac!=="sec") selDegis(null); aracUygula(); }); });
   $("pe-renk").addEventListener("input",function(){ S.renk=this.value; if(S.sel){ var a=(S.ann[S.sel.p]||[])[S.sel.i]; if(a&&a.t!=="whiteout"&&a.t!=="image"){ a.renk=this.value; annRender(S.sel.p); } } });
   $("pe-kalin").addEventListener("input",function(){ S.kalin=+this.value; if(S.sel){ var a=(S.ann[S.sel.p]||[])[S.sel.i]; if(a&&a.kalin!=null){ a.kalin=+this.value; annRender(S.sel.p); } } });
